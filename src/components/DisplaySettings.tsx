@@ -8,12 +8,15 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, X, GripVertical, MonitorSmartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useBranch } from '@/contexts/BranchContext';
 
 interface DisplaySettingsProps {
   userId: string;
 }
 
 export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
+  const { operatingBranchId, branches } = useBranch();
+  const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [settings, setSettings] = useState({
     items_per_row: 3,
     category_order: [] as string[]
@@ -24,32 +27,36 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchSettings();
-    fetchCategories();
-
-    // Load AOD setting
-    const savedAod = localStorage.getItem('hotel_pos_aod_enabled');
-    if (savedAod !== null) {
-      setAlwaysOnDisplay(savedAod === 'true');
+    if (userId && operatingBranchId) {
+      fetchSettings();
+      fetchCategories();
     }
-  }, [userId]);
+    const savedAod = localStorage.getItem('hotel_pos_aod_enabled');
+    if (savedAod !== null) setAlwaysOnDisplay(savedAod === 'true');
+  }, [userId, operatingBranchId]);
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('display_settings')
         .select('*')
         .eq('user_id', userId)
+        .eq('branch_id', operatingBranchId)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
-
-      if (data) {
-        setSettings({
-          items_per_row: data.items_per_row,
-          category_order: data.category_order || []
-        });
+      if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
+        const { data: mainRow } = await supabase
+          .from('display_settings').select('*')
+          .eq('user_id', userId).eq('branch_id', mainBranchId).maybeSingle();
+        data = mainRow as any;
       }
+
+      if (error && (error as any).code !== 'PGRST116') throw error;
+
+      setSettings(data ? {
+        items_per_row: data.items_per_row,
+        category_order: data.category_order || []
+      } : { items_per_row: 3, category_order: [] });
     } catch (error) {
       console.error('Error fetching display settings:', error);
     }
@@ -75,15 +82,17 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
     try {
       setIsSaving(true);
 
-      const { error } = await supabase
-        .from('display_settings')
-        .upsert({
-          user_id: userId,
-          items_per_row: settings.items_per_row,
-          category_order: settings.category_order
-        }, {
-          onConflict: 'user_id'
-        });
+      const { data: existing } = await supabase
+        .from('display_settings').select('id')
+        .eq('user_id', userId).eq('branch_id', operatingBranchId).maybeSingle();
+
+      const payload = {
+        items_per_row: settings.items_per_row,
+        category_order: settings.category_order,
+      };
+      const { error } = existing?.id
+        ? await supabase.from('display_settings').update(payload).eq('id', existing.id)
+        : await supabase.from('display_settings').insert({ ...payload, user_id: userId, branch_id: operatingBranchId });
 
       if (error) throw error;
 

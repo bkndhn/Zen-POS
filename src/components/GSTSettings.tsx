@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -32,6 +33,8 @@ const DEFAULT_TAX_RATES = [
 
 export const GSTSettings: React.FC = () => {
     const { profile } = useAuth();
+    const { operatingBranchId, branches } = useBranch();
+    const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -51,19 +54,29 @@ export const GSTSettings: React.FC = () => {
     const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
 
     useEffect(() => {
-        if (profile?.user_id) {
+        if (profile?.user_id && operatingBranchId) {
             fetchSettings();
             fetchTaxRates();
         }
-    }, [profile?.user_id]);
+    }, [profile?.user_id, operatingBranchId]);
 
     const fetchSettings = async () => {
         try {
-            const { data } = await (supabase as any)
+            let { data } = await (supabase as any)
                 .from('shop_settings')
                 .select('gst_enabled, gstin, is_composition_scheme, composition_rate')
                 .eq('user_id', profile?.user_id)
+                .eq('branch_id', operatingBranchId)
                 .maybeSingle();
+            if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
+                const { data: mainRow } = await (supabase as any)
+                    .from('shop_settings')
+                    .select('gst_enabled, gstin, is_composition_scheme, composition_rate')
+                    .eq('user_id', profile?.user_id)
+                    .eq('branch_id', mainBranchId)
+                    .maybeSingle();
+                data = mainRow;
+            }
 
             if (data) {
                 setGstEnabled(data.gst_enabled || false);
@@ -102,18 +115,28 @@ export const GSTSettings: React.FC = () => {
             return;
         }
 
+        if (!operatingBranchId) {
+            toast({ title: 'No branch selected', variant: 'destructive' });
+            return;
+        }
         setSaving(true);
         try {
-            const { error } = await (supabase as any)
+            const payload = {
+                gst_enabled: gstEnabled,
+                gstin: gstin.trim().toUpperCase() || null,
+                is_composition_scheme: isComposition,
+                composition_rate: compositionRate,
+                updated_at: new Date().toISOString()
+            };
+            const { data: existing } = await (supabase as any)
                 .from('shop_settings')
-                .upsert({
-                    user_id: profile.user_id,
-                    gst_enabled: gstEnabled,
-                    gstin: gstin.trim().toUpperCase() || null,
-                    is_composition_scheme: isComposition,
-                    composition_rate: compositionRate,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
+                .select('id')
+                .eq('user_id', profile.user_id)
+                .eq('branch_id', operatingBranchId)
+                .maybeSingle();
+            const { error } = existing?.id
+                ? await (supabase as any).from('shop_settings').update(payload).eq('id', existing.id)
+                : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: profile.user_id, branch_id: operatingBranchId });
 
             if (error) throw error;
 

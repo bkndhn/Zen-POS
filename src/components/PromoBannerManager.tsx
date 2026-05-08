@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { Plus, Trash2, GripVertical, Image, Loader2, Calendar, X, Type, Palette } from 'lucide-react';
 import { compressImage, compressGifToImage } from '@/utils/imageUtils';
 
@@ -29,6 +30,7 @@ interface Banner {
 
 export const PromoBannerManager = () => {
     const { profile } = useAuth();
+    const { operatingBranchId } = useBranch();
     const [banners, setBanners] = useState<Banner[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -57,18 +59,14 @@ export const PromoBannerManager = () => {
 
     useEffect(() => {
         fetchBanners();
-    }, [adminId]);
+    }, [adminId, operatingBranchId]);
 
     const fetchBanners = async () => {
         if (!adminId) return;
-
         try {
-            const { data, error } = await supabase
-                .from('promo_banners')
-                .select('*')
-                .eq('admin_id', adminId)
-                .order('display_order');
-
+            let q: any = supabase.from('promo_banners').select('*').eq('admin_id', adminId);
+            if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+            const { data, error } = await q.order('display_order');
             if (error) throw error;
             setBanners(data || []);
         } catch (error) {
@@ -189,6 +187,7 @@ export const PromoBannerManager = () => {
                     .from('promo_banners')
                     .insert({
                         admin_id: adminId,
+                        branch_id: operatingBranchId,
                         ...bannerData,
                         display_order: banners.length
                     });

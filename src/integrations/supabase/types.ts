@@ -245,6 +245,7 @@ export type Database = {
       bluetooth_settings: {
         Row: {
           auto_print: boolean
+          branch_id: string | null
           created_at: string
           id: string
           is_enabled: boolean
@@ -254,6 +255,7 @@ export type Database = {
         }
         Insert: {
           auto_print?: boolean
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_enabled?: boolean
@@ -263,6 +265,7 @@ export type Database = {
         }
         Update: {
           auto_print?: boolean
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_enabled?: boolean
@@ -1301,6 +1304,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          branch_id: string | null
           created_at: string
           id: string
           pos_view: string | null
@@ -1308,6 +1312,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           pos_view?: string | null
@@ -1315,6 +1320,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           pos_view?: string | null
@@ -1388,6 +1394,56 @@ export type Database = {
             }
             Returns: Json
           }
+      get_branch_scoped_shop_settings: {
+        Args: { p_branch_id: string; p_user_id: string }
+        Returns: {
+          address: string | null
+          branch_id: string | null
+          composition_rate: number | null
+          contact_number: string | null
+          created_at: string | null
+          facebook: string | null
+          gst_enabled: boolean | null
+          gstin: string | null
+          id: string
+          instagram: string | null
+          is_composition_scheme: boolean | null
+          logo_url: string | null
+          menu_background_color: string | null
+          menu_items_per_row: number | null
+          menu_primary_color: string | null
+          menu_secondary_color: string | null
+          menu_show_address: boolean | null
+          menu_show_category_header: boolean | null
+          menu_show_phone: boolean | null
+          menu_show_shop_name: boolean | null
+          menu_slug: string | null
+          menu_text_color: string | null
+          printer_width: string | null
+          shop_latitude: number | null
+          shop_longitude: number | null
+          shop_name: string | null
+          show_facebook: boolean | null
+          show_instagram: boolean | null
+          show_order_type: boolean | null
+          show_whatsapp: boolean | null
+          updated_at: string | null
+          user_id: string
+          visible_nav_pages: string[] | null
+          whatsapp: string | null
+          whatsapp_bill_share_enabled: boolean | null
+          whatsapp_business_api_enabled: boolean | null
+          whatsapp_business_api_token: string | null
+          whatsapp_business_phone_id: string | null
+          whatsapp_share_mode: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shop_settings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_my_admin_id: { Args: never; Returns: string }
       get_my_permissions: {
         Args: never

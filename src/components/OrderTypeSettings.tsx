@@ -5,26 +5,38 @@ import { Label } from '@/components/ui/label';
 import { UtensilsCrossed } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 
 export const OrderTypeSettings: React.FC = () => {
+  const { profile } = useAuth();
+  const { operatingBranchId, branches } = useBranch();
+  const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [showOrderType, setShowOrderType] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSetting = async () => {
+      if (!profile?.user_id || !operatingBranchId) return;
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await (supabase as any)
+        let { data } = await (supabase as any)
           .from('shop_settings')
           .select('show_order_type')
-          .eq('user_id', user.id)
-          .single();
+          .eq('user_id', profile.user_id)
+          .eq('branch_id', operatingBranchId)
+          .maybeSingle();
 
-        if (data) {
-          setShowOrderType(data.show_order_type || false);
+        if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
+          const { data: mainRow } = await (supabase as any)
+            .from('shop_settings')
+            .select('show_order_type')
+            .eq('user_id', profile.user_id)
+            .eq('branch_id', mainBranchId)
+            .maybeSingle();
+          data = mainRow;
         }
+
+        if (data) setShowOrderType(data.show_order_type || false);
       } catch (e) {
         console.warn('Failed to fetch order type setting:', e);
       } finally {
@@ -32,18 +44,20 @@ export const OrderTypeSettings: React.FC = () => {
       }
     };
     fetchSetting();
-  }, []);
+  }, [profile?.user_id, operatingBranchId, mainBranchId]);
 
   const handleToggle = async (enabled: boolean) => {
     setShowOrderType(enabled);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!profile?.user_id || !operatingBranchId) return;
 
-      const { error } = await (supabase as any)
-        .from('shop_settings')
-        .update({ show_order_type: enabled })
-        .eq('user_id', user.id);
+      const { data: existing } = await (supabase as any)
+        .from('shop_settings').select('id')
+        .eq('user_id', profile.user_id).eq('branch_id', operatingBranchId).maybeSingle();
+
+      const { error } = existing?.id
+        ? await (supabase as any).from('shop_settings').update({ show_order_type: enabled }).eq('id', existing.id)
+        : await (supabase as any).from('shop_settings').insert({ user_id: profile.user_id, branch_id: operatingBranchId, show_order_type: enabled });
 
       if (error) throw error;
 

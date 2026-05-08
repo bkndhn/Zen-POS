@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,8 @@ import { MessageCircle, Settings2, Zap, Info, Image as ImageIcon, FileText } fro
 
 export const WhatsAppSettings: React.FC = () => {
   const { profile } = useAuth();
+  const { operatingBranchId, branches } = useBranch();
+  const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -23,20 +26,32 @@ export const WhatsAppSettings: React.FC = () => {
   const [whatsappBusinessPhoneId, setWhatsappBusinessPhoneId] = useState('');
 
   useEffect(() => {
-    if (profile?.user_id) {
+    if (profile?.user_id && operatingBranchId) {
       fetchSettings();
     }
-  }, [profile?.user_id]);
+  }, [profile?.user_id, operatingBranchId]);
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await (supabase as any)
+      const cols = 'whatsapp_bill_share_enabled, whatsapp_share_mode, whatsapp_business_api_enabled, whatsapp_business_api_token, whatsapp_business_phone_id';
+      let { data, error } = await (supabase as any)
         .from('shop_settings')
-        .select('whatsapp_bill_share_enabled, whatsapp_share_mode, whatsapp_business_api_enabled, whatsapp_business_api_token, whatsapp_business_phone_id')
+        .select(cols)
         .eq('user_id', profile?.user_id)
+        .eq('branch_id', operatingBranchId)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
+        const { data: mainRow } = await (supabase as any)
+          .from('shop_settings')
+          .select(cols)
+          .eq('user_id', profile?.user_id)
+          .eq('branch_id', mainBranchId)
+          .maybeSingle();
+        data = mainRow;
+      }
+
+      if (error && (error as any).code !== 'PGRST116') throw error;
 
       if (data) {
         setWhatsappBillShareEnabled(data.whatsapp_bill_share_enabled || false);
@@ -53,21 +68,24 @@ export const WhatsAppSettings: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!profile?.user_id) return;
+    if (!profile?.user_id || !operatingBranchId) return;
     setSaving(true);
 
     try {
-      const { error } = await (supabase as any)
-        .from('shop_settings')
-        .upsert({
-          user_id: profile.user_id,
-          whatsapp_bill_share_enabled: whatsappBillShareEnabled,
-          whatsapp_share_mode: whatsappShareMode,
-          whatsapp_business_api_enabled: whatsappBusinessApiEnabled,
-          whatsapp_business_api_token: whatsappBusinessApiToken || null,
-          whatsapp_business_phone_id: whatsappBusinessPhoneId || null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+      const payload = {
+        whatsapp_bill_share_enabled: whatsappBillShareEnabled,
+        whatsapp_share_mode: whatsappShareMode,
+        whatsapp_business_api_enabled: whatsappBusinessApiEnabled,
+        whatsapp_business_api_token: whatsappBusinessApiToken || null,
+        whatsapp_business_phone_id: whatsappBusinessPhoneId || null,
+        updated_at: new Date().toISOString()
+      };
+      const { data: existing } = await (supabase as any)
+        .from('shop_settings').select('id')
+        .eq('user_id', profile.user_id).eq('branch_id', operatingBranchId).maybeSingle();
+      const { error } = existing?.id
+        ? await (supabase as any).from('shop_settings').update(payload).eq('id', existing.id)
+        : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: profile.user_id, branch_id: operatingBranchId });
 
       if (error) throw error;
 
