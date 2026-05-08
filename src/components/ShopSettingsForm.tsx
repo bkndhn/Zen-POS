@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 export const ShopSettingsForm = () => {
     const { profile } = useAuth();
+    const { operatingBranchId, branches, activeBranch } = useBranch();
+    const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const { hasAccess } = useUserPermissions();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
