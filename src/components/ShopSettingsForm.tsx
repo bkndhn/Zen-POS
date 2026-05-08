@@ -182,20 +182,21 @@ export const ShopSettingsForm = () => {
 
         setSlugStatus('checking');
         try {
-            const { data, error } = await supabase
-                .from('shop_settings')
-                .select('user_id')
-                .eq('menu_slug', slug)
-                .maybeSingle();
+            // Check both shop_settings and branches tables for slug collisions
+            const [{ data: ssRows }, { data: brRows }] = await Promise.all([
+                supabase.from('shop_settings').select('user_id, branch_id').eq('menu_slug', slug),
+                supabase.from('branches').select('id, admin_id').eq('menu_slug', slug),
+            ]);
 
-            if (error && error.code !== 'PGRST116') throw error;
+            const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+            const ssTaken = (ssRows || []).some(
+                (r: any) => !(r.user_id === profile?.user_id && r.branch_id === operatingBranchId)
+            );
+            const brTaken = (brRows || []).some(
+                (r: any) => !(r.admin_id === adminId && r.id === operatingBranchId)
+            );
 
-            // Available if no data OR it's our own slug
-            if (!data || data.user_id === profile?.user_id) {
-                setSlugStatus('available');
-            } else {
-                setSlugStatus('taken');
-            }
+            setSlugStatus(ssTaken || brTaken ? 'taken' : 'available');
         } catch (error) {
             console.error('Error checking slug:', error);
             setSlugStatus('idle');
@@ -300,8 +301,11 @@ export const ShopSettingsForm = () => {
 
     const handleSave = async () => {
         if (!profile?.user_id) return;
+        if (!operatingBranchId) {
+            toast({ title: 'No branch selected', description: 'Pick a branch from the header first.', variant: 'destructive' });
+            return;
+        }
 
-        // Validate slug if provided
         if (menuSlug && slugStatus === 'taken') {
             toast({
                 title: "Slug Not Available",
@@ -315,7 +319,6 @@ export const ShopSettingsForm = () => {
 
         try {
             const settingsData: any = {
-                user_id: profile.user_id,
                 shop_name: shopName || null,
                 address: address || null,
                 contact_number: contactNumber || null,
@@ -335,11 +338,32 @@ export const ShopSettingsForm = () => {
                 updated_at: new Date().toISOString()
             };
 
-            const { error } = await supabase
+            // Find existing row for THIS branch only
+            const { data: existing } = await supabase
                 .from('shop_settings')
-                .upsert(settingsData, { onConflict: 'user_id' });
+                .select('id')
+                .eq('user_id', profile.user_id)
+                .eq('branch_id', operatingBranchId)
+                .maybeSingle();
+
+            let error: any = null;
+            if (existing?.id) {
+                ({ error } = await supabase
+                    .from('shop_settings')
+                    .update(settingsData)
+                    .eq('id', existing.id));
+            } else {
+                ({ error } = await supabase
+                    .from('shop_settings')
+                    .insert({ ...settingsData, user_id: profile.user_id, branch_id: operatingBranchId }));
+            }
 
             if (error) throw error;
+
+            // Also mirror slug onto the branch row (so /menu/<branch-slug> resolves)
+            if (menuSlug) {
+                await supabase.from('branches').update({ menu_slug: menuSlug }).eq('id', operatingBranchId);
+            }
 
             // Update Local Cache
             const cacheData = {
