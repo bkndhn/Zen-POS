@@ -29,8 +29,12 @@ interface SavedDevice {
   lastConnected: number;
 }
 
+import { useBranch } from '@/contexts/BranchContext';
+
 export const BluetoothPrinterSettings: React.FC = () => {
   const { profile } = useAuth();
+  const { operatingBranchId, branches } = useBranch();
+  const mainBranchId = branches.find(b => b.is_main)?.id || null;
 
   // Use the new persistent printer hook
   const {
@@ -70,17 +74,29 @@ export const BluetoothPrinterSettings: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('bluetooth_settings')
         .select('*')
         .eq('user_id', profile?.user_id)
+        .eq('branch_id', operatingBranchId)
         .maybeSingle();
+
+      if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
+        const { data: mainRow } = await supabase
+          .from('bluetooth_settings')
+          .select('*')
+          .eq('user_id', profile?.user_id)
+          .eq('branch_id', mainBranchId)
+          .maybeSingle();
+        // Inherit values but DON'T inherit row id (so save creates a fresh per-branch row)
+        if (mainRow) data = { ...mainRow, id: undefined } as any;
+      }
 
       if (error) throw error;
 
       if (data) {
         setSettings({
-          id: data.id,
+          id: (data as any).id,
           is_enabled: data.is_enabled,
           printer_name: data.printer_name,
           auto_print: data.auto_print
@@ -94,12 +110,10 @@ export const BluetoothPrinterSettings: React.FC = () => {
   };
 
   useEffect(() => {
-    if (profile?.user_id) {
+    if (profile?.user_id && operatingBranchId) {
       fetchSettings();
-      // Load from cache first, then sync from Supabase
-
     }
-  }, [profile?.user_id]);
+  }, [profile?.user_id, operatingBranchId]);
 
 
 
@@ -129,6 +143,7 @@ export const BluetoothPrinterSettings: React.FC = () => {
           .from('bluetooth_settings')
           .insert({
             user_id: profile?.user_id,
+            branch_id: operatingBranchId,
             is_enabled: newSettings.is_enabled,
             printer_name: newSettings.printer_name,
             auto_print: newSettings.auto_print

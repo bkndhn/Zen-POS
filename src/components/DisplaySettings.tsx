@@ -8,12 +8,15 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, X, GripVertical, MonitorSmartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useBranch } from '@/contexts/BranchContext';
 
 interface DisplaySettingsProps {
   userId: string;
 }
 
 export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
+  const { operatingBranchId, branches } = useBranch();
+  const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [settings, setSettings] = useState({
     items_per_row: 3,
     category_order: [] as string[]
