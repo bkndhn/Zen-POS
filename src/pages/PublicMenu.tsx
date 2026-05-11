@@ -184,20 +184,29 @@ const PublicMenu = () => {
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
             if (uuidRegex.test(urlParam)) {
-                // It's a UUID, use directly
+                // It's a UUID — treat as admin ID, default to main branch
                 setAdminId(urlParam);
-            } else {
-                // It's a slug, look up the admin ID
                 try {
-                    const { data: resolvedId, error: slugError } = await supabase
-                        .rpc('resolve_menu_slug', { p_slug: urlParam });
+                    const { data: mainBranch } = await (supabase as any)
+                        .from('branches')
+                        .select('id')
+                        .eq('admin_id', urlParam)
+                        .eq('is_main', true)
+                        .maybeSingle();
+                    setBranchId(mainBranch?.id || null);
+                } catch { /* ignore */ }
+            } else {
+                // It's a slug — resolve to (admin_id, branch_id)
+                try {
+                    const { data: rows, error: slugError } = await (supabase as any)
+                        .rpc('resolve_menu_target', { p_slug: urlParam });
 
-                    if (slugError) {
-                        console.error('Slug lookup error:', slugError);
-                    }
+                    if (slugError) console.error('Slug lookup error:', slugError);
 
-                    if (resolvedId) {
-                        setAdminId(resolvedId);
+                    const row = Array.isArray(rows) ? rows[0] : rows;
+                    if (row?.admin_id) {
+                        setAdminId(row.admin_id);
+                        setBranchId(row.branch_id || null);
                     } else {
                         setError('Menu not found');
                         setLoading(false);
