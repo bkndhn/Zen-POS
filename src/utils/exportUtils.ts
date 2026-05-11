@@ -388,11 +388,7 @@ export const exportToExcel = (expenses: ExpenseForPDF[], title: string = 'Expens
     'Note': ''
   } as any);
 
-  const ws = XLSX.utils.json_to_sheet(excelData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
-
-  XLSX.writeFile(wb, `${title.toLowerCase().replace(/\s+/g, '-')}.xlsx`);
+  downloadCsv(`${title.toLowerCase().replace(/\s+/g, '-')}.csv`, rowsToCsv(excelData as Record<string, any>[]));
 };
 
 export const exportExpensesToPDF = exportToPDF;
