@@ -100,35 +100,60 @@ const QRCodeSettings = () => {
                 } catch (e) { /* ignore */ }
             }
 
-            // Then sync from Supabase
+            // Then sync from Supabase (branch-scoped read with fallback to main branch)
             if (profile?.user_id) {
-                const { data } = await supabase
+                let { data } = await (supabase as any)
                     .from('shop_settings')
                     .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
                     .eq('user_id', profile.user_id)
+                    .eq('branch_id', operatingBranchId)
                     .maybeSingle();
 
+                // Fallback: any row for this user (legacy / main-branch values)
+                if (!data) {
+                    const { data: fb } = await (supabase as any)
+                        .from('shop_settings')
+                        .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
+                        .eq('user_id', profile.user_id)
+                        .order('branch_id', { nullsFirst: false })
+                        .limit(1)
+                        .maybeSingle();
+                    data = fb;
+                }
+
                 if (data) {
-                    if (data.menu_slug) setMenuSlug(data.menu_slug);
                     if (data.menu_show_shop_name !== undefined) setMenuShowShopName(data.menu_show_shop_name);
                     if (data.menu_show_address !== undefined) setMenuShowAddress(data.menu_show_address);
                     if (data.menu_show_phone !== undefined) setMenuShowPhone(data.menu_show_phone);
-                    // Appearance settings
                     if (data.menu_primary_color) setMenuPrimaryColor(data.menu_primary_color);
                     if (data.menu_secondary_color) setMenuSecondaryColor(data.menu_secondary_color);
                     if (data.menu_background_color) setMenuBackgroundColor(data.menu_background_color);
                     if (data.menu_text_color) setMenuTextColor(data.menu_text_color);
                     if (data.menu_items_per_row) setMenuItemsPerRow(data.menu_items_per_row);
-                    // Location settings
                     if (data.shop_latitude) setShopLatitude(data.shop_latitude);
                     if (data.shop_longitude) setShopLongitude(data.shop_longitude);
                 }
+
+                // Slug source depends on branch:
+                // - Main branch → shop_settings.menu_slug (legacy admin-wide)
+                // - Sub-branch → branches.menu_slug (per-branch)
+                if (operatingBranchId) {
+                    if (isMainBranch) {
+                        if (data?.menu_slug) setMenuSlug(data.menu_slug);
+                    } else {
+                        const { data: br } = await (supabase as any)
+                            .from('branches')
+                            .select('menu_slug')
+                            .eq('id', operatingBranchId)
+                            .maybeSingle();
+                        setMenuSlug(br?.menu_slug || '');
+                    }
+                }
             }
-            // Mark appearance as loaded after a tick so React processes state updates
             setTimeout(() => { isAppearanceLoadedRef.current = true; }, 200);
         };
         loadSettings();
-    }, [profile?.user_id]);
+    }, [profile?.user_id, operatingBranchId, isMainBranch]);
 
     // Fetch tables from database (single source of truth = Table Management)
     const fetchTables = useCallback(async () => {
