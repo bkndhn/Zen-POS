@@ -336,20 +336,24 @@ const QRCodeSettings = () => {
         setSlugStatus('checking');
 
         try {
-            const { data, error } = await supabase
+            // Check shop_settings (admin-wide / main-branch slugs)
+            const { data: ssRow } = await (supabase as any)
                 .from('shop_settings')
                 .select('user_id')
                 .eq('menu_slug', slug)
                 .neq('user_id', profile?.user_id || '')
                 .maybeSingle();
 
-            if (error) throw error;
+            // Check branches (per-branch slugs)
+            let brQ: any = (supabase as any)
+                .from('branches')
+                .select('id')
+                .eq('menu_slug', slug);
+            if (operatingBranchId) brQ = brQ.neq('id', operatingBranchId);
+            const { data: brRow } = await brQ.maybeSingle();
 
-            if (data) {
-                setSlugStatus('taken');
-            } else {
-                setSlugStatus('available');
-            }
+            if (ssRow || brRow) setSlugStatus('taken');
+            else setSlugStatus('available');
         } catch (err) {
             console.error('Error checking slug:', err);
             setSlugStatus('idle');
