@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from '@/hooks/use-toast';
 import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import * as XLSX from 'xlsx';
+// xlsx removed for security; using CSV export instead
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 
