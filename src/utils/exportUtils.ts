@@ -1,4 +1,31 @@
-import * as XLSX from 'xlsx';
+// CSV-based exports (xlsx package removed for security — prototype pollution / ReDoS)
+
+const csvEscape = (val: any): string => {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+};
+
+const rowsToCsv = (rows: Record<string, any>[]): string => {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.join(',')];
+  for (const r of rows) lines.push(headers.map((h) => csvEscape(r[h])).join(','));
+  return lines.join('\r\n');
+};
+
+const downloadCsv = (filename: string, content: string) => {
+  const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 // Define interfaces for different report types
 interface ExpenseForPDF {
@@ -105,11 +132,11 @@ export const exportAllReportsToExcel = (data: {
   dateRange: string;
   branchName?: string;
 }) => {
-  const wb = XLSX.utils.book_new();
+  const sections: string[] = [];
 
-  // Bills sheet
+  // Bills section
   if (data.bills.length > 0) {
-    const billsData = data.bills.map((bill, index) => ({
+    const billsData: Record<string, any>[] = data.bills.map((bill, index) => ({
       '#': index + 1,
       'Bill No': bill.bill_no,
       'Date': bill.date,
@@ -117,140 +144,85 @@ export const exportAllReportsToExcel = (data: {
       'Amount': bill.total_amount,
       'Discount': bill.discount,
       'Payment Mode': bill.payment_mode,
-      'Items': bill.items_count
+      'Items': bill.items_count,
     }));
-
-    const billsTotal = data.bills.reduce((sum, bill) => sum + bill.total_amount, 0);
     billsData.push({
       '#': '',
       'Bill No': '',
       'Date': 'TOTAL',
       'Time': '',
-      'Amount': billsTotal,
-      'Discount': data.bills.reduce((sum, bill) => sum + bill.discount, 0),
+      'Amount': data.bills.reduce((s, b) => s + b.total_amount, 0),
+      'Discount': data.bills.reduce((s, b) => s + b.discount, 0),
       'Payment Mode': '',
-      'Items': data.bills.reduce((sum, bill) => sum + bill.items_count, 0)
-    } as any);
-
-    const billsWs = XLSX.utils.json_to_sheet(billsData);
-
-    // Auto-fit columns
-    const billsRange = XLSX.utils.decode_range(billsWs['!ref'] || 'A1');
-    const billsColWidths = [];
-    for (let C = billsRange.s.c; C <= billsRange.e.c; ++C) {
-      let maxWidth = 10;
-      for (let R = billsRange.s.r; R <= billsRange.e.r; ++R) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        const cell = billsWs[cellAddress];
-        if (cell && cell.v) {
-          const cellLength = cell.v.toString().length;
-          maxWidth = Math.max(maxWidth, cellLength + 2);
-        }
-      }
-      billsColWidths.push({ width: Math.min(maxWidth, 50) });
-    }
-    billsWs['!cols'] = billsColWidths;
-
-    XLSX.utils.book_append_sheet(wb, billsWs, 'Bills Report');
+      'Items': data.bills.reduce((s, b) => s + b.items_count, 0),
+    });
+    sections.push('Bills Report\r\n' + rowsToCsv(billsData));
   }
 
-  // Items sheet
+  // Items section
   if (data.items.length > 0) {
-    const itemsData = data.items.map((item, index) => ({
+    const itemsData: Record<string, any>[] = data.items.map((item, index) => ({
       '#': index + 1,
       'Item Name': item.item_name,
       'Category': item.category,
       'Quantity': formatQtyWithUnit(item.total_quantity, item.unit),
-      'Revenue': item.total_revenue
+      'Revenue': item.total_revenue,
     }));
-
-    const itemsTotal = data.items.reduce((sum, item) => sum + item.total_revenue, 0);
     itemsData.push({
       '#': '',
       'Item Name': '',
       'Category': 'TOTAL',
-      'Quantity Sold': data.items.reduce((sum, item) => sum + item.total_quantity, 0),
-      'Revenue': itemsTotal
-    } as any);
-
-    const itemsWs = XLSX.utils.json_to_sheet(itemsData);
-
-    // Auto-fit columns for items
-    const itemsRange = XLSX.utils.decode_range(itemsWs['!ref'] || 'A1');
-    const itemsColWidths = [];
-    for (let C = itemsRange.s.c; C <= itemsRange.e.c; ++C) {
-      let maxWidth = 10;
-      for (let R = itemsRange.s.r; R <= itemsRange.e.r; ++R) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        const cell = itemsWs[cellAddress];
-        if (cell && cell.v) {
-          const cellLength = cell.v.toString().length;
-          maxWidth = Math.max(maxWidth, cellLength + 2);
-        }
-      }
-      itemsColWidths.push({ width: Math.min(maxWidth, 50) });
-    }
-    itemsWs['!cols'] = itemsColWidths;
-
-    XLSX.utils.book_append_sheet(wb, itemsWs, 'Items Report');
+      'Quantity': data.items.reduce((s, i) => s + i.total_quantity, 0),
+      'Revenue': data.items.reduce((s, i) => s + i.total_revenue, 0),
+    });
+    sections.push('Items Report\r\n' + rowsToCsv(itemsData));
   }
 
-  // Payments sheet
+  // Payments section
   if (data.payments.length > 0) {
-    const paymentsData = data.payments.map((payment, index) => ({
+    const paymentsData: Record<string, any>[] = data.payments.map((p, index) => ({
       '#': index + 1,
-      'Payment Method': payment.payment_method,
-      'Amount': payment.total_amount,
-      'Transactions': payment.transaction_count,
-      'Percentage': payment.percentage + '%'
+      'Payment Method': p.payment_method,
+      'Amount': p.total_amount,
+      'Transactions': p.transaction_count,
+      'Percentage': p.percentage + '%',
     }));
-
-    const paymentsTotal = data.payments.reduce((sum, payment) => sum + payment.total_amount, 0);
     paymentsData.push({
       '#': '',
       'Payment Method': 'TOTAL',
-      'Amount': paymentsTotal,
-      'Transactions': data.payments.reduce((sum, payment) => sum + payment.transaction_count, 0),
-      'Percentage': '100%'
-    } as any);
-
-    const paymentsWs = XLSX.utils.json_to_sheet(paymentsData);
-    XLSX.utils.book_append_sheet(wb, paymentsWs, 'Payments Report');
+      'Amount': data.payments.reduce((s, p) => s + p.total_amount, 0),
+      'Transactions': data.payments.reduce((s, p) => s + p.transaction_count, 0),
+      'Percentage': '100%',
+    });
+    sections.push('Payments Report\r\n' + rowsToCsv(paymentsData));
   }
 
-  // P&L sheet
+  // P&L section
   if (data.profitLoss.length > 0) {
-    const plData = data.profitLoss.map((item, index) => ({
+    const plData: Record<string, any>[] = data.profitLoss.map((item, index) => ({
       '#': index + 1,
       'Description': item.description,
       'Type': item.type.toUpperCase(),
-      'Amount': item.amount
+      'Amount': item.amount,
     }));
-
-    const revenue = data.profitLoss.filter(item => item.type === 'revenue').reduce((sum, item) => sum + item.amount, 0);
-    const expenses = data.profitLoss.filter(item => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
+    const revenue = data.profitLoss.filter((i) => i.type === 'revenue').reduce((s, i) => s + i.amount, 0);
+    const expenses = data.profitLoss.filter((i) => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
     const profit = revenue - expenses;
-
     plData.push(
-      { '#': '', 'Description': 'TOTAL REVENUE', 'Type': 'REVENUE', 'Amount': revenue } as any,
-      { '#': '', 'Description': 'TOTAL EXPENSES', 'Type': 'EXPENSE', 'Amount': expenses } as any,
-      { '#': '', 'Description': 'NET PROFIT/LOSS', 'Type': profit >= 0 ? 'PROFIT' : 'LOSS', 'Amount': profit } as any
+      { '#': '', 'Description': 'TOTAL REVENUE', 'Type': 'REVENUE', 'Amount': revenue },
+      { '#': '', 'Description': 'TOTAL EXPENSES', 'Type': 'EXPENSE', 'Amount': expenses },
+      { '#': '', 'Description': 'NET PROFIT/LOSS', 'Type': profit >= 0 ? 'PROFIT' : 'LOSS', 'Amount': profit },
     );
-
-    const plWs = XLSX.utils.json_to_sheet(plData);
-    XLSX.utils.book_append_sheet(wb, plWs, 'Profit & Loss');
+    sections.push('Profit & Loss\r\n' + rowsToCsv(plData));
   }
 
-  // Generate clean filename with current date
   const today = new Date().toISOString().split('T')[0];
   const cleanDateRange = data.dateRange.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   const branchSlug = data.branchName
     ? data.branchName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     : 'all-branches';
-  const filename = `reports-${branchSlug}-${cleanDateRange}-${today}.xlsx`;
-
-  // Write file with explicit options for better browser compatibility
-  XLSX.writeFile(wb, filename, { bookType: 'xlsx' });
+  const filename = `reports-${branchSlug}-${cleanDateRange}-${today}.csv`;
+  downloadCsv(filename, sections.join('\r\n\r\n'));
 };
 
 // Export all reports to PDF using HTML (supports Tamil and all Unicode)
@@ -416,11 +388,7 @@ export const exportToExcel = (expenses: ExpenseForPDF[], title: string = 'Expens
     'Note': ''
   } as any);
 
-  const ws = XLSX.utils.json_to_sheet(excelData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
-
-  XLSX.writeFile(wb, `${title.toLowerCase().replace(/\s+/g, '-')}.xlsx`);
+  downloadCsv(`${title.toLowerCase().replace(/\s+/g, '-')}.csv`, rowsToCsv(excelData as Record<string, any>[]));
 };
 
 export const exportExpensesToPDF = exportToPDF;
