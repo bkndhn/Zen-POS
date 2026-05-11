@@ -230,42 +230,50 @@ const PublicMenu = () => {
 
         const fetchMenuData = async () => {
             try {
-                // Fetch items for this admin (including video/media fields)
-                const { data: itemsData, error: itemsError } = await supabase
+                // Fetch items for this admin/branch (including video/media fields)
+                let itemsQuery: any = supabase
                     .from('items')
-                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active')
+                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id')
                     .eq('admin_id', adminId)
-                    .eq('is_active', true)
-                    .order('category')
-                    .order('name');
+                    .eq('is_active', true);
+                if (branchId) itemsQuery = itemsQuery.eq('branch_id', branchId);
+                itemsQuery = itemsQuery.order('category').order('name');
+                const { data: itemsData, error: itemsError } = await itemsQuery;
 
-                // Fetch promotional banners
-                const { data: bannersData } = await supabase
+                // Fetch promotional banners (branch-scoped, with admin-level fallback)
+                let bannersQuery: any = supabase
                     .from('promo_banners')
-                    .select('id, title, description, image_url, link_url, is_text_only, text_color, bg_color')
+                    .select('id, title, description, image_url, link_url, is_text_only, text_color, bg_color, branch_id')
                     .eq('admin_id', adminId)
                     .eq('is_active', true)
                     .order('display_order');
+                const { data: allBannersData } = await bannersQuery;
+                const bannersData = branchId
+                    ? (allBannersData || []).filter((b: any) => b.branch_id === branchId || b.branch_id == null)
+                    : (allBannersData || []);
 
                 if (itemsError) {
                     console.error('Items fetch error:', itemsError);
                 }
 
-                // Fetch shop settings via secure RPC using profile ID (excludes sensitive fields like API tokens)
-                const { data: settingsData, error: settingsError } = await supabase
-                    .rpc('get_public_shop_settings_by_profile', { p_profile_id: adminId });
+                // Fetch shop settings (branch-aware, falls back to main branch)
+                const { data: settingsData, error: settingsError } = await (supabase as any)
+                    .rpc('get_public_shop_settings_for_branch', { p_admin_id: adminId, p_branch_id: branchId });
 
-                if (settingsError && settingsError.code !== 'PGRST116') {
+                if (settingsError && (settingsError as any).code !== 'PGRST116') {
                     console.error('Settings error:', settingsError);
                 }
 
-                // Fetch categories
-                const { data: categoriesData, error: categoriesError } = await supabase
+                // Fetch categories (branch-scoped if available, else admin-wide)
+                let catQuery: any = supabase
                     .from('item_categories')
-                    .select('id, name')
+                    .select('id, name, branch_id')
                     .eq('admin_id', adminId)
-                    .eq('is_deleted', false)
-                    .order('name');
+                    .eq('is_deleted', false);
+                const { data: allCats, error: categoriesError } = await catQuery.order('name');
+                const categoriesData = branchId
+                    ? (allCats || []).filter((c: any) => c.branch_id === branchId || c.branch_id == null)
+                    : (allCats || []);
 
                 if (categoriesError) {
                     console.error('Categories error:', categoriesError);
@@ -290,7 +298,7 @@ const PublicMenu = () => {
         };
 
         fetchMenuData();
-    }, [adminId]);
+    }, [adminId, branchId]);
 
     // Real-time subscription for item updates
     useEffect(() => {
