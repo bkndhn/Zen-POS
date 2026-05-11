@@ -155,29 +155,30 @@ const QRCodeSettings = () => {
         loadSettings();
     }, [profile?.user_id, operatingBranchId, isMainBranch]);
 
-    // Fetch tables from database (single source of truth = Table Management)
+    // Fetch tables from database (single source of truth = Table Management) — branch-scoped
     const fetchTables = useCallback(async () => {
         if (!adminId) return;
         setTablesLoading(true);
         try {
-            const { data } = await (supabase as any)
+            let q: any = (supabase as any)
                 .from('tables')
-                .select('id, table_number')
-                .eq('admin_id', adminId)
-                .order('table_number', { ascending: true });
+                .select('id, table_number, branch_id')
+                .eq('admin_id', adminId);
+            if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+            const { data } = await q.order('table_number', { ascending: true });
             if (data) setDbTables(data);
         } catch (e) {
             console.warn('[QRSettings] Failed to fetch tables:', e);
         } finally {
             setTablesLoading(false);
         }
-    }, [adminId]);
+    }, [adminId, operatingBranchId]);
 
     useEffect(() => {
         if (tableMode) fetchTables();
     }, [tableMode, fetchTables]);
 
-    // Save settings when changed
+    // Save settings when changed (branch-scoped)
     const saveSettings = async () => {
         // Save to localStorage immediately
         const saved = localStorage.getItem('hotel_pos_bill_header');
@@ -188,43 +189,65 @@ const QRCodeSettings = () => {
         parsed.menuShowPhone = menuShowPhone;
         localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
 
-        // Sync to Supabase
-        if (profile?.user_id) {
-            await supabase
-                .from('shop_settings')
-                .upsert({
-                    user_id: profile.user_id,
-                    menu_slug: menuSlug || null,
-                    menu_show_shop_name: menuShowShopName,
-                    menu_show_address: menuShowAddress,
-                    menu_show_phone: menuShowPhone,
-                    menu_primary_color: menuPrimaryColor,
-                    menu_secondary_color: menuSecondaryColor,
-                    menu_background_color: menuBackgroundColor,
-                    menu_text_color: menuTextColor,
-                    menu_items_per_row: menuItemsPerRow,
-                    shop_latitude: shopLatitude,
-                    shop_longitude: shopLongitude,
-                }, { onConflict: 'user_id' });
+        if (!profile?.user_id) return;
 
-            // Broadcast settings change to all PublicMenu listeners
-            const settingsChannel = supabase.channel(`menu-settings-${profile.id}`);
-            await settingsChannel.send({
-                type: 'broadcast',
-                event: 'menu-settings-updated',
-                payload: {
-                    menu_show_shop_name: menuShowShopName,
-                    menu_show_address: menuShowAddress,
-                    menu_show_phone: menuShowPhone,
-                    menu_primary_color: menuPrimaryColor,
-                    menu_secondary_color: menuSecondaryColor,
-                    menu_background_color: menuBackgroundColor,
-                    menu_text_color: menuTextColor,
-                    menu_items_per_row: menuItemsPerRow,
-                }
-            });
-            supabase.removeChannel(settingsChannel);
+        // Persist appearance + display settings to shop_settings (per-branch row)
+        // Only the main branch keeps the slug in shop_settings (legacy admin-wide).
+        const ssPayload: any = {
+            user_id: profile.user_id,
+            branch_id: operatingBranchId,
+            menu_show_shop_name: menuShowShopName,
+            menu_show_address: menuShowAddress,
+            menu_show_phone: menuShowPhone,
+            menu_primary_color: menuPrimaryColor,
+            menu_secondary_color: menuSecondaryColor,
+            menu_background_color: menuBackgroundColor,
+            menu_text_color: menuTextColor,
+            menu_items_per_row: menuItemsPerRow,
+            shop_latitude: shopLatitude,
+            shop_longitude: shopLongitude,
+        };
+        if (isMainBranch) ssPayload.menu_slug = menuSlug || null;
+
+        // Find existing branch row to update; otherwise insert
+        const { data: existing } = await (supabase as any)
+            .from('shop_settings')
+            .select('id')
+            .eq('user_id', profile.user_id)
+            .eq('branch_id', operatingBranchId)
+            .maybeSingle();
+
+        if (existing?.id) {
+            await (supabase as any).from('shop_settings').update(ssPayload).eq('id', existing.id);
+        } else {
+            await (supabase as any).from('shop_settings').insert(ssPayload);
         }
+
+        // Sub-branch slug → store on branches.menu_slug
+        if (operatingBranchId && !isMainBranch) {
+            await (supabase as any)
+                .from('branches')
+                .update({ menu_slug: menuSlug || null })
+                .eq('id', operatingBranchId);
+        }
+
+        // Broadcast settings change to all PublicMenu listeners
+        const settingsChannel = supabase.channel(`menu-settings-${profile.id}`);
+        await settingsChannel.send({
+            type: 'broadcast',
+            event: 'menu-settings-updated',
+            payload: {
+                menu_show_shop_name: menuShowShopName,
+                menu_show_address: menuShowAddress,
+                menu_show_phone: menuShowPhone,
+                menu_primary_color: menuPrimaryColor,
+                menu_secondary_color: menuSecondaryColor,
+                menu_background_color: menuBackgroundColor,
+                menu_text_color: menuTextColor,
+                menu_items_per_row: menuItemsPerRow,
+            }
+        });
+        supabase.removeChannel(settingsChannel);
     };
 
     // Get current location using browser geo-location with progressive retry
