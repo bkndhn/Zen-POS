@@ -1029,12 +1029,13 @@ const Billing = () => {
       const cleanPhone = customerMobile?.replace(/[\s\-\(\)\+]/g, '') || '';
 
       if (adminId && cleanPhone.length >= 10) {
-        const { data: existingCustomer } = await (supabase as any)
+        let lookup: any = (supabase as any)
           .from('customers')
           .select('id, visit_count, total_spent')
           .eq('admin_id', adminId)
-          .eq('phone', cleanPhone)
-          .maybeSingle();
+          .eq('phone', cleanPhone);
+        if (operatingBranchId) lookup = lookup.eq('branch_id', operatingBranchId);
+        const { data: existingCustomer } = await lookup.maybeSingle();
 
         if (existingCustomer) {
           await (supabase as any)

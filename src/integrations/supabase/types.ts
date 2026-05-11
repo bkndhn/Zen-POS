@@ -1467,6 +1467,10 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: Json
       }
+      get_public_shop_settings_for_branch: {
+        Args: { p_admin_id: string; p_branch_id: string }
+        Returns: Json
+      }
       get_user_admin_id: { Args: never; Returns: string }
       has_page_permission: {
         Args: { _page_name: string; _user_id: string }
@@ -1493,6 +1497,13 @@ export type Database = {
         }[]
       }
       resolve_menu_slug: { Args: { p_slug: string }; Returns: string }
+      resolve_menu_target: {
+        Args: { p_slug: string }
+        Returns: {
+          admin_id: string
+          branch_id: string
+        }[]
+      }
       seed_branch_defaults: {
         Args: { p_source_branch_id?: string; p_target_branch_id: string }
         Returns: Json
