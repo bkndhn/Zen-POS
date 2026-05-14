@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useBranch } from '@/contexts/BranchContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import {
   ShoppingCart,
@@ -37,13 +38,15 @@ export const BottomNavigation: React.FC = () => {
   const { profile } = useAuth();
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
+  const { operatingBranchId } = useBranch();
   const [visiblePages, setVisiblePages] = useState<string[]>([]);
 
   useEffect(() => {
     // Load from Supabase as primary source, with localStorage as fallback
     const loadSettings = async () => {
       // First, load from localStorage for instant display
-      const saved = localStorage.getItem('hotel_pos_bill_header');
+      const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+      const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -67,11 +70,18 @@ export const BottomNavigation: React.FC = () => {
             "https://ivleyttlqlqawghvfyjz.supabase.co",
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2bGV5dHRscWxxYXdnaHZmeWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMTc1NjAsImV4cCI6MjA4NDc5MzU2MH0.2LpChU5d2awwu_Wu9XckGT6kGPFHqBA0fyhqvNMne3M"
           );
-          const { data } = await supabase
+          let query = supabase
             .from('shop_settings')
             .select('visible_nav_pages')
-            .eq('user_id', profile.user_id)
-            .maybeSingle();
+            .eq('user_id', profile.user_id);
+
+          if (operatingBranchId) {
+            query = query.eq('branch_id', operatingBranchId);
+          } else {
+            query = query.is('branch_id', null);
+          }
+
+          const { data } = await query.maybeSingle();
 
           if (data?.visible_nav_pages && Array.isArray(data.visible_nav_pages)) {
             // Auto-inject any new pages that didn't exist when the user last saved
@@ -81,12 +91,13 @@ export const BottomNavigation: React.FC = () => {
             requiredNewPages.forEach(p => { if (!updated.includes(p)) updated.push(p); });
             setVisiblePages(updated);
             // Update localStorage cache
-            const cached = localStorage.getItem('hotel_pos_bill_header');
+            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+            const cached = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
             if (cached) {
               try {
                 const parsed = JSON.parse(cached);
                 parsed.visiblePages = updated;
-                localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+                localStorage.setItem(headerKey, JSON.stringify(parsed));
               } catch { }
             }
           }
@@ -117,7 +128,7 @@ export const BottomNavigation: React.FC = () => {
       window.removeEventListener('nav-settings-updated', handleUpdate as EventListener);
       window.removeEventListener('shop-settings-updated', handleShopUpdate);
     };
-  }, [profile?.user_id]);
+  }, [profile?.user_id, operatingBranchId]);
 
   if (!profile || loading) return null;
 

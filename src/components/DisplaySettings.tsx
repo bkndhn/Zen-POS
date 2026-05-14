@@ -15,7 +15,7 @@ interface DisplaySettingsProps {
 }
 
 export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
-  const { operatingBranchId, branches } = useBranch();
+  const { operatingBranchId, branches, isAllBranchesView } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [settings, setSettings] = useState({
     items_per_row: 3,
@@ -199,6 +199,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
             <Switch
               checked={alwaysOnDisplay}
               onCheckedChange={handleAodChange}
+              disabled={isAllBranchesView}
             />
           </div>
 
@@ -211,6 +212,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
                 ...prev,
                 items_per_row: parseInt(value)
               }))}
+              disabled={isAllBranchesView}
             >
               <SelectTrigger className="mt-2">
                 <SelectValue />
@@ -256,6 +258,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
                           size="sm"
                           onClick={() => removeCategoryFromOrder(category)}
                           className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          disabled={isAllBranchesView}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -274,8 +277,8 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
                       <Badge
                         key={category}
                         variant="outline"
-                        className="cursor-pointer"
-                        onClick={() => addCategoryToOrder(category)}
+                        className={`cursor-pointer ${isAllBranchesView ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => { if (!isAllBranchesView) addCategoryToOrder(category); }}
                       >
                         <Plus className="h-3 w-3 mr-1" />
                         {category}
@@ -296,7 +299,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
             </div>
           </div>
 
-          <Button onClick={handleSave} disabled={isSaving} className="w-full">
+          <Button onClick={handleSave} disabled={isSaving || isAllBranchesView} className="w-full">
             {isSaving ? 'Saving...' : 'Save Display Settings'}
           </Button>
         </CardContent>

@@ -113,7 +113,7 @@ const Items: React.FC = () => {
       // Branch-scoped fetch: filter by branch_id (null = All Branches view)
       let query = supabase.from('items').select('*').eq('admin_id', adminId);
       if (branchFilterId) {
-        query = query.eq('branch_id', branchFilterId);
+        query = query.or(`branch_id.eq.${branchFilterId},branch_id.is.null`);
       }
 
       const { data, error } = await query.order('name');

@@ -387,6 +387,7 @@ const CRM: React.FC = () => {
                       variant="outline"
                       className="h-7 w-7 p-0"
                       onClick={() => handleEditClick(customer)}
+                      disabled={isAllBranchesView}
                     >
                       <Edit className="w-3 h-3" />
                     </Button>
@@ -395,6 +396,7 @@ const CRM: React.FC = () => {
                       variant="outline"
                       className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                       onClick={() => handleDeleteClick(customer)}
+                      disabled={isAllBranchesView}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>

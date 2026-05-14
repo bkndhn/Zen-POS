@@ -14,17 +14,25 @@ import { supabase } from '@/integrations/supabase/client';
  * Call this on mount in Billing.tsx / TableOrderBilling.tsx to ensure
  * the counter doesn't reset to 0 on a new device/browser.
  */
-export const initBillCounter = async (adminId: string | null | undefined): Promise<void> => {
+export const initBillCounter = async (adminId: string | null | undefined, branchId?: string | null): Promise<void> => {
     if (!adminId) return;
-    const counterKey = `bill_counter_${adminId}`;
+    const counterKey = `bill_counter_${adminId}_${branchId || 'main'}`;
     // If counter already exists in localStorage, we're good
     if (localStorage.getItem(counterKey) !== null) return;
 
     try {
-        const { data } = await (supabase as any)
+        let query = supabase
             .from('bills')
             .select('bill_no')
-            .eq('admin_id', adminId)
+            .eq('admin_id', adminId);
+            
+        if (branchId) {
+            query = query.eq('branch_id', branchId);
+        } else {
+            query = query.is('branch_id', null);
+        }
+
+        const { data } = await query
             .order('created_at', { ascending: false })
             .limit(1);
 
@@ -40,10 +48,11 @@ export const initBillCounter = async (adminId: string | null | undefined): Promi
     }
 };
 
-export const getInstantBillNumber = (adminId: string | null | undefined): string => {
-    const continueBillFromYesterday = localStorage.getItem('hotel_pos_continue_bill_number') !== 'false';
-    const counterKey = `bill_counter_${adminId || 'default'}`;
-    const dateKey = `bill_date_${adminId || 'default'}`;
+export const getInstantBillNumber = (adminId: string | null | undefined, branchId?: string | null): string => {
+    const branchKey = branchId ? `hotel_pos_continue_bill_number_${branchId}` : 'hotel_pos_continue_bill_number';
+    const continueBillFromYesterday = (localStorage.getItem(branchKey) ?? localStorage.getItem('hotel_pos_continue_bill_number')) !== 'false';
+    const counterKey = `bill_counter_${adminId || 'default'}_${branchId || 'main'}`;
+    const dateKey = `bill_date_${adminId || 'default'}_${branchId || 'main'}`;
 
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;

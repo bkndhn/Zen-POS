@@ -236,7 +236,7 @@ const PublicMenu = () => {
                     .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id')
                     .eq('admin_id', adminId)
                     .eq('is_active', true);
-                if (branchId) itemsQuery = itemsQuery.eq('branch_id', branchId);
+                if (branchId) itemsQuery = itemsQuery.or(`branch_id.eq.${branchId},branch_id.is.null`);
                 itemsQuery = itemsQuery.order('category').order('name');
                 const { data: itemsData, error: itemsError } = await itemsQuery;
 

@@ -74,8 +74,8 @@ const themes: Theme[] = [
     }
 ];
 
-const THEME_STORAGE_KEY = 'hotel_pos_theme';
-const CUSTOM_COLOR_STORAGE_KEY = 'hotel_pos_custom_color';
+const THEME_STORAGE_KEY_BASE = 'hotel_pos_theme';
+const CUSTOM_COLOR_STORAGE_KEY_BASE = 'hotel_pos_custom_color';
 
 // Utility to convert Hex to HSL
 const hexToHSL = (hex: string) => {
@@ -111,15 +111,20 @@ const hexToHSL = (hex: string) => {
     };
 };
 
+import { useBranch } from '@/contexts/BranchContext';
+
 export const ThemeSettings: React.FC = () => {
-    const [activeTheme, setActiveTheme] = useState<string>(() => {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
-        return saved || 'blue';
-    });
-    
-    const [customColor, setCustomColor] = useState<string>(() => {
-        return localStorage.getItem(CUSTOM_COLOR_STORAGE_KEY) || '#0324fc';
-    });
+    const { operatingBranchId, isAllBranchesView } = useBranch();
+
+    // Branch-scoped storage key helpers
+    const themeKey = operatingBranchId ? `${THEME_STORAGE_KEY_BASE}_${operatingBranchId}` : THEME_STORAGE_KEY_BASE;
+    const customColorKey = operatingBranchId ? `${CUSTOM_COLOR_STORAGE_KEY_BASE}_${operatingBranchId}` : CUSTOM_COLOR_STORAGE_KEY_BASE;
+
+    const readTheme = () => localStorage.getItem(themeKey) ?? localStorage.getItem(THEME_STORAGE_KEY_BASE) ?? 'blue';
+    const readCustomColor = () => localStorage.getItem(customColorKey) ?? localStorage.getItem(CUSTOM_COLOR_STORAGE_KEY_BASE) ?? '#0324fc';
+
+    const [activeTheme, setActiveTheme] = useState<string>(readTheme);
+    const [customColor, setCustomColor] = useState<string>(readCustomColor);
 
     useEffect(() => {
         // Apply theme on mount
@@ -129,6 +134,19 @@ export const ThemeSettings: React.FC = () => {
             applyTheme(activeTheme);
         }
     }, []);
+
+    // Re-apply theme when branch changes
+    useEffect(() => {
+        const newTheme = readTheme();
+        const newColor = readCustomColor();
+        setActiveTheme(newTheme);
+        setCustomColor(newColor);
+        if (newTheme === 'custom') {
+            applyCustomTheme(newColor);
+        } else {
+            applyTheme(newTheme);
+        }
+    }, [operatingBranchId]);
 
     // Theme colors for status bar (meta theme-color)
     const themeColors: Record<string, string> = {
@@ -210,7 +228,7 @@ export const ThemeSettings: React.FC = () => {
 
     const handleThemeChange = (themeId: string) => {
         setActiveTheme(themeId);
-        localStorage.setItem(THEME_STORAGE_KEY, themeId);
+        localStorage.setItem(themeKey, themeId);
         
         if (themeId === 'custom') {
             applyCustomTheme(customColor);
@@ -225,7 +243,7 @@ export const ThemeSettings: React.FC = () => {
     const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newColor = e.target.value;
         setCustomColor(newColor);
-        localStorage.setItem(CUSTOM_COLOR_STORAGE_KEY, newColor);
+        localStorage.setItem(customColorKey, newColor);
         
         if (activeTheme === 'custom') {
             applyCustomTheme(newColor);
@@ -253,7 +271,8 @@ export const ThemeSettings: React.FC = () => {
                         <button
                             key={theme.id}
                             onClick={() => handleThemeChange(theme.id)}
-                            className={`relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${activeTheme === theme.id
+                            disabled={isAllBranchesView}
+                            className={`relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-200 ${isAllBranchesView ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-lg'} ${activeTheme === theme.id
                                 ? 'border-primary ring-2 ring-primary/30 shadow-md'
                                 : 'border-border hover:border-primary/50'
                                 }`}
@@ -277,7 +296,8 @@ export const ThemeSettings: React.FC = () => {
                     {/* Custom Color Option */}
                     <button
                         onClick={activateCustomTheme}
-                        className={`relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-200 hover:scale-105 hover:shadow-lg ${activeTheme === 'custom'
+                        disabled={isAllBranchesView}
+                        className={`relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-200 ${isAllBranchesView ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-lg'} ${activeTheme === 'custom'
                             ? 'border-primary ring-2 ring-primary/30 shadow-md'
                             : 'border-border hover:border-primary/50'
                             }`}
@@ -308,6 +328,7 @@ export const ThemeSettings: React.FC = () => {
                                 type="color" 
                                 value={customColor}
                                 onChange={handleCustomColorChange}
+                                disabled={isAllBranchesView}
                                 className="w-12 h-12 p-1 rounded-full cursor-pointer" 
                             />
                         </div>
@@ -318,7 +339,7 @@ export const ThemeSettings: React.FC = () => {
                             </p>
                         </div>
                         {activeTheme !== 'custom' && (
-                             <Button size="sm" variant="outline" onClick={activateCustomTheme}>
+                             <Button size="sm" variant="outline" onClick={activateCustomTheme} disabled={isAllBranchesView}>
                                 Apply Custom Color
                             </Button>
                         )}

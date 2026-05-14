@@ -33,7 +33,7 @@ const DEFAULT_TAX_RATES = [
 
 export const GSTSettings: React.FC = () => {
     const { profile } = useAuth();
-    const { operatingBranchId, branches } = useBranch();
+    const { operatingBranchId, branches, isAllBranchesView } = useBranch();
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -94,11 +94,17 @@ export const GSTSettings: React.FC = () => {
     const fetchTaxRates = async () => {
         if (!adminId) return;
         try {
-            const { data } = await (supabase as any)
+            let query = (supabase as any)
                 .from('tax_rates')
                 .select('*')
-                .eq('admin_id', adminId)
-                .order('rate', { ascending: true });
+                .eq('admin_id', adminId);
+
+            // Scope to current branch + legacy rows (null branch_id)
+            if (operatingBranchId) {
+                query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+            }
+
+            const { data } = await query.order('rate', { ascending: true });
 
             if (data) setTaxRates(data);
         } catch (e) {
@@ -141,14 +147,15 @@ export const GSTSettings: React.FC = () => {
             if (error) throw error;
 
             // Update local cache
-            const existingCache = localStorage.getItem('hotel_pos_bill_header');
+            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+            const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
             if (existingCache) {
                 const parsed = JSON.parse(existingCache);
                 parsed.gstEnabled = gstEnabled;
                 parsed.gstin = gstin.trim().toUpperCase();
                 parsed.isComposition = isComposition;
                 parsed.compositionRate = compositionRate;
-                localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+                localStorage.setItem(headerKey, JSON.stringify(parsed));
             }
 
             // Seed default tax rates on first enable
@@ -169,6 +176,7 @@ export const GSTSettings: React.FC = () => {
         try {
             const rows = DEFAULT_TAX_RATES.map(r => ({
                 admin_id: adminId,
+                branch_id: operatingBranchId || null,
                 name: r.name,
                 rate: r.rate,
                 cess_rate: r.cess_rate,
@@ -198,6 +206,7 @@ export const GSTSettings: React.FC = () => {
         try {
             const payload = {
                 admin_id: adminId,
+                branch_id: operatingBranchId || null,
                 name: taxRateForm.name.trim(),
                 rate,
                 cess_rate: parseFloat(taxRateForm.cess_rate) || 0,
@@ -402,7 +411,7 @@ export const GSTSettings: React.FC = () => {
                         </>
                     )}
 
-                    <Button onClick={handleSaveSettings} disabled={saving} className="w-full sm:w-auto">
+                    <Button onClick={handleSaveSettings} disabled={saving || isAllBranchesView} className="w-full sm:w-auto">
                         {saving ? 'Saving...' : 'Save GST Settings'}
                     </Button>
                 </CardContent>

@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 export const ShopSettingsForm = () => {
     const { profile } = useAuth();
-    const { operatingBranchId, branches, activeBranch } = useBranch();
+    const { operatingBranchId, branches, activeBranch, isAllBranchesView } = useBranch();
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const { hasAccess } = useUserPermissions();
     const [loading, setLoading] = useState(true);
@@ -51,7 +51,8 @@ export const ShopSettingsForm = () => {
 
     useEffect(() => {
         // 1. Instant load from localStorage cache (no loading state)
-        const saved = localStorage.getItem('hotel_pos_bill_header');
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
@@ -152,7 +153,8 @@ export const ShopSettingsForm = () => {
                     menuShowAddress: (data as any).menu_show_address !== false,
                     menuShowPhone: (data as any).menu_show_phone !== false,
                 };
-                localStorage.setItem('hotel_pos_bill_header', JSON.stringify(cacheData));
+                const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+                localStorage.setItem(headerKey, JSON.stringify(cacheData));
             }
         } catch (error) {
             console.error('Error fetching shop settings:', error);
@@ -371,7 +373,8 @@ export const ShopSettingsForm = () => {
                 facebook, showFacebook, instagram, showInstagram, whatsapp, showWhatsapp, visiblePages,
                 menuSlug, menuShowShopName, menuShowAddress, menuShowPhone
             };
-            localStorage.setItem('hotel_pos_bill_header', JSON.stringify(cacheData));
+            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+            localStorage.setItem(headerKey, JSON.stringify(cacheData));
             localStorage.setItem('hotel_pos_printer_width', printerWidth);
 
             // Trigger global event
@@ -594,8 +597,8 @@ export const ShopSettingsForm = () => {
                     </div>
                 </div>
 
-                <Button onClick={handleSave} disabled={saving} className="w-full md:w-auto">
-                    {saving ? "Saving..." : "Save Shop Details"}
+                <Button onClick={handleSave} disabled={saving || isAllBranchesView} className="w-full md:w-auto">
+                    {saving ? 'Saving...' : 'Save Shop Details'}
                 </Button>
 
             </CardContent>

@@ -13,7 +13,7 @@ import { MessageCircle, Settings2, Zap, Info, Image as ImageIcon, FileText } fro
 
 export const WhatsAppSettings: React.FC = () => {
   const { profile } = useAuth();
-  const { operatingBranchId, branches } = useBranch();
+  const { operatingBranchId, branches, isAllBranchesView } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,12 +90,13 @@ export const WhatsAppSettings: React.FC = () => {
       if (error) throw error;
 
       // Update local cache
-      const existingCache = localStorage.getItem('hotel_pos_bill_header');
+      const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+      const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
       if (existingCache) {
         const parsed = JSON.parse(existingCache);
         parsed.whatsappBillShareEnabled = whatsappBillShareEnabled;
         parsed.whatsappShareMode = whatsappShareMode;
-        localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+        localStorage.setItem(headerKey, JSON.stringify(parsed));
       }
 
       toast({
@@ -293,8 +294,8 @@ export const WhatsAppSettings: React.FC = () => {
           </>
         )}
 
-        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-          {saving ? "Saving..." : "Save WhatsApp Settings"}
+        <Button onClick={handleSave} disabled={saving || isAllBranchesView} className="w-full md:w-auto">
+          {saving ? 'Saving...' : 'Save Settings'}
         </Button>
       </CardContent>
     </Card>

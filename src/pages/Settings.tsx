@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { WhatsAppSettings } from '@/components/WhatsAppSettings';
 import { GSTSettings } from '@/components/GSTSettings';
 import { OrderTypeSettings } from '@/components/OrderTypeSettings';
 import { BranchManagement } from '@/components/BranchManagement';
+import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 
 interface AdditionalCharge {
   id: string;
@@ -33,6 +35,7 @@ interface AdditionalCharge {
 
 const Settings = () => {
   const { profile } = useAuth();
+  const { operatingBranchId, isAllBranchesView } = useBranch();
   const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const [additionalCharges, setAdditionalCharges] = useState<AdditionalCharge[]>([]);
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
@@ -40,35 +43,41 @@ const Settings = () => {
   const [editingCharge, setEditingCharge] = useState<AdditionalCharge | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Auto-print setting
+  // Branch-scoped localStorage helper
+  const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
+
+  // Auto-print setting (branch-scoped)
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(() => {
-    const saved = localStorage.getItem('hotel_pos_auto_print');
-    return saved !== null ? saved === 'true' : true; // Default to enabled
+    const saved = localStorage.getItem(branchKey('hotel_pos_auto_print'))
+      ?? localStorage.getItem('hotel_pos_auto_print'); // fallback to legacy key
+    return saved !== null ? saved === 'true' : true;
   });
 
-  // Bill numbering setting - continue from yesterday (true) or start fresh daily (false)
+  // Bill numbering setting (branch-scoped)
   const [continueBillFromYesterday, setContinueBillFromYesterday] = useState(() => {
-    const saved = localStorage.getItem('hotel_pos_continue_bill_number');
-    return saved !== null ? saved === 'true' : true; // Default to continue from yesterday
+    const saved = localStorage.getItem(branchKey('hotel_pos_continue_bill_number'))
+      ?? localStorage.getItem('hotel_pos_continue_bill_number');
+    return saved !== null ? saved === 'true' : true;
   });
 
   const handleAutoPrintToggle = (enabled: boolean) => {
     setAutoPrintEnabled(enabled);
-    localStorage.setItem('hotel_pos_auto_print', String(enabled));
+    localStorage.setItem(branchKey('hotel_pos_auto_print'), String(enabled));
     toast({
       title: enabled ? "Auto-Print Enabled" : "Auto-Print Disabled",
       description: enabled ? "Bills will be printed automatically after saving." : "Bills will be saved without printing.",
     });
   };
 
-  // Font scale setting
+  // Font scale setting (branch-scoped)
   const [fontScale, setFontScale] = useState(() => {
-    return localStorage.getItem('hotel_pos_font_scale') || '1';
+      return (localStorage.getItem(branchKey('hotel_pos_font_scale'))
+        ?? localStorage.getItem('hotel_pos_font_scale')) || '1';
   });
 
   const handleFontScaleChange = (scale: string) => {
     setFontScale(scale);
-    localStorage.setItem('hotel_pos_font_scale', scale);
+    localStorage.setItem(branchKey('hotel_pos_font_scale'), scale);
     window.dispatchEvent(new CustomEvent('font-scale-changed', { detail: scale }));
     toast({
       title: "Text Size Updated",
@@ -78,7 +87,7 @@ const Settings = () => {
 
   const handleBillNumberingToggle = (continueFromYesterday: boolean) => {
     setContinueBillFromYesterday(continueFromYesterday);
-    localStorage.setItem('hotel_pos_continue_bill_number', String(continueFromYesterday));
+    localStorage.setItem(branchKey('hotel_pos_continue_bill_number'), String(continueFromYesterday));
     toast({
       title: continueFromYesterday ? "Continue Numbering" : "Fresh Daily Numbering",
       description: continueFromYesterday
@@ -87,23 +96,44 @@ const Settings = () => {
     });
   };
 
+  // Re-load settings when branch changes
+  useEffect(() => {
+    // Re-read branch-scoped localStorage values when branch switches
+    const ap = localStorage.getItem(branchKey('hotel_pos_auto_print'))
+      ?? localStorage.getItem('hotel_pos_auto_print');
+    setAutoPrintEnabled(ap !== null ? ap === 'true' : true);
+
+    const bn = localStorage.getItem(branchKey('hotel_pos_continue_bill_number'))
+      ?? localStorage.getItem('hotel_pos_continue_bill_number');
+    setContinueBillFromYesterday(bn !== null ? bn === 'true' : true);
+
+    const fs = (localStorage.getItem(branchKey('hotel_pos_font_scale'))
+      ?? localStorage.getItem('hotel_pos_font_scale')) || '1';
+    setFontScale(fs);
+  }, [operatingBranchId]);
+
   useEffect(() => {
     if (profile?.role === 'admin') {
       fetchAdditionalCharges();
     } else if (profile) {
-      // Non-admin user, stop loading
       setLoading(false);
     }
-  }, [profile]);
+  }, [profile, operatingBranchId]);
 
   const fetchAdditionalCharges = async () => {
     if (!adminId) return;
     try {
-      const { data, error } = await supabase
+      // Fetch charges scoped to admin + branch, with legacy fallback
+      let query = (supabase as any)
         .from('additional_charges')
         .select('*')
-        .eq('admin_id', adminId)
-        .order('name');
+        .eq('admin_id', adminId);
+
+      if (operatingBranchId) {
+        query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) throw error;
       setAdditionalCharges(data || []);
@@ -192,6 +222,9 @@ const Settings = () => {
         </div>
 
         <div className="space-y-4 sm:space-y-6">
+          {/* All Branches Read-Only Banner */}
+          <AllBranchesReadOnlyBanner message="Switch to a specific branch to modify settings." />
+
           {/* Shop Details */}
           <ShopSettingsForm />
 
@@ -206,7 +239,7 @@ const Settings = () => {
                   <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="text-base sm:text-lg">Additional Charges</span>
                 </div>
-                <Button onClick={() => setChargeDialogOpen(true)} size="sm">
+                <Button onClick={() => setChargeDialogOpen(true)} size="sm" disabled={isAllBranchesView}>
                   <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Add Charge
                 </Button>
@@ -218,7 +251,7 @@ const Settings = () => {
                   <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
                   <h3 className="text-base sm:text-lg font-semibold mb-2">No Additional Charges</h3>
                   <p className="text-sm text-muted-foreground mb-3 sm:mb-4">Create your first additional charge to get started.</p>
-                  <Button onClick={() => setChargeDialogOpen(true)} size="sm">
+                  <Button onClick={() => setChargeDialogOpen(true)} size="sm" disabled={isAllBranchesView}>
                     <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Add Charge
                   </Button>
@@ -258,6 +291,7 @@ const Settings = () => {
                               setEditChargeDialogOpen(true);
                             }}
                             className="h-7 px-2 text-xs"
+                            disabled={isAllBranchesView}
                           >
                             <Edit className="w-3 h-3 mr-1" />
                             Edit
@@ -267,6 +301,7 @@ const Settings = () => {
                             size="sm"
                             onClick={() => toggleChargeStatus(charge.id, charge.is_active)}
                             className="h-7 px-2 text-xs"
+                            disabled={isAllBranchesView}
                           >
                             {charge.is_active ? "Deactivate" : "Activate"}
                           </Button>
@@ -275,6 +310,7 @@ const Settings = () => {
                             size="sm"
                             onClick={() => deleteCharge(charge.id)}
                             className="text-red-600 hover:text-red-700 h-7 w-7 p-0"
+                            disabled={isAllBranchesView}
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
@@ -288,6 +324,7 @@ const Settings = () => {
               <AddAdditionalChargeDialog
                 open={chargeDialogOpen}
                 onOpenChange={setChargeDialogOpen}
+                branchId={operatingBranchId}
                 onSuccess={() => {
                   setChargeDialogOpen(false);
                   fetchAdditionalCharges();
@@ -352,6 +389,7 @@ const Settings = () => {
                   id="auto-print"
                   checked={autoPrintEnabled}
                   onCheckedChange={handleAutoPrintToggle}
+                  disabled={isAllBranchesView}
                 />
               </div>
             </CardContent>
@@ -381,6 +419,7 @@ const Settings = () => {
                       size="sm"
                       onClick={() => handleFontScaleChange(s.value)}
                       className="flex-1 min-w-[100px] h-11"
+                      disabled={isAllBranchesView}
                     >
                       <div className="flex flex-col items-center">
                         <span className="text-xs font-bold">{s.label}</span>
@@ -420,6 +459,7 @@ const Settings = () => {
                   id="bill-numbering"
                   checked={continueBillFromYesterday}
                   onCheckedChange={handleBillNumberingToggle}
+                  disabled={isAllBranchesView}
                 />
               </div>
 

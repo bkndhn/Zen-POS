@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: string 
 
 const TableOrderBilling: React.FC = () => {
     const { profile } = useAuth();
+    const { operatingBranchId } = useBranch();
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState<TableWithOrders[]>([]);
     const [selectedTable, setSelectedTable] = useState<TableWithOrders | null>(null);
@@ -123,35 +125,45 @@ const TableOrderBilling: React.FC = () => {
     const fetchPaymentTypes = useCallback(async () => {
         if (!adminId) return;
         try {
-            const { data, error } = await supabase
+            let query = (supabase as any)
                 .from('payments')
                 .select('*')
                 .eq('admin_id', adminId)
-                .eq('is_disabled', false)
-                .order('payment_type');
+                .eq('is_disabled', false);
+
+            if (operatingBranchId) {
+                query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+            }
+
+            const { data, error } = await query.order('payment_type');
             if (error) throw error;
             setPaymentTypes(data || []);
         } catch (error) {
             console.error('Error fetching payment types:', error);
         }
-    }, [adminId]);
+    }, [adminId, operatingBranchId]);
 
     // Fetch additional charges
     const fetchAdditionalCharges = useCallback(async () => {
         if (!adminId) return;
         try {
-            const { data, error } = await supabase
+            let query = (supabase as any)
                 .from('additional_charges')
                 .select('*')
                 .eq('admin_id', adminId)
-                .eq('is_active', true)
-                .order('name');
+                .eq('is_active', true);
+
+            if (operatingBranchId) {
+                query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+            }
+
+            const { data, error } = await query.order('name');
             if (error) throw error;
             setAdditionalCharges(data || []);
         } catch (error) {
             console.error('Error fetching additional charges:', error);
         }
-    }, [adminId]);
+    }, [adminId, operatingBranchId]);
 
     // Fetch WhatsApp/shop settings
     const fetchShopSettings = useCallback(async () => {
@@ -232,7 +244,7 @@ const TableOrderBilling: React.FC = () => {
         fetchShopSettings();
 
         // Seed bill counter
-        initBillCounter(adminId).catch(console.warn);
+        initBillCounter(adminId, operatingBranchId).catch(console.warn);
 
         const interval = setInterval(fetchTableOrders, 15000);
 
@@ -391,7 +403,7 @@ const TableOrderBilling: React.FC = () => {
             const totalAdditionalCharges = paymentData.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
             const totalAmount = Math.round(subtotal + totalAdditionalCharges - paymentData.discount);
 
-            const billNumber = getInstantBillNumber(adminId);
+            const billNumber = getInstantBillNumber(adminId, operatingBranchId);
             const now = new Date();
             const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -408,6 +420,7 @@ const TableOrderBilling: React.FC = () => {
                 additional_charges: additionalChargesArray,
                 created_by: profile?.user_id,
                 admin_id: adminId,
+                branch_id: operatingBranchId || null,
                 date: todayStr,
                 service_status: 'completed',
                 kitchen_status: 'completed',

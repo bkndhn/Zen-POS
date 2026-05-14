@@ -89,7 +89,8 @@ const QRCodeSettings = () => {
     useEffect(() => {
         const loadSettings = async () => {
             // First load from localStorage for instant display
-            const saved = localStorage.getItem('hotel_pos_bill_header');
+            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+            const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -181,13 +182,14 @@ const QRCodeSettings = () => {
     // Save settings when changed (branch-scoped)
     const saveSettings = async () => {
         // Save to localStorage immediately
-        const saved = localStorage.getItem('hotel_pos_bill_header');
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
         const parsed = saved ? JSON.parse(saved) : {};
         parsed.menuSlug = menuSlug;
         parsed.menuShowShopName = menuShowShopName;
         parsed.menuShowAddress = menuShowAddress;
         parsed.menuShowPhone = menuShowPhone;
-        localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+        localStorage.setItem(headerKey, JSON.stringify(parsed));
 
         if (!profile?.user_id) return;
 
@@ -374,7 +376,8 @@ const QRCodeSettings = () => {
 
     const generateSlugFromName = async () => {
         // Get shop name from localStorage
-        const saved = localStorage.getItem('hotel_pos_bill_header');
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
         if (saved) {
             const parsed = JSON.parse(saved);
             if (parsed.shopName) {
@@ -496,7 +499,8 @@ const QRCodeSettings = () => {
             ctx.drawImage(img, padding, headerHeight + 5);
 
             // Draw header text (shop name or "Scan Menu")
-            const shopName = localStorage.getItem('hotel_pos_bill_header');
+            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+            const shopName = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
             let displayName = 'Scan Our Menu';
             if (shopName) {
                 try {
@@ -576,7 +580,8 @@ const QRCodeSettings = () => {
         ];
 
         // Get shop name
-        const shopNameStr = localStorage.getItem('hotel_pos_bill_header');
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const shopNameStr = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
         let displayName = 'Scan Our Menu';
         if (shopNameStr) {
             try {

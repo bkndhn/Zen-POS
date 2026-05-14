@@ -197,7 +197,7 @@ const Billing = () => {
 
     // Seed bill counter from DB on first use (prevents 0001 on new device)
     const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
-    initBillCounter(adminId).catch(console.warn);
+    initBillCounter(adminId, operatingBranchId).catch(console.warn);
 
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -285,7 +285,7 @@ const Billing = () => {
           .select('*')
           .eq('admin_id', adminId)
           .eq('is_active', true);
-        if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+        if (branchFilterId) q = q.or(`branch_id.eq.${branchFilterId},branch_id.is.null`);
         const { data, error } = await q.order('name');
 
         if (error) throw error;
@@ -350,10 +350,17 @@ const Billing = () => {
   const fetchPaymentTypes = async () => {
     if (!adminId) return;
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('payments').select('*').eq('admin_id', adminId).eq('is_disabled', false).order('payment_type');
+      let query = (supabase as any)
+        .from('payments')
+        .select('*')
+        .eq('admin_id', adminId)
+        .eq('is_disabled', false);
+
+      if (operatingBranchId) {
+        query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('payment_type');
       if (error) throw error;
       const types = data || [];
       setPaymentTypes(types);
@@ -379,10 +386,17 @@ const Billing = () => {
   const fetchAdditionalCharges = async () => {
     if (!adminId) return;
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('additional_charges').select('*').eq('admin_id', adminId).eq('is_active', true).order('name');
+      let query = (supabase as any)
+        .from('additional_charges')
+        .select('*')
+        .eq('admin_id', adminId)
+        .eq('is_active', true);
+
+      if (operatingBranchId) {
+        query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('name');
       if (error) throw error;
       setAdditionalCharges(data || []);
     } catch (error) {
@@ -431,7 +445,8 @@ const Billing = () => {
 
   // Cache-first shop settings loading
   const loadShopSettingsFromCache = () => {
-    const saved = localStorage.getItem('hotel_pos_bill_header');
+    const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+    const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -483,7 +498,8 @@ const Billing = () => {
         setWhatsappShareMode((data as any).whatsapp_share_mode === 'image' ? 'image' : 'text');
         setShowOrderType((data as any).show_order_type || false);
         // Update cache
-        localStorage.setItem('hotel_pos_bill_header', JSON.stringify(settings));
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        localStorage.setItem(headerKey, JSON.stringify(settings));
 
         // Load GST settings
         if ((data as any).gst_enabled) {
@@ -547,7 +563,8 @@ const Billing = () => {
     }
 
     // Load local settings
-    const savedHeader = localStorage.getItem('hotel_pos_bill_header');
+    const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+    const savedHeader = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
     const savedWidth = localStorage.getItem('hotel_pos_printer_width') as '58mm' | '80mm';
     if (savedHeader || savedWidth) {
       setBillSettings({
@@ -1190,7 +1207,7 @@ const Billing = () => {
       // ======= ZERO-LATENCY BILL NUMBER GENERATION =======
       // Uses shared utility for unified bill numbering across POS and table orders
 
-      const billNumber = isOffline ? `BILL-OFF-${Date.now()}` : getInstantBillNumber(adminId);
+      const billNumber = isOffline ? `BILL-OFF-${Date.now()}` : getInstantBillNumber(adminId, operatingBranchId);
 
       const now = new Date();
       const subtotal = validCart.reduce((sum, item) => {
@@ -1321,7 +1338,7 @@ const Billing = () => {
         });
 
         // Try print in offline mode ONLY if auto-print is enabled
-        const offlineAutoPrintEnabled = localStorage.getItem('hotel_pos_auto_print') !== 'false';
+        const offlineAutoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
         if (offlineAutoPrintEnabled) {
           try {
             const offlinePrintData = {
@@ -1401,7 +1418,7 @@ const Billing = () => {
       };
 
       // Check auto-print setting
-      const autoPrintEnabled = localStorage.getItem('hotel_pos_auto_print') !== 'false';
+      const autoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
 
       // =========== ZERO LATENCY: FIRE-AND-FORGET ===========
       // Show success immediately, run all operations in background

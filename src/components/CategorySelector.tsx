@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { Settings, Plus, Edit, Trash2 } from 'lucide-react';
 
 interface ExpenseCategory {
@@ -22,6 +24,9 @@ interface CategorySelectorProps {
 }
 
 export const CategorySelector: React.FC<CategorySelectorProps> = ({ onCategoriesUpdated }) => {
+  const { profile } = useAuth();
+  const { operatingBranchId, isAllBranchesView } = useBranch();
+  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -32,15 +37,21 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({ onCategories
     if (open) {
       fetchCategories();
     }
-  }, [open]);
+  }, [open, operatingBranchId]);
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
+      let query: any = supabase
         .from('expense_categories')
         .select('*')
-        .eq('is_deleted', false)
-        .order('name');
+        .eq('is_deleted', false);
+
+      if (adminId) query = query.eq('admin_id', adminId);
+      if (operatingBranchId) {
+        query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) throw error;
       setCategories(data || []);
@@ -76,7 +87,11 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({ onCategories
     try {
       const { error } = await supabase
         .from('expense_categories')
-        .insert([{ name: newCategoryName.trim() }]);
+        .insert([{ 
+          name: newCategoryName.trim(),
+          admin_id: adminId || null,
+          branch_id: operatingBranchId || null,
+        }]);
 
       if (error) throw error;
 
@@ -195,7 +210,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({ onCategories
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2">
+        <Button variant="outline" className="flex items-center gap-2" disabled={isAllBranchesView}>
           <Settings className="w-4 h-4" />
           Expense Categories
         </Button>

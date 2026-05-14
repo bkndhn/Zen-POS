@@ -30,7 +30,7 @@ interface Banner {
 
 export const PromoBannerManager = () => {
     const { profile } = useAuth();
-    const { operatingBranchId } = useBranch();
+    const { operatingBranchId, isAllBranchesView } = useBranch();
     const [banners, setBanners] = useState<Banner[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -360,7 +360,7 @@ export const PromoBannerManager = () => {
                                 Create auto-swipe banners for special offers on your public menu
                             </CardDescription>
                         </div>
-                        <Button size="sm" onClick={openAddDialog}>
+                        <Button size="sm" onClick={openAddDialog} disabled={isAllBranchesView}>
                             <Plus className="w-4 h-4 mr-1" />
                             Add Banner
                         </Button>
@@ -418,11 +418,13 @@ export const PromoBannerManager = () => {
                                         <Switch
                                             checked={banner.is_active}
                                             onCheckedChange={() => handleToggleActive(banner)}
+                                            disabled={isAllBranchesView}
                                         />
                                         <Button
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => openEditDialog(banner)}
+                                            disabled={isAllBranchesView}
                                         >
                                             Edit
                                         </Button>
@@ -431,6 +433,7 @@ export const PromoBannerManager = () => {
                                             variant="ghost"
                                             className="text-red-500 hover:text-red-700"
                                             onClick={() => handleDelete(banner.id)}
+                                            disabled={isAllBranchesView}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>

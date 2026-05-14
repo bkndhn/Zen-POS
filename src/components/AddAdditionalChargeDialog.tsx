@@ -15,6 +15,7 @@ interface AddAdditionalChargeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  branchId?: string | null;
 }
 
 const UNIT_OPTIONS = [
@@ -31,7 +32,8 @@ const UNIT_OPTIONS = [
 export const AddAdditionalChargeDialog: React.FC<AddAdditionalChargeDialogProps> = ({
   open,
   onOpenChange,
-  onSuccess
+  onSuccess,
+  branchId
 }) => {
   const { profile } = useAuth();
   const [formData, setFormData] = useState({
@@ -63,12 +65,13 @@ export const AddAdditionalChargeDialog: React.FC<AddAdditionalChargeDialogProps>
       // Get admin_id for data isolation
       const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
       
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('additional_charges')
         .insert([{
           ...formData,
           unit: formData.charge_type === 'per_unit' ? formData.unit : null,
-          admin_id: adminId || null
+          admin_id: adminId || null,
+          branch_id: branchId || null
         }]);
 
       if (error) throw error;

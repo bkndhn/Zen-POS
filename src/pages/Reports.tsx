@@ -211,8 +211,9 @@ const Reports: React.FC = () => {
 
   // Cache-first loading: localStorage first, then Supabase sync
   useEffect(() => {
+    const headerKey = branchFilterId ? `hotel_pos_bill_header_${branchFilterId}` : 'hotel_pos_bill_header';
     // 1. Instant load from localStorage (cache)
-    const savedSettings = localStorage.getItem('hotel_pos_bill_header');
+    const savedSettings = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
@@ -259,7 +260,8 @@ const Reports: React.FC = () => {
         };
         setBillSettings(settings);
         // Update cache
-        localStorage.setItem('hotel_pos_bill_header', JSON.stringify(settings));
+        const headerKey = branchFilterId ? `hotel_pos_bill_header_${branchFilterId}` : 'hotel_pos_bill_header';
+        localStorage.setItem(headerKey, JSON.stringify(settings));
       }
     };
 

@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { CreditCard, Plus, Edit } from 'lucide-react';
 
 interface PaymentType {
@@ -21,6 +22,8 @@ interface PaymentType {
 
 export const PaymentTypesManagement: React.FC = () => {
   const { profile } = useAuth();
+  const { operatingBranchId, isAllBranchesView } = useBranch();
+  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const [open, setOpen] = useState(false);
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [newPaymentType, setNewPaymentType] = useState('');
@@ -31,14 +34,23 @@ export const PaymentTypesManagement: React.FC = () => {
     if (open) {
       fetchPaymentTypes();
     }
-  }, [open]);
+  }, [open, operatingBranchId]);
 
   const fetchPaymentTypes = async () => {
+    if (!adminId) return;
     try {
-      const { data, error } = await supabase
+      // Fetch payment types scoped to this admin + branch
+      // Also include legacy rows (branch_id IS NULL) as fallback
+      let query = (supabase as any)
         .from('payments')
         .select('*')
-        .order('payment_type');
+        .eq('admin_id', adminId);
+
+      if (operatingBranchId) {
+        query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('payment_type');
 
       if (error) throw error;
       setPaymentTypes(data || []);
@@ -64,16 +76,14 @@ export const PaymentTypesManagement: React.FC = () => {
 
     setLoading(true);
     try {
-      // Get admin_id for data isolation
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
-
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('payments')
         .insert({
           payment_type: newPaymentType.trim(),
           is_disabled: false,
           is_default: false,
-          admin_id: adminId || null
+          admin_id: adminId || null,
+          branch_id: operatingBranchId || null
         });
 
       if (error) throw error;
@@ -163,11 +173,14 @@ export const PaymentTypesManagement: React.FC = () => {
 
   const setAsDefault = async (paymentId: string) => {
     try {
-      // First, remove default from ALL payment types that are currently default
-      const { error: clearError } = await supabase
+      // First, remove default from payment types within same admin + branch scope
+      let clearQuery = (supabase as any)
         .from('payments')
         .update({ is_default: false })
-        .eq('is_default', true);
+        .eq('is_default', true)
+        .eq('admin_id', adminId);
+      if (operatingBranchId) clearQuery = clearQuery.eq('branch_id', operatingBranchId);
+      const { error: clearError } = await clearQuery;
 
       if (clearError) throw clearError;
 
@@ -216,7 +229,7 @@ export const PaymentTypesManagement: React.FC = () => {
       <CardContent>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs">
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={isAllBranchesView}>
               <CreditCard className="w-3 h-3 mr-1" />
               Manage Payment Types
             </Button>
