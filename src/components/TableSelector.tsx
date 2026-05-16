@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LayoutGrid, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import {
   Dialog,
   DialogContent,
@@ -28,21 +30,34 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
   selectedTableId,
   onSelectTable,
 }) => {
+  const { profile } = useAuth();
+  const { operatingBranchId } = useBranch();
+  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const [tables, setTables] = useState<Table[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTables();
-  }, []);
+    if (open && adminId) {
+      fetchTables();
+    }
+  }, [open, adminId, operatingBranchId]);
 
   const fetchTables = async () => {
+    if (!adminId) return;
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      let query: any = supabase
         .from('tables')
         .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        .eq('admin_id', adminId)
+        .eq('is_active', true);
+
+      if (operatingBranchId) {
+        query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('display_order', { ascending: true });
 
       if (error) throw error;
       setTables(data || []);

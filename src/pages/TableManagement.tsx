@@ -65,7 +65,7 @@ const TableManagement: React.FC = () => {
         .eq('admin_id', adminId)
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      if (branchFilterId) query = query.eq('branch_id', branchFilterId);
+      if (branchFilterId) query = query.or(`branch_id.eq.${branchFilterId},branch_id.is.null`);
       const { data, error } = await query;
 
       if (error) throw error;
