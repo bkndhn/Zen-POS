@@ -43,15 +43,25 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdd
 
   const fetchCategories = async () => {
     try {
+      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      if (!adminId) return;
+
+      const cacheKey = `${CACHE_KEYS.CATEGORIES}_${adminId}_${operatingBranchId || 'all'}`;
+
       const data = await cachedFetch(
-        CACHE_KEYS.CATEGORIES,
+        cacheKey,
         async () => {
-          const { data, error } = await supabase
+          let query: any = supabase
             .from('expense_categories')
             .select('id, name')
             .eq('is_deleted', false)
-            .order('name');
+            .eq('admin_id', adminId);
 
+          if (operatingBranchId) {
+            query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+          }
+
+          const { data, error } = await query.order('name');
           if (error) throw error;
           return data || [];
         }

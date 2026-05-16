@@ -9,12 +9,15 @@ import { Plus, X, GripVertical, MonitorSmartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useBranch } from '@/contexts/BranchContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DisplaySettingsProps {
   userId: string;
 }
 
 export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
+  const { profile } = useAuth();
+  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const { operatingBranchId, branches, isAllBranchesView } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [settings, setSettings] = useState({
@@ -177,6 +180,60 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
 
   return (
     <div className="space-y-6">
+      {/* TV Display Link Section */}
+      <Card className="border-2 border-primary/20 shadow-md bg-gradient-to-br from-background to-muted/20">
+        <CardHeader className="pb-3 border-b border-border/40">
+          <CardTitle className="text-lg flex items-center gap-2 text-primary">
+            <MonitorSmartphone className="w-5 h-5" />
+            Customer TV Display Link
+          </CardTitle>
+          <CardDescription>
+            Use this link on your restaurant's smart TV or tablet to display live order status to customers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="space-y-4">
+            {isAllBranchesView ? (
+              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-200">
+                Please select a specific branch from the header to generate its TV display link.
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <div className="relative flex-1">
+                  <Input
+                    readOnly
+                    value={`${window.location.origin}/display?admin=${adminId}&branch=${operatingBranchId || ''}`}
+                    className="bg-muted/50 font-mono text-xs pr-20"
+                  />
+                  <Badge variant="outline" className="absolute right-2 top-1/2 -translate-y-1/2 bg-background shadow-sm">
+                    Protected
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 sm:flex-none hover:bg-primary hover:text-primary-foreground transition-colors"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/display?admin=${adminId}&branch=${operatingBranchId || ''}`);
+                      toast({ title: "Copied!", description: "TV Display link copied to clipboard" });
+                    }}
+                  >
+                    Copy
+                  </Button>
+                  <Button
+                    variant="default"
+                    className="flex-1 sm:flex-none shadow-md"
+                    onClick={() => window.open(`/display?admin=${adminId}&branch=${operatingBranchId || ''}`, '_blank')}
+                  >
+                    Open
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">

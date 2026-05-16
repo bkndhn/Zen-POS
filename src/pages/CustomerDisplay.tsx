@@ -23,6 +23,19 @@ const CustomerDisplay = () => {
     const [bills, setBills] = useState<DisplayBill[]>([]);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    // Extract admin and branch from URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlAdminId = searchParams.get('admin');
+    const urlBranchId = searchParams.get('branch');
+
+    useEffect(() => {
+        if (!urlAdminId) {
+            setErrorMsg("Invalid Display Configuration. Missing Admin ID.");
+            setLoading(false);
+        }
+    }, [urlAdminId]);
 
     // Update time every second
     useEffect(() => {
@@ -37,15 +50,21 @@ const CustomerDisplay = () => {
             const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
             // Build query - cast to any to avoid type inference issues with custom columns
-            const query = (supabase as any)
+            let query = (supabase as any)
                 .from('bills')
                 .select('id, bill_no, created_at, kitchen_status, service_status')
                 .eq('date', today)
+                .eq('admin_id', urlAdminId)
                 .or('is_deleted.is.null,is_deleted.eq.false')
                 .in('kitchen_status', ['preparing', 'ready'])
                 .neq('service_status', 'completed')
-                .neq('service_status', 'rejected')
-                .order('created_at', { ascending: true });
+                .neq('service_status', 'rejected');
+
+            if (urlBranchId) {
+                query = query.eq('branch_id', urlBranchId);
+            }
+
+            query = query.order('created_at', { ascending: true });
 
             const result = await query;
             const data = result.data as DisplayBill[] | null;
@@ -64,6 +83,7 @@ const CustomerDisplay = () => {
 
     // Initial fetch
     useEffect(() => {
+        if (!urlAdminId) return;
         fetchBills();
 
         // Polling fallback every 30 seconds
@@ -73,19 +93,27 @@ const CustomerDisplay = () => {
         }, 30000);
 
         return () => clearInterval(pollInterval);
-    }, [fetchBills]);
+    }, [fetchBills, urlAdminId]);
 
     // Realtime subscription
     useEffect(() => {
+        if (!urlAdminId) return;
         console.log('Customer Display: Setting up realtime subscription...');
+        
+        let filterString = `admin_id=eq.${urlAdminId}`;
+        if (urlBranchId) {
+            filterString += ` AND branch_id=eq.${urlBranchId}`;
+        }
+
         const channel = supabase
-            .channel('customer-display-changes')
+            .channel(`customer-display-changes-${urlAdminId}-${urlBranchId || 'all'}`)
             .on(
                 'postgres_changes',
                 {
                     event: '*',
                     schema: 'public',
                     table: 'bills',
+                    filter: filterString,
                 },
                 (payload) => {
                     console.log('Customer Display: Realtime change detected!', payload);
@@ -100,11 +128,22 @@ const CustomerDisplay = () => {
             console.log('Customer Display: Cleaning up subscription');
             supabase.removeChannel(channel);
         };
-    }, [fetchBills]);
+    }, [fetchBills, urlAdminId, urlBranchId]);
 
     // Separate bills by status
     const readyBills = bills.filter(b => b.kitchen_status === 'ready');
     const preparingBills = bills.filter(b => b.kitchen_status === 'preparing');
+
+    if (errorMsg) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-8 text-center">
+                <div className="bg-white/5 border border-white/10 p-8 rounded-2xl max-w-md">
+                    <h2 className="text-2xl font-bold text-red-400 mb-4">Display Configuration Error</h2>
+                    <p className="text-white/60">{errorMsg}</p>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

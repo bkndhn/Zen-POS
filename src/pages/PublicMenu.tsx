@@ -633,11 +633,17 @@ const PublicMenu = () => {
             if (insertError) throw insertError;
 
             // Auto update table status to occupied
-            const { error: tableErr } = await supabase
+            let tableUpdateQ = supabase
                 .from('tables')
                 .update({ status: 'occupied' })
                 .eq('admin_id', adminId)
                 .eq('table_number', tableNo);
+            
+            if (branchId) {
+                tableUpdateQ = tableUpdateQ.or(`branch_id.eq.${branchId},branch_id.is.null`);
+            }
+            
+            const { error: tableErr } = await tableUpdateQ;
             if (tableErr) console.warn('Table status update failed:', tableErr);
 
             // Broadcast table status change + new order to Kitchen/ServiceArea via shared channel
@@ -698,12 +704,15 @@ const PublicMenu = () => {
             // Step 1: If we have a stored session, check if it still has active orders
             const storedSid = localStorage.getItem(sessionStorageKey);
             if (storedSid) {
-                const { data: existingOrders } = await supabase
+                let existingOrdersQ = supabase
                     .from('table_orders')
                     .select('id, order_number, items, total_amount, status, customer_note, created_at, is_billed')
                     .eq('admin_id', adminId)
-                    .eq('session_id', storedSid)
-                    .order('order_number');
+                    .eq('session_id', storedSid);
+                
+                if (branchId) existingOrdersQ = existingOrdersQ.eq('branch_id', branchId);
+                
+                const { data: existingOrders } = await existingOrdersQ.order('order_number');
 
                 if (existingOrders && existingOrders.length > 0) {
                     // Check if ANY order is still active (not terminal)
@@ -724,13 +733,17 @@ const PublicMenu = () => {
             }
 
             // Step 2: No stored session or old one expired. Check DB for ANY active order on this table.
-            const { data: tableActiveOrders } = await supabase
+            let tableActiveOrdersQ = supabase
                 .from('table_orders')
                 .select('session_id, id, order_number, items, total_amount, status, customer_note, created_at, is_billed')
                 .eq('admin_id', adminId)
                 .eq('table_number', tableNo)
                 .in('status', ['pending', 'preparing', 'ready'])
-                .eq('is_billed', false)
+                .eq('is_billed', false);
+            
+            if (branchId) tableActiveOrdersQ = tableActiveOrdersQ.eq('branch_id', branchId);
+            
+            const { data: tableActiveOrders } = await tableActiveOrdersQ
                 .order('created_at', { ascending: false })
                 .limit(20);
 
@@ -741,12 +754,15 @@ const PublicMenu = () => {
                 setSessionId(adoptSid);
 
                 // Fetch all orders for that session
-                const { data: allSessionOrders } = await supabase
+                let allSessionOrdersQ = supabase
                     .from('table_orders')
                     .select('id, order_number, items, total_amount, status, customer_note, created_at')
                     .eq('admin_id', adminId)
-                    .eq('session_id', adoptSid)
-                    .order('order_number');
+                    .eq('session_id', adoptSid);
+                
+                if (branchId) allSessionOrdersQ = allSessionOrdersQ.eq('branch_id', branchId);
+                
+                const { data: allSessionOrders } = await allSessionOrdersQ.order('order_number');
 
                 if (allSessionOrders) {
                     setSessionOrders(allSessionOrders as TableOrder[]);
