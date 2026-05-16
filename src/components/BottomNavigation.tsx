@@ -39,7 +39,7 @@ export const BottomNavigation: React.FC = () => {
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
   const { operatingBranchId } = useBranch();
-  const [visiblePages, setVisiblePages] = useState<string[]>([]);
+  const [visiblePages, setVisiblePages] = useState<string[] | null>(null);
 
   useEffect(() => {
     // Load from Supabase as primary source, with localStorage as fallback
@@ -138,7 +138,7 @@ export const BottomNavigation: React.FC = () => {
   // Filter nav items based on permissions AND visibility settings
   const navItems = allNavItems
     .filter(item => hasAccess(item.page))
-    .filter(item => visiblePages.length === 0 || visiblePages.includes(item.page as string));
+    .filter(item => visiblePages === null || visiblePages.includes(item.page as string));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:hidden z-50">

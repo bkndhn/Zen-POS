@@ -32,11 +32,7 @@ export const BranchSwitcher: React.FC = () => {
     >
       <SelectTrigger className="h-9 w-[140px] sm:w-[170px] text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
-          {isAllBranchesView ? (
-            <Layers className="w-3.5 h-3.5 shrink-0 text-primary" />
-          ) : (
-            <Building2 className="w-3.5 h-3.5 shrink-0 text-primary" />
-          )}
+          {isAllBranchesView ? <Layers className="w-4 h-4 shrink-0 text-muted-foreground" /> : <Building2 className="w-4 h-4 shrink-0 text-muted-foreground" />}
           <SelectValue placeholder="Branch" />
         </div>
       </SelectTrigger>
@@ -44,14 +40,13 @@ export const BranchSwitcher: React.FC = () => {
         {isAdmin && (
           <SelectItem value="__all__">
             <span className="flex items-center gap-2">
-              <Layers className="w-3.5 h-3.5" /> All Branches
+              All Branches
             </span>
           </SelectItem>
         )}
         {branches.map((b) => (
           <SelectItem key={b.id} value={b.id}>
             <span className="flex items-center gap-2">
-              <Building2 className="w-3.5 h-3.5" />
               {b.name}{b.is_main && <span className="text-[10px] text-muted-foreground">(Main)</span>}
             </span>
           </SelectItem>

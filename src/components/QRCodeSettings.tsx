@@ -31,6 +31,8 @@ import {
     Loader2
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
+import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 
 // Simple QR Code generator using a public API
 const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '1a1a6c', bgColor: string = 'ffffff'): string => {
@@ -42,6 +44,7 @@ const QRCodeSettings = () => {
     const { operatingBranchId, branches } = useBranch();
     const operatingBranch = branches.find(b => b.id === operatingBranchId) || null;
     const isMainBranch = !!operatingBranch?.is_main;
+    const { isAllBranchesView } = useBranchScopedQuery();
     const [copied, setCopied] = useState(false);
     const [tableMode, setTableMode] = useState(false);
     const [dbTables, setDbTables] = useState<{ id: string; table_number: string }[]>([]);
@@ -796,8 +799,9 @@ const QRCodeSettings = () => {
 
     return (
         <div className="space-y-6">
+            <AllBranchesReadOnlyBanner message="Switch to a specific branch to edit QR menu settings." />
             {/* Custom Menu URL Card */}
-            <Card>
+            <Card className={cn(isAllBranchesView && "opacity-60 pointer-events-none")}>
                 <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center space-x-2">
                         <Link2 className="w-5 h-5" />
@@ -995,7 +999,7 @@ const QRCodeSettings = () => {
             </Card>
 
             {/* QR Code Card */}
-            <Card>
+            <Card className={cn(isAllBranchesView && "opacity-60 pointer-events-none")}>
                 <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center space-x-2">
                         <QrCode className="w-5 h-5" />

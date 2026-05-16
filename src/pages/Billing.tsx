@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { useBranch } from '@/contexts/BranchContext';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -37,6 +38,7 @@ interface Item {
   quantity_step?: number;
   stock_quantity?: number;
   minimum_stock_alert?: number;
+  branch_id?: string;
 }
 
 // Helper to check if item has low stock
@@ -147,6 +149,7 @@ const Billing = () => {
     profile
   } = useAuth();
   const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { branches } = useBranch();
   const { branchFilterId, isAllBranchesView, operatingBranchId, activeBranch } = useBranchScopedQuery(() => {
     fetchItems();
   });
@@ -1577,7 +1580,7 @@ const Billing = () => {
             const lowStock = isLowStock(item);
             return <div key={item.id} className={`relative bg-card rounded-xl border-2 p-1.5 flex flex-col shadow-sm transition-all duration-300 ${isInCart ? 'border-primary shadow-primary/20 shadow-md' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-gray-200 dark:border-gray-700 hover:border-primary/30'}`}>
               {/* Image container with quantity badge */}
-              <div className="relative aspect-[4/3] mb-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden flex-shrink-0">
+              <div className={cn("relative aspect-[4/3] mb-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden flex-shrink-0", isAllBranchesView && "opacity-60 grayscale")}>
                 {/* Media rendering - supports images, GIFs, and videos */}
                 {item.media_type === 'video' ? (
                   <video
@@ -1612,7 +1615,7 @@ const Billing = () => {
                 )}
 
                 {/* Small rectangle quantity badge - shown when item is in cart */}
-                {isInCart && (
+                {isInCart && !isAllBranchesView && (
                   <div className="absolute bottom-1 right-1 bg-[hsl(var(--qty-badge))] text-white text-[13px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-0.5">
                     <span>{formatQuantityWithUnit(cartItem.quantity, item.unit)}</span>
                   </div>
@@ -1620,12 +1623,19 @@ const Billing = () => {
               </div>
 
               <div className="flex-1 flex flex-col min-h-0 px-0.5">
-                <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0">{item.name}</h3>
-                <p className="text-primary mb-1 flex-shrink-0 font-bold text-sm">
+                <h3 className={cn("font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0", isAllBranchesView && "text-muted-foreground")}>{item.name}</h3>
+                <p className={cn("mb-1 flex-shrink-0 font-bold text-sm", isAllBranchesView ? "text-muted-foreground" : "text-primary")}>
                   ₹{item.price.toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
                 </p>
 
-                {isInCart ? (
+                {isAllBranchesView ? (
+                  <div className="mt-auto w-full flex flex-col items-center justify-center p-1.5 bg-muted/50 rounded-md border border-border/30 gap-0.5">
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Branch</span>
+                    <span className="text-[11px] font-bold text-foreground text-center line-clamp-1">
+                      {branches.find(b => b.id === item.branch_id)?.name || 'Main Branch'}
+                    </span>
+                  </div>
+                ) : isInCart ? (
                   <div className="flex items-center justify-center gap-1.5 mt-auto">
                     <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-decrement))] text-white border-0 hover:opacity-80">
                       <Minus className="h-3 w-3" />
@@ -1690,7 +1700,11 @@ const Billing = () => {
 
                     {/* Controls */}
                     <div className="flex items-center space-x-2">
-                      {cartItem ? <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
+                      {isAllBranchesView ? (
+                        <div className="px-3 py-1 bg-muted rounded-md border border-border/50 text-[11px] font-medium text-muted-foreground text-center">
+                          {branches.find(b => b.id === item.branch_id)?.name || 'Main Branch'}
+                        </div>
+                      ) : cartItem ? <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
                         <Button variant="ghost" size="sm" onClick={() => updateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
                           <Minus className="w-3 h-3" />
                         </Button>

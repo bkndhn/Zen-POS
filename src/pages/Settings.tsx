@@ -22,6 +22,7 @@ import { OrderTypeSettings } from '@/components/OrderTypeSettings';
 import { BranchManagement } from '@/components/BranchManagement';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { cn } from '@/lib/utils';
 
 interface AdditionalCharge {
   id: string;
@@ -226,11 +227,12 @@ const Settings = () => {
           {/* All Branches Read-Only Banner */}
           <AllBranchesReadOnlyBanner message="Switch to a specific branch to modify settings." />
 
-          {/* Shop Details */}
-          <ShopSettingsForm />
+          <div className={cn("space-y-4 sm:space-y-6", isAllBranchesView && "opacity-60 pointer-events-none")}>
+            {/* Shop Details */}
+            <ShopSettingsForm />
 
-          {/* Payment Types Management */}
-          {profile?.role === 'admin' && <PaymentTypesManagement />}
+            {/* Payment Types Management */}
+            {profile?.role === 'admin' && <PaymentTypesManagement />}
 
           {/* Additional Charges Management */}
           <Card>
@@ -501,13 +503,165 @@ const Settings = () => {
               <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Display Settings failed to load. Try refreshing.</div>}>
                 {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
               </ErrorBoundary>
-            </CardContent>
-          </Card>
+          <div className={isAllBranchesView ? "pointer-events-none opacity-60 space-y-6" : "space-y-6"}>
+            {/* GST / Tax Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">GST Settings failed to load. Try refreshing.</div>}>
+              <GSTSettings />
+            </ErrorBoundary>
 
-          {/* Theme Settings */}
-          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
-            <ThemeSettings />
-          </ErrorBoundary>
+            {/* WhatsApp Bill Share Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
+              <WhatsAppSettings />
+            </ErrorBoundary>
+
+            {/* Bluetooth Printer Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Printer Settings failed to load. Try refreshing.</div>}>
+              <BluetoothPrinterSettings />
+            </ErrorBoundary>
+
+            {/* Order Type (Dine In / Parcel) Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Order Type Settings failed to load. Try refreshing.</div>}>
+              <OrderTypeSettings />
+            </ErrorBoundary>
+
+            {/* Branch Management (admin only) */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Branch Management failed to load. Try refreshing.</div>}>
+              <BranchManagement />
+            </ErrorBoundary>
+
+            {/* Print Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Print Settings</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-print" className="text-sm font-medium">
+                      Auto-Print on Bill Save
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {autoPrintEnabled
+                        ? "Bill will be printed automatically when payment is completed."
+                        : "Bill will be saved without printing. You can print later from Reports."}
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-print"
+                    checked={autoPrintEnabled}
+                    onCheckedChange={handleAutoPrintToggle}
+                    disabled={isAllBranchesView}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Accessibility Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <Type className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Accessibility</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6 space-y-4">
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Text Size (Overall App)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: 'Normal', value: '1', percent: '100%' },
+                      { label: 'Large', value: '1.15', percent: '115%' },
+                      { label: 'Extra Large', value: '1.3', percent: '130%' },
+                      { label: 'Maximum', value: '1.45', percent: '145%' }
+                    ].map((s) => (
+                      <Button
+                        key={s.value}
+                        variant={fontScale === s.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleFontScaleChange(s.value)}
+                        className="flex-1 min-w-[100px] h-11"
+                        disabled={isAllBranchesView}
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs font-bold">{s.label}</span>
+                          <span className="text-[10px] opacity-80">{s.percent}</span>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Adjusting this will scale the text size across the entire application for better visibility.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bill Numbering Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Bill Numbering</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="bill-numbering" className="text-sm font-medium">
+                      Continue Bill Numbers from Yesterday
+                    </Label>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      {continueBillFromYesterday
+                        ? "Bill numbers continue sequentially (e.g., BILL-000082, 000083...)."
+                        : "Bill numbers start fresh daily with date prefix (e.g., 12/01/26-001, 12/01/26-002...)."}
+                    </p>
+                  </div>
+                  <Switch
+                    id="bill-numbering"
+                    checked={continueBillFromYesterday}
+                    onCheckedChange={handleBillNumberingToggle}
+                    disabled={isAllBranchesView}
+                  />
+                </div>
+
+                {/* Preview */}
+                <div className="bg-muted/50 rounded-lg p-3 border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Preview:</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <p className="text-lg font-bold font-mono">
+                        {continueBillFromYesterday ? "BILL-000082" : `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '/')}-001`}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">Next bill number</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Display Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Display Settings</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Display Settings failed to load. Try refreshing.</div>}>
+                  {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
+                </ErrorBoundary>
+              </CardContent>
+            </Card>
+
+            {/* Theme Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
+              <ThemeSettings />
+            </ErrorBoundary>
+          </div>
         </div>
       </div>
     </div>

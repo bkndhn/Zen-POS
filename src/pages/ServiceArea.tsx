@@ -757,30 +757,32 @@ const ServiceArea = () => {
                                             &ldquo;{req.message}&rdquo;
                                         </p>
                                     )}
-                                    <div className="flex gap-2">
-                                        {req.status === 'pending' && (
+                                    {!isAllBranchesView && (
+                                        <div className="flex gap-2">
+                                            {req.status === 'pending' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="flex-1 text-xs bg-white hover:bg-blue-50 border-blue-300"
+                                                    onClick={() => acknowledgeRequest(req)}
+                                                >
+                                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                                    Acknowledge
+                                                </Button>
+                                            )}
                                             <Button
                                                 size="sm"
-                                                variant="outline"
-                                                className="flex-1 text-xs bg-white hover:bg-blue-50 border-blue-300"
-                                                onClick={() => acknowledgeRequest(req)}
+                                                className={cn(
+                                                    "flex-1 text-xs text-white",
+                                                    req.status === 'acknowledged' ? "bg-green-600 hover:bg-green-700" : "bg-gray-600 hover:bg-gray-700"
+                                                )}
+                                                onClick={() => resolveRequest(req)}
                                             >
-                                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                Acknowledge
+                                                <Check className="w-3 h-3 mr-1" />
+                                                Resolve
                                             </Button>
-                                        )}
-                                        <Button
-                                            size="sm"
-                                            className={cn(
-                                                "flex-1 text-xs text-white",
-                                                req.status === 'acknowledged' ? "bg-green-600 hover:bg-green-700" : "bg-gray-600 hover:bg-gray-700"
-                                            )}
-                                            onClick={() => resolveRequest(req)}
-                                        >
-                                            <Check className="w-3 h-3 mr-1" />
-                                            Resolve
-                                        </Button>
-                                    </div>
+                                        </div>
+                                    )}
                                 </Card>
                             );
                         })}
@@ -851,25 +853,27 @@ const ServiceArea = () => {
                                 }, 0)}</span>
                             </div>
 
-                            <div className="flex gap-2 mt-auto">
-                                <Button
-                                    size="sm"
-                                    className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white font-bold"
-                                    onClick={() => updateBillStatus(bill.id, 'completed')}
-                                >
-                                    <Check className="w-4 h-4 mr-1.5" />
-                                    Done
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="flex-1 h-10 font-bold"
-                                    onClick={() => updateBillStatus(bill.id, 'rejected')}
-                                >
-                                    <X className="w-4 h-4 mr-1.5" />
-                                    Reject
-                                </Button>
-                            </div>
+                            {!isAllBranchesView && (
+                                <div className="flex gap-2 mt-auto">
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white font-bold"
+                                        onClick={() => updateBillStatus(bill.id, 'completed')}
+                                    >
+                                        <Check className="w-4 h-4 mr-1.5" />
+                                        Done
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        className="flex-1 h-10 font-bold"
+                                        onClick={() => updateBillStatus(bill.id, 'rejected')}
+                                    >
+                                        <X className="w-4 h-4 mr-1.5" />
+                                        Reject
+                                    </Button>
+                                </div>
+                            )}
 
                         </Card>
                     ))}
@@ -930,14 +934,21 @@ const ServiceArea = () => {
                             </div>
 
                             {order.status === 'ready' ? (
-                                <Button
-                                    size="sm"
-                                    className="w-full h-10 bg-green-600 hover:bg-green-700 text-white font-bold"
-                                    onClick={() => updateTableOrderStatus(order.id, order.session_id, 'served')}
-                                >
-                                    <Check className="w-4 h-4 mr-1.5" />
-                                    Mark Served
-                                </Button>
+                                !isAllBranchesView ? (
+                                    <Button
+                                        size="sm"
+                                        className="w-full h-10 bg-green-600 hover:bg-green-700 text-white font-bold"
+                                        onClick={() => updateTableOrderStatus(order.id, order.session_id, 'served')}
+                                    >
+                                        <Check className="w-4 h-4 mr-1.5" />
+                                        Mark Served
+                                    </Button>
+                                ) : (
+                                    <div className="w-full h-10 flex items-center justify-center text-sm text-green-600 font-medium">
+                                        <Check className="w-4 h-4 mr-1.5" />
+                                        Ready to serve
+                                    </div>
+                                )
                             ) : (
                                 <div className="w-full h-10 flex items-center justify-center text-sm text-orange-600 font-medium">
                                     <Clock className="w-4 h-4 mr-1.5" />
@@ -950,7 +961,7 @@ const ServiceArea = () => {
             )}
 
             {/* Recently Processed - Now directly using component state */}
-            {recentBills.length > 0 && (
+            {recentBills.length > 0 && !isAllBranchesView && (
                 <div className="mt-8 pt-6 border-t border-dashed">
                     <h3 className="text-sm font-bold text-muted-foreground mb-4 flex items-center gap-2 uppercase tracking-widest">
                         <Undo2 className="w-4 h-4" />
