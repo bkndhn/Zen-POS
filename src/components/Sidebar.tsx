@@ -51,16 +51,16 @@ export const Sidebar: React.FC = () => {
   const navItems = allNavItems.filter(item => hasAccess(item.page));
 
   return (
-    <div className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border">
-      <div className="p-6">
+    <div className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0">
+      <div className="p-6 flex-shrink-0">
         <h2 className="text-xl font-bold text-sidebar-foreground">
           {profile.hotel_name || 'ZenPOS'}
         </h2>
         <p className="text-sm text-sidebar-accent-foreground">POS Management</p>
       </div>
 
-      <nav className="flex-1 px-4 overflow-y-auto pb-20">
-        <ul className="space-y-2">
+      <nav className="flex-1 px-4 overflow-y-auto min-h-0 pb-6">
+        <ul className="space-y-1">
           {navItems.map(({ to, icon: Icon, label }) => {
             const isActive = location.pathname === to ||
               (to === '/billing' && location.pathname === '/');
@@ -70,14 +70,14 @@ export const Sidebar: React.FC = () => {
                 <NavLink
                   to={to}
                   className={cn(
-                    "flex items-center px-4 py-3 rounded-lg transition-all duration-200",
+                    "flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm",
                     isActive
                       ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
                       : "text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
                   )}
                 >
-                  <Icon className="w-5 h-5 mr-3" />
-                  <span className="font-medium">{label}</span>
+                  <Icon className="w-4 h-4 mr-3 flex-shrink-0" />
+                  <span className="font-medium truncate">{label}</span>
                 </NavLink>
               </li>
             );

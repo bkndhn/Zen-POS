@@ -21,6 +21,7 @@ import { GSTSettings } from '@/components/GSTSettings';
 import { OrderTypeSettings } from '@/components/OrderTypeSettings';
 import { BranchManagement } from '@/components/BranchManagement';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface AdditionalCharge {
   id: string;
@@ -351,19 +352,29 @@ const Settings = () => {
 
 
           {/* GST / Tax Settings */}
-          <GSTSettings />
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">GST Settings failed to load. Try refreshing.</div>}>
+            <GSTSettings />
+          </ErrorBoundary>
 
           {/* WhatsApp Bill Share Settings */}
-          <WhatsAppSettings />
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
+            <WhatsAppSettings />
+          </ErrorBoundary>
 
           {/* Bluetooth Printer Settings */}
-          <BluetoothPrinterSettings />
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Printer Settings failed to load. Try refreshing.</div>}>
+            <BluetoothPrinterSettings />
+          </ErrorBoundary>
 
           {/* Order Type (Dine In / Parcel) Settings */}
-          <OrderTypeSettings />
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Order Type Settings failed to load. Try refreshing.</div>}>
+            <OrderTypeSettings />
+          </ErrorBoundary>
 
           {/* Branch Management (admin only) */}
-          <BranchManagement />
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Branch Management failed to load. Try refreshing.</div>}>
+            <BranchManagement />
+          </ErrorBoundary>
 
           {/* Print Settings */}
           <Card>
@@ -487,12 +498,16 @@ const Settings = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
-              {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
+              <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Display Settings failed to load. Try refreshing.</div>}>
+                {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
+              </ErrorBoundary>
             </CardContent>
           </Card>
 
           {/* Theme Settings */}
-          <ThemeSettings />
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
+            <ThemeSettings />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

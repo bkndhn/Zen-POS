@@ -30,7 +30,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (userId && operatingBranchId) {
+    if (userId) {
       fetchSettings();
       fetchCategories();
     }
@@ -67,15 +67,19 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('item_categories')
         .select('name')
-        .eq('is_deleted', false)
-        .order('name');
+        .eq('is_deleted', false);
 
+      // Scope to admin's categories only — never cross-tenant
+      if (adminId) query = (query as any).eq('admin_id', adminId);
+      if (operatingBranchId) query = (query as any).or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+
+      const { data, error } = await (query as any).order('name');
       if (error) throw error;
 
-      setAvailableCategories(data?.map(cat => cat.name) || []);
+      setAvailableCategories(data?.map((cat: any) => cat.name) || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }

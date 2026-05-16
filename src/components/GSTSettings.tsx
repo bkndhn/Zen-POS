@@ -55,6 +55,7 @@ export const GSTSettings: React.FC = () => {
 
     useEffect(() => {
         if (profile?.user_id && operatingBranchId) {
+            setLoading(true);
             fetchSettings();
             fetchTaxRates();
         }
