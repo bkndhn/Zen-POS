@@ -86,7 +86,7 @@ export const BottomNavigation: React.FC = () => {
           if (data?.visible_nav_pages && Array.isArray(data.visible_nav_pages)) {
             // Auto-inject any new pages that didn't exist when the user last saved
             const savedPages = data.visible_nav_pages as string[];
-            const requiredNewPages = ['tableBilling', 'qrMenu'];
+            const requiredNewPages = ['tableBilling'];
             const updated = [...savedPages];
             requiredNewPages.forEach(p => { if (!updated.includes(p)) updated.push(p); });
             setVisiblePages(updated);

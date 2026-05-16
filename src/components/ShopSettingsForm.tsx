@@ -18,6 +18,8 @@ export const ShopSettingsForm = () => {
     const { operatingBranchId, branches, activeBranch, isAllBranchesView } = useBranch();
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const { hasAccess } = useUserPermissions();
+    // Always use the admin's user_id for shop_settings (sub-users share the admin's settings)
+    const adminUserId = profile?.role === 'admin' ? profile?.user_id : profile?.admin_id;
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,10 +80,10 @@ export const ShopSettingsForm = () => {
         setLoading(false);
 
         // 2. Background sync from Supabase (refetches when active branch changes)
-        if (profile?.user_id && operatingBranchId) {
+        if (adminUserId && operatingBranchId) {
             fetchSettings();
         }
-    }, [profile?.user_id, operatingBranchId]);
+    }, [adminUserId, operatingBranchId]);
 
     const fetchSettings = async () => {
         try {
@@ -89,7 +91,7 @@ export const ShopSettingsForm = () => {
             let { data, error } = await supabase
                 .from('shop_settings')
                 .select('*')
-                .eq('user_id', profile?.user_id)
+                .eq('user_id', adminUserId)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
@@ -100,7 +102,7 @@ export const ShopSettingsForm = () => {
                 const { data: mainRow } = await supabase
                     .from('shop_settings')
                     .select('*')
-                    .eq('user_id', profile?.user_id)
+                    .eq('user_id', adminUserId)
                     .eq('branch_id', mainBranchId)
                     .maybeSingle();
                 data = mainRow as any;
@@ -124,7 +126,7 @@ export const ShopSettingsForm = () => {
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages)) {
                     const savedPages = (data as any).visible_nav_pages as string[];
                     // Auto-inject any new pages that didn't exist when the user last saved
-                    const requiredNewPages = ['tableBilling', 'qrMenu'];
+                    const requiredNewPages = ['tableBilling'];
                     const updated = [...savedPages];
                     requiredNewPages.forEach(p => { if (!updated.includes(p)) updated.push(p); });
                     setVisiblePages(updated);
@@ -198,7 +200,7 @@ export const ShopSettingsForm = () => {
 
             const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
             const ssTaken = (ssRows || []).some(
-                (r: any) => !(r.user_id === profile?.user_id && r.branch_id === operatingBranchId)
+                (r: any) => !(r.user_id === adminUserId && r.branch_id === operatingBranchId)
             );
             const brTaken = (brRows || []).some(
                 (r: any) => !(r.admin_id === adminId && r.id === operatingBranchId)
@@ -308,7 +310,7 @@ export const ShopSettingsForm = () => {
     };
 
     const handleSave = async () => {
-        if (!profile?.user_id) return;
+        if (!adminUserId) return;
         if (!operatingBranchId) {
             toast({ title: 'No branch selected', description: 'Pick a branch from the header first.', variant: 'destructive' });
             return;
@@ -350,7 +352,7 @@ export const ShopSettingsForm = () => {
             const { data: existing } = await supabase
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', profile.user_id)
+                .eq('user_id', adminUserId)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
@@ -363,7 +365,7 @@ export const ShopSettingsForm = () => {
             } else {
                 ({ error } = await supabase
                     .from('shop_settings')
-                    .insert({ ...settingsData, user_id: profile.user_id, branch_id: operatingBranchId }));
+                    .insert({ ...settingsData, user_id: adminUserId, branch_id: operatingBranchId }));
             }
 
             if (error) throw error;
