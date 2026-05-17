@@ -73,8 +73,8 @@ const Settings = () => {
 
   // Font scale setting (branch-scoped)
   const [fontScale, setFontScale] = useState(() => {
-      return (localStorage.getItem(branchKey('hotel_pos_font_scale'))
-        ?? localStorage.getItem('hotel_pos_font_scale')) || '1';
+    return (localStorage.getItem(branchKey('hotel_pos_font_scale'))
+      ?? localStorage.getItem('hotel_pos_font_scale')) || '1';
   });
 
   const handleFontScaleChange = (scale: string) => {
@@ -100,7 +100,6 @@ const Settings = () => {
 
   // Re-load settings when branch changes
   useEffect(() => {
-    // Re-read branch-scoped localStorage values when branch switches
     const ap = localStorage.getItem(branchKey('hotel_pos_auto_print'))
       ?? localStorage.getItem('hotel_pos_auto_print');
     setAutoPrintEnabled(ap !== null ? ap === 'true' : true);
@@ -125,7 +124,6 @@ const Settings = () => {
   const fetchAdditionalCharges = async () => {
     if (!adminId) return;
     try {
-      // Fetch charges scoped to admin + branch, with legacy fallback
       let query = (supabase as any)
         .from('additional_charges')
         .select('*')
@@ -201,8 +199,6 @@ const Settings = () => {
     }
   };
 
-  // Permission check is now handled by ProtectedRoute, so we don't need a redundant check here
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -228,287 +224,288 @@ const Settings = () => {
           <AllBranchesReadOnlyBanner message="Switch to a specific branch to modify settings." />
 
           <div className={cn("space-y-4 sm:space-y-6", isAllBranchesView && "opacity-60 pointer-events-none")}>
+
             {/* Shop Details */}
             <ShopSettingsForm />
 
             {/* Payment Types Management */}
             {profile?.role === 'admin' && <PaymentTypesManagement />}
 
-          {/* Additional Charges Management */}
-          <Card>
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-base sm:text-lg">Additional Charges</span>
-                </div>
-                <Button onClick={() => setChargeDialogOpen(true)} size="sm" disabled={isAllBranchesView}>
-                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  Add Charge
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              {additionalCharges.length === 0 ? (
-                <div className="text-center py-6 sm:py-8">
-                  <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
-                  <h3 className="text-base sm:text-lg font-semibold mb-2">No Additional Charges</h3>
-                  <p className="text-sm text-muted-foreground mb-3 sm:mb-4">Create your first additional charge to get started.</p>
+            {/* Additional Charges Management */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-base sm:text-lg">Additional Charges</span>
+                  </div>
                   <Button onClick={() => setChargeDialogOpen(true)} size="sm" disabled={isAllBranchesView}>
                     <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Add Charge
                   </Button>
-                </div>
-              ) : (
-                <div className="grid gap-2">
-                  {additionalCharges.map((charge) => (
-                    <Card key={charge.id} className="p-2 sm:p-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-1 mb-1">
-                            <h3 className="font-semibold text-sm truncate">{charge.name}</h3>
-                            <Badge variant={charge.is_active ? "default" : "secondary"} className="text-[10px] px-1 py-0 h-4">
-                              {charge.is_active ? "Active" : "Inactive"}
-                            </Badge>
-                            {charge.is_default && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Default</Badge>
-                            )}
-                          </div>
-                          {charge.description && (
-                            <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{charge.description}</p>
-                          )}
-                          <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs">
-                            <span className="font-medium">₹{charge.amount}</span>
-                            <span className="text-muted-foreground text-[10px]">Type: {charge.charge_type}</span>
-                            {charge.unit && (
-                              <span className="text-muted-foreground text-[10px]">Unit: {charge.unit}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingCharge(charge);
-                              setEditChargeDialogOpen(true);
-                            }}
-                            className="h-7 px-2 text-xs"
-                            disabled={isAllBranchesView}
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleChargeStatus(charge.id, charge.is_active)}
-                            className="h-7 px-2 text-xs"
-                            disabled={isAllBranchesView}
-                          >
-                            {charge.is_active ? "Deactivate" : "Activate"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteCharge(charge.id)}
-                            className="text-red-600 hover:text-red-700 h-7 w-7 p-0"
-                            disabled={isAllBranchesView}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              <AddAdditionalChargeDialog
-                open={chargeDialogOpen}
-                onOpenChange={setChargeDialogOpen}
-                branchId={operatingBranchId}
-                onSuccess={() => {
-                  setChargeDialogOpen(false);
-                  fetchAdditionalCharges();
-                  toast({
-                    title: "Success",
-                    description: "Additional charge added successfully"
-                  });
-                }}
-              />
-
-              <EditAdditionalChargeDialog
-                open={editChargeDialogOpen}
-                onOpenChange={setEditChargeDialogOpen}
-                charge={editingCharge}
-                onSuccess={() => {
-                  setEditChargeDialogOpen(false);
-                  setEditingCharge(null);
-                  fetchAdditionalCharges();
-                }}
-              />
-            </CardContent>
-          </Card>
-
-
-
-          {/* GST / Tax Settings */}
-          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">GST Settings failed to load. Try refreshing.</div>}>
-            <GSTSettings />
-          </ErrorBoundary>
-
-          {/* WhatsApp Bill Share Settings */}
-          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
-            <WhatsAppSettings />
-          </ErrorBoundary>
-
-          {/* Bluetooth Printer Settings */}
-          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Printer Settings failed to load. Try refreshing.</div>}>
-            <BluetoothPrinterSettings />
-          </ErrorBoundary>
-
-          {/* Order Type (Dine In / Parcel) Settings */}
-          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Order Type Settings failed to load. Try refreshing.</div>}>
-            <OrderTypeSettings />
-          </ErrorBoundary>
-
-          {/* Branch Management (admin only) */}
-          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Branch Management failed to load. Try refreshing.</div>}>
-            <BranchManagement />
-          </ErrorBoundary>
-
-          {/* Print Settings */}
-          <Card>
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex items-center space-x-2">
-                <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-base sm:text-lg">Print Settings</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="auto-print" className="text-sm font-medium">
-                    Auto-Print on Bill Save
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {autoPrintEnabled
-                      ? "Bill will be printed automatically when payment is completed."
-                      : "Bill will be saved without printing. You can print later from Reports."}
-                  </p>
-                </div>
-                <Switch
-                  id="auto-print"
-                  checked={autoPrintEnabled}
-                  onCheckedChange={handleAutoPrintToggle}
-                  disabled={isAllBranchesView}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Accessibility Settings */}
-          <Card>
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex items-center space-x-2">
-                <Type className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-base sm:text-lg">Accessibility</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 space-y-4">
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Text Size (Overall App)</Label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { label: 'Normal', value: '1', percent: '100%' },
-                    { label: 'Large', value: '1.15', percent: '115%' },
-                    { label: 'Extra Large', value: '1.3', percent: '130%' },
-                    { label: 'Maximum', value: '1.45', percent: '145%' }
-                  ].map((s) => (
-                    <Button
-                      key={s.value}
-                      variant={fontScale === s.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleFontScaleChange(s.value)}
-                      className="flex-1 min-w-[100px] h-11"
-                      disabled={isAllBranchesView}
-                    >
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs font-bold">{s.label}</span>
-                        <span className="text-[10px] opacity-80">{s.percent}</span>
-                      </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                {additionalCharges.length === 0 ? (
+                  <div className="text-center py-6 sm:py-8">
+                    <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
+                    <h3 className="text-base sm:text-lg font-semibold mb-2">No Additional Charges</h3>
+                    <p className="text-sm text-muted-foreground mb-3 sm:mb-4">Create your first additional charge to get started.</p>
+                    <Button onClick={() => setChargeDialogOpen(true)} size="sm" disabled={isAllBranchesView}>
+                      <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      Add Charge
                     </Button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Adjusting this will scale the text size across the entire application for better visibility.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Bill Numbering Settings */}
-          <Card>
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex items-center space-x-2">
-                <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-base sm:text-lg">Bill Numbering</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="bill-numbering" className="text-sm font-medium">
-                    Continue Bill Numbers from Yesterday
-                  </Label>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    {continueBillFromYesterday
-                      ? "Bill numbers continue sequentially (e.g., BILL-000082, 000083...)."
-                      : "Bill numbers start fresh daily with date prefix (e.g., 12/01/26-001, 12/01/26-002...)."}
-                  </p>
-                </div>
-                <Switch
-                  id="bill-numbering"
-                  checked={continueBillFromYesterday}
-                  onCheckedChange={handleBillNumberingToggle}
-                  disabled={isAllBranchesView}
-                />
-              </div>
-
-              {/* Preview */}
-              <div className="bg-muted/50 rounded-lg p-3 border">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Preview:</p>
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-lg font-bold font-mono">
-                      {continueBillFromYesterday ? "BILL-000082" : `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '/')}-001`}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">Next bill number</p>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="grid gap-2">
+                    {additionalCharges.map((charge) => (
+                      <Card key={charge.id} className="p-2 sm:p-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <h3 className="font-semibold text-sm truncate">{charge.name}</h3>
+                              <Badge variant={charge.is_active ? "default" : "secondary"} className="text-[10px] px-1 py-0 h-4">
+                                {charge.is_active ? "Active" : "Inactive"}
+                              </Badge>
+                              {charge.is_default && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">Default</Badge>
+                              )}
+                            </div>
+                            {charge.description && (
+                              <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{charge.description}</p>
+                            )}
+                            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs">
+                              <span className="font-medium">₹{charge.amount}</span>
+                              <span className="text-muted-foreground text-[10px]">Type: {charge.charge_type}</span>
+                              {charge.unit && (
+                                <span className="text-muted-foreground text-[10px]">Unit: {charge.unit}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingCharge(charge);
+                                setEditChargeDialogOpen(true);
+                              }}
+                              className="h-7 px-2 text-xs"
+                              disabled={isAllBranchesView}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleChargeStatus(charge.id, charge.is_active)}
+                              className="h-7 px-2 text-xs"
+                              disabled={isAllBranchesView}
+                            >
+                              {charge.is_active ? "Deactivate" : "Activate"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteCharge(charge.id)}
+                              className="text-red-600 hover:text-red-700 h-7 w-7 p-0"
+                              disabled={isAllBranchesView}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
 
-          {/* Display Settings */}
-          <Card>
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="flex items-center space-x-2">
-                <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-base sm:text-lg">Display Settings</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-6">
-              <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Display Settings failed to load. Try refreshing.</div>}>
-                {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
-              </ErrorBoundary>
+                <AddAdditionalChargeDialog
+                  open={chargeDialogOpen}
+                  onOpenChange={setChargeDialogOpen}
+                  branchId={operatingBranchId}
+                  onSuccess={() => {
+                    setChargeDialogOpen(false);
+                    fetchAdditionalCharges();
+                    toast({
+                      title: "Success",
+                      description: "Additional charge added successfully"
+                    });
+                  }}
+                />
+
+                <EditAdditionalChargeDialog
+                  open={editChargeDialogOpen}
+                  onOpenChange={setEditChargeDialogOpen}
+                  charge={editingCharge}
+                  onSuccess={() => {
+                    setEditChargeDialogOpen(false);
+                    setEditingCharge(null);
+                    fetchAdditionalCharges();
+                  }}
+                />
               </CardContent>
             </Card>
+
+            {/* GST / Tax Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">GST Settings failed to load. Try refreshing.</div>}>
+              <GSTSettings />
+            </ErrorBoundary>
+
+            {/* WhatsApp Bill Share Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
+              <WhatsAppSettings />
+            </ErrorBoundary>
+
+            {/* Bluetooth Printer Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Printer Settings failed to load. Try refreshing.</div>}>
+              <BluetoothPrinterSettings />
+            </ErrorBoundary>
+
+            {/* Order Type (Dine In / Parcel) Settings */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Order Type Settings failed to load. Try refreshing.</div>}>
+              <OrderTypeSettings />
+            </ErrorBoundary>
+
+            {/* Branch Management (admin only) */}
+            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Branch Management failed to load. Try refreshing.</div>}>
+              <BranchManagement />
+            </ErrorBoundary>
+
+            {/* Print Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Print Settings</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-print" className="text-sm font-medium">
+                      Auto-Print on Bill Save
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {autoPrintEnabled
+                        ? "Bill will be printed automatically when payment is completed."
+                        : "Bill will be saved without printing. You can print later from Reports."}
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-print"
+                    checked={autoPrintEnabled}
+                    onCheckedChange={handleAutoPrintToggle}
+                    disabled={isAllBranchesView}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Accessibility Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <Type className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Accessibility</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6 space-y-4">
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Text Size (Overall App)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: 'Normal', value: '1', percent: '100%' },
+                      { label: 'Large', value: '1.15', percent: '115%' },
+                      { label: 'Extra Large', value: '1.3', percent: '130%' },
+                      { label: 'Maximum', value: '1.45', percent: '145%' }
+                    ].map((s) => (
+                      <Button
+                        key={s.value}
+                        variant={fontScale === s.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleFontScaleChange(s.value)}
+                        className="flex-1 min-w-[100px] h-11"
+                        disabled={isAllBranchesView}
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs font-bold">{s.label}</span>
+                          <span className="text-[10px] opacity-80">{s.percent}</span>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Adjusting this will scale the text size across the entire application for better visibility.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bill Numbering Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Bill Numbering</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="bill-numbering" className="text-sm font-medium">
+                      Continue Bill Numbers from Yesterday
+                    </Label>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      {continueBillFromYesterday
+                        ? "Bill numbers continue sequentially (e.g., BILL-000082, 000083...)."
+                        : "Bill numbers start fresh daily with date prefix (e.g., 12/01/26-001, 12/01/26-002...)."}
+                    </p>
+                  </div>
+                  <Switch
+                    id="bill-numbering"
+                    checked={continueBillFromYesterday}
+                    onCheckedChange={handleBillNumberingToggle}
+                    disabled={isAllBranchesView}
+                  />
+                </div>
+
+                {/* Preview */}
+                <div className="bg-muted/50 rounded-lg p-3 border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Preview:</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <p className="text-lg font-bold font-mono">
+                        {continueBillFromYesterday ? "BILL-000082" : `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '/')}-001`}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">Next bill number</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Display Settings */}
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center space-x-2">
+                  <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-base sm:text-lg">Display Settings</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-6">
+                <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Display Settings failed to load. Try refreshing.</div>}>
+                  {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
+                </ErrorBoundary>
+              </CardContent>
+            </Card>
+
             {/* Theme Settings */}
             <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
               <ThemeSettings />
             </ErrorBoundary>
+
           </div>
         </div>
       </div>
