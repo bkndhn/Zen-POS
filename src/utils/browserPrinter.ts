@@ -55,6 +55,7 @@ export const printBrowserReceipt = (data: PrintData) => {
 </head>
 <body>
   <div class="center">
+    ${data.logoUrl ? `<img src="${data.logoUrl}" style="max-width: 80px; max-height: 80px; display: block; margin: 0 auto 8px;">` : ''}
     <div class="shop-name">${(data.shopName || data.hotelName || 'HOTEL').toUpperCase()}</div>
     ${data.address ? `<div>${data.address}</div>` : ''}
     ${data.contactNumber ? `<div>Ph: ${data.contactNumber}</div>` : ''}

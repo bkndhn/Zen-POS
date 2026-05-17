@@ -43,6 +43,7 @@ interface BillImageData {
   roundOff?: number;
   // Order type
   orderType?: 'dine_in' | 'parcel';
+  logoUrl?: string;
 }
 
 /**
@@ -114,6 +115,7 @@ const generateBillHtml = (data: BillImageData): string => {
     ">
       <!-- Shop Header -->
       <div style="text-align: center; padding: 24px 20px 16px; background: #ffffff;">
+        ${data.logoUrl ? `<img src="${data.logoUrl}" style="max-width: 80px; max-height: 80px; display: block; margin: 0 auto 12px; object-fit: contain;">` : ''}
         <div style="font-size: 22px; font-weight: 800; color: #1a1a2e; letter-spacing: 0.5px; text-transform: uppercase;">${escapeHtml(data.shopName)}</div>
          ${data.address ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.4;">${escapeHtml(data.address).replace(/\n/g, '<br>')}</div>` : ''}
          ${data.phone ? `<div style="font-size: 13px; color: #374151; margin-top: 4px; font-weight: 600;">${escapeHtml(data.phone)}</div>` : ''}

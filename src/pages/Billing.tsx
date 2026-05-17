@@ -1031,7 +1031,7 @@ const Billing = () => {
     paymentMethod: string,
     adminId: string | null | undefined,
     paymentDetails?: Record<string, number>,
-    gstData?: { taxSummary?: string; totalTax?: number; isComposition?: boolean; roundOff?: number; gstin?: string },
+    gstData?: { taxSummary?: string; totalTax?: number; isComposition?: boolean; roundOff?: number; gstin?: string; logoUrl?: string },
     orderType?: 'dine_in' | 'parcel'
   ) => {
     try {
@@ -1119,6 +1119,7 @@ const Billing = () => {
           totalTax: gstData?.totalTax,
           isComposition: gstData?.isComposition,
           roundOff: gstData?.roundOff,
+          logoUrl: gstData?.logoUrl,
           orderType: orderType
         };
         const result = await shareBillImageViaWhatsApp(customerMobile, billData);
@@ -1293,7 +1294,8 @@ const Billing = () => {
         status_updated_at: now.toISOString(),
         table_no: selectedTableNumber || null,
         round_off: roundOff !== 0 ? roundOff : 0,
-        order_type: paymentData.orderType || 'dine_in'
+        order_type: paymentData.orderType || 'dine_in',
+        customer_mobile: paymentData.customerMobile || null
       };
 
       // Add GST fields to bill if enabled
@@ -1481,7 +1483,8 @@ const Billing = () => {
               totalTax: billPayload.total_tax,
               isComposition: gstSettings.isComposition,
               roundOff: roundOff !== 0 ? roundOff : undefined,
-              gstin: gstSettings.gstin
+              gstin: gstSettings.gstin,
+              logoUrl: settingsToUse?.logoUrl
             }, paymentData.orderType)
               .catch(err => console.error('WhatsApp share failed:', err));
           }

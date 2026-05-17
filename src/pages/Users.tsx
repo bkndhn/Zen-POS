@@ -446,6 +446,9 @@ const Users: React.FC = () => {
                               {admin.hotel_name && (
                                 <p className="text-sm text-muted-foreground">{admin.hotel_name}</p>
                               )}
+                              {admin.email && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{admin.email}</p>
+                              )}
                               {admin.last_login && (
                                 <p className="text-xs text-muted-foreground mt-1">
                                   Last login: {format(new Date(admin.last_login), 'dd MMM yyyy, hh:mm a')}
@@ -621,6 +624,9 @@ const Users: React.FC = () => {
                                 <div className="flex items-start justify-between mb-2">
                                   <div>
                                     <h6 className="font-medium">{subUser.name}</h6>
+                                    {subUser.email && (
+                                      <p className="text-xs text-muted-foreground">{subUser.email}</p>
+                                    )}
                                     <Badge
                                       variant={subUser.status === 'active' ? 'outline' : subUser.status === 'paused' ? 'secondary' : 'destructive'}
                                       className="text-xs mt-1"
@@ -661,6 +667,9 @@ const Users: React.FC = () => {
                         <h4 className="font-medium text-base">{user.name}</h4>
                         {user.hotel_name && (
                           <p className="text-sm text-muted-foreground">{user.hotel_name}</p>
+                        )}
+                        {user.email && (
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-1">
