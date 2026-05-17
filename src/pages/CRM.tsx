@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 // xlsx removed for security; using CSV export instead
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { useBranch } from '@/contexts/BranchContext';
 
 interface Customer {
   id: string;
@@ -28,6 +29,7 @@ const CRM: React.FC = () => {
   const { profile } = useAuth();
   const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const { branchFilterId } = useBranchScopedQuery(() => fetchCustomers());
+  const { isAllBranchesView } = useBranch();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
