@@ -28,6 +28,7 @@ interface ExtendedUserProfile extends UserProfile {
   branchCount?: number;
   itemCount?: number;
   subUserCount?: number;
+  email?: string | null;
 }
 
 const Users: React.FC = () => {
@@ -112,7 +113,8 @@ const Users: React.FC = () => {
         has_qr_menu_access: user.has_qr_menu_access ?? false,
         item_limit: (user as any).item_limit ?? null,
         max_branches: (user as any).max_branches ?? 1,
-        max_sub_users: (user as any).max_sub_users ?? 5
+        max_sub_users: (user as any).max_sub_users ?? 5,
+        email: (user as any).email ?? null
       })) as ExtendedUserProfile[];
 
       if (isSuperAdmin) {
@@ -443,6 +445,9 @@ const Users: React.FC = () => {
                             )}
                             <div>
                               <h4 className="font-semibold text-lg">{admin.name}</h4>
+                              {admin.email && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400">{admin.email}</p>
+                              )}
                               {admin.hotel_name && (
                                 <p className="text-sm text-muted-foreground">{admin.hotel_name}</p>
                               )}
@@ -621,6 +626,9 @@ const Users: React.FC = () => {
                                 <div className="flex items-start justify-between mb-2">
                                   <div>
                                     <h6 className="font-medium">{subUser.name}</h6>
+                                    {subUser.email && (
+                                      <p className="text-xs text-blue-600 dark:text-blue-400">{subUser.email}</p>
+                                    )}
                                     <Badge
                                       variant={subUser.status === 'active' ? 'outline' : subUser.status === 'paused' ? 'secondary' : 'destructive'}
                                       className="text-xs mt-1"
@@ -659,6 +667,9 @@ const Users: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <h4 className="font-medium text-base">{user.name}</h4>
+                        {user.email && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400">{user.email}</p>
+                        )}
                         {user.hotel_name && (
                           <p className="text-sm text-muted-foreground">{user.hotel_name}</p>
                         )}

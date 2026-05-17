@@ -20,6 +20,8 @@ import { format } from 'date-fns';
 import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { useBranch } from '@/contexts/BranchContext';
+import { cn } from '@/lib/utils';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -1028,7 +1030,7 @@ const Billing = () => {
     paymentMethod: string,
     adminId: string | null | undefined,
     paymentDetails?: Record<string, number>,
-    gstData?: { taxSummary?: string; totalTax?: number; isComposition?: boolean; roundOff?: number; gstin?: string },
+    gstData?: { taxSummary?: string; totalTax?: number; isComposition?: boolean; roundOff?: number; gstin?: string; logoUrl?: string },
     orderType?: 'dine_in' | 'parcel'
   ) => {
     try {
@@ -1116,7 +1118,9 @@ const Billing = () => {
           totalTax: gstData?.totalTax,
           isComposition: gstData?.isComposition,
           roundOff: gstData?.roundOff,
-          orderType: orderType
+          orderType: orderType,
+          // Shop logo
+          logoUrl: gstData?.logoUrl
         };
         const result = await shareBillImageViaWhatsApp(customerMobile, billData);
         if (result.success) {
@@ -1478,7 +1482,8 @@ const Billing = () => {
               totalTax: billPayload.total_tax,
               isComposition: gstSettings.isComposition,
               roundOff: roundOff !== 0 ? roundOff : undefined,
-              gstin: gstSettings.gstin
+              gstin: gstSettings.gstin,
+              logoUrl: settingsToUse?.logoUrl
             }, paymentData.orderType)
               .catch(err => console.error('WhatsApp share failed:', err));
           }
