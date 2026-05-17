@@ -88,7 +88,7 @@ export const Header: React.FC = () => {
                       </div>
                     </SheetTitle>
                   </SheetHeader>
-                  <nav className="flex-1 p-3 pb-24 overflow-y-auto">
+                  <nav className="flex-1 p-3 overflow-y-auto">
                     <ul className="space-y-1">
                       {navItems.map(({ to, icon: Icon, label }) => {
                         const isActive = location.pathname === to ||

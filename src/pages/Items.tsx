@@ -501,7 +501,7 @@ const Items: React.FC = () => {
               )}
             </div>
 
-            {profile?.role === 'admin' && !isAllBranchesView && (
+            {profile?.role === 'admin' && (
               <div className="flex gap-1">
                 {isInactive && (
                   <Button

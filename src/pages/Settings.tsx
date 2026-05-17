@@ -22,7 +22,6 @@ import { OrderTypeSettings } from '@/components/OrderTypeSettings';
 import { BranchManagement } from '@/components/BranchManagement';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { cn } from '@/lib/utils';
 
 interface AdditionalCharge {
   id: string;
@@ -227,12 +226,11 @@ const Settings = () => {
           {/* All Branches Read-Only Banner */}
           <AllBranchesReadOnlyBanner message="Switch to a specific branch to modify settings." />
 
-          <div className={cn("space-y-4 sm:space-y-6", isAllBranchesView && "opacity-60 pointer-events-none")}>
-            {/* Shop Details */}
-            <ShopSettingsForm />
+          {/* Shop Details */}
+          <ShopSettingsForm />
 
-            {/* Payment Types Management */}
-            {profile?.role === 'admin' && <PaymentTypesManagement />}
+          {/* Payment Types Management */}
+          {profile?.role === 'admin' && <PaymentTypesManagement />}
 
           {/* Additional Charges Management */}
           <Card>
@@ -503,13 +501,13 @@ const Settings = () => {
               <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Display Settings failed to load. Try refreshing.</div>}>
                 {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
               </ErrorBoundary>
-              </CardContent>
-            </Card>
-            {/* Theme Settings */}
-            <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
-              <ThemeSettings />
-            </ErrorBoundary>
-          </div>
+            </CardContent>
+          </Card>
+
+          {/* Theme Settings */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
+            <ThemeSettings />
+          </ErrorBoundary>
         </div>
       </div>
     </div>

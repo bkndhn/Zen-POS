@@ -271,12 +271,10 @@ const TableManagement: React.FC = () => {
               <p className="text-xs text-muted-foreground">Manage dine-in tables</p>
             </div>
           </div>
-          {!isAllBranchesView && (
-            <Button onClick={() => handleOpenDialog()} size="sm">
-              <Plus className="w-4 h-4 mr-1" />
-              Add Table
-            </Button>
-          )}
+          <Button onClick={() => handleOpenDialog()} size="sm">
+            <Plus className="w-4 h-4 mr-1" />
+            Add Table
+          </Button>
         </div>
 
         {/* Summary Cards */}
@@ -306,12 +304,10 @@ const TableManagement: React.FC = () => {
             <LayoutGrid className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Tables Yet</h3>
             <p className="text-sm text-muted-foreground mb-4">Add your first table to get started with table management.</p>
-            {!isAllBranchesView && (
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add First Table
-              </Button>
-            )}
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add First Table
+            </Button>
           </Card>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

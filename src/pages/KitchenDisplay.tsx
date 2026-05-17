@@ -64,7 +64,7 @@ interface KitchenTableOrder {
 const KitchenDisplay = () => {
     const { profile } = useAuth();
     const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
-    const { branchFilterId, isAllBranchesView } = useBranchScopedQuery(() => { fetchBills(true); fetchTableOrders(); });
+    const { branchFilterId } = useBranchScopedQuery(() => { fetchBills(true); fetchTableOrders(); });
     const [bills, setBills] = useState<KitchenBill[]>([]);
     const [loading, setLoading] = useState(true);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -692,7 +692,6 @@ const KitchenDisplay = () => {
                                 onAction={() => updateKitchenStatus(bill.id, bill.bill_no, 'preparing')}
                                 actionLabel="Start Preparing"
                                 actionColor="bg-orange-500 hover:bg-orange-600"
-                                isAllBranchesView={isAllBranchesView}
                             />
                         ))}
 
@@ -734,14 +733,12 @@ const KitchenDisplay = () => {
                                         💬 Customer Note: {order.customer_note}
                                     </div>
                                 )}
-                                {!isAllBranchesView && (
-                                    <Button
-                                        onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'preparing')}
-                                        className="w-full text-white bg-orange-500 hover:bg-orange-600"
-                                    >
-                                        Start Preparing
-                                    </Button>
-                                )}
+                                <Button
+                                    onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'preparing')}
+                                    className="w-full text-white bg-orange-500 hover:bg-orange-600"
+                                >
+                                    Start Preparing
+                                </Button>
                             </Card>
                         ))}
 
@@ -768,7 +765,6 @@ const KitchenDisplay = () => {
                                 onAction={() => updateKitchenStatus(bill.id, bill.bill_no, 'ready')}
                                 actionLabel="Mark Ready"
                                 actionColor="bg-green-500 hover:bg-green-600"
-                                isAllBranchesView={isAllBranchesView}
                             />
                         ))}
 
@@ -810,14 +806,12 @@ const KitchenDisplay = () => {
                                         💬 {order.customer_note}
                                     </div>
                                 )}
-                                {!isAllBranchesView && (
-                                    <Button
-                                        onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'ready')}
-                                        className="w-full text-white bg-green-500 hover:bg-green-600"
-                                    >
-                                        Mark Ready
-                                    </Button>
-                                )}
+                                <Button
+                                    onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'ready')}
+                                    className="w-full text-white bg-green-500 hover:bg-green-600"
+                                >
+                                    Mark Ready
+                                </Button>
                             </Card>
                         ))}
 
@@ -897,7 +891,7 @@ const KitchenDisplay = () => {
                 </div>
 
                 {/* Recently Processed - Undo Section */}
-                {!isAllBranchesView && recentlyProcessed.filter(p => {
+                {recentlyProcessed.filter(p => {
                     const elapsed = Date.now() - new Date(p.timestamp).getTime();
                     return elapsed < 5 * 60 * 1000; // 5 min window
                 }).length > 0 && (
@@ -954,7 +948,6 @@ interface KitchenOrderCardProps {
     onAction: () => void;
     actionLabel: string;
     actionColor: string;
-    isAllBranchesView?: boolean;
 }
 
 const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
@@ -1006,15 +999,13 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
             </div>
 
             {/* Action Button */}
-            {!isAllBranchesView && (
-                <Button
-                    onClick={onAction}
-                    disabled={processing}
-                    className={cn("w-full text-white", actionColor)}
-                >
-                    {processing ? 'Processing...' : actionLabel}
-                </Button>
-            )}
+            <Button
+                onClick={onAction}
+                disabled={processing}
+                className={cn("w-full text-white", actionColor)}
+            >
+                {processing ? 'Processing...' : actionLabel}
+            </Button>
         </Card>
     );
 };

@@ -526,23 +526,23 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   {whatsappShareMode === 'image' ? 'Share Bill Image' : 'Send Bill via WhatsApp'}
                 </span>
               </div>
-              <div className="mt-1.5">
-                <Input
-                  type="tel"
-                  value={customerMobile}
-                  onChange={(e) => { setCustomerMobile(e.target.value); setSendWhatsApp(true); }}
-                  placeholder="Customer mobile (e.g. 9876543210)"
-                  className="h-8 text-xs bg-white dark:bg-gray-800"
-                />
-                {customerMobile && !isValidPhoneNumber(customerMobile) && (
-                  <p className="text-[10px] text-red-500 mt-0.5">Enter valid 10-digit number</p>
-                )}
-                {whatsappShareMode === 'text' ? (
+              {whatsappShareMode === 'text' ? (
+                <div className="mt-1.5">
+                  <Input
+                    type="tel"
+                    value={customerMobile}
+                    onChange={(e) => { setCustomerMobile(e.target.value); setSendWhatsApp(true); }}
+                    placeholder="Customer mobile (e.g. 9876543210)"
+                    className="h-8 text-xs bg-white dark:bg-gray-800"
+                  />
+                  {customerMobile && !isValidPhoneNumber(customerMobile) && (
+                    <p className="text-[10px] text-red-500 mt-0.5">Enter valid 10-digit number</p>
+                  )}
                   <p className="text-[10px] text-muted-foreground mt-1">Text bill will be sent after payment</p>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground mt-1">Bill image will open share dialog after payment</p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground mt-1">Bill image will open share dialog after payment</p>
+              )}
             </div>
           )}
 

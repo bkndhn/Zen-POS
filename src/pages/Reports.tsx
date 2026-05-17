@@ -1395,30 +1395,26 @@ const Reports: React.FC = () => {
                                 <Printer className="w-3 h-3" />
                               </Button>
                             )}
-                            {!isAllBranchesView && (
-                              <>
-                                {billFilter === 'processed' ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDeleteClick(bill.id)}
-                                    className="h-7 w-7 p-0 flex-shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleRestoreClick(bill.id)}
-                                    className="h-7 w-7 p-0 flex-shrink-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    title="Restore"
-                                  >
-                                    <Edit className="w-3 h-3" />
-                                  </Button>
-                                )}
-                              </>
+                            {billFilter === 'processed' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteClick(bill.id)}
+                                className="h-7 w-7 p-0 flex-shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRestoreClick(bill.id)}
+                                className="h-7 w-7 p-0 flex-shrink-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Restore"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
                             )}
                           </div>
                         </div>
