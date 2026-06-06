@@ -108,7 +108,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
   useEffect(() => {
     fetchCategories();
     fetchGstSettings();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operatingBranchId, profile?.id, profile?.admin_id]);
 
   const fetchGstSettings = async () => {
     try {
@@ -139,12 +140,15 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
+      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      if (!adminId) { setCategories([]); return; }
+      let q = supabase
         .from('item_categories')
         .select('id, name')
-        .eq('is_deleted', false)
-        .order('name');
-
+        .eq('admin_id', adminId)
+        .eq('is_deleted', false);
+      if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+      const { data, error } = await q.order('name');
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
