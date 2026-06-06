@@ -478,6 +478,24 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
             </div>
 
             <div>
+              <Label htmlFor="edit_expiry_mode">Expiry Tracking</Label>
+              <Select
+                value={formData.expiry_mode}
+                onValueChange={(value) => setFormData({ ...formData, expiry_mode: value as any })}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="none">No Expiry</SelectItem>
+                  <SelectItem value="optional">Optional (track when entered)</SelectItem>
+                  <SelectItem value="mandatory">Mandatory (required on purchase)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+
+            <div>
               <Label>Item Media {hasPremiumAccess && <span className="text-purple-600 text-xs">(Premium: GIF/Video enabled)</span>}</Label>
               <MediaUpload
                 imageUrl={formData.image_url}
