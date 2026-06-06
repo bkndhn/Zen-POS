@@ -200,13 +200,14 @@ const Items: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      // Fetch categories
-      const { data, error } = await supabase
+      // Fetch categories (scoped to active branch when not All-Branches view)
+      let q = supabase
         .from('item_categories')
         .select('name')
         .eq('admin_id', adminId)
-        .eq('is_deleted', false)
-        .order('name');
+        .eq('is_deleted', false);
+      if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+      const { data, error } = await q.order('name');
 
       if (error) throw error;
 

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Edit } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 
 interface TaxRateOption {
   id: string;
@@ -51,6 +52,7 @@ interface EditItemDialogProps {
 
 export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpdated }) => {
   const { profile } = useAuth();
+  const { operatingBranchId } = useBranch();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
@@ -74,7 +76,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     unlimited_stock: item.unlimited_stock || false,
     tax_rate_id: (item as any).tax_rate_id || '',
     is_tax_inclusive: (item as any).is_tax_inclusive !== false,
-    hsn_code: (item as any).hsn_code || ''
+    hsn_code: (item as any).hsn_code || '',
+    expiry_mode: ((item as any).expiry_mode || 'none') as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
 
@@ -102,19 +105,23 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         unlimited_stock: item.unlimited_stock || false,
         tax_rate_id: (item as any).tax_rate_id || '',
         is_tax_inclusive: (item as any).is_tax_inclusive !== false,
-        hsn_code: (item as any).hsn_code || ''
+        hsn_code: (item as any).hsn_code || '',
+        expiry_mode: ((item as any).expiry_mode || 'none') as 'none' | 'optional' | 'mandatory'
       });
     }
   }, [open, item]);
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
+      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      if (!adminId) { setCategories([]); return; }
+      let q = supabase
         .from('item_categories')
         .select('id, name')
-        .eq('is_deleted', false)
-        .order('name');
-
+        .eq('admin_id', adminId)
+        .eq('is_deleted', false);
+      if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+      const { data, error } = await q.order('name');
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
@@ -210,7 +217,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         video_url: formData.video_url || null,
         media_type: formData.media_type,
         is_active: formData.is_active,
-        unlimited_stock: formData.unlimited_stock
+        unlimited_stock: formData.unlimited_stock,
+        expiry_mode: formData.expiry_mode
       };
 
       // Add GST fields if enabled
@@ -468,6 +476,24 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                 </SelectContent>
               </Select>
             </div>
+
+            <div>
+              <Label htmlFor="edit_expiry_mode">Expiry Tracking</Label>
+              <Select
+                value={formData.expiry_mode}
+                onValueChange={(value) => setFormData({ ...formData, expiry_mode: value as any })}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="none">No Expiry</SelectItem>
+                  <SelectItem value="optional">Optional (track when entered)</SelectItem>
+                  <SelectItem value="mandatory">Mandatory (required on purchase)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
 
             <div>
               <Label>Item Media {hasPremiumAccess && <span className="text-purple-600 text-xs">(Premium: GIF/Video enabled)</span>}</Label>

@@ -432,12 +432,13 @@ const Billing = () => {
   const fetchItemCategories = async () => {
     if (!adminId) return;
     try {
-      const { data, error } = await supabase
+      let catQ = supabase
         .from('item_categories')
         .select('*')
         .eq('admin_id', adminId)
-        .eq('is_deleted', false)
-        .order('name');
+        .eq('is_deleted', false);
+      if (branchFilterId) catQ = catQ.eq('branch_id', branchFilterId);
+      const { data, error } = await catQ.order('name');
       if (error) throw error;
       setItemCategories(data || []);
     } catch (error) {

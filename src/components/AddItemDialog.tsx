@@ -75,7 +75,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     unlimited_stock: false,
     tax_rate_id: '',
     is_tax_inclusive: true,
-    hsn_code: ''
+    hsn_code: '',
+    expiry_mode: 'none' as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
 
@@ -108,7 +109,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
   useEffect(() => {
     fetchCategories();
     fetchGstSettings();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operatingBranchId, profile?.id, profile?.admin_id]);
 
   const fetchGstSettings = async () => {
     try {
@@ -139,12 +141,15 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
+      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      if (!adminId) { setCategories([]); return; }
+      let q = supabase
         .from('item_categories')
         .select('id, name')
-        .eq('is_deleted', false)
-        .order('name');
-
+        .eq('admin_id', adminId)
+        .eq('is_deleted', false);
+      if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+      const { data, error } = await q.order('name');
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
@@ -227,6 +232,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         unlimited_stock: formData.unlimited_stock,
         admin_id: adminId,
         branch_id: operatingBranchId || null,
+        expiry_mode: formData.expiry_mode,
       };
 
       // Add GST fields if enabled
@@ -263,7 +269,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         unlimited_stock: false,
         tax_rate_id: '',
         is_tax_inclusive: true,
-        hsn_code: ''
+        hsn_code: '',
+        expiry_mode: 'none'
       });
       setOpen(false);
       setCurrentItemCount(prev => prev + 1);
@@ -512,6 +519,26 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="expiry_mode">Expiry Tracking</Label>
+            <Select
+              value={formData.expiry_mode}
+              onValueChange={(value) => setFormData({ ...formData, expiry_mode: value as any })}
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border shadow-lg z-50">
+                <SelectItem value="none">No Expiry</SelectItem>
+                <SelectItem value="optional">Optional (track when entered)</SelectItem>
+                <SelectItem value="mandatory">Mandatory (required on purchase)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Controls whether expiry dates must be captured for this item when purchasing stock.
+            </p>
           </div>
 
           <div>
