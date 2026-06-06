@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { User, Shield, UserCheck, UserX, Settings, DollarSign } from 'lucide-react';
+import { User, Shield, UserCheck, UserX, Settings, DollarSign, UserPlus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { AddAdditionalChargeDialog } from '@/components/AddAdditionalChargeDialog';
 import { DisplaySettings } from '@/components/DisplaySettings';
 
@@ -33,6 +34,8 @@ const AdminManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
+  const [signupEnabled, setSignupEnabled] = useState<boolean>(true);
+  const [signupSaving, setSignupSaving] = useState(false);
 
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
@@ -41,7 +44,31 @@ const AdminManagement = () => {
     if (isAdmin || isSuperAdmin) {
       fetchProfiles();
     }
+    if (isSuperAdmin) {
+      (async () => {
+        const { data } = await (supabase as any).from('app_settings').select('signup_enabled').eq('id', true).maybeSingle();
+        if (data) setSignupEnabled(!!data.signup_enabled);
+      })();
+    }
   }, [profile]);
+
+  const toggleSignup = async (next: boolean) => {
+    if (!isSuperAdmin) return;
+    setSignupSaving(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('app_settings')
+        .update({ signup_enabled: next, updated_at: new Date().toISOString(), updated_by: profile?.user_id })
+        .eq('id', true);
+      if (error) throw error;
+      setSignupEnabled(next);
+      toast({ title: 'Updated', description: `Signup is now ${next ? 'enabled' : 'disabled'}.` });
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e?.message || 'Could not update', variant: 'destructive' });
+    } finally {
+      setSignupSaving(false);
+    }
+  };
 
   const updateLimits = async (profileId: string, field: 'max_branches' | 'max_sub_users', value: number) => {
     if (!isSuperAdmin) return;
@@ -183,6 +210,28 @@ const AdminManagement = () => {
               {profile?.user_id && <DisplaySettings userId={profile.user_id} />}
             </CardContent>
           </Card>
+
+          {isSuperAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <UserPlus className="w-5 h-5" />
+                  <span>Signup Access</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="font-medium">Allow new admin sign-ups</p>
+                    <p className="text-sm text-muted-foreground">
+                      When disabled, the Sign-up option is hidden on the login page and new accounts cannot be created.
+                    </p>
+                  </div>
+                  <Switch checked={signupEnabled} disabled={signupSaving} onCheckedChange={toggleSignup} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="mb-6">
