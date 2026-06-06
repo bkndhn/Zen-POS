@@ -15,6 +15,7 @@ const Auth = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [signupEnabled, setSignupEnabled] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,6 +23,16 @@ const Auth = () => {
     role: 'admin', // Only admins can signup from login page
     hotelName: ''
   });
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data } = await supabase.rpc('get_signup_enabled');
+        if (typeof data === 'boolean') setSignupEnabled(data);
+      } catch { /* default true */ }
+    })();
+  }, []);
 
   // Show loading while authentication is being initialized
   if (authLoading) {
@@ -378,25 +389,28 @@ const Auth = () => {
 
           {/* Footer Link */}
           <div className="mt-8 text-center">
-            <button
-              onClick={() => {
-                if (isForgotPassword) {
-                  setIsForgotPassword(false);
-                } else {
-                  setIsLogin(!isLogin);
-                  setFormData({ email: '', password: '', name: '', role: 'user', hotelName: '' });
+            {!isForgotPassword && isLogin && !signupEnabled ? null : (
+              <button
+                onClick={() => {
+                  if (isForgotPassword) {
+                    setIsForgotPassword(false);
+                  } else {
+                    if (isLogin && !signupEnabled) return;
+                    setIsLogin(!isLogin);
+                    setFormData({ email: '', password: '', name: '', role: 'user', hotelName: '' });
+                  }
+                }}
+                className="text-sm text-gray-600"
+              >
+                {isForgotPassword
+                  ? 'Back to sign in'
+                  : (isLogin
+                    ? <>Don't have an account? <span className="text-pink-600 font-semibold hover:text-pink-700">Sign up</span></>
+                    : <>Already have an account? <span className="text-pink-600 font-semibold hover:text-pink-700">Sign in</span></>
+                  )
                 }
-              }}
-              className="text-sm text-gray-600"
-            >
-              {isForgotPassword
-                ? 'Back to sign in'
-                : (isLogin
-                  ? <>Don't have an account? <span className="text-pink-600 font-semibold hover:text-pink-700">Sign up</span></>
-                  : <>Already have an account? <span className="text-pink-600 font-semibold hover:text-pink-700">Sign in</span></>
-                )
-              }
-            </button>
+              </button>
+            )}
           </div>
         </div >
       </div >
