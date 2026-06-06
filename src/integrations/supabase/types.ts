@@ -74,6 +74,27 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          id: boolean
+          signup_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          signup_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          signup_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       bill_items: {
         Row: {
           bill_id: string
@@ -586,6 +607,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number | null
+          expiry_mode: string
           hsn_code: string | null
           id: string
           image_url: string | null
@@ -613,6 +635,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          expiry_mode?: string
           hsn_code?: string | null
           id?: string
           image_url?: string | null
@@ -640,6 +663,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number | null
+          expiry_mode?: string
           hsn_code?: string | null
           id?: string
           image_url?: string | null
@@ -1471,6 +1495,7 @@ export type Database = {
         Args: { p_admin_id: string; p_branch_id: string }
         Returns: Json
       }
+      get_signup_enabled: { Args: never; Returns: boolean }
       get_user_admin_id: { Args: never; Returns: string }
       has_page_permission: {
         Args: { _page_name: string; _user_id: string }
