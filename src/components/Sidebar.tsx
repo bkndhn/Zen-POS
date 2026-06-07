@@ -16,7 +16,10 @@ import {
   ChefHat,
   LayoutGrid,
   UserCircle,
-  QrCode
+  QrCode,
+  Truck,
+  ShoppingBag,
+  Boxes
 } from 'lucide-react';
 
 const allNavItems = [
@@ -28,6 +31,10 @@ const allNavItems = [
   { to: '/tables', icon: LayoutGrid, label: 'Tables', page: 'tables' as const },
   { to: '/table-billing', icon: Receipt, label: 'Table Billing', page: 'tableBilling' as const },
   { to: '/items', icon: Package, label: 'Items', page: 'items' as const },
+  { to: '/suppliers', icon: Truck, label: 'Suppliers', page: 'suppliers' as const },
+  { to: '/purchases', icon: ShoppingBag, label: 'Purchases', page: 'purchases' as const },
+  { to: '/stock', icon: Boxes, label: 'Stock', page: 'stock' as const },
+  { to: '/stock-reports', icon: BarChart3, label: 'Stock Reports', page: 'stock' as const },
   { to: '/expenses', icon: Receipt, label: 'Expenses', page: 'expenses' as const },
   { to: '/reports', icon: BarChart3, label: 'Reports', page: 'reports' as const },
   { to: '/crm', icon: UserCircle, label: 'CRM', page: 'customers' as const },

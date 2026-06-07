@@ -32,6 +32,11 @@ import QRMenu from "./pages/QRMenu";
 import TableOrderBilling from "./pages/TableOrderBilling";
 import LandingPage from "./pages/LandingPage";
 import DemoBilling from "./pages/DemoBilling";
+import SuperAdminUsers from "./pages/SuperAdminUsers";
+import Suppliers from "./pages/Suppliers";
+import Purchases from "./pages/Purchases";
+import StockManagement from "./pages/StockManagement";
+import StockReports from "./pages/StockReports";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PendingBillsQueue } from "./components/PendingBillsQueue";
@@ -246,6 +251,11 @@ const App = () => {
                   <Route path="/crm" element={<Layout><ProtectedRoute requiredPermission="settings"><CRM /></ProtectedRoute></Layout>} />
                   <Route path="/qr-menu" element={<Layout><ProtectedRoute requiredPermission="qrMenu"><QRMenu /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />
+                  <Route path="/suppliers" element={<Layout><ProtectedRoute requiredPermission="suppliers"><Suppliers /></ProtectedRoute></Layout>} />
+                  <Route path="/purchases" element={<Layout><ProtectedRoute requiredPermission="purchases"><Purchases /></ProtectedRoute></Layout>} />
+                  <Route path="/stock" element={<Layout><ProtectedRoute requiredPermission="stock"><StockManagement /></ProtectedRoute></Layout>} />
+                  <Route path="/stock-reports" element={<Layout><ProtectedRoute requiredPermission="stock"><StockReports /></ProtectedRoute></Layout>} />
+                  <Route path="/super-admin/users" element={<Layout><SuperAdminUsers /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
                   <Route path="/landing" element={<LandingPage />} />

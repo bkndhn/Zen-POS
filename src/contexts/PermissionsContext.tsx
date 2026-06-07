@@ -18,6 +18,9 @@ export interface UserPermissions {
     customers: boolean;
     qrMenu: boolean;
     tableBilling: boolean;
+    suppliers: boolean;
+    purchases: boolean;
+    stock: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -36,6 +39,9 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     customers: false,
     qrMenu: false,
     tableBilling: false,
+    suppliers: false,
+    purchases: false,
+    stock: false,
 };
 
 const ADMIN_PERMISSIONS: UserPermissions = {
@@ -54,6 +60,9 @@ const ADMIN_PERMISSIONS: UserPermissions = {
     customers: true,
     qrMenu: true,
     tableBilling: true,
+    suppliers: true,
+    purchases: true,
+    stock: true,
 };
 
 interface PermissionsContextType {
