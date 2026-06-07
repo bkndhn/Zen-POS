@@ -892,6 +892,147 @@ export type Database = {
           },
         ]
       }
+      purchase_distributions: {
+        Row: {
+          admin_id: string
+          branch_id: string
+          created_at: string
+          id: string
+          item_id: string | null
+          purchase_item_id: string
+          quantity: number
+        }
+        Insert: {
+          admin_id: string
+          branch_id: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          purchase_item_id: string
+          quantity?: number
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          purchase_item_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_distributions_purchase_item_id_fkey"
+            columns: ["purchase_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_items: {
+        Row: {
+          admin_id: string
+          batch_no: string | null
+          created_at: string
+          expiry_date: string | null
+          id: string
+          item_name: string
+          purchase_id: string
+          quantity: number
+          rate: number
+          total: number
+          unit: string | null
+        }
+        Insert: {
+          admin_id: string
+          batch_no?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          item_name: string
+          purchase_id: string
+          quantity?: number
+          rate?: number
+          total?: number
+          unit?: string | null
+        }
+        Update: {
+          admin_id?: string
+          batch_no?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          item_name?: string
+          purchase_id?: string
+          quantity?: number
+          rate?: number
+          total?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          admin_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_no: string | null
+          notes: string | null
+          purchase_date: string
+          purchase_no: string
+          status: string
+          supplier_id: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_no?: string | null
+          notes?: string | null
+          purchase_date?: string
+          purchase_no: string
+          status?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_no?: string | null
+          notes?: string | null
+          purchase_date?: string
+          purchase_no?: string
+          status?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_settings: {
         Row: {
           address: string | null
@@ -1025,6 +1166,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stock_adjustments: {
+        Row: {
+          admin_id: string
+          branch_id: string
+          change_qty: number
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          reason: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id: string
+          change_qty: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          reason?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string
+          change_qty?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       table_orders: {
         Row: {
@@ -1358,6 +1583,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_stock_adjustment: {
+        Args: {
+          p_branch_id: string
+          p_change_qty: number
+          p_item_id: string
+          p_notes: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       check_service_request_rate_limit: {
         Args: { p_admin_id: string; p_table_number: string }
         Returns: boolean
@@ -1418,6 +1653,33 @@ export type Database = {
             }
             Returns: Json
           }
+      create_purchase_transaction: {
+        Args: {
+          p_invoice_no: string
+          p_lines: Json
+          p_notes: string
+          p_purchase_date: string
+          p_supplier_id: string
+        }
+        Returns: Json
+      }
+      get_all_users_for_super_admin: {
+        Args: never
+        Returns: {
+          admin_id: string
+          admin_name: string
+          created_at: string
+          email: string
+          hotel_name: string
+          last_login: string
+          login_count: number
+          name: string
+          profile_id: string
+          role: string
+          status: string
+          user_id: string
+        }[]
+      }
       get_branch_scoped_shop_settings: {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {

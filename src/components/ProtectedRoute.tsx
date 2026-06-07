@@ -32,12 +32,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/auth" replace />;
     }
 
-    // SUPER ADMIN: Can ONLY access Users page - nothing else
+    // SUPER ADMIN: Can only access Users / Admin Management
     if (profile.role === 'super_admin') {
         if (requiredPermission !== 'users') {
-            return <Navigate to="/users" replace />;
+            return <Navigate to="/super-admin/users" replace />;
         }
-        // Super admin accessing users page - allow it
         return <>{children}</>;
     }
 
