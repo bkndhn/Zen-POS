@@ -37,6 +37,9 @@ import Suppliers from "./pages/Suppliers";
 import Purchases from "./pages/Purchases";
 import StockManagement from "./pages/StockManagement";
 import StockReports from "./pages/StockReports";
+import StockTransfers from "./pages/StockTransfers";
+import PurchaseReturns from "./pages/PurchaseReturns";
+import StockLedger from "./pages/StockLedger";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PendingBillsQueue } from "./components/PendingBillsQueue";
@@ -255,6 +258,9 @@ const App = () => {
                   <Route path="/purchases" element={<Layout><ProtectedRoute requiredPermission="purchases"><Purchases /></ProtectedRoute></Layout>} />
                   <Route path="/stock" element={<Layout><ProtectedRoute requiredPermission="stock"><StockManagement /></ProtectedRoute></Layout>} />
                   <Route path="/stock-reports" element={<Layout><ProtectedRoute requiredPermission="stock"><StockReports /></ProtectedRoute></Layout>} />
+                  <Route path="/stock-transfers" element={<Layout><ProtectedRoute requiredPermission="stock"><StockTransfers /></ProtectedRoute></Layout>} />
+                  <Route path="/purchase-returns" element={<Layout><ProtectedRoute requiredPermission="purchases"><PurchaseReturns /></ProtectedRoute></Layout>} />
+                  <Route path="/stock-ledger" element={<Layout><ProtectedRoute requiredPermission="stock"><StockLedger /></ProtectedRoute></Layout>} />
                   <Route path="/super-admin/users" element={<Layout><SuperAdminUsers /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
