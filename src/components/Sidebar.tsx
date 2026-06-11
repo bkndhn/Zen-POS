@@ -19,7 +19,10 @@ import {
   QrCode,
   Truck,
   ShoppingBag,
-  Boxes
+  Boxes,
+  ArrowRightLeft,
+  Undo2,
+  History
 } from 'lucide-react';
 
 const allNavItems = [
@@ -34,6 +37,9 @@ const allNavItems = [
   { to: '/suppliers', icon: Truck, label: 'Suppliers', page: 'suppliers' as const },
   { to: '/purchases', icon: ShoppingBag, label: 'Purchases', page: 'purchases' as const },
   { to: '/stock', icon: Boxes, label: 'Stock', page: 'stock' as const },
+  { to: '/stock-transfers', icon: ArrowRightLeft, label: 'Stock Transfers', page: 'stock' as const },
+  { to: '/purchase-returns', icon: Undo2, label: 'Purchase Returns', page: 'purchases' as const },
+  { to: '/stock-ledger', icon: History, label: 'Audit Trail', page: 'stock' as const },
   { to: '/stock-reports', icon: BarChart3, label: 'Stock Reports', page: 'stock' as const },
   { to: '/expenses', icon: Receipt, label: 'Expenses', page: 'expenses' as const },
   { to: '/reports', icon: BarChart3, label: 'Reports', page: 'reports' as const },
