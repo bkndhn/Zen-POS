@@ -106,7 +106,12 @@ const SuperAdminUsers: React.FC = () => {
                 {!loading && admins.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No admins</TableCell></TableRow>}
                 {admins.map(r => (
                   <TableRow key={r.profile_id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {r.name}
+                        <Badge variant="default" className="text-[10px]">Admin</Badge>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs">{r.email || '—'}</TableCell>
                     <TableCell>{r.hotel_name || '—'}</TableCell>
                     <TableCell>{statusBadge(r.status)}</TableCell>
@@ -114,6 +119,7 @@ const SuperAdminUsers: React.FC = () => {
                     <TableCell className="text-xs">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>
+
                 ))}
               </TableBody>
             </Table>
