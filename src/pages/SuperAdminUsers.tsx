@@ -28,15 +28,22 @@ const SuperAdminUsers: React.FC = () => {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.role !== 'super_admin') return;
     (async () => {
       const { data, error } = await (supabase as any).rpc('get_all_users_for_super_admin');
-      if (!error && data) setRows(data as Row[]);
+      if (error) {
+        console.error('get_all_users_for_super_admin failed:', error);
+        setError(error.message || 'Failed to load users');
+      } else if (data) {
+        setRows(data as Row[]);
+      }
       setLoading(false);
     })();
   }, [profile]);
+
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
