@@ -401,7 +401,37 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                     <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                         {mediaType.toUpperCase()}
                     </div>
+                    {/* Replace buttons — swap media without removing first */}
+                    <div className="absolute bottom-2 right-2 flex gap-1">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={isUploading}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
+                            className="h-7 px-2 text-[11px]"
+                            title="Replace with image"
+                        >
+                            {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3 mr-1" />}
+                            Image
+                        </Button>
+                        {hasPremiumAccess && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={isUploading}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); videoInputRef.current?.click(); }}
+                                className="h-7 px-2 text-[11px]"
+                                title="Replace with GIF/video"
+                            >
+                                <Film className="h-3 w-3 mr-1" />
+                                GIF/Video
+                            </Button>
+                        )}
+                    </div>
                 </div>
+
             ) : (
                 <div className="space-y-2">
                     {/* Image Options Row */}
