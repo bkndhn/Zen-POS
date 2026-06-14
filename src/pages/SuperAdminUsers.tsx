@@ -79,6 +79,13 @@ const SuperAdminUsers: React.FC = () => {
 
         <Input placeholder="Search by name, email, hotel or parent admin..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-md" />
 
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-sm px-3 py-2">
+            {error}
+          </div>
+        )}
+
+
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><UsersIcon className="w-4 h-4" /> Admins ({admins.length})</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
