@@ -569,20 +569,7 @@ export const ShopSettingsForm = () => {
                     </CardDescription>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {[
-                            { id: 'analytics', label: 'Analytics' },
-                            { id: 'billing', label: 'Billing' },
-                            { id: 'serviceArea', label: 'Service' },
-                            { id: 'kitchen', label: 'Kitchen' },
-                            { id: 'tables', label: 'Tables' },
-                            { id: 'tableBilling', label: 'Table Billing' },
-                            { id: 'items', label: 'Items' },
-                            { id: 'expenses', label: 'Expenses' },
-                            { id: 'reports', label: 'Reports' },
-                            { id: 'customers', label: 'CRM' },
-                            { id: 'qrMenu', label: 'QR Menu' },
-                            { id: 'settings', label: 'Settings' }
-                        ]
+                        {(require('@/config/navItems') as typeof import('@/config/navItems')).BOTTOM_NAV_OPTIONS
                             .filter(page => hasAccess(page.id as any))
                             .map((page) => (
                                 <div key={page.id} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors">
@@ -603,6 +590,7 @@ export const ShopSettingsForm = () => {
                                 </div>
                             ))}
                     </div>
+
                 </div>
 
                 <Button onClick={handleSave} disabled={saving || isAllBranchesView} className="w-full md:w-auto">
