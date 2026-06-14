@@ -308,7 +308,8 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
+
                 onChange={handleImageSelect}
                 className="hidden"
             />
