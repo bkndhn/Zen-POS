@@ -571,7 +571,8 @@ export const ShopSettingsForm = () => {
                     </CardDescription>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {(require('@/config/navItems') as typeof import('@/config/navItems')).BOTTOM_NAV_OPTIONS
+                        {BOTTOM_NAV_OPTIONS
+
                             .filter(page => hasAccess(page.id as any))
                             .map((page) => (
                                 <div key={page.id} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors">
