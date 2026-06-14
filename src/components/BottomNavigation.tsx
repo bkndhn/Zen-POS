@@ -125,7 +125,9 @@ export const BottomNavigation: React.FC = () => {
         className="relative flex justify-around items-center py-1.5 sm:py-2 px-0.5 sm:px-1"
         style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}
       >
-        {navItems.map(({ to, icon: Icon, label }) => {
+        {navItems.map((item) => {
+          const { to, icon: Icon } = item;
+          const label = item.shortLabel || item.label;
           const isActive = location.pathname === to ||
             (to === '/billing' && location.pathname === '/');
 
@@ -154,6 +156,7 @@ export const BottomNavigation: React.FC = () => {
             </NavLink>
           );
         })}
+
       </div>
     </nav>
   );
