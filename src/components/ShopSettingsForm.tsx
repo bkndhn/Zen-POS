@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { Store, Upload, X, Facebook, Instagram, Phone, Navigation, Link2, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { BOTTOM_NAV_OPTIONS } from '@/config/navItems';
+
 
 export const ShopSettingsForm = () => {
     const { profile } = useAuth();
