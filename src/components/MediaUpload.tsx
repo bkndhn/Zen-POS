@@ -493,8 +493,9 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
             )}
 
             <p className="text-xs text-muted-foreground text-center">
-                Image: Max 5MB (compressed) |
-                {hasPremiumAccess && <span className="text-purple-600"> GIF/Video: Max 1MB</span>}
+                Image: Max 2MB
+                {hasPremiumAccess && <span className="text-purple-600"> | GIF/Video: Max 5MB</span>}
+
             </p>
         </div>
     );
