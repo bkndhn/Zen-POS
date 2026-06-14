@@ -4,34 +4,10 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useBranch } from '@/contexts/BranchContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import {
-  ShoppingCart,
-  Package,
-  Receipt,
-  BarChart3,
-  TrendingUp,
-  Settings,
-  ClipboardList,
-  LayoutGrid,
-  ChefHat,
-  Users,
-  QrCode
-} from 'lucide-react';
+import { ALL_NAV_ITEMS } from '@/config/navItems';
 
-const allNavItems = [
-  { to: '/analytics', icon: TrendingUp, label: 'Analytics', page: 'analytics' as const },
-  { to: '/billing', icon: ShoppingCart, label: 'Billing', page: 'billing' as const },
-  { to: '/kitchen', icon: ChefHat, label: 'Kitchen', page: 'kitchen' as const },
-  { to: '/service-area', icon: ClipboardList, label: 'Service', page: 'serviceArea' as const },
-  { to: '/tables', icon: LayoutGrid, label: 'Tables', page: 'tables' as const },
-  { to: '/table-billing', icon: Receipt, label: 'Table Bill', page: 'tableBilling' as const },
-  { to: '/items', icon: Package, label: 'Items', page: 'items' as const },
-  { to: '/expenses', icon: Receipt, label: 'Expenses', page: 'expenses' as const },
-  { to: '/reports', icon: BarChart3, label: 'Reports', page: 'reports' as const },
-  { to: '/crm', icon: Users, label: 'CRM', page: 'customers' as const },
-  { to: '/qr-menu', icon: QrCode, label: 'QR Menu', page: 'qrMenu' as const },
-  { to: '/settings', icon: Settings, label: 'Settings', page: 'settings' as const },
-];
+const allNavItems = ALL_NAV_ITEMS.filter(i => i.bottomNav);
+
 
 
 export const BottomNavigation: React.FC = () => {
@@ -149,7 +125,9 @@ export const BottomNavigation: React.FC = () => {
         className="relative flex justify-around items-center py-1.5 sm:py-2 px-0.5 sm:px-1"
         style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}
       >
-        {navItems.map(({ to, icon: Icon, label }) => {
+        {navItems.map((item) => {
+          const { to, icon: Icon } = item;
+          const label = item.shortLabel || item.label;
           const isActive = location.pathname === to ||
             (to === '/billing' && location.pathname === '/');
 
@@ -178,6 +156,7 @@ export const BottomNavigation: React.FC = () => {
             </NavLink>
           );
         })}
+
       </div>
     </nav>
   );

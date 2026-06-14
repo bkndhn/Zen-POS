@@ -9,27 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { LogOut, User, Hotel, Menu, LayoutDashboard, ShoppingCart, Package, Receipt, BarChart3, TrendingUp, Users, Settings, ClipboardList, ChefHat, LayoutGrid, UserCircle, QrCode } from 'lucide-react';
+import { LogOut, User, Hotel, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BranchSwitcher } from './BranchSwitcher';
+import { ALL_NAV_ITEMS } from '@/config/navItems';
 
-const allNavItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', page: 'dashboard' as const },
-  { to: '/analytics', icon: TrendingUp, label: 'Analytics', page: 'analytics' as const },
-  { to: '/billing', icon: ShoppingCart, label: 'Billing', page: 'billing' as const },
-  { to: '/service-area', icon: ClipboardList, label: 'Service Area', page: 'serviceArea' as const },
-  { to: '/kitchen', icon: ChefHat, label: 'Kitchen Display', page: 'kitchen' as const },
-  { to: '/tables', icon: LayoutGrid, label: 'Tables', page: 'tables' as const },
-  { to: '/table-billing', icon: Receipt, label: 'Table Billing', page: 'tableBilling' as const },
-  { to: '/items', icon: Package, label: 'Items', page: 'items' as const },
-  { to: '/expenses', icon: Receipt, label: 'Expenses', page: 'expenses' as const },
-  { to: '/reports', icon: BarChart3, label: 'Reports', page: 'reports' as const },
-  { to: '/crm', icon: UserCircle, label: 'CRM', page: 'customers' as const },
-  { to: '/qr-menu', icon: QrCode, label: 'QR Menu', page: 'qrMenu' as const },
-  { to: '/users', icon: Users, label: 'Users', page: 'users' as const },
-  { to: '/settings', icon: Settings, label: 'Settings', page: 'settings' as const },
-];
+const allNavItems = ALL_NAV_ITEMS;
+
 
 export const Header: React.FC = () => {
   const { t } = useTranslation();

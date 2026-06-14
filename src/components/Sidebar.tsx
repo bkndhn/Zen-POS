@@ -3,51 +3,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Receipt,
-  BarChart3,
-  TrendingUp,
-  Users,
-  Settings,
-  ClipboardList,
-  ChefHat,
-  LayoutGrid,
-  UserCircle,
-  QrCode,
-  Truck,
-  ShoppingBag,
-  Boxes,
-  ArrowRightLeft,
-  Undo2,
-  History
-} from 'lucide-react';
+import { Users, Settings } from 'lucide-react';
+import { ALL_NAV_ITEMS } from '@/config/navItems';
 
-const allNavItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', page: 'dashboard' as const },
-  { to: '/analytics', icon: TrendingUp, label: 'Analytics', page: 'analytics' as const },
-  { to: '/billing', icon: ShoppingCart, label: 'Billing', page: 'billing' as const },
-  { to: '/kitchen', icon: ChefHat, label: 'Kitchen Display', page: 'kitchen' as const },
-  { to: '/service-area', icon: ClipboardList, label: 'Service Area', page: 'serviceArea' as const },
-  { to: '/tables', icon: LayoutGrid, label: 'Tables', page: 'tables' as const },
-  { to: '/table-billing', icon: Receipt, label: 'Table Billing', page: 'tableBilling' as const },
-  { to: '/items', icon: Package, label: 'Items', page: 'items' as const },
-  { to: '/suppliers', icon: Truck, label: 'Suppliers', page: 'suppliers' as const },
-  { to: '/purchases', icon: ShoppingBag, label: 'Purchases', page: 'purchases' as const },
-  { to: '/stock', icon: Boxes, label: 'Stock', page: 'stock' as const },
-  { to: '/stock-transfers', icon: ArrowRightLeft, label: 'Stock Transfers', page: 'stock' as const },
-  { to: '/purchase-returns', icon: Undo2, label: 'Purchase Returns', page: 'purchases' as const },
-  { to: '/stock-ledger', icon: History, label: 'Audit Trail', page: 'stock' as const },
-  { to: '/stock-reports', icon: BarChart3, label: 'Stock Reports', page: 'stock' as const },
-  { to: '/expenses', icon: Receipt, label: 'Expenses', page: 'expenses' as const },
-  { to: '/reports', icon: BarChart3, label: 'Reports', page: 'reports' as const },
-  { to: '/crm', icon: UserCircle, label: 'CRM', page: 'customers' as const },
-  { to: '/qr-menu', icon: QrCode, label: 'QR Menu', page: 'qrMenu' as const },
-  { to: '/users', icon: Users, label: 'Users', page: 'users' as const },
-  { to: '/settings', icon: Settings, label: 'Settings', page: 'settings' as const },
-];
+const allNavItems = ALL_NAV_ITEMS;
+
+
 
 
 export const Sidebar: React.FC = () => {

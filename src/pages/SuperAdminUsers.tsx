@@ -28,15 +28,22 @@ const SuperAdminUsers: React.FC = () => {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.role !== 'super_admin') return;
     (async () => {
       const { data, error } = await (supabase as any).rpc('get_all_users_for_super_admin');
-      if (!error && data) setRows(data as Row[]);
+      if (error) {
+        console.error('get_all_users_for_super_admin failed:', error);
+        setError(error.message || 'Failed to load users');
+      } else if (data) {
+        setRows(data as Row[]);
+      }
       setLoading(false);
     })();
   }, [profile]);
+
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -72,6 +79,13 @@ const SuperAdminUsers: React.FC = () => {
 
         <Input placeholder="Search by name, email, hotel or parent admin..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-md" />
 
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-sm px-3 py-2">
+            {error}
+          </div>
+        )}
+
+
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><UsersIcon className="w-4 h-4" /> Admins ({admins.length})</CardTitle></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -92,7 +106,12 @@ const SuperAdminUsers: React.FC = () => {
                 {!loading && admins.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No admins</TableCell></TableRow>}
                 {admins.map(r => (
                   <TableRow key={r.profile_id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {r.name}
+                        <Badge variant="default" className="text-[10px]">Admin</Badge>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs">{r.email || '—'}</TableCell>
                     <TableCell>{r.hotel_name || '—'}</TableCell>
                     <TableCell>{statusBadge(r.status)}</TableCell>
@@ -100,6 +119,7 @@ const SuperAdminUsers: React.FC = () => {
                     <TableCell className="text-xs">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>
+
                 ))}
               </TableBody>
             </Table>

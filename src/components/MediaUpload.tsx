@@ -125,51 +125,59 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
         }
     };
 
+    const clearInputs = () => {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        if (videoInputRef.current) videoInputRef.current.value = '';
+    };
+
     const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         // Validate file type
-        if (!file.type.startsWith('image/')) {
+        if (!file.type.startsWith('image/') || file.type === 'image/gif') {
             toast({
                 title: "Invalid file type",
-                description: "Please select an image file",
+                description: "Please select an image file (JPG, PNG, WEBP)",
                 variant: "destructive"
             });
+            clearInputs();
             return;
         }
 
-        // Validate file size (max 5MB for images)
-        if (file.size > 5 * 1024 * 1024) {
+        // Validate file size (max 2MB for images per spec)
+        if (file.size > 2 * 1024 * 1024) {
             toast({
                 title: "File too large",
-                description: "Please select an image smaller than 5MB",
+                description: `Image is ${(file.size / 1024 / 1024).toFixed(1)}MB. Max allowed is 2MB.`,
                 variant: "destructive"
             });
+            clearInputs();
             return;
         }
 
         try {
             setIsUploading(true);
             const url = await uploadItemImage(file, itemId || Date.now().toString());
-            onImageChange(url);
-            onVideoChange('');
+            // Order matters: switch type first, then clear the other URL, then set the new one
             onMediaTypeChange('image');
+            onVideoChange('');
+            onImageChange(url);
             toast({
                 title: "Image uploaded",
                 description: "Image has been compressed and uploaded"
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload error:', error);
             toast({
                 title: "Upload failed",
-                description: "Failed to upload image",
+                description: error?.message || "Failed to upload image. Please try again.",
                 variant: "destructive"
             });
         } finally {
             setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            if (cameraInputRef.current) cameraInputRef.current.value = '';
+            clearInputs();
         }
     };
 
@@ -187,6 +195,18 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                 description: "Please select a GIF or video file (MP4, WebM)",
                 variant: "destructive"
             });
+            clearInputs();
+            return;
+        }
+
+        // Validate file size (max 5MB for GIF/video per spec)
+        if (file.size > 5 * 1024 * 1024) {
+            toast({
+                title: "File too large",
+                description: `${isGif ? 'GIF' : 'Video'} is ${(file.size / 1024 / 1024).toFixed(1)}MB. Max allowed is 5MB.`,
+                variant: "destructive"
+            });
+            clearInputs();
             return;
         }
 
@@ -195,54 +215,46 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
 
             let uploadBlob: Blob = file;
             let finalType = file.type;
-            const maxSizeKB = 1024; // 1MB limit for items
+            const targetSizeKB = 1024; // try to keep CDN payload under 1MB for fast playback
 
-            // Compress if file is too large
-            if (file.size > maxSizeKB * 1024) {
-                toast({
-                    title: "Compressing...",
-                    description: `${isGif ? 'GIF' : 'Video'} is ${(file.size / 1024 / 1024).toFixed(1)}MB, compressing to 1MB`,
-                });
-
+            // Best-effort compression for files over 1MB
+            if (file.size > targetSizeKB * 1024) {
                 try {
                     if (isGif) {
-                        // Convert GIF to compressed JPEG (loses animation but much smaller)
-                        uploadBlob = await compressGifToImage(file, maxSizeKB);
+                        uploadBlob = await compressGifToImage(file, targetSizeKB);
                         finalType = 'image/jpeg';
                         toast({
-                            title: "GIF Compressed",
+                            title: "GIF compressed",
                             description: `Converted to image: ${(uploadBlob.size / 1024).toFixed(0)}KB`,
                         });
                     } else {
-                        // Compress video
-                        uploadBlob = await compressVideo(file, maxSizeKB);
+                        uploadBlob = await compressVideo(file, targetSizeKB);
                         finalType = 'video/webm';
                         toast({
-                            title: "Video Compressed",
+                            title: "Video compressed",
                             description: `Reduced to ${(uploadBlob.size / 1024).toFixed(0)}KB`,
                         });
                     }
                 } catch (compressionError) {
                     console.warn('Compression failed, uploading original:', compressionError);
-                    // Fallback: upload original file if compression fails
                     uploadBlob = file;
                     finalType = file.type;
-                    toast({
-                        title: "Uploading original",
-                        description: "Compression failed, uploading original file",
-                    });
                 }
             }
 
-            const fileExt = isGif && file.size > maxSizeKB * 1024 ? 'jpg' :
-                isGif ? 'gif' :
-                    isVideo && uploadBlob.type === 'video/webm' ? 'webm' :
-                        file.name.split('.').pop() || 'mp4';
-            const fileName = `${adminId}/${itemId || Date.now()}_media.${fileExt}`;
+            const compressedGif = isGif && uploadBlob.type === 'image/jpeg';
+            const fileExt = compressedGif ? 'jpg'
+                : isGif ? 'gif'
+                : (isVideo && uploadBlob.type === 'video/webm') ? 'webm'
+                : (file.name.split('.').pop() || 'mp4');
+
+            // Always-unique filename so re-uploads cannot collide / hit stale CDN cache
+            const rand = Math.random().toString(36).slice(2, 8);
+            const fileName = `${adminId}/${itemId || Date.now()}_${Date.now()}_${rand}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('item-images')
-                .upload(fileName, uploadBlob, { upsert: true });
+                .upload(fileName, uploadBlob, { upsert: true, contentType: finalType });
 
             if (uploadError) throw uploadError;
 
@@ -250,36 +262,32 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                 .from('item-images')
                 .getPublicUrl(fileName);
 
-            // Determine final media type
-            // If we converted GIF to JPEG, treat as image
-            const compressedGif = isGif && file.size > maxSizeKB * 1024;
             const mediaType = compressedGif ? 'image' : (isGif ? 'gif' : 'video');
 
-            if (mediaType === 'image') {
-                // Compressed GIF goes to image_url
-                onImageChange(publicUrl);
-                onVideoChange('');
-            } else {
-                // GIF/video goes to video_url
-                onVideoChange(publicUrl);
-                onImageChange('');
-            }
+            // Order matters: switch type first, clear the other URL, then set the new one
             onMediaTypeChange(mediaType as 'image' | 'gif' | 'video');
+            if (mediaType === 'image') {
+                onVideoChange('');
+                onImageChange(publicUrl);
+            } else {
+                onImageChange('');
+                onVideoChange(publicUrl);
+            }
 
             toast({
                 title: isGif ? "GIF uploaded" : "Video uploaded",
                 description: `${isGif ? 'GIF' : 'Video'} has been uploaded successfully`
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload error:', error);
             toast({
                 title: "Upload failed",
-                description: "Failed to upload media",
+                description: error?.message || "Failed to upload media. Please try again.",
                 variant: "destructive"
             });
         } finally {
             setIsUploading(false);
-            if (videoInputRef.current) videoInputRef.current.value = '';
+            clearInputs();
         }
     };
 
@@ -287,7 +295,9 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
         onImageChange('');
         onVideoChange('');
         onMediaTypeChange('image');
+        clearInputs();
     };
+
 
     // Check which URL is present - image_url for images, video_url for gif/video
     const currentUrl = videoUrl || imageUrl;
@@ -298,7 +308,8 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
+
                 onChange={handleImageSelect}
                 className="hidden"
             />
@@ -391,7 +402,37 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
                     <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                         {mediaType.toUpperCase()}
                     </div>
+                    {/* Replace buttons — swap media without removing first */}
+                    <div className="absolute bottom-2 right-2 flex gap-1">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={isUploading}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
+                            className="h-7 px-2 text-[11px]"
+                            title="Replace with image"
+                        >
+                            {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3 mr-1" />}
+                            Image
+                        </Button>
+                        {hasPremiumAccess && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={isUploading}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); videoInputRef.current?.click(); }}
+                                className="h-7 px-2 text-[11px]"
+                                title="Replace with GIF/video"
+                            >
+                                <Film className="h-3 w-3 mr-1" />
+                                GIF/Video
+                            </Button>
+                        )}
+                    </div>
                 </div>
+
             ) : (
                 <div className="space-y-2">
                     {/* Image Options Row */}
@@ -453,8 +494,9 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
             )}
 
             <p className="text-xs text-muted-foreground text-center">
-                Image: Max 5MB (compressed) |
-                {hasPremiumAccess && <span className="text-purple-600"> GIF/Video: Max 1MB</span>}
+                Image: Max 2MB
+                {hasPremiumAccess && <span className="text-purple-600"> | GIF/Video: Max 5MB</span>}
+
             </p>
         </div>
     );
