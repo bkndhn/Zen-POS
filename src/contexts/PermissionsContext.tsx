@@ -265,7 +265,10 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
             tables: '/tables',
             customers: '/crm',
             qrMenu: '/qr-menu',
-            tableBilling: '/table-billing'
+            tableBilling: '/table-billing',
+            suppliers: '/suppliers',
+            purchases: '/purchases',
+            stock: '/stock',
         };
 
         const handlePermissionChange = (userId: string, pageName: string, hasAccess: boolean) => {
