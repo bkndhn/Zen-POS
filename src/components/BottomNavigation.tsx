@@ -5,8 +5,11 @@ import { cn } from '@/lib/utils';
 import { useBranch } from '@/contexts/BranchContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { MoreHorizontal } from 'lucide-react';
 
 const allNavItems = ALL_NAV_ITEMS.filter(i => i.bottomNav);
+const MAX_BOTTOM_VISIBLE = 5; // shown directly; rest go behind "More"
 
 
 
@@ -60,19 +63,16 @@ export const BottomNavigation: React.FC = () => {
           const { data } = await query.maybeSingle();
 
           if (data?.visible_nav_pages && Array.isArray(data.visible_nav_pages)) {
-            // Auto-inject any new pages that didn't exist when the user last saved
+            // Respect the user's explicit selection exactly — do NOT auto-inject pages
+            // they have intentionally disabled.
             const savedPages = data.visible_nav_pages as string[];
-            const requiredNewPages = ['tableBilling'];
-            const updated = [...savedPages];
-            requiredNewPages.forEach(p => { if (!updated.includes(p)) updated.push(p); });
-            setVisiblePages(updated);
-            // Update localStorage cache
+            setVisiblePages(savedPages);
             const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
             const cached = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
             if (cached) {
               try {
                 const parsed = JSON.parse(cached);
-                parsed.visiblePages = updated;
+                parsed.visiblePages = savedPages;
                 localStorage.setItem(headerKey, JSON.stringify(parsed));
               } catch { }
             }
@@ -111,52 +111,108 @@ export const BottomNavigation: React.FC = () => {
   // Super Admin doesn't need bottom navigation - they only see Users page
   if (profile.role === 'super_admin') return null;
 
-  // Filter nav items based on permissions AND visibility settings
+  // Filter nav items by permissions AND the user's explicit visibility selection.
+  // If visiblePages is empty (never saved) fall back to permission-only filtering.
   const navItems = allNavItems
     .filter(item => hasAccess(item.page))
     .filter(item => visiblePages.length === 0 || visiblePages.includes(item.page as string));
 
+  // Split into primary tabs + "More" overflow when too many are enabled
+  const needsMore = navItems.length > MAX_BOTTOM_VISIBLE;
+  const primary = needsMore ? navItems.slice(0, MAX_BOTTOM_VISIBLE - 1) : navItems;
+  const overflow = needsMore ? navItems.slice(MAX_BOTTOM_VISIBLE - 1) : [];
+  const isOverflowActive = overflow.some(i => location.pathname === i.to);
+
+  const renderTab = (item: typeof navItems[number]) => {
+    const { to, icon: Icon } = item;
+    const label = item.shortLabel || item.label;
+    const isActive = location.pathname === to || (to === '/billing' && location.pathname === '/');
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        className="flex flex-col items-center justify-center py-0.5 px-0.5 min-w-0 flex-1"
+      >
+        <div className={cn(
+          "flex items-center justify-center transition-all duration-300",
+          isActive
+            ? "w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-primary to-primary/90 shadow-lg shadow-primary/30"
+            : "w-7 h-7 sm:w-8 sm:h-8"
+        )}>
+          <Icon className={cn(
+            "transition-all duration-300",
+            isActive ? "w-4 h-4 sm:w-5 sm:h-5 text-white" : "w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground"
+          )} />
+        </div>
+        <span className={cn(
+          "text-[11px] sm:text-[12px] mt-0.5 transition-all duration-300 font-medium truncate max-w-full",
+          isActive ? "text-primary" : "text-muted-foreground"
+        )}>{label}</span>
+      </NavLink>
+    );
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:hidden z-50">
-      {/* Premium clean background with subtle shadow - dark mode aware */}
       <div className="absolute inset-0 bg-card shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] border-t border-border" />
 
       <div
         className="relative flex justify-around items-center py-1.5 sm:py-2 px-0.5 sm:px-1"
         style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}
       >
-        {navItems.map((item) => {
-          const { to, icon: Icon } = item;
-          const label = item.shortLabel || item.label;
-          const isActive = location.pathname === to ||
-            (to === '/billing' && location.pathname === '/');
+        {primary.map(renderTab)}
 
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              className="flex flex-col items-center justify-center py-0.5 px-0.5 min-w-0 flex-1"
-            >
-              {/* Icon container - rounded square for active, plain for inactive */}
-              <div className={cn(
-                "flex items-center justify-center transition-all duration-300",
-                isActive
-                  ? "w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-primary to-primary/90 shadow-lg shadow-primary/30"
-                  : "w-7 h-7 sm:w-8 sm:h-8"
-              )}>
-                <Icon className={cn(
-                  "transition-all duration-300",
-                  isActive ? "w-4 h-4 sm:w-5 sm:h-5 text-white" : "w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground"
-                )} />
+        {needsMore && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                className="flex flex-col items-center justify-center py-0.5 px-0.5 min-w-0 flex-1"
+                aria-label="More navigation options"
+              >
+                <div className={cn(
+                  "flex items-center justify-center transition-all duration-300",
+                  isOverflowActive
+                    ? "w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-primary to-primary/90 shadow-lg shadow-primary/30"
+                    : "w-7 h-7 sm:w-8 sm:h-8"
+                )}>
+                  <MoreHorizontal className={cn(
+                    "transition-all duration-300",
+                    isOverflowActive ? "w-4 h-4 sm:w-5 sm:h-5 text-white" : "w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground"
+                  )} />
+                </div>
+                <span className={cn(
+                  "text-[11px] sm:text-[12px] mt-0.5 font-medium truncate max-w-full",
+                  isOverflowActive ? "text-primary" : "text-muted-foreground"
+                )}>More</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-2xl pb-8 max-h-[70vh] overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>More</SheetTitle>
+              </SheetHeader>
+              <div className="grid grid-cols-4 gap-3 mt-4">
+                {overflow.map(item => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.to;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-colors",
+                        isActive ? "bg-primary/10 border-primary/40 text-primary" : "bg-card hover:bg-muted border-border text-foreground"
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[11px] font-medium text-center leading-tight">{item.shortLabel || item.label}</span>
+                    </NavLink>
+                  );
+                })}
               </div>
-              <span className={cn(
-                "text-[11px] sm:text-[12px] mt-0.5 transition-all duration-300 font-medium truncate max-w-full",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}>{label}</span>
-            </NavLink>
-          );
-        })}
-
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </nav>
   );

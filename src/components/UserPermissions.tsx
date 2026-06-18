@@ -14,22 +14,25 @@ interface UserPermission {
   has_access: boolean;
 }
 
-const AVAILABLE_PAGES = [
-  { name: 'dashboard', label: 'Dashboard', description: 'View dashboard overview' },
-  { name: 'analytics', label: 'Analytics', description: 'View sales analytics' },
-  { name: 'billing', label: 'Billing', description: 'Create and manage bills' },
-  { name: 'serviceArea', label: 'Service Area', description: 'Manage order service' },
-  { name: 'kitchen', label: 'Kitchen Display', description: 'Kitchen order screen' },
-  { name: 'tables', label: 'Tables', description: 'Manage tables' },
-  { name: 'tableBilling', label: 'Table Billing', description: 'Generate bills for table orders' },
-  { name: 'customerDisplay', label: 'Customer Display', description: 'Public order board' },
-  { name: 'items', label: 'Items', description: 'Manage menu items' },
-  { name: 'expenses', label: 'Expenses', description: 'Track expenses' },
-  { name: 'reports', label: 'Reports', description: 'View bill reports' },
-  { name: 'customers', label: 'CRM', description: 'Customer relationship management' },
-  { name: 'qrMenu', label: 'QR Menu', description: 'QR code menu settings' },
-  { name: 'settings', label: 'Settings', description: 'App settings' },
-];
+import { ALL_NAV_ITEMS } from '@/config/navItems';
+
+// Build the permission grid from the single navigation source of truth so any new
+// page added in navItems.ts automatically appears here for super-admin/admin to toggle.
+const AVAILABLE_PAGES: { name: string; label: string; description: string }[] = (() => {
+  const seen = new Set<string>();
+  const out: { name: string; label: string; description: string }[] = [];
+  for (const item of ALL_NAV_ITEMS) {
+    if (item.page === 'users') continue; // Users page access is role-based, not toggled
+    if (seen.has(item.page as string)) continue;
+    seen.add(item.page as string);
+    out.push({ name: item.page as string, label: item.label, description: `Access ${item.label}` });
+  }
+  // Non-nav permissions that still need toggles
+  if (!seen.has('customerDisplay')) {
+    out.push({ name: 'customerDisplay', label: 'Customer Display', description: 'Public order board' });
+  }
+  return out;
+})();
 
 
 interface UserPermissionsProps {

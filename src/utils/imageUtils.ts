@@ -75,11 +75,18 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
     uploadBlob = file;
   }
 
+  // Storage RLS requires the first folder segment to equal the user's admin_id.
+  // Fetch it from the DB so the upload always satisfies the policy regardless of caller.
+  const { data: adminId, error: adminErr } = await supabase.rpc('get_user_admin_id');
+  if (adminErr || !adminId) {
+    throw new Error('Unable to resolve account for upload. Please sign in again.');
+  }
+
   // Always-unique filename so re-uploads never collide / hit stale CDN cache
   const timestamp = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
   const fileName = `${itemId}_${timestamp}_${rand}.jpg`;
-  const filePath = `items/${fileName}`;
+  const filePath = `${adminId}/items/${fileName}`;
 
   const { error } = await supabase.storage
     .from('item-images')
