@@ -36,6 +36,7 @@ interface Item {
   stock_quantity?: number;
   minimum_stock_alert?: number;
   quantity_step?: number;
+  quick_chips?: string[];
   display_order?: number;
   branch_id?: string | null;
   // Aggregated meta for All-Branches view

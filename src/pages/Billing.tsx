@@ -17,7 +17,7 @@ import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { format } from 'date-fns';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
@@ -37,6 +37,7 @@ interface Item {
   unit?: string;
   base_value?: number;
   quantity_step?: number;
+  quick_chips?: string[];
   stock_quantity?: number;
   minimum_stock_alert?: number;
 }
@@ -641,11 +642,23 @@ const Billing = () => {
     return matchesSearch && matchesCategory && isInStock;
   });
   const addToCart = (item: Item) => {
-    setCart(prev => {
-      const existing = prev.find(cartItem => cartItem.id === item.id);
-      const step = item.quantity_step || 1;
-      const baseValue = item.base_value || 1;
+    const existing = cart.find(cartItem => cartItem.id === item.id);
+    const step = item.quantity_step || 1;
+    const baseValue = item.base_value || 1;
+    const targetQty = existing ? existing.quantity + step : baseValue;
 
+    if (item.stock_quantity !== null && item.stock_quantity !== undefined) {
+      if (targetQty > item.stock_quantity) {
+        toast({
+          title: '🚫 Stock Limit Exceeded',
+          description: `Cannot add more ${item.name}. Available stock: ${item.stock_quantity}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    setCart(prev => {
       if (existing) {
         return prev.map(cartItem => cartItem.id === item.id ? {
           ...cartItem,
@@ -667,12 +680,70 @@ const Billing = () => {
     // Clear search after adding to cart for user friendliness
     setSearchQuery('');
   };
+  // Quick Chip handler: parses chip text (e.g., "500 ml") and adds with converted quantity
+  const addToCartWithChip = (item: Item, chipText: string) => {
+    const chipQty = parseQuickChipQuantity(chipText, item.unit);
+    if (chipQty === null || chipQty <= 0) {
+      toast({
+        title: 'Invalid Chip',
+        description: `Could not parse "${chipText}"`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    const existing = cart.find(cartItem => cartItem.id === item.id);
+    const targetQty = existing ? existing.quantity + chipQty : chipQty;
+
+    if (item.stock_quantity !== null && item.stock_quantity !== undefined) {
+      if (targetQty > item.stock_quantity) {
+        toast({
+          title: '🚫 Stock Limit Exceeded',
+          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${item.stock_quantity}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    setCart(prev => {
+      if (existing) {
+        return prev.map(cartItem => cartItem.id === item.id ? {
+          ...cartItem,
+          quantity: cartItem.quantity + chipQty
+        } : cartItem);
+      }
+      return [...prev, { ...item, quantity: chipQty }];
+    });
+    if (isLowStock(item)) {
+      toast({
+        title: '⚠️ Low Stock',
+        description: `${item.name}: only ${item.stock_quantity} left (alert ≤ ${item.minimum_stock_alert})`,
+      });
+    }
+    setSearchQuery('');
+  };
   const updateQuantity = (id: string, change: number) => {
+    const cartItem = cart.find(c => c.id === id);
+    if (!cartItem) return;
+
+    const step = cartItem.quantity_step || 1;
+    const actualChange = change > 0 ? step : -step;
+    const targetQty = cartItem.quantity + actualChange;
+
+    if (actualChange > 0 && cartItem.stock_quantity !== null && cartItem.stock_quantity !== undefined) {
+      if (targetQty > cartItem.stock_quantity) {
+        toast({
+          title: '🚫 Stock Limit Exceeded',
+          description: `Cannot increase quantity. Available stock: ${cartItem.stock_quantity}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setCart(prev => {
       return prev.map(item => {
         if (item.id === id) {
-          const step = item.quantity_step || 1;
-          const actualChange = change > 0 ? step : -step;
           const newQuantity = Math.max(0, item.quantity + actualChange);
           return {
             ...item,
@@ -690,6 +761,17 @@ const Billing = () => {
   const saveQuantity = (id: string) => {
     const newQuantity = parseInt(tempQuantity);
     if (newQuantity && newQuantity > 0) {
+      const cartItem = cart.find(c => c.id === id);
+      if (cartItem && cartItem.stock_quantity !== null && cartItem.stock_quantity !== undefined) {
+        if (newQuantity > cartItem.stock_quantity) {
+          toast({
+            title: '🚫 Stock Limit Exceeded',
+            description: `Only ${cartItem.stock_quantity} units available in stock.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
       setCart(prev => prev.map(item => item.id === id ? {
         ...item,
         quantity: newQuantity
@@ -1100,7 +1182,8 @@ const Billing = () => {
             quantity: item.quantity,
             total: (item.quantity / (item.base_value || 1)) * item.price,
             unit: item.unit,
-            price: item.price
+            price: item.price,
+            base_value: item.base_value
           })),
           subtotal,
           total,
@@ -1143,7 +1226,9 @@ const Billing = () => {
             name: item.name,
             quantity: item.quantity,
             total: (item.quantity / (item.base_value || 1)) * item.price,
-            unit: item.unit
+            unit: item.unit,
+            price: item.price,
+            base_value: item.base_value
           })),
           subtotal,
           total,
@@ -1354,7 +1439,9 @@ const Billing = () => {
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price,
-                total: (item.quantity / (item.base_value || 1)) * item.price
+                total: (item.quantity / (item.base_value || 1)) * item.price,
+                unit: item.unit,
+                base_value: item.base_value
               })),
               subtotal,
               discount: paymentData.discount,
@@ -1394,7 +1481,9 @@ const Billing = () => {
             name: item.name,
             quantity: item.quantity,
             price: item.price,
-            total: (item.quantity / baseValue) * item.price
+            total: (item.quantity / baseValue) * item.price,
+            unit: item.unit,
+            base_value: item.base_value
           };
         }),
         subtotal: subtotal,
@@ -1642,9 +1731,24 @@ const Billing = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Button onClick={() => addToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold mt-auto rounded-lg shadow-sm">
-                    Add
-                  </Button>
+                  <div className="mt-auto space-y-1">
+                    <Button onClick={() => addToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm">
+                      Add
+                    </Button>
+                    {item.quick_chips && item.quick_chips.length > 0 && (
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {item.quick_chips.map((chip, idx) => (
+                          <button
+                            key={idx}
+                            onClick={(e) => { e.stopPropagation(); addToCartWithChip(item, chip); }}
+                            className="px-1.5 py-0.5 text-[10px] font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-150"
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>;
@@ -1695,7 +1799,7 @@ const Billing = () => {
                     </div>
 
                     {/* Controls */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-shrink-0">
                       {cartItem ? <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
                         <Button variant="ghost" size="sm" onClick={() => updateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
                           <Minus className="w-3 h-3" />
@@ -1706,9 +1810,20 @@ const Billing = () => {
                         <Button variant="ghost" size="sm" onClick={() => updateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full">
                           <Plus className="w-3 h-3" />
                         </Button>
-                      </div> : <Button onClick={() => addToCart(item)} className="bg-primary hover:bg-primary/90 text-white">
-                        Add
-                      </Button>}
+                      </div> : <div className="flex items-center gap-1.5">
+                        {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => (
+                          <button
+                            key={idx}
+                            onClick={(e) => { e.stopPropagation(); addToCartWithChip(item, chip); }}
+                            className="px-2 py-1 text-[11px] font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-150 whitespace-nowrap"
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                        <Button onClick={() => addToCart(item)} className="bg-primary hover:bg-primary/90 text-white">
+                          Add
+                        </Button>
+                      </div>}
                     </div>
                   </div>
                 </CardContent>
@@ -1757,7 +1872,9 @@ const Billing = () => {
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="font-bold text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">₹{item.price}</span>
+              <span className="font-bold text-sm bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                ₹{item.price}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}
+              </span>
 
               <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-600 rounded-full p-1">
                 <Button variant="ghost" size="sm" onClick={() => updateQuantity(item.id, -1)} className="h-8 w-8 p-0 rounded-full bg-[hsl(var(--btn-decrement))] text-white hover:opacity-80 shadow-sm">

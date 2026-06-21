@@ -1,5 +1,5 @@
 import { PrintData } from './bluetoothPrinter';
-import { formatQuantityWithUnit } from './timeUtils';
+import { formatQuantityWithUnit, getShortUnit } from './timeUtils';
 
 export const printBrowserReceipt = (data: PrintData) => {
   const width = data.printerWidth || '58mm';
@@ -12,11 +12,14 @@ export const printBrowserReceipt = (data: PrintData) => {
     total: data.total
   });
 
-  // Compact item rows with header: Item Name | Qty | Value (with two decimals)
-  const itemsHeader = `<tr style="font-weight:bold;border-bottom:1px dashed #000"><td>ITEM</td><td style="text-align:center">QTY</td><td style="text-align:right">Value</td></tr>`;
+  // Compact item rows with header: Item Name | Qty | Rate | Value (with two decimals)
+  const itemsHeader = `<tr style="font-weight:bold;border-bottom:1px dashed #000"><td>ITEM</td><td style="text-align:center">QTY</td><td style="text-align:right">RATE</td><td style="text-align:right">Value</td></tr>`;
   let itemsHtml = data.items.map(item => {
     const qtyWithUnit = formatQuantityWithUnit(item.quantity, item.unit);
-    return `<tr><td style="max-width:60%;word-break:break-word">${item.name}</td><td style="text-align:center">${qtyWithUnit}</td><td style="text-align:right">${item.total.toFixed(2)}</td></tr>`;
+    const shortUnit = getShortUnit(item.unit);
+    const baseValStr = item.base_value && item.base_value > 1 ? `${item.base_value}` : '';
+    const rateText = `₹${item.price.toFixed(0)}/${baseValStr}${shortUnit}`;
+    return `<tr><td style="max-width:40%;word-break:break-word">${item.name}</td><td style="text-align:center;white-space:nowrap">${qtyWithUnit}</td><td style="text-align:right;white-space:nowrap">${rateText}</td><td style="text-align:right">${item.total.toFixed(2)}</td></tr>`;
   }).join('');
 
   const totalItems = data.totalItemsCount || data.items.length;

@@ -39,6 +39,7 @@ interface Item {
   stock_quantity?: number;
   minimum_stock_alert?: number;
   quantity_step?: number;
+  quick_chips?: string[];
   image_url?: string;
   video_url?: string;
   media_type?: string;
@@ -68,6 +69,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     stock_quantity: item.stock_quantity?.toString() || '',
     minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
     quantity_step: item.quantity_step?.toString() || '1',
+    quick_chips: item.quick_chips?.join(', ') || '',
     category: item.category || '',
     image_url: item.image_url || '',
     video_url: item.video_url || '',
@@ -97,6 +99,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         stock_quantity: item.stock_quantity?.toString() || '',
         minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
         quantity_step: item.quantity_step?.toString() || '1',
+        quick_chips: item.quick_chips?.join(', ') || '',
         category: item.category || '',
         image_url: item.image_url || '',
         video_url: item.video_url || '',
@@ -202,6 +205,11 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
     setLoading(true);
     try {
+      // Parse quick_chips from comma-separated string to text array
+      const parsedChips = formData.quick_chips.trim()
+        ? formData.quick_chips.split(',').map(c => c.trim()).filter(c => c.length > 0)
+        : null;
+
       const updatePayload: any = {
         name: formData.name,
         description: formData.description || null,
@@ -212,6 +220,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         stock_quantity: formData.unlimited_stock ? null : parseFloat(formData.stock_quantity),
         minimum_stock_alert: formData.unlimited_stock ? null : (parseFloat(formData.minimum_stock_alert) || 0),
         quantity_step: parseFloat(formData.quantity_step),
+        quick_chips: parsedChips,
         category: formData.category || null,
         image_url: formData.image_url || null,
         video_url: formData.video_url || null,
@@ -454,6 +463,20 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Amount to +/- when clicking buttons in the billing page.
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="quick_chips">Quick Chips (optional)</Label>
+              <Input
+                id="quick_chips"
+                type="text"
+                value={formData.quick_chips}
+                onChange={(e) => setFormData({ ...formData, quick_chips: e.target.value })}
+                placeholder="e.g., 250 ml, 500 ml, 1 L"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Comma-separated quick-add buttons shown on the billing card.
               </p>
             </div>
 

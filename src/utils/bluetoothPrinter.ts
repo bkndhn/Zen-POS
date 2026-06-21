@@ -235,6 +235,7 @@ interface BillItem {
   price: number;
   total: number;
   unit?: string;
+  base_value?: number;
 }
 
 interface PrintData {
@@ -295,18 +296,24 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   const SEP = '-'.repeat(LINE_WIDTH);
   const SEP_DOUBLE = '='.repeat(LINE_WIDTH);
 
-  const { formatQuantityWithUnit } = await import('./timeUtils');
+  const { formatQuantityWithUnit, getShortUnit } = await import('./timeUtils');
 
   // Compact format helper - fits more on line
   const fmtLine = (left: string, right: string) => formatLine(left, right, LINE_WIDTH);
 
-  // Compact item line - name x qty = total
-  const fmtItem = (name: string, qty: number, total: number, unit?: string) => {
+  // Compact item line - name x qty @ price/unit = total
+  const fmtItem = (name: string, qty: number, price: number, total: number, unit?: string, baseValue?: number) => {
     const qtyWithUnit = formatQuantityWithUnit(qty, unit);
-    const right = `x${qtyWithUnit} = ${total.toFixed(0)}`;
+    const shortUnit = getShortUnit(unit);
+    const baseValStr = baseValue && baseValue > 1 ? `${baseValue}` : '';
+    const right = `x${qtyWithUnit} @ ${price.toFixed(0)}/${baseValStr}${shortUnit} = ${total.toFixed(0)}`;
     const maxName = LINE_WIDTH - right.length - 1;
-    const shortName = name.length > maxName ? name.substring(0, maxName) : name;
-    return padRight(shortName, maxName) + ' ' + right;
+    if (maxName >= 10) {
+      const shortName = name.length > maxName ? name.substring(0, maxName) : name;
+      return padRight(shortName, maxName) + ' ' + right;
+    } else {
+      return `${name}\n${' '.repeat(LINE_WIDTH - right.length)}${right}`;
+    }
   };
 
   // Initialize
@@ -359,7 +366,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // ITEMS
   data.items.forEach(item => {
-    commands.push(textToBytes(fmtItem(item.name, item.quantity, item.total, item.unit)));
+    commands.push(textToBytes(fmtItem(item.name, item.quantity, item.price, item.total, item.unit, item.base_value)));
     commands.push(FEED_LINE);
   });
 

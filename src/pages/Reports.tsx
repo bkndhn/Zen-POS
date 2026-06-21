@@ -145,7 +145,8 @@ const Reports: React.FC = () => {
           quantity: item.quantity,
           total: item.total,
           unit: item.items?.unit,
-          price: item.price
+          price: item.price,
+          base_value: item.items?.base_value
         })),
         subtotal,
         discount: bill.discount,
@@ -186,7 +187,9 @@ const Reports: React.FC = () => {
           name: item.items?.name || 'Item',
           quantity: item.quantity,
           total: item.total,
-          unit: item.items?.unit
+          unit: item.items?.unit,
+          price: item.price,
+          base_value: item.items?.base_value
         })),
         subtotal,
         discount: bill.discount,
@@ -489,7 +492,8 @@ const Reports: React.FC = () => {
                   name,
                   category,
                   is_active,
-                  unit
+                  unit,
+                  base_value
                 )
               )
             `)
@@ -817,7 +821,8 @@ const Reports: React.FC = () => {
           quantity: item.quantity,
           price: item.price,
           total: item.total,
-          unit: item.items?.unit
+          unit: item.items?.unit,
+          base_value: item.items?.base_value
         })) || [],
         subtotal: bill.bill_items?.reduce((sum, item) => sum + item.total, 0) || 0,
         paymentDetails: bill.payment_details as Record<string, number> | undefined,
@@ -873,7 +878,8 @@ const Reports: React.FC = () => {
           quantity: item.quantity,
           price: item.price,
           total: item.total,
-          unit: item.items?.unit
+          unit: item.items?.unit,
+          base_value: item.items?.base_value
         })) || [],
         subtotal: bill.bill_items?.reduce((sum, item) => sum + item.total, 0) || 0,
         paymentDetails: bill.payment_details as Record<string, number> | undefined,
@@ -1936,7 +1942,7 @@ const Reports: React.FC = () => {
                         {formatQuantityWithUnit(item.quantity, item.items?.unit)}
                       </div>
                       <div className="col-span-2 text-right text-[10px] text-muted-foreground">
-                        ₹{item.price.toFixed(0)}
+                        ₹{item.price.toFixed(0)}/{item.items?.base_value && item.items?.base_value > 1 ? `${item.items?.base_value}${getShortUnit(item.items?.unit)}` : getShortUnit(item.items?.unit)}
                       </div>
                       <div className="col-span-2 text-right font-bold text-xs">
                         ₹{item.total.toFixed(0)}

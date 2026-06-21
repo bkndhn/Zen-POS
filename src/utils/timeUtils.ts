@@ -180,3 +180,57 @@ export const calculateSmartQtyCount = (items: { quantity: number; unit?: string 
     return acc + qty;
   }, 0);
 };
+
+/**
+ * Parse a quick chip text (e.g., "500 ml", "1 KG", "6 PC") and calculate the
+ * correct quantity to add to the cart based on the item's database unit.
+ *
+ * Conversion rules:
+ * - chip "ml" → item unit "L": divide by 1000
+ * - chip "L"  → item unit "ml": multiply by 1000
+ * - chip "g"  → item unit "kg": divide by 1000
+ * - chip "kg" → item unit "g": multiply by 1000
+ * - Same unit or piece-based: use numeric value directly
+ *
+ * @param chipText - The chip label, e.g. "500 ml", "1.5 KG", "6 PC"
+ * @param itemUnit - The item's database unit string, e.g. "Liter (l)", "Gram (g)"
+ * @returns The quantity number to add to the cart, or null if parsing fails
+ */
+export const parseQuickChipQuantity = (chipText: string, itemUnit?: string): number | null => {
+  if (!chipText) return null;
+
+  // Extract numeric value and unit from chip text (e.g., "500 ml" → 500, "ml")
+  const match = chipText.trim().match(/^([\d.]+)\s*(.+)$/);
+  if (!match) return null;
+
+  const chipValue = parseFloat(match[1]);
+  if (isNaN(chipValue)) return null;
+
+  const chipUnitRaw = match[2].trim().toLowerCase();
+  const itemShortUnit = getShortUnit(itemUnit).toLowerCase();
+
+  // Normalize chip unit to short form
+  let chipShortUnit = chipUnitRaw;
+  if (chipUnitRaw === 'ml' || chipUnitRaw === 'milliliter') chipShortUnit = 'ml';
+  else if (chipUnitRaw === 'l' || chipUnitRaw === 'ltr' || chipUnitRaw === 'liter' || chipUnitRaw === 'litre') chipShortUnit = 'l';
+  else if (chipUnitRaw === 'g' || chipUnitRaw === 'gram' || chipUnitRaw === 'gm') chipShortUnit = 'g';
+  else if (chipUnitRaw === 'kg' || chipUnitRaw === 'kilogram') chipShortUnit = 'kg';
+  else if (chipUnitRaw === 'pc' || chipUnitRaw === 'pcs' || chipUnitRaw === 'piece' || chipUnitRaw === 'pieces') chipShortUnit = 'pc';
+  else if (chipUnitRaw === 'box' || chipUnitRaw === 'pack' || chipUnitRaw === 'bottle') chipShortUnit = chipUnitRaw;
+
+  // If units match exactly, return value as-is
+  if (chipShortUnit === itemShortUnit) return chipValue;
+
+  // Cross-unit conversions
+  // ml → L (divide by 1000)
+  if (chipShortUnit === 'ml' && itemShortUnit === 'l') return chipValue / 1000;
+  // L → ml (multiply by 1000)
+  if (chipShortUnit === 'l' && itemShortUnit === 'ml') return chipValue * 1000;
+  // g → kg (divide by 1000)
+  if (chipShortUnit === 'g' && itemShortUnit === 'kg') return chipValue / 1000;
+  // kg → g (multiply by 1000)
+  if (chipShortUnit === 'kg' && itemShortUnit === 'g') return chipValue * 1000;
+
+  // No conversion needed or unknown — use raw value
+  return chipValue;
+};

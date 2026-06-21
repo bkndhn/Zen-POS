@@ -24,7 +24,7 @@ interface BillImageData {
   shopName: string;
   address?: string;
   phone?: string;
-  items: Array<{ name: string; quantity: number; total: number; unit?: string; price: number }>;
+  items: Array<{ name: string; quantity: number; total: number; unit?: string; price: number; base_value?: number }>;
   subtotal: number;
   discount?: number;
   additionalCharges?: Array<{ name: string; amount: number }>;
@@ -53,12 +53,15 @@ interface BillImageData {
 const generateBillHtml = (data: BillImageData): string => {
   const itemRows = data.items.map((item, idx) => {
     const qty = `${formatQuantityWithUnit(item.quantity, item.unit)}`;
+    const shortUnit = getShortUnit(item.unit);
+    const baseValStr = item.base_value && item.base_value > 1 ? `${item.base_value}` : '';
+    const rateText = `₹${item.price.toFixed(0)}/${baseValStr}${shortUnit}`;
     const bgColor = idx % 2 === 0 ? '#f8f9ff' : '#ffffff';
     return `
       <tr style="background: ${bgColor};">
         <td style="padding: 10px 12px; font-weight: 600; color: #1a1a2e; border-bottom: 1px solid #eef0f6;">${escapeHtml(item.name)}</td>
         <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #4361ee; border-bottom: 1px solid #eef0f6;">${escapeHtml(qty)}</td>
-        <td style="padding: 10px 8px; text-align: right; color: #666; border-bottom: 1px solid #eef0f6;">₹${item.price.toFixed(0)}</td>
+        <td style="padding: 10px 8px; text-align: right; color: #666; border-bottom: 1px solid #eef0f6; white-space: nowrap;">${rateText}</td>
         <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #1a1a2e; border-bottom: 1px solid #eef0f6;">₹${item.total.toFixed(0)}</td>
       </tr>
     `;

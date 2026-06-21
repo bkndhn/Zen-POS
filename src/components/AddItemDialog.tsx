@@ -67,6 +67,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     stock_quantity: '',
     minimum_stock_alert: '',
     quantity_step: '1',
+    quick_chips: '',
     category: '',
     image_url: '',
     video_url: '',
@@ -214,6 +215,11 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         }
       }
 
+      // Parse quick_chips from comma-separated string to text array
+      const parsedChips = formData.quick_chips.trim()
+        ? formData.quick_chips.split(',').map(c => c.trim()).filter(c => c.length > 0)
+        : null;
+
       const insertPayload: any = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
@@ -224,6 +230,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         stock_quantity: formData.unlimited_stock ? null : parseFloat(formData.stock_quantity),
         minimum_stock_alert: formData.unlimited_stock ? null : (parseFloat(formData.minimum_stock_alert) || 0),
         quantity_step: parseFloat(formData.quantity_step),
+        quick_chips: parsedChips,
         category: formData.category === 'none' ? null : formData.category.trim(),
         image_url: formData.image_url.trim() || null,
         video_url: formData.video_url.trim() || null,
@@ -261,6 +268,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         stock_quantity: '',
         minimum_stock_alert: '',
         quantity_step: '1',
+        quick_chips: '',
         category: '',
         image_url: '',
         video_url: '',
@@ -498,6 +506,20 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             />
             <p className="text-xs text-muted-foreground mt-1">
               Amount to +/- when clicking buttons in the billing page.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="quick_chips">Quick Chips (optional)</Label>
+            <Input
+              id="quick_chips"
+              type="text"
+              value={formData.quick_chips}
+              onChange={(e) => setFormData({ ...formData, quick_chips: e.target.value })}
+              placeholder="e.g., 250 ml, 500 ml, 1 L"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Comma-separated quick-add buttons shown on the billing card.
             </p>
           </div>
 

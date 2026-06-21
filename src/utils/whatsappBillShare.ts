@@ -7,7 +7,7 @@ import { getShortUnit } from '@/utils/timeUtils';
 interface BillShareData {
   billNo: string;
   shopName: string;
-  items: Array<{ name: string; quantity: number; total: number; unit?: string }>;
+  items: Array<{ name: string; quantity: number; total: number; unit?: string; price?: number; base_value?: number }>;
   subtotal: number;
   discount?: number;
   additionalCharges?: Array<{ name: string; amount: number }>;
@@ -45,7 +45,10 @@ export const formatBillMessage = (data: BillShareData): string => {
   data.items.forEach((item) => {
     const shortUnit = getShortUnit(item.unit);
     const qty = `${item.quantity} ${shortUnit}`;
-    message += `• ${item.name} (${qty}) - ₹${item.total.toFixed(0)}\n`;
+    const rateVal = item.price ?? (item.total / (item.quantity || 1));
+    const baseValStr = item.base_value && item.base_value > 1 ? `${item.base_value}` : '';
+    const rateText = `₹${rateVal.toFixed(0)}/${baseValStr}${shortUnit}`;
+    message += `• ${item.name} (${qty} @ ${rateText}) - ₹${item.total.toFixed(0)}\n`;
   });
 
   message += `\n━━━━━━━━━━━━━━\n`;
