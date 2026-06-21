@@ -14,6 +14,7 @@ import { Edit } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
+import { getShortUnit } from '@/utils/timeUtils';
 
 interface TaxRateOption {
   id: string;
@@ -59,6 +60,11 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
   const [hasPremiumAccess, setHasPremiumAccess] = useState(false);
   const [gstEnabled, setGstEnabled] = useState(false);
   const [taxRates, setTaxRates] = useState<TaxRateOption[]>([]);
+  const shortUnit = getShortUnit(item.unit || 'Piece (pc)');
+  const isMlOrG = shortUnit === 'ml' || shortUnit === 'g';
+  const initialStockUnit = (isMlOrG && item.stock_quantity && item.stock_quantity % 1000 === 0) ? 'bulk' : 'base';
+
+  const [stockInputUnit, setStockInputUnit] = useState<'base' | 'bulk'>(initialStockUnit);
   const [formData, setFormData] = useState({
     name: item.name,
     description: item.description || '',
@@ -66,8 +72,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     purchase_rate: item.purchase_rate?.toString() || '',
     unit: item.unit || 'Piece (pc)',
     base_value: item.base_value?.toString() || '1',
-    stock_quantity: item.stock_quantity?.toString() || '',
-    minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
+    stock_quantity: (initialStockUnit === 'bulk' && item.stock_quantity) ? (item.stock_quantity / 1000).toString() : (item.stock_quantity?.toString() || ''),
+    minimum_stock_alert: (initialStockUnit === 'bulk' && item.minimum_stock_alert) ? (item.minimum_stock_alert / 1000).toString() : (item.minimum_stock_alert?.toString() || ''),
     quantity_step: item.quantity_step?.toString() || '1',
     quick_chips: item.quick_chips?.join(', ') || '',
     category: item.category || '',
@@ -83,11 +89,22 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
   });
   const [loading, setLoading] = useState(false);
 
+  const currentShortUnit = getShortUnit(formData.unit);
+  const currentIsMl = currentShortUnit === 'ml';
+  const currentIsG = currentShortUnit === 'g';
+  const showBulkToggle = currentIsMl || currentIsG;
+
   useEffect(() => {
     if (open) {
       fetchCategories();
       checkPremiumAccess();
       fetchGstSettings();
+
+      const currentShortUnit = getShortUnit(item.unit || 'Piece (pc)');
+      const currentIsMlOrG = currentShortUnit === 'ml' || currentShortUnit === 'g';
+      const currentStockUnit = (currentIsMlOrG && item.stock_quantity && item.stock_quantity % 1000 === 0) ? 'bulk' : 'base';
+      setStockInputUnit(currentStockUnit);
+
       // Reset form data with current item values when dialog opens
       setFormData({
         name: item.name,
@@ -96,8 +113,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         purchase_rate: item.purchase_rate?.toString() || '',
         unit: item.unit || 'Piece (pc)',
         base_value: item.base_value?.toString() || '1',
-        stock_quantity: item.stock_quantity?.toString() || '',
-        minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
+        stock_quantity: (currentStockUnit === 'bulk' && item.stock_quantity) ? (item.stock_quantity / 1000).toString() : (item.stock_quantity?.toString() || ''),
+        minimum_stock_alert: (currentStockUnit === 'bulk' && item.minimum_stock_alert) ? (item.minimum_stock_alert / 1000).toString() : (item.minimum_stock_alert?.toString() || ''),
         quantity_step: item.quantity_step?.toString() || '1',
         quick_chips: item.quick_chips?.join(', ') || '',
         category: item.category || '',
@@ -217,8 +234,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         purchase_rate: parseFloat(formData.purchase_rate),
         unit: formData.unit,
         base_value: parseFloat(formData.base_value),
-        stock_quantity: formData.unlimited_stock ? null : parseFloat(formData.stock_quantity),
-        minimum_stock_alert: formData.unlimited_stock ? null : (parseFloat(formData.minimum_stock_alert) || 0),
+        stock_quantity: formData.unlimited_stock ? null : (parseFloat(formData.stock_quantity) * (stockInputUnit === 'bulk' ? 1000 : 1)),
+        minimum_stock_alert: formData.unlimited_stock ? null : ((parseFloat(formData.minimum_stock_alert) || 0) * (stockInputUnit === 'bulk' ? 1000 : 1)),
         quantity_step: parseFloat(formData.quantity_step),
         quick_chips: parsedChips,
         category: formData.category || null,
@@ -380,7 +397,10 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
               <Label htmlFor="unit">Unit *</Label>
               <Select
                 value={formData.unit}
-                onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, unit: value });
+                  setStockInputUnit('base');
+                }}
               >
                 <SelectTrigger className="bg-background">
                   <SelectValue />
@@ -422,7 +442,27 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
             {!formData.unlimited_stock && (
               <>
                 <div>
-                  <Label htmlFor="stock_quantity">Stock Quantity *</Label>
+                  <div className="flex justify-between items-center mb-1">
+                    <Label htmlFor="stock_quantity">Stock Quantity *</Label>
+                    {showBulkToggle && (
+                      <div className="flex rounded-md border border-input p-0.5 bg-muted text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setStockInputUnit('base')}
+                          className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'base' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                        >
+                          {currentShortUnit}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStockInputUnit('bulk')}
+                          className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'bulk' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                        >
+                          {currentIsMl ? 'L' : 'KG'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <Input
                     id="stock_quantity"
                     type="number"
@@ -430,13 +470,15 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                     min="0"
                     value={formData.stock_quantity}
                     onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                    placeholder="Available stock"
+                    placeholder={stockInputUnit === 'bulk' ? `Available stock in ${currentIsMl ? 'L' : 'KG'}` : `Available stock in ${currentShortUnit}`}
                     required={!formData.unlimited_stock}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="minimum_stock_alert">Minimum Stock Alert</Label>
+                  <div className="flex justify-between items-center mb-1">
+                    <Label htmlFor="minimum_stock_alert">Minimum Stock Alert</Label>
+                  </div>
                   <Input
                     id="minimum_stock_alert"
                     type="number"
@@ -444,7 +486,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                     min="0"
                     value={formData.minimum_stock_alert}
                     onChange={(e) => setFormData({ ...formData, minimum_stock_alert: e.target.value })}
-                    placeholder="Alert when stock below"
+                    placeholder={stockInputUnit === 'bulk' ? `Alert when below (in ${currentIsMl ? 'L' : 'KG'})` : `Alert when below (in ${currentShortUnit})`}
                   />
                 </div>
               </>

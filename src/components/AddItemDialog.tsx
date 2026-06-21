@@ -14,6 +14,7 @@ import { MediaUpload } from '@/components/MediaUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Switch } from '@/components/ui/switch';
+import { getShortUnit } from '@/utils/timeUtils';
 
 interface TaxRateOption {
   id: string;
@@ -80,6 +81,12 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     expiry_mode: 'none' as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
+  const [stockInputUnit, setStockInputUnit] = useState<'base' | 'bulk'>('base');
+
+  const shortUnit = getShortUnit(formData.unit);
+  const isMl = shortUnit === 'ml';
+  const isG = shortUnit === 'g';
+  const showBulkToggle = isMl || isG;
 
   // Check premium access
   useEffect(() => {
@@ -227,8 +234,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         purchase_rate: parseFloat(formData.purchase_rate),
         unit: formData.unit,
         base_value: parseFloat(formData.base_value),
-        stock_quantity: formData.unlimited_stock ? null : parseFloat(formData.stock_quantity),
-        minimum_stock_alert: formData.unlimited_stock ? null : (parseFloat(formData.minimum_stock_alert) || 0),
+        stock_quantity: formData.unlimited_stock ? null : (parseFloat(formData.stock_quantity) * (stockInputUnit === 'bulk' ? 1000 : 1)),
+        minimum_stock_alert: formData.unlimited_stock ? null : ((parseFloat(formData.minimum_stock_alert) || 0) * (stockInputUnit === 'bulk' ? 1000 : 1)),
         quantity_step: parseFloat(formData.quantity_step),
         quick_chips: parsedChips,
         category: formData.category === 'none' ? null : formData.category.trim(),
@@ -281,6 +288,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         expiry_mode: 'none'
       });
       setOpen(false);
+      setStockInputUnit('base');
       setCurrentItemCount(prev => prev + 1);
       onItemAdded();
     } catch (error) {
@@ -423,7 +431,10 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             <Label htmlFor="unit">Unit *</Label>
             <Select
               value={formData.unit}
-              onValueChange={(value) => setFormData({ ...formData, unit: value })}
+              onValueChange={(value) => {
+                setFormData({ ...formData, unit: value });
+                setStockInputUnit('base');
+              }}
             >
               <SelectTrigger className="bg-background">
                 <SelectValue />
@@ -465,7 +476,27 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
           {!formData.unlimited_stock && (
             <>
               <div>
-                <Label htmlFor="stock_quantity">Stock Quantity *</Label>
+                <div className="flex justify-between items-center mb-1">
+                  <Label htmlFor="stock_quantity">Stock Quantity *</Label>
+                  {showBulkToggle && (
+                    <div className="flex rounded-md border border-input p-0.5 bg-muted text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setStockInputUnit('base')}
+                        className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'base' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                      >
+                        {shortUnit}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStockInputUnit('bulk')}
+                        className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'bulk' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                      >
+                        {isMl ? 'L' : 'KG'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Input
                   id="stock_quantity"
                   type="number"
@@ -473,13 +504,15 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
                   min="0"
                   value={formData.stock_quantity}
                   onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                  placeholder="Available stock"
+                  placeholder={stockInputUnit === 'bulk' ? `Available stock in ${isMl ? 'L' : 'KG'}` : `Available stock in ${shortUnit}`}
                   required={!formData.unlimited_stock}
                 />
               </div>
 
               <div>
-                <Label htmlFor="minimum_stock_alert">Minimum Stock Alert</Label>
+                <div className="flex justify-between items-center mb-1">
+                  <Label htmlFor="minimum_stock_alert">Minimum Stock Alert</Label>
+                </div>
                 <Input
                   id="minimum_stock_alert"
                   type="number"
@@ -487,7 +520,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
                   min="0"
                   value={formData.minimum_stock_alert}
                   onChange={(e) => setFormData({ ...formData, minimum_stock_alert: e.target.value })}
-                  placeholder="Alert when stock below"
+                  placeholder={stockInputUnit === 'bulk' ? `Alert when below (in ${isMl ? 'L' : 'KG'})` : `Alert when below (in ${shortUnit})`}
                 />
               </div>
             </>
