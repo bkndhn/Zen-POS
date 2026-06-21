@@ -38,11 +38,21 @@ export interface PendingBill {
         quantity: number;
         price: number;
         total: number;
+        tax_rate_snapshot?: number | null;
+        hsn_code?: string | null;
+        tax_amount?: number | null;
     }>;
     table_no?: string | null;
     synced: boolean;
     syncError?: string;
     retries: number;
+    admin_id?: string | null;
+    branch_id?: string | null;
+    round_off?: number;
+    order_type?: string;
+    tax_summary?: string | null;
+    total_tax?: number;
+    customer_gstin?: string | null;
 }
 
 interface SyncQueueItem {
@@ -311,13 +321,39 @@ class OfflineManager {
     }
 
     async processSyncQueue(): Promise<{ synced: number; failed: number }> {
-        if (this.syncInProgress || !this.isOnline) {
+        if (!this.isOnline) {
             return { synced: 0, failed: 0 };
         }
 
-        this.syncInProgress = true;
-        console.log('[Sync] Starting sync queue processing...');
+        if (navigator.locks) {
+            try {
+                return await navigator.locks.request('hotel_pos_offline_sync_lock', { ifAvailable: true }, async (lock) => {
+                    if (!lock) {
+                        console.log('[Sync] Sync already in progress in another tab. Skipping.');
+                        return { synced: 0, failed: 0 };
+                    }
+                    return await this.executeSyncQueue();
+                });
+            } catch (err) {
+                console.error('[Sync] Web Lock execution failed:', err);
+                return { synced: 0, failed: 0 };
+            }
+        } else {
+            // Fallback for environments without Web Locks API
+            if (this.syncInProgress) {
+                return { synced: 0, failed: 0 };
+            }
+            this.syncInProgress = true;
+            try {
+                return await this.executeSyncQueue();
+            } finally {
+                this.syncInProgress = false;
+            }
+        }
+    }
 
+    private async executeSyncQueue(): Promise<{ synced: number; failed: number }> {
+        console.log('[Sync] Starting sync queue processing...');
         let synced = 0;
         let failed = 0;
 
@@ -344,7 +380,7 @@ class OfflineManager {
                 }
             }
 
-            // Process legacy sync queue
+            // Process legacy sync queue (compatibility)
             const queue = await this.getSyncQueue();
 
             for (const item of queue) {
@@ -366,36 +402,102 @@ class OfflineManager {
             }
 
             await this.notifyPendingBillsListeners();
+        } catch (error) {
+            console.error('[Sync] Error processing sync queue:', error);
         } finally {
-            this.syncInProgress = false;
             console.log(`[Sync] Complete. Synced: ${synced}, Failed: ${failed}`);
         }
 
         return { synced, failed };
     }
 
-    private async syncBillToSupabase(bill: PendingBill): Promise<void> {
-        // Generate proper sequential bill number
-        const { data: allBillNos } = await supabase
-            .from('bills')
-            .select('bill_no')
-            .order('created_at', { ascending: false })
-            .limit(100);
+    private async generateNextBillNumberForSync(adminId: string, branchId: string | null): Promise<string> {
+        try {
+            let query = supabase
+                .from('bills')
+                .select('bill_no')
+                .eq('admin_id', adminId);
+                
+            if (branchId) {
+                query = query.eq('branch_id', branchId);
+            } else {
+                query = query.is('branch_id', null);
+            }
 
-        let maxNumber = 55;
-        if (allBillNos && allBillNos.length > 0) {
-            allBillNos.forEach((b: any) => {
-                const match = b.bill_no.match(/^BILL-(\d{6})$/);
-                if (match) {
-                    const num = parseInt(match[1], 10);
-                    if (num > maxNumber) maxNumber = num;
+            const { data } = await query
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yy = String(today.getFullYear()).slice(-2);
+            const todayPrefix = `${dd}/${mm}/${yy}`;
+
+            const branchKey = branchId ? `hotel_pos_continue_bill_number_${branchId}` : 'hotel_pos_continue_bill_number';
+            const continueBillFromYesterday = (localStorage.getItem(branchKey) ?? localStorage.getItem('hotel_pos_continue_bill_number')) !== 'false';
+
+            if (data && data.length > 0) {
+                // Let's inspect the most recent bill number to determine format
+                const lastBillNo = data[0].bill_no;
+                
+                // Check Daily Reset format: DD/MM/YY-XXX
+                const dailyMatch = lastBillNo.match(/^(\d{2}\/\d{2}\/\d{2})-(\d+)$/);
+                if (dailyMatch) {
+                    const lastDatePrefix = dailyMatch[1];
+                    const lastCounter = parseInt(dailyMatch[2], 10);
+                    
+                    if (lastDatePrefix === todayPrefix) {
+                        return `${todayPrefix}-${String(lastCounter + 1).padStart(3, '0')}`;
+                    } else {
+                        return `${todayPrefix}-001`;
+                    }
                 }
-            });
-        }
-        const properBillNumber = `BILL-${String(maxNumber + 1).padStart(6, '0')}`;
 
-        // Create the bill in Supabase
-        const billData = {
+                // Check Sequential format: BILL-XXXXXX
+                const seqMatch = lastBillNo.match(/^BILL-(\d+)$/);
+                if (seqMatch) {
+                    // Find the max sequential number in the recent list (in case of out-of-order creation)
+                    let maxSeq = parseInt(seqMatch[1], 10);
+                    data.forEach((b: any) => {
+                        const m = b.bill_no.match(/^BILL-(\d+)$/);
+                        if (m) {
+                            const val = parseInt(m[1], 10);
+                            if (val > maxSeq) maxSeq = val;
+                        }
+                    });
+                    return `BILL-${String(maxSeq + 1).padStart(6, '0')}`;
+                }
+            }
+
+            // Fallback if no bills or unrecognized format: check localStorage settings
+            if (continueBillFromYesterday) {
+                let maxNumber = 0;
+                if (data && data.length > 0) {
+                    data.forEach((b: any) => {
+                        const m = b.bill_no.match(/(\d+)$/);
+                        if (m) {
+                            const num = parseInt(m[1], 10);
+                            if (num > maxNumber) maxNumber = num;
+                        }
+                    });
+                }
+                return `BILL-${String(maxNumber + 1).padStart(6, '0')}`;
+            } else {
+                return `${todayPrefix}-001`;
+            }
+        } catch (e) {
+            console.error('[BillCounterSync] Failed to generate next bill number, using timestamp fallback:', e);
+            return `BILL-SYNC-${Date.now()}`;
+        }
+    }
+
+    private async syncBillToSupabase(bill: PendingBill): Promise<void> {
+        // Generate proper sequential or daily reset bill number
+        const properBillNumber = await this.generateNextBillNumberForSync(bill.admin_id || '', bill.branch_id || null);
+
+        // Create the bill in Supabase with full data isolation and GST columns
+        const billData: any = {
             bill_no: properBillNumber,
             total_amount: bill.total_amount,
             discount: bill.discount,
@@ -403,9 +505,21 @@ class OfflineManager {
             payment_details: bill.payment_details,
             additional_charges: bill.additional_charges,
             created_by: bill.created_by,
+            admin_id: bill.admin_id || null,
+            branch_id: bill.branch_id || null,
             date: bill.date,
-            service_status: 'pending' as const
+            service_status: 'pending' as const,
+            kitchen_status: 'pending' as const,
+            table_no: bill.table_no || null,
+            round_off: bill.round_off || 0,
+            order_type: bill.order_type || 'dine_in'
         };
+
+        if (bill.tax_summary) {
+            billData.tax_summary = bill.tax_summary;
+            billData.total_tax = bill.total_tax || 0;
+            billData.customer_gstin = bill.customer_gstin || null;
+        }
 
         const { data: createdBill, error: billError } = await supabase
             .from('bills')
@@ -416,14 +530,26 @@ class OfflineManager {
         if (billError) throw billError;
         if (!createdBill) throw new Error('Failed to create bill');
 
-        // Create bill items
-        const billItems = bill.items.map(item => ({
-            bill_id: createdBill.id,
-            item_id: item.item_id,
-            quantity: item.quantity,
-            price: item.price,
-            total: item.total
-        }));
+        // Create bill items with tax snapshots
+        const billItems = bill.items.map(item => {
+            const billItem: any = {
+                bill_id: createdBill.id,
+                item_id: item.item_id,
+                quantity: item.quantity,
+                price: item.price,
+                total: item.total
+            };
+            if (item.tax_rate_snapshot !== undefined && item.tax_rate_snapshot !== null) {
+                billItem.tax_rate_snapshot = item.tax_rate_snapshot;
+            }
+            if (item.hsn_code !== undefined && item.hsn_code !== null) {
+                billItem.hsn_code = item.hsn_code;
+            }
+            if (item.tax_amount !== undefined && item.tax_amount !== null) {
+                billItem.tax_amount = item.tax_amount;
+            }
+            return billItem;
+        });
 
         const { error: itemsError } = await supabase
             .from('bill_items')
@@ -435,7 +561,49 @@ class OfflineManager {
             throw itemsError;
         }
 
+        // Deduct stock in Supabase (parallel requests)
+        const stockUpdatePromises = bill.items.map(async (item) => {
+            try {
+                const { data: currentItem } = await supabase
+                    .from('items')
+                    .select('stock_quantity')
+                    .eq('id', item.item_id)
+                    .single();
+
+                if (currentItem && currentItem.stock_quantity !== null && currentItem.stock_quantity !== undefined) {
+                    await supabase
+                        .from('items')
+                        .update({ stock_quantity: currentItem.stock_quantity - item.quantity })
+                        .eq('id', item.item_id);
+                }
+            } catch (err) {
+                console.warn("[Sync] Stock update failed for item", item.item_id, err);
+            }
+        });
+        await Promise.all(stockUpdatePromises);
+
         console.log(`[Sync] Offline bill ${bill.bill_no} → ${properBillNumber}`);
+
+        // Delete the temporary offline bill from STORES.BILLS cache
+        await this.delete(STORES.BILLS, bill.id);
+
+        // Cache the newly created online bill with its items
+        const syncedBillCached = {
+            ...createdBill,
+            synced: true,
+            bill_items: bill.items.map(item => ({
+                item_id: item.item_id,
+                quantity: item.quantity,
+                price: item.price,
+                total: item.total,
+                items: {
+                    name: item.name,
+                    category: 'Unknown',
+                    is_active: true
+                }
+            }))
+        };
+        await this.store(STORES.BILLS, syncedBillCached);
 
         // Dispatch sync event
         window.dispatchEvent(new CustomEvent('bills-updated'));

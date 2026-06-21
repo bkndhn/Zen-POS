@@ -1322,9 +1322,10 @@ const Billing = () => {
       // Calculate GST if enabled
       let taxSummary: any = null;
       let totalTax = 0;
+      let itemTaxes: any[] = [];
       if (gstSettings.enabled) {
         const { calculateItemTax, calculateBillTaxSummary } = await import('@/utils/gstCalculator');
-        const itemTaxes = validCart.map(item => {
+        itemTaxes = validCart.map(item => {
           const itemAny = item as any;
           const taxRateId = itemAny.tax_rate_id;
           const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
@@ -1399,8 +1400,32 @@ const Billing = () => {
 
         const pendingBillId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        // Save to pending bills queue (new system)
-        await offlineManager.savePendingBill({
+        const pendingBillItems = validCart.map((item, index) => {
+          const baseValue = item.base_value || 1;
+          const lineTotal = (item.quantity / baseValue) * item.price;
+          const billItem: any = {
+            item_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            total: lineTotal
+          };
+
+          if (gstSettings.enabled && taxSummary && itemTaxes && itemTaxes[index]) {
+            const itemTax = itemTaxes[index];
+            const itemAny = item as any;
+            const taxRateId = itemAny.tax_rate_id;
+            const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
+            if (taxRateInfo) {
+              billItem.tax_rate_snapshot = taxRateInfo.rate;
+              billItem.hsn_code = itemAny.hsn_code || taxRateInfo.hsn_code || null;
+              billItem.tax_amount = Math.round(itemTax.totalTax * 100) / 100;
+            }
+          }
+          return billItem;
+        });
+
+        const pendingBillPayload = {
           id: pendingBillId,
           bill_no: billNumber,
           total_amount: totalAmount,
@@ -1409,17 +1434,42 @@ const Billing = () => {
           payment_details: paymentData.paymentAmounts,
           additional_charges: additionalChargesArray,
           created_by: profile?.user_id || '',
+          admin_id: adminId || null,
+          branch_id: operatingBranchId || null,
           date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
           created_at: now.toISOString(),
-          items: validCart.map(item => ({
-            item_id: item.id,
-            name: item.name,
+          table_no: selectedTableNumber || null,
+          round_off: roundOff,
+          order_type: paymentData.orderType || 'dine_in',
+          tax_summary: taxSummary ? JSON.stringify(taxSummary) : null,
+          total_tax: totalTax,
+          customer_gstin: paymentData.customerGstin || null,
+          items: pendingBillItems
+        };
+
+        // Save to pending bills queue (new system)
+        await offlineManager.savePendingBill(pendingBillPayload);
+
+        // Cache for local display (so it immediately shows in offline reports/history)
+        await offlineManager.cacheBill({
+          ...pendingBillPayload,
+          is_deleted: false,
+          created_at: now.toISOString(),
+          bill_items: pendingBillItems.map(item => ({
+            item_id: item.item_id,
             quantity: item.quantity,
             price: item.price,
-            total: (item.quantity / (item.base_value || 1)) * item.price
-          })),
-          table_no: selectedTableNumber || null
+            total: item.total,
+            items: {
+              name: item.name,
+              category: 'Unknown',
+              is_active: true
+            }
+          }))
         });
+
+        // Trigger local custom event to update reports dashboard
+        window.dispatchEvent(new CustomEvent('bills-updated'));
 
         toast({
           title: "📴 Bill Saved Offline",
