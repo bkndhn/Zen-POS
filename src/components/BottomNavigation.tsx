@@ -33,13 +33,13 @@ export const BottomNavigation: React.FC = () => {
           if (parsed.visiblePages && Array.isArray(parsed.visiblePages)) {
             setVisiblePages(parsed.visiblePages);
           } else {
-            setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'customers', 'qrMenu']);
+            setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'waiterCompanion', 'customers', 'qrMenu']);
           }
         } catch {
-          setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'customers', 'qrMenu']);
+          setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'waiterCompanion', 'customers', 'qrMenu']);
         }
       } else {
-        setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'customers', 'qrMenu']);
+        setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'waiterCompanion', 'customers', 'qrMenu']);
       }
 
       // Then sync from Supabase for latest data

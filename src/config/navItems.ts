@@ -46,6 +46,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/analytics',        icon: TrendingUp,      label: 'Analytics',        page: 'analytics',     bottomNav: true },
   { to: '/billing',          icon: ShoppingCart,    label: 'Billing',          page: 'billing',       bottomNav: true },
   { to: '/kitchen',          icon: ChefHat,         label: 'Kitchen Display',  shortLabel: 'Kitchen', page: 'kitchen',     bottomNav: true },
+  { to: '/waiter',           icon: ClipboardList,   label: 'Waiter Companion', shortLabel: 'Waiter',  page: 'waiterCompanion', bottomNav: true },
   { to: '/service-area',     icon: ClipboardList,   label: 'Service Area',     shortLabel: 'Service', page: 'serviceArea', bottomNav: true },
   { to: '/tables',           icon: LayoutGrid,      label: 'Tables',           page: 'tables',        bottomNav: true },
   { to: '/table-billing',    icon: Receipt,         label: 'Table Billing',    shortLabel: 'Table Bill', page: 'tableBilling', bottomNav: true },

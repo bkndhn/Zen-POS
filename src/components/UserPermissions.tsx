@@ -16,25 +16,6 @@ interface UserPermission {
 
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 
-// Build the permission grid from the single navigation source of truth so any new
-// page added in navItems.ts automatically appears here for super-admin/admin to toggle.
-const AVAILABLE_PAGES: { name: string; label: string; description: string }[] = (() => {
-  const seen = new Set<string>();
-  const out: { name: string; label: string; description: string }[] = [];
-  for (const item of ALL_NAV_ITEMS) {
-    if (item.page === 'users') continue; // Users page access is role-based, not toggled
-    if (seen.has(item.page as string)) continue;
-    seen.add(item.page as string);
-    out.push({ name: item.page as string, label: item.label, description: `Access ${item.label}` });
-  }
-  // Non-nav permissions that still need toggles
-  if (!seen.has('customerDisplay')) {
-    out.push({ name: 'customerDisplay', label: 'Customer Display', description: 'Public order board' });
-  }
-  return out;
-})();
-
-
 interface UserPermissionsProps {
   users: UserProfile[];
 }
@@ -47,6 +28,23 @@ export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
   const { hasAccess } = useUserPermissions();
   const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
+
+  // Build the permission grid from the single navigation source of truth dynamically
+  const AVAILABLE_PAGES = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: { name: string; label: string; description: string }[] = [];
+    for (const item of ALL_NAV_ITEMS) {
+      if (item.page === 'users') continue; // Users page access is role-based, not toggled
+      if (seen.has(item.page as string)) continue;
+      seen.add(item.page as string);
+      out.push({ name: item.page as string, label: item.label, description: `Access ${item.label}` });
+    }
+    // Non-nav permissions that still need toggles
+    if (!seen.has('customerDisplay')) {
+      out.push({ name: 'customerDisplay', label: 'Customer Display', description: 'Public order board' });
+    }
+    return out;
+  }, []);
 
   // Filter pages based on the viewer's role
   // Super Admin sees all pages

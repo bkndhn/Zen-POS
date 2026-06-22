@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { Store, Upload, X, Facebook, Instagram, Phone, Navigation, Link2, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BOTTOM_NAV_OPTIONS } from '@/config/navItems';
+import { BOTTOM_NAV_OPTIONS, ALL_NAV_ITEMS } from '@/config/navItems';
 
 
 export const ShopSettingsForm = () => {
@@ -636,7 +636,9 @@ export const ShopSettingsForm = () => {
                     </CardDescription>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {BOTTOM_NAV_OPTIONS
+                        {ALL_NAV_ITEMS.filter(i => i.bottomNav)
+                            .map(item => ({ id: item.page, label: item.shortLabel || item.label }))
+                            .filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i)
 
                             .filter(page => hasAccess(page.id as any))
                             .map((page) => (
