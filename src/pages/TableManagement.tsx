@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranch } from '@/contexts/BranchContext';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { Switch } from '@/components/ui/switch';
 
 interface Table {
   id: string;
@@ -26,6 +27,9 @@ interface Table {
   current_bill_id: string | null;
   is_active: boolean;
   display_order: number;
+  has_seats?: boolean;
+  seat_count?: number | null;
+  seat_configuration?: any;
 }
 
 const statusConfig = {
@@ -50,11 +54,15 @@ const TableManagement: React.FC = () => {
 
   // Active table orders count per table
   const [tableOrderCounts, setTableOrderCounts] = useState<Record<string, number>>({});
+  const [tableSeatOrderCounts, setTableSeatOrderCounts] = useState<Record<string, Record<string, number>>>({});
 
   // Form state
   const [tableNumber, setTableNumber] = useState('');
   const [tableName, setTableName] = useState('');
   const [capacity, setCapacity] = useState('4');
+  const [hasSeats, setHasSeats] = useState(false);
+  const [seatCount, setSeatCount] = useState('2');
+  const [seatLabels, setSeatLabels] = useState<string[]>([]);
 
   const fetchTables = useCallback(async () => {
     try {
@@ -92,17 +100,23 @@ const TableManagement: React.FC = () => {
     try {
       const { data, error } = await (supabase as any)
         .from('table_orders')
-        .select('table_number')
+        .select('table_number, seat_id')
         .eq('admin_id', adminId)
         .in('status', ['pending', 'preparing', 'ready'])
         .eq('is_billed', false);
 
       if (!error && data) {
         const counts: Record<string, number> = {};
+        const seatCounts: Record<string, Record<string, number>> = {};
         (data as any[]).forEach((order: any) => {
           counts[order.table_number] = (counts[order.table_number] || 0) + 1;
+          if (order.seat_id) {
+            if (!seatCounts[order.table_number]) seatCounts[order.table_number] = {};
+            seatCounts[order.table_number][order.seat_id] = (seatCounts[order.table_number][order.seat_id] || 0) + 1;
+          }
         });
         setTableOrderCounts(counts);
+        setTableSeatOrderCounts(seatCounts);
       }
     } catch (e) {
       console.warn('Error fetching table order counts:', e);
@@ -152,17 +166,31 @@ const TableManagement: React.FC = () => {
     };
   }, [fetchTableOrderCounts, fetchTables]);
 
+  const getDefaultSeatLabels = (count: number): string[] => {
+    const labels = [];
+    for (let i = 0; i < count; i++) {
+      labels.push(String.fromCharCode(65 + i)); // A, B, C...
+    }
+    return labels;
+  };
+
   const handleOpenDialog = (table?: Table) => {
     if (table) {
       setEditingTable(table);
       setTableNumber(table.table_number);
       setTableName(table.table_name || '');
       setCapacity(String(table.capacity));
+      setHasSeats(table.has_seats || false);
+      setSeatCount(String(table.seat_count || 2));
+      setSeatLabels(Array.isArray(table.seat_configuration) ? (table.seat_configuration as string[]) : getDefaultSeatLabels(table.seat_count || 2));
     } else {
       setEditingTable(null);
       setTableNumber('');
       setTableName('');
       setCapacity('4');
+      setHasSeats(false);
+      setSeatCount('2');
+      setSeatLabels(getDefaultSeatLabels(2));
     }
     setDialogOpen(true);
   };
@@ -180,6 +208,9 @@ const TableManagement: React.FC = () => {
         capacity: parseInt(capacity) || 4,
         admin_id: profile?.role === 'admin' ? profile.id : null,
         branch_id: operatingBranchId || null,
+        has_seats: hasSeats,
+        seat_count: hasSeats ? parseInt(seatCount) : 0,
+        seat_configuration: hasSeats ? seatLabels : [],
       };
 
       if (editingTable) {
@@ -363,6 +394,32 @@ const TableManagement: React.FC = () => {
                       </Button>
                     )}
 
+                    {/* Render active seats list */}
+                    {table.has_seats && table.seat_configuration && Array.isArray(table.seat_configuration) && (table.seat_configuration as string[]).length > 0 && (
+                      <div className="mt-1 mb-3 pt-1.5 border-t text-[10px] space-y-1">
+                        <span className="text-muted-foreground block font-medium">Seats:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {(table.seat_configuration as string[]).map((seat: string) => {
+                            const hasOrders = tableSeatOrderCounts[table.table_number]?.[seat] > 0;
+                            return (
+                              <Badge
+                                key={seat}
+                                variant={hasOrders ? "destructive" : "outline"}
+                                className={cn(
+                                  "text-[9px] px-1 py-0 h-4 min-w-[16px] text-center justify-center font-bold",
+                                  hasOrders 
+                                    ? "bg-red-500 text-white border-transparent" 
+                                    : "text-muted-foreground border-muted-foreground/30"
+                                )}
+                              >
+                                {seat}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Quick Actions */}
                     <div className="flex gap-1">
                       <Select
@@ -432,6 +489,7 @@ const TableManagement: React.FC = () => {
                   onChange={(e) => setTableName(e.target.value)}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="capacity">Seating Capacity</Label>
                 <Select value={capacity} onValueChange={setCapacity}>
@@ -445,7 +503,88 @@ const TableManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="hasSeats" className="text-sm font-semibold">Configure Seats</Label>
+                  <p className="text-[10px] text-muted-foreground">Allows multiple guests to order separately</p>
+                </div>
+                <Switch
+                  id="hasSeats"
+                  checked={hasSeats}
+                  onCheckedChange={(checked) => {
+                    setHasSeats(checked);
+                    if (checked && seatLabels.length === 0) {
+                      const countNum = parseInt(seatCount);
+                      const labels = [];
+                      for (let i = 0; i < countNum; i++) {
+                        labels.push(String.fromCharCode(65 + i));
+                      }
+                      setSeatLabels(labels);
+                    }
+                  }}
+                />
+              </div>
+
+              {hasSeats && (
+                <div className="space-y-3 bg-muted/40 p-3 rounded-lg border">
+                  <div className="space-y-2">
+                    <Label htmlFor="seatCount" className="text-xs">Number of Seats</Label>
+                    <Select 
+                      value={seatCount} 
+                      onValueChange={(val) => {
+                        setSeatCount(val);
+                        const count = parseInt(val);
+                        setSeatLabels(prev => {
+                          const newLabels = [...prev];
+                          if (newLabels.length < count) {
+                            for (let i = newLabels.length; i < count; i++) {
+                              newLabels.push(String.fromCharCode(65 + i));
+                            }
+                          } else if (newLabels.length > count) {
+                            newLabels.splice(count);
+                          }
+                          return newLabels;
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2, 3, 4, 5, 6, 8, 10, 12].map(num => (
+                          <SelectItem key={num} value={String(num)}>{num} Seats</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Seat Labels / Custom Names</Label>
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                      {seatLabels.map((label, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground font-bold">{idx + 1}.</span>
+                          <Input
+                            className="h-8 text-xs font-semibold"
+                            value={label}
+                            onChange={(e) => {
+                              const newLabel = e.target.value;
+                              setSeatLabels(prev => {
+                                const copy = [...prev];
+                                copy[idx] = newLabel;
+                                return copy;
+                              });
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleSave}>{editingTable ? 'Update' : 'Add'} Table</Button>

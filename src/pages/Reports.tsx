@@ -53,6 +53,8 @@ interface BillItem {
     category: string;
     is_active?: boolean;
     unit?: string;
+    purchase_rate?: number;
+    base_value?: number;
   };
 }
 
@@ -83,6 +85,7 @@ const Reports: React.FC = () => {
   const [bills, setBills] = useState<Bill[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [itemReports, setItemReports] = useState<ItemReport[]>([]);
+  const [purchases, setPurchases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [billFilter, setBillFilter] = useState('processed');
@@ -493,7 +496,8 @@ const Reports: React.FC = () => {
                   category,
                   is_active,
                   unit,
-                  base_value
+                  base_value,
+                  purchase_rate
                 )
               )
             `)
@@ -527,9 +531,10 @@ const Reports: React.FC = () => {
           }
 
           let expensesData = [];
+          let purchasesData = [];
           const itemReportMap = new Map();
 
-          // Only fetch expenses and item reports for processed bills
+          // Only fetch expenses, purchases and item reports for processed bills
           if (billFilter === 'processed') {
             // Fetch expenses — branch-scoped
             let expensesQ: any = supabase
@@ -544,6 +549,32 @@ const Reports: React.FC = () => {
 
             if (expensesError) throw expensesError;
             expensesData = expensesResult || [];
+
+            // Fetch purchases — client-isolated
+            let purchasesQ: any = supabase
+              .from('purchases')
+              .select(`
+                id,
+                purchase_date,
+                total_amount,
+                purchase_items (
+                  id,
+                  quantity,
+                  rate,
+                  total,
+                  purchase_distributions (
+                    branch_id,
+                    quantity
+                  )
+                )
+              `)
+              .eq('admin_id', adminId)
+              .gte('purchase_date', start)
+              .lte('purchase_date', end);
+
+            const { data: purchasesResult, error: purchasesError } = await purchasesQ;
+            if (purchasesError) throw purchasesError;
+            purchasesData = purchasesResult || [];
 
             // Generate item reports
             filteredBillsData.forEach((bill: any) => {
@@ -579,6 +610,7 @@ const Reports: React.FC = () => {
           return {
             bills: filteredBillsData,
             expenses: expensesData,
+            purchases: purchasesData,
             itemReports: Array.from(itemReportMap.values())
           };
         },
@@ -607,6 +639,7 @@ const Reports: React.FC = () => {
         };
       }));
       setExpenses(reportData.expenses);
+      setPurchases(reportData.purchases || []);
       setItemReports(reportData.itemReports);
 
     } catch (error) {
@@ -615,6 +648,8 @@ const Reports: React.FC = () => {
       // Try to load from offline cache as fallback
       try {
         console.log('⚠️ Online fetch failed, trying offline cache...');
+        setExpenses([]);
+        setPurchases([]);
         const cachedBills = await offlineManager.getCachedBills();
         if (cachedBills.length > 0) {
           const { start, end } = getDateFilter();
@@ -900,13 +935,36 @@ const Reports: React.FC = () => {
     }
   };
 
+  const activeBills = bills.filter(bill => !bill.is_deleted);
+  const totalSales = activeBills.reduce((sum, bill) => sum + bill.total_amount, 0);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  // Compute detailed P&L
+  const totalCOGS = activeBills.reduce((sum, bill) => {
+    return sum + (bill.bill_items?.reduce((itemSum, item) => {
+      const rate = item.items?.purchase_rate || 0;
+      const baseVal = item.items?.base_value || 1;
+      return itemSum + ((item.quantity / baseVal) * rate);
+    }, 0) || 0);
+  }, 0);
+
+  const totalPurchases = branchFilterId
+    ? purchases.reduce((sum, p) => {
+        const linesSum = p.purchase_items?.reduce((lSum: number, l: any) => {
+          const dist = l.purchase_distributions?.find((d: any) => d.branch_id === branchFilterId);
+          return lSum + (dist ? dist.quantity * (l.rate || 0) : 0);
+        }, 0) || 0;
+        return sum + linesSum;
+      }, 0)
+    : purchases.reduce((sum, p) => sum + (Number(p.total_amount) || 0), 0);
+
+  const grossProfit = totalSales - totalCOGS;
+  const netProfit = grossProfit - totalExpenses;
+  const netCashFlow = totalSales - totalPurchases - totalExpenses;
+  const profit = netProfit;
+
   const handleExportAllExcel = () => {
     try {
-      const activeBills = bills.filter(bill => !bill.is_deleted);
-      const totalSales = activeBills.reduce((sum, bill) => sum + bill.total_amount, 0);
-      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-      // Prepare bills data
       const billsForExport = activeBills.map(bill => ({
         bill_no: bill.bill_no,
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
@@ -917,7 +975,6 @@ const Reports: React.FC = () => {
         items_count: bill.bill_items?.length || 0
       }));
 
-      // Prepare items data
       const itemsForExport = itemReports.map(item => ({
         item_name: item.item_name,
         category: item.category,
@@ -926,7 +983,6 @@ const Reports: React.FC = () => {
         unit: item.unit
       }));
 
-      // Prepare payments data
       const paymentMethodSummary = activeBills.reduce((acc, bill) => {
         acc[bill.payment_mode] = (acc[bill.payment_mode] || 0) + bill.total_amount;
         return acc;
@@ -939,11 +995,15 @@ const Reports: React.FC = () => {
         percentage: ((amount / totalSales) * 100)
       }));
 
-      // Prepare P&L data
-      const profitLossForExport = [
-        { description: 'Total Sales', amount: totalSales, type: 'revenue' as const },
-        { description: 'Total Expenses', amount: totalExpenses, type: 'expense' as const }
-      ];
+      const profitLossForExport = {
+        totalSales,
+        totalCOGS,
+        grossProfit,
+        totalExpenses,
+        netProfit,
+        totalPurchases,
+        netCashFlow
+      };
 
       const dateRangeText = dateRange === 'custom'
         ? `${customStartDate} to ${customEndDate}`
@@ -974,11 +1034,6 @@ const Reports: React.FC = () => {
 
   const handleExportAllPDF = () => {
     try {
-      const activeBills = bills.filter(bill => !bill.is_deleted);
-      const totalSales = activeBills.reduce((sum, bill) => sum + bill.total_amount, 0);
-      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-
-      // Prepare bills data
       const billsForExport = activeBills.map(bill => ({
         bill_no: bill.bill_no,
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
@@ -989,7 +1044,6 @@ const Reports: React.FC = () => {
         items_count: bill.bill_items?.length || 0
       }));
 
-      // Prepare items data
       const itemsForExport = itemReports.map(item => ({
         item_name: item.item_name,
         category: item.category,
@@ -998,7 +1052,6 @@ const Reports: React.FC = () => {
         unit: item.unit
       }));
 
-      // Prepare payments data
       const paymentMethodSummary = activeBills.reduce((acc, bill) => {
         acc[bill.payment_mode] = (acc[bill.payment_mode] || 0) + bill.total_amount;
         return acc;
@@ -1011,11 +1064,15 @@ const Reports: React.FC = () => {
         percentage: ((amount / totalSales) * 100)
       }));
 
-      // Prepare P&L data
-      const profitLossForExport = [
-        { description: 'Total Sales', amount: totalSales, type: 'revenue' as const },
-        { description: 'Total Expenses', amount: totalExpenses, type: 'expense' as const }
-      ];
+      const profitLossForExport = {
+        totalSales,
+        totalCOGS,
+        grossProfit,
+        totalExpenses,
+        netProfit,
+        totalPurchases,
+        netCashFlow
+      };
 
       const dateRangeText = dateRange === 'custom'
         ? `${customStartDate} to ${customEndDate}`
@@ -1043,11 +1100,6 @@ const Reports: React.FC = () => {
       });
     }
   };
-
-  const activeBills = bills.filter(bill => !bill.is_deleted);
-  const totalSales = activeBills.reduce((sum, bill) => sum + bill.total_amount, 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const profit = totalSales - totalExpenses;
 
   // Sum payment method amounts from payment_details (supports split payments)
   const paymentMethodSummary = activeBills.reduce((acc, bill) => {
@@ -1572,59 +1624,84 @@ const Reports: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-success mb-3">Revenue</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Total Sales</span>
-                        <span className="font-semibold">₹{totalSales.toFixed(2)}</span>
+              <div className="space-y-6">
+                {activeBills.some(b => b.bill_items?.some(bi => !bi.items?.purchase_rate)) && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-xl text-xs flex items-start gap-2">
+                    <span className="shrink-0 text-sm">⚠️</span>
+                    <p>Some sold items in this period do not have a purchase rate configured in your inventory. COGS for those items is calculated as ₹0.00, which may skew the profit margins.</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Accrual P&L */}
+                  <div className="bg-muted/40 rounded-2xl p-4 border border-border space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-1">Accrual Basis (Sales COGS-based)</h3>
+                      <p className="text-[10px] text-muted-foreground">Measures the real profitability of items sold during this period.</p>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Total Sales (Revenue)</span>
+                        <span className="font-semibold text-foreground">₹{totalSales.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Number of Bills</span>
-                        <span className="font-semibold">{bills.length}</span>
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Cost of Goods Sold (COGS)</span>
+                        <span className="font-semibold text-rose-500">-₹{totalCOGS.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Average Bill Value</span>
-                        <span className="font-semibold">
-                          ₹{bills.length > 0 ? (totalSales / bills.length).toFixed(2) : '0.00'}
+                      <div className="flex justify-between items-center py-1.5 border-b border-muted">
+                        <span className="font-bold text-foreground">Gross Profit</span>
+                        <span className="font-bold text-emerald-500">
+                          ₹{grossProfit.toFixed(2)}
+                          <span className="text-[10px] font-normal text-muted-foreground ml-1.5">
+                            ({totalSales > 0 ? ((grossProfit / totalSales) * 100).toFixed(1) : '0.0'}% margin)
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Operating Expenses</span>
+                        <span className="font-semibold text-rose-500">-₹{totalExpenses.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 text-sm font-black">
+                        <span className="text-foreground">Net Profit (COGS-based)</span>
+                        <span className={netProfit >= 0 ? 'text-emerald-500 font-black' : 'text-rose-500 font-black'}>
+                          ₹{netProfit.toFixed(2)}
+                          <span className="text-[11px] font-normal text-muted-foreground ml-2">
+                            ({totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(1) : '0.0'}% margin)
+                          </span>
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-base font-semibold text-destructive mb-3">Expenses</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Total Expenses</span>
-                        <span className="font-semibold">₹{totalExpenses.toFixed(2)}</span>
+                  {/* Cash Flow P&L */}
+                  <div className="bg-muted/40 rounded-2xl p-4 border border-border space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-1">Cash Basis (Cash Flow)</h3>
+                      <p className="text-[10px] text-muted-foreground">Measures cash inflows and outflows during this period.</p>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Total Inflow (Sales)</span>
+                        <span className="font-semibold text-foreground">₹{totalSales.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Number of Expenses</span>
-                        <span className="font-semibold">{expenses.length}</span>
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Stock Purchases (Cash spent)</span>
+                        <span className="font-semibold text-rose-500">-₹{totalPurchases.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Average Expense</span>
-                        <span className="font-semibold">
-                          ₹{expenses.length > 0 ? (totalExpenses / expenses.length).toFixed(2) : '0.00'}
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Operating Expenses</span>
+                        <span className="font-semibold text-rose-500">-₹{totalExpenses.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-5 text-sm font-black">
+                        <span className="text-foreground">Net Cash Flow</span>
+                        <span className={netCashFlow >= 0 ? 'text-blue-500 font-black' : 'text-rose-500 font-black'}>
+                          ₹{netCashFlow.toFixed(2)}
                         </span>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center text-base font-bold">
-                    <span>Net Profit/Loss</span>
-                    <span className={profit >= 0 ? 'text-success' : 'text-destructive'}>
-                      ₹{profit.toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Profit Margin: {totalSales > 0 ? ((profit / totalSales) * 100).toFixed(2) : '0.00'}%
-                  </p>
                 </div>
               </div>
             </CardContent>

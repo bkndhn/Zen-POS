@@ -40,6 +40,7 @@ interface Item {
   quick_chips?: string[];
   stock_quantity?: number;
   minimum_stock_alert?: number;
+  unlimited_stock?: boolean;
 }
 
 // Helper to check if item has low stock
@@ -467,6 +468,9 @@ const Billing = () => {
           showWhatsapp: parsed.showWhatsapp !== false,
           printerWidth: parsed.printerWidth || '58mm'
         });
+        setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
+        setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
+        setShowOrderType(parsed.showOrderType || false);
       } catch (e) { /* ignore */ }
     }
   };
@@ -477,11 +481,49 @@ const Billing = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase
+      let query = supabase
         .from('shop_settings')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
+
+      if (operatingBranchId) {
+        query = query.eq('branch_id', operatingBranchId);
+      } else {
+        query = query.is('branch_id', null);
+      }
+
+      let { data, error } = await query.maybeSingle();
+
+      // Fallback: main branch or any branch
+      if (!data && !error) {
+        const { data: mainBranch } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('admin_id', profile?.id || user.id)
+          .eq('is_main', true)
+          .maybeSingle();
+
+        if (mainBranch?.id) {
+          const { data: fallbackData } = await supabase
+            .from('shop_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('branch_id', mainBranch.id)
+            .maybeSingle();
+          data = fallbackData;
+        }
+
+        if (!data) {
+          const { data: anyData } = await supabase
+            .from('shop_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('branch_id', { nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+          data = anyData;
+        }
+      }
 
       if (data) {
         const settings = {
@@ -495,7 +537,10 @@ const Billing = () => {
           showInstagram: data.show_instagram,
           whatsapp: data.whatsapp || '',
           showWhatsapp: data.show_whatsapp,
-          printerWidth: data.printer_width as '58mm' | '80mm' || '58mm'
+          printerWidth: data.printer_width as '58mm' | '80mm' || '58mm',
+          whatsappEnabled: data.whatsapp_bill_share_enabled || false,
+          whatsappShareMode: (data as any).whatsapp_share_mode || 'text',
+          showOrderType: (data as any).show_order_type || false
         };
         setBillSettings(settings);
         setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);

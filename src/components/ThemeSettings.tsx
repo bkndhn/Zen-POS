@@ -229,6 +229,7 @@ export const ThemeSettings: React.FC = () => {
     const handleThemeChange = (themeId: string) => {
         setActiveTheme(themeId);
         localStorage.setItem(themeKey, themeId);
+        window.dispatchEvent(new CustomEvent('theme-changed'));
         
         if (themeId === 'custom') {
             applyCustomTheme(customColor);
@@ -244,6 +245,7 @@ export const ThemeSettings: React.FC = () => {
         const newColor = e.target.value;
         setCustomColor(newColor);
         localStorage.setItem(customColorKey, newColor);
+        window.dispatchEvent(new CustomEvent('theme-changed'));
         
         if (activeTheme === 'custom') {
             applyCustomTheme(newColor);

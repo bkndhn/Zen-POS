@@ -1500,6 +1500,7 @@ export type Database = {
           is_billed: boolean | null
           items: Json
           order_number: number
+          seat_id: string | null
           session_id: string
           status: string
           table_number: string
@@ -1516,6 +1517,7 @@ export type Database = {
           is_billed?: boolean | null
           items?: Json
           order_number?: number
+          seat_id?: string | null
           session_id: string
           status?: string
           table_number: string
@@ -1532,6 +1534,7 @@ export type Database = {
           is_billed?: boolean | null
           items?: Json
           order_number?: number
+          seat_id?: string | null
           session_id?: string
           status?: string
           table_number?: string
@@ -1572,6 +1575,7 @@ export type Database = {
           request_type: string
           resolved_at: string | null
           resolved_by: string | null
+          seat_id: string | null
           session_id: string
           status: string
           table_number: string
@@ -1585,6 +1589,7 @@ export type Database = {
           request_type?: string
           resolved_at?: string | null
           resolved_by?: string | null
+          seat_id?: string | null
           session_id: string
           status?: string
           table_number: string
@@ -1598,6 +1603,7 @@ export type Database = {
           request_type?: string
           resolved_at?: string | null
           resolved_by?: string | null
+          seat_id?: string | null
           session_id?: string
           status?: string
           table_number?: string
@@ -1620,8 +1626,11 @@ export type Database = {
           created_at: string
           current_bill_id: string | null
           display_order: number | null
+          has_seats: boolean
           id: string
           is_active: boolean
+          seat_configuration: Json | null
+          seat_count: number | null
           status: string
           table_name: string | null
           table_number: string
@@ -1634,8 +1643,11 @@ export type Database = {
           created_at?: string
           current_bill_id?: string | null
           display_order?: number | null
+          has_seats?: boolean
           id?: string
           is_active?: boolean
+          seat_configuration?: Json | null
+          seat_count?: number | null
           status?: string
           table_name?: string | null
           table_number: string
@@ -1648,8 +1660,11 @@ export type Database = {
           created_at?: string
           current_bill_id?: string | null
           display_order?: number | null
+          has_seats?: boolean
           id?: string
           is_active?: boolean
+          seat_configuration?: Json | null
+          seat_count?: number | null
           status?: string
           table_name?: string | null
           table_number?: string

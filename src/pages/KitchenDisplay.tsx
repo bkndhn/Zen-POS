@@ -45,6 +45,7 @@ interface KitchenTableOrder {
     admin_id: string;
     table_number: string;
     session_id: string;
+    seat_id?: string | null;
     order_number: number;
     items: Array<{
         item_id: string;
@@ -284,7 +285,7 @@ const KitchenDisplay = () => {
                 if (order?.id && !knownTableOrderIds.current.has(order.id)) {
                     knownTableOrderIds.current.add(order.id);
                     if (voiceEnabled) {
-                        announce(`New table order from Table ${order.table_number}`);
+                        announce(`New table order from Table ${order.table_number}${order.seat_id ? `, Seat ${order.seat_id}` : ''}`);
                     }
                 }
                 fetchTableOrders();
@@ -488,12 +489,15 @@ const KitchenDisplay = () => {
     const updateTableOrderStatus = async (orderId: string, tableNumber: string, sessionId: string, status: 'preparing' | 'ready' | 'served') => {
         const targetOrder = tableOrders.find(o => o.id === orderId);
         const previousStatus = targetOrder?.status || 'pending';
+        const seatId = targetOrder?.seat_id;
+        const seatLabel = seatId ? ` (Seat ${seatId})` : '';
+        const labelText = `T${tableNumber}${seatLabel}`;
 
         // Track for undo
         setRecentlyProcessed(prev => [{
             id: orderId,
             type: 'table-order' as const,
-            label: `T${tableNumber}`,
+            label: labelText,
             previousStatus,
             newStatus: status,
             timestamp: new Date().toISOString(),
@@ -527,7 +531,7 @@ const KitchenDisplay = () => {
             tableOrderChannelRef.current?.send({
                 type: 'broadcast',
                 event: 'table-order-status-update',
-                payload: { order_id: orderId, table_number: tableNumber, status }
+                payload: { order_id: orderId, table_number: tableNumber, seat_id: seatId || null, status }
             });
 
             // Also broadcast to other kitchen/service displays
@@ -538,10 +542,10 @@ const KitchenDisplay = () => {
             });
 
             if (status === 'ready') {
-                announce(`Table ${tableNumber} order is ready`);
-                toast({ title: '🔔 Table Order Ready!', description: `Table ${tableNumber} order ready` });
+                announce(`Table ${tableNumber}${seatId ? `, Seat ${seatId}` : ''} order is ready`);
+                toast({ title: '🔔 Table Order Ready!', description: `Table ${tableNumber}${seatLabel} order ready` });
             } else if (status === 'preparing') {
-                toast({ title: '👨‍🍳 Preparing', description: `Table ${tableNumber} order` });
+                toast({ title: '👨‍🍳 Preparing', description: `Table ${tableNumber}${seatLabel} order` });
             }
         } catch (error) {
             console.error('Table order update failed:', error);
@@ -701,7 +705,7 @@ const KitchenDisplay = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-bold">Table {order.table_number}</h3>
+                                            <h3 className="text-xl font-bold">Table {order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}</h3>
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
                                         </div>
                                         <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
@@ -774,7 +778,7 @@ const KitchenDisplay = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-bold">Table {order.table_number}</h3>
+                                            <h3 className="text-xl font-bold">Table {order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}</h3>
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
                                         </div>
                                         <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
@@ -864,7 +868,7 @@ const KitchenDisplay = () => {
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
                                         <h3 className="text-2xl font-bold text-green-600">
-                                            Table {order.table_number}
+                                            Table {order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}
                                         </h3>
                                         <div className="flex items-center gap-1.5">
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order #{order.order_number}</Badge>

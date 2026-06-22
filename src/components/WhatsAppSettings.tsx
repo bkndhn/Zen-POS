@@ -94,9 +94,16 @@ export const WhatsAppSettings: React.FC = () => {
       const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
       if (existingCache) {
         const parsed = JSON.parse(existingCache);
+        parsed.whatsappEnabled = whatsappBillShareEnabled;
         parsed.whatsappBillShareEnabled = whatsappBillShareEnabled;
         parsed.whatsappShareMode = whatsappShareMode;
         localStorage.setItem(headerKey, JSON.stringify(parsed));
+      } else {
+        localStorage.setItem(headerKey, JSON.stringify({
+          whatsappEnabled: whatsappBillShareEnabled,
+          whatsappBillShareEnabled: whatsappBillShareEnabled,
+          whatsappShareMode: whatsappShareMode
+        }));
       }
 
       toast({

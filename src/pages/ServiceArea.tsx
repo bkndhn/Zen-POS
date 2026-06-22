@@ -53,6 +53,7 @@ interface ServiceTableOrder {
     admin_id: string;
     table_number: string;
     session_id: string;
+    seat_id?: string | null;
     order_number: number;
     items: Array<{
         item_id: string;
@@ -75,6 +76,7 @@ interface ServiceRequest {
     admin_id: string;
     table_number: string;
     session_id: string;
+    seat_id?: string | null;
     request_type: string;
     message: string | null;
     status: 'pending' | 'acknowledged' | 'resolved';
@@ -410,7 +412,7 @@ const ServiceArea = () => {
                     fetchServiceRequests();
                     playChime();
                     toast({
-                        title: `🔔 Table ${payload.payload.table_number}`,
+                        title: `🔔 Table ${payload.payload.table_number}${payload.payload.seat_id ? ` (Seat ${payload.payload.seat_id})` : ''}`,
                         description: REQUEST_LABELS[payload.payload.request_type]?.label || 'Help Requested',
                         duration: 5000,
                     });
@@ -464,7 +466,7 @@ const ServiceArea = () => {
             });
             supabase.removeChannel(respChannel);
 
-            toast({ title: '👍 Acknowledged', description: `Table ${req.table_number} notified` });
+            toast({ title: '👍 Acknowledged', description: `Table ${req.table_number}${req.seat_id ? ` (Seat ${req.seat_id})` : ''} notified` });
         } catch (e) {
             console.error('[ServiceArea] Acknowledge error:', e);
             fetchServiceRequests();
@@ -494,7 +496,7 @@ const ServiceArea = () => {
             });
             supabase.removeChannel(respChannel);
 
-            toast({ title: '✅ Resolved', description: `Table ${req.table_number} request done` });
+            toast({ title: '✅ Resolved', description: `Table ${req.table_number}${req.seat_id ? ` (Seat ${req.seat_id})` : ''} request done` });
         } catch (e) {
             console.error('[ServiceArea] Resolve error:', e);
             fetchServiceRequests();
@@ -745,7 +747,7 @@ const ServiceArea = () => {
                                         <div className="flex items-center gap-2">
                                             <span className="text-2xl">{meta.emoji}</span>
                                             <div>
-                                                <p className="font-bold text-foreground text-sm">Table {req.table_number}</p>
+                                                <p className="font-bold text-foreground text-sm">Table {req.table_number}{req.seat_id ? ` (Seat ${req.seat_id})` : ''}</p>
                                                 <p className="text-xs text-muted-foreground">{meta.label}</p>
                                             </div>
                                         </div>
@@ -888,7 +890,7 @@ const ServiceArea = () => {
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-xl font-black text-foreground">T{order.table_number}</h3>
+                                    <h3 className="text-xl font-black text-foreground">T{order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}</h3>
                                     <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR #{order.order_number}</Badge>
                                     <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
                                         {getTimeElapsed(order.created_at)}

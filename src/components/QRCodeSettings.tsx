@@ -44,9 +44,10 @@ const QRCodeSettings = () => {
     const isMainBranch = !!operatingBranch?.is_main;
     const [copied, setCopied] = useState(false);
     const [tableMode, setTableMode] = useState(false);
-    const [dbTables, setDbTables] = useState<{ id: string; table_number: string }[]>([]);
+    const [dbTables, setDbTables] = useState<any[]>([]);
     const [tablesLoading, setTablesLoading] = useState(false);
     const [selectedTable, setSelectedTable] = useState<number | null>(null);
+    const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
     const qrRef = useRef<HTMLImageElement>(null);
 
     // Custom URL State
@@ -80,9 +81,9 @@ const QRCodeSettings = () => {
         ? `${window.location.origin}/menu/${menuSlug || adminId}`
         : '';
 
-    // Current QR URL (with optional table)
+    // Current QR URL (with optional table and seat)
     const currentQrUrl = selectedTable
-        ? `${baseUrl}?table=${selectedTable}`
+        ? (selectedSeat ? `${baseUrl}?table=${selectedTable}&seat=${selectedSeat}` : `${baseUrl}?table=${selectedTable}`)
         : baseUrl;
 
     // Load settings from localStorage and Supabase
@@ -163,7 +164,7 @@ const QRCodeSettings = () => {
         try {
             let q: any = (supabase as any)
                 .from('tables')
-                .select('id, table_number, branch_id')
+                .select('id, table_number, branch_id, has_seats, seat_count, seat_configuration')
                 .eq('admin_id', adminId);
             if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
             const { data } = await q.order('table_number', { ascending: true });
@@ -513,11 +514,12 @@ const QRCodeSettings = () => {
             ctx.textAlign = 'center';
             ctx.fillText(displayName, cardWidth / 2, 40);
 
-            // Table number if applicable
+            // Table number and seat if applicable
             if (selectedTable) {
                 ctx.font = 'bold 16px Arial, sans-serif';
                 ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                ctx.fillText(`Table ${selectedTable}`, cardWidth / 2, 60);
+                const labelText = selectedSeat ? `Table ${selectedTable} - Seat ${selectedSeat}` : `Table ${selectedTable}`;
+                ctx.fillText(labelText, cardWidth / 2, 60);
             }
 
             // Footer instruction
@@ -535,7 +537,7 @@ const QRCodeSettings = () => {
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = selectedTable
-                    ? `menu-qr-table-${selectedTable}.png`
+                    ? (selectedSeat ? `menu-qr-table-${selectedTable}-seat-${selectedSeat}.png` : `menu-qr-table-${selectedTable}.png`)
                     : 'menu-qr-code.png';
                 document.body.appendChild(a);
                 a.click();
@@ -560,9 +562,20 @@ const QRCodeSettings = () => {
     // Download all table QR codes as premium branded cards
     const handleDownloadAllTableQRs = async () => {
         if (dbTables.length === 0) return;
+
+        // Calculate total count (tables + seats)
+        let totalQRs = 0;
+        dbTables.forEach(t => {
+            if (t.has_seats && Array.isArray(t.seat_configuration) && t.seat_configuration.length > 0) {
+                totalQRs += t.seat_configuration.length;
+            } else {
+                totalQRs += 1;
+            }
+        });
+
         toast({
             title: "Downloading...",
-            description: `Generating ${dbTables.length} premium QR cards with table numbers`,
+            description: `Generating ${totalQRs} premium QR cards with table and seat numbers`,
         });
 
         let successCount = 0;
@@ -592,115 +605,122 @@ const QRCodeSettings = () => {
 
         for (let idx = 0; idx < dbTables.length; idx++) {
             const tbl = dbTables[idx];
-            const tableNum = parseInt(tbl.table_number) || (idx + 1);
-            const tableUrl = `${baseUrl}?table=${tableNum}`;
-            const colors = tableColors[idx % tableColors.length];
-            try {
-                const qrUrl = generateQRCodeUrl(tableUrl, 350, colors.qr);
+            const tableNum = tbl.table_number;
+            
+            const seats = tbl.has_seats && Array.isArray(tbl.seat_configuration) ? (tbl.seat_configuration as string[]) : [];
+            const targets = seats.length > 0
+                ? seats.map(s => ({ seat: s, url: `${baseUrl}?table=${tableNum}&seat=${s}`, label: `Table ${tableNum} - Seat ${s}`, file: `menu-qr-table-${tableNum}-seat-${s}.png` }))
+                : [{ seat: null, url: `${baseUrl}?table=${tableNum}`, label: `Table ${tableNum}`, file: `menu-qr-table-${tableNum}.png` }];
 
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
+            for (const target of targets) {
+                const colors = tableColors[successCount % tableColors.length];
+                try {
+                    const qrUrl = generateQRCodeUrl(target.url, 350, colors.qr);
 
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = reject;
-                    img.src = qrUrl;
-                });
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
 
-                // Premium card dimensions
-                const padding = 35;
-                const headerHeight = 80;
-                const footerHeight = 55;
-                const qrSize = img.width;
-                const cardWidth = qrSize + padding * 2;
-                const cardHeight = qrSize + headerHeight + footerHeight + padding;
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                        img.src = qrUrl;
+                    });
 
-                const canvas = document.createElement('canvas');
-                canvas.width = cardWidth;
-                canvas.height = cardHeight;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) continue;
+                    // Premium card dimensions
+                    const padding = 35;
+                    const headerHeight = 80;
+                    const footerHeight = 55;
+                    const qrSize = img.width;
+                    const cardWidth = qrSize + padding * 2;
+                    const cardHeight = qrSize + headerHeight + footerHeight + padding;
 
-                // Gradient background
-                const grad = ctx.createLinearGradient(0, 0, cardWidth, cardHeight);
-                grad.addColorStop(0, colors.grad1);
-                grad.addColorStop(1, colors.grad2);
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, cardWidth, cardHeight);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = cardWidth;
+                    canvas.height = cardHeight;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) continue;
 
-                // White rounded container
-                const containerX = padding - 8;
-                const containerY = headerHeight;
-                const containerW = qrSize + 16;
-                const containerH = qrSize + 16;
-                const radius = 14;
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.moveTo(containerX + radius, containerY);
-                ctx.lineTo(containerX + containerW - radius, containerY);
-                ctx.quadraticCurveTo(containerX + containerW, containerY, containerX + containerW, containerY + radius);
-                ctx.lineTo(containerX + containerW, containerY + containerH - radius);
-                ctx.quadraticCurveTo(containerX + containerW, containerY + containerH, containerX + containerW - radius, containerY + containerH);
-                ctx.lineTo(containerX + radius, containerY + containerH);
-                ctx.quadraticCurveTo(containerX, containerY + containerH, containerX, containerY + containerH - radius);
-                ctx.lineTo(containerX, containerY + radius);
-                ctx.quadraticCurveTo(containerX, containerY, containerX + radius, containerY);
-                ctx.closePath();
-                ctx.shadowColor = 'rgba(0,0,0,0.15)';
-                ctx.shadowBlur = 15;
-                ctx.shadowOffsetY = 4;
-                ctx.fill();
-                ctx.shadowColor = 'transparent';
+                    // Gradient background
+                    const grad = ctx.createLinearGradient(0, 0, cardWidth, cardHeight);
+                    grad.addColorStop(0, colors.grad1);
+                    grad.addColorStop(1, colors.grad2);
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, cardWidth, cardHeight);
 
-                // Draw QR code
-                ctx.drawImage(img, padding, headerHeight + 8);
+                    // White rounded container
+                    const containerX = padding - 8;
+                    const containerY = headerHeight;
+                    const containerW = qrSize + 16;
+                    const containerH = qrSize + 16;
+                    const radius = 14;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.moveTo(containerX + radius, containerY);
+                    ctx.lineTo(containerX + containerW - radius, containerY);
+                    ctx.quadraticCurveTo(containerX + containerW, containerY, containerX + containerW, containerY + radius);
+                    ctx.lineTo(containerX + containerW, containerY + containerH - radius);
+                    ctx.quadraticCurveTo(containerX + containerW, containerY + containerH, containerX + containerW - radius, containerY + containerH);
+                    ctx.lineTo(containerX + radius, containerY + containerH);
+                    ctx.quadraticCurveTo(containerX, containerY + containerH, containerX, containerY + containerH - radius);
+                    ctx.lineTo(containerX, containerY + radius);
+                    ctx.quadraticCurveTo(containerX, containerY, containerX + radius, containerY);
+                    ctx.closePath();
+                    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowOffsetY = 4;
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
 
-                // Header — Table number big + shop name small
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 30px Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`Table ${tableNum}`, cardWidth / 2, 40);
-                ctx.font = '14px Arial, sans-serif';
-                ctx.fillStyle = 'rgba(255,255,255,0.8)';
-                ctx.fillText(displayName, cardWidth / 2, 62);
+                    // Draw QR code
+                    ctx.drawImage(img, padding, headerHeight + 8);
 
-                // Footer
-                ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                ctx.font = 'bold 13px Arial, sans-serif';
-                ctx.fillText('📱 Scan to View Menu', cardWidth / 2, containerY + containerH + 25);
-                ctx.font = '10px Arial, sans-serif';
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.fillText('Use Camera or Google Lens', cardWidth / 2, containerY + containerH + 42);
+                    // Header — Table number big + shop name small
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 26px Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(target.label, cardWidth / 2, 40);
+                    ctx.font = '14px Arial, sans-serif';
+                    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                    ctx.fillText(displayName, cardWidth / 2, 62);
 
-                // Convert to blob and download
-                await new Promise<void>((resolve) => {
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `menu-qr-table-${tableNum}.png`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                            successCount++;
-                        }
-                        resolve();
-                    }, 'image/png');
-                });
+                    // Footer
+                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                    ctx.font = 'bold 13px Arial, sans-serif';
+                    ctx.fillText('📱 Scan to View Menu', cardWidth / 2, containerY + containerH + 25);
+                    ctx.font = '10px Arial, sans-serif';
+                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    ctx.fillText('Use Camera or Google Lens', cardWidth / 2, containerY + containerH + 42);
 
-                // Small delay between downloads
-                await new Promise(r => setTimeout(r, 300));
-            } catch (err) {
-                console.error(`Failed to download QR for table ${tableNum}`, err);
+                    // Convert to blob and download
+                    await new Promise<void>((resolve) => {
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = target.file;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                successCount++;
+                            }
+                            resolve();
+                        }, 'image/png');
+                    });
+
+                    // Small delay between downloads
+                    await new Promise(r => setTimeout(r, 300));
+                } catch (err) {
+                    console.error(`Failed to download QR for ${target.label}`, err);
+                }
             }
         }
 
         toast({
             title: successCount > 0 ? "Download Complete!" : "Download Failed",
             description: successCount > 0
-                ? `${successCount} of ${dbTables.length} premium QR cards saved`
+                ? `${successCount} of ${totalQRs} premium QR cards saved`
                 : "Could not download QR codes. Try downloading individually.",
             variant: successCount > 0 ? "default" : "destructive"
         });
@@ -735,8 +755,19 @@ const QRCodeSettings = () => {
             return;
         }
 
-        const shopName = 'Your Restaurant';
-        const tableLabel = selectedTable ? `Table ${selectedTable}` : 'Scan for Menu';
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const shopNameStr = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+        let displayName = 'Your Restaurant';
+        if (shopNameStr) {
+            try {
+                const parsed = JSON.parse(shopNameStr);
+                if (parsed.shopName) displayName = parsed.shopName;
+            } catch { }
+        }
+        const shopName = displayName;
+        const tableLabel = selectedTable 
+            ? (selectedSeat ? `Table ${selectedTable} - Seat ${selectedSeat}` : `Table ${selectedTable}`) 
+            : 'Scan for Menu';
 
         printWindow.document.write(`
       <!DOCTYPE html>
@@ -1047,7 +1078,9 @@ const QRCodeSettings = () => {
                                 className="w-48 h-48 mx-auto"
                             />
                             {selectedTable && (
-                                <Badge className="mt-2 bg-orange-500">Table {selectedTable}</Badge>
+                                <Badge className="mt-2 bg-orange-500">
+                                    Table {selectedTable}{selectedSeat ? ` - Seat ${selectedSeat}` : ''}
+                                </Badge>
                             )}
                         </div>
                         <div className="flex flex-wrap justify-center gap-2">
@@ -1106,7 +1139,15 @@ const QRCodeSettings = () => {
                                                             variant={selectedTable === num ? 'default' : 'outline'}
                                                             size="sm"
                                                             className="w-10 h-10"
-                                                            onClick={() => setSelectedTable(selectedTable === num ? null : num)}
+                                                            onClick={() => {
+                                                                if (selectedTable === num) {
+                                                                    setSelectedTable(null);
+                                                                    setSelectedSeat(null);
+                                                                } else {
+                                                                    setSelectedTable(num);
+                                                                    setSelectedSeat(null);
+                                                                }
+                                                            }}
                                                         >
                                                             {tbl.table_number}
                                                         </Button>
@@ -1114,6 +1155,40 @@ const QRCodeSettings = () => {
                                                 })}
                                             </div>
                                         </div>
+
+                                        {/* Seat Selector (if selected table has seats configured) */}
+                                        {selectedTable && (() => {
+                                            const selectedTblObj = dbTables.find(t => (parseInt(t.table_number) || 0) === selectedTable);
+                                            if (selectedTblObj?.has_seats && Array.isArray(selectedTblObj.seat_configuration) && selectedTblObj.seat_configuration.length > 0) {
+                                                return (
+                                                    <div className="space-y-2 border-t pt-3 mt-1 bg-muted/20 p-2.5 rounded border">
+                                                        <Label className="text-xs font-semibold text-muted-foreground block">Select Seat to Preview QR:</Label>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            <Button
+                                                                variant={selectedSeat === null ? 'default' : 'outline'}
+                                                                size="xs"
+                                                                className="h-7 px-2.5 text-[10px] font-bold"
+                                                                onClick={() => setSelectedSeat(null)}
+                                                            >
+                                                                Table (General)
+                                                            </Button>
+                                                            {(selectedTblObj.seat_configuration as string[]).map((seat) => (
+                                                                <Button
+                                                                    key={seat}
+                                                                    variant={selectedSeat === seat ? 'default' : 'outline'}
+                                                                    size="xs"
+                                                                    className="h-7 px-2.5 text-[10px] font-bold animate-fade-in"
+                                                                    onClick={() => setSelectedSeat(seat)}
+                                                                >
+                                                                    Seat {seat}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
 
                                         {/* Download All */}
                                         <Button

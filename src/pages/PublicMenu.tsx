@@ -137,7 +137,10 @@ const PublicMenu = () => {
     const isTableMode = !!tableNo;
 
     // Session ID: persisted in localStorage so it survives app close/reopen
-    const sessionStorageKey = isTableMode ? `table - session - ${urlParam} -${tableNo} ` : null;
+    const seatId = searchParams.get('seat');
+    const sessionStorageKey = isTableMode 
+        ? (seatId ? `table-session-${urlParam}-${tableNo}-${seatId}` : `table-session-${urlParam}-${tableNo}`) 
+        : null;
     const [sessionId, setSessionId] = useState<string | null>(() => {
         if (!sessionStorageKey) return null;
         return localStorage.getItem(sessionStorageKey) || null;
@@ -632,6 +635,7 @@ const PublicMenu = () => {
                     branch_id: branchId,
                     table_number: tableNo,
                     session_id: sessionId,
+                    seat_id: seatId || null,
                     order_number: orderNumber,
                     items: orderItems,
                     total_amount: totalAmount,
@@ -672,6 +676,7 @@ const PublicMenu = () => {
                     id: data.id,
                     admin_id: adminId,
                     table_number: tableNo,
+                    seat_id: seatId || null,
                     order_number: orderNumber,
                     items: orderItems,
                     total_amount: totalAmount,
@@ -755,6 +760,12 @@ const PublicMenu = () => {
                 .eq('table_number', tableNo)
                 .in('status', ['pending', 'preparing', 'ready'])
                 .eq('is_billed', false);
+
+            if (seatId) {
+                tableActiveOrdersQ = tableActiveOrdersQ.eq('seat_id', seatId);
+            } else {
+                tableActiveOrdersQ = tableActiveOrdersQ.is('seat_id', null);
+            }
             
             if (branchId) tableActiveOrdersQ = tableActiveOrdersQ.eq('branch_id', branchId);
             
@@ -946,6 +957,7 @@ const PublicMenu = () => {
                     branch_id: branchId,
                     table_number: tableNo,
                     session_id: sessionId,
+                    seat_id: seatId || null,
                     request_type: requestType,
                     message: message || null,
                     status: 'pending'
@@ -971,6 +983,7 @@ const PublicMenu = () => {
                 payload: {
                     admin_id: adminId,
                     table_number: tableNo,
+                    seat_id: seatId || null,
                     request_type: requestType,
                     message: message || null,
                     session_id: sessionId,
@@ -1187,13 +1200,25 @@ const PublicMenu = () => {
 
     return (
         <div
-            className="min-h-screen"
+            className="min-h-screen public-menu-container"
             style={{
                 background: shopSettings?.menu_background_color
                     ? `linear-gradient(135deg, ${shopSettings.menu_background_color}15 0%, ${shopSettings.menu_background_color}08 50%, ${shopSettings.menu_background_color}15 100%)`
                     : 'linear-gradient(135deg, #fef7ed 0%, #fff7ed 25%, #fefce8 50%, #f0fdf4 75%, #fef7ed 100%)'
             }}
         >
+            <style>{`
+                .public-menu-container .text-\\[10px\\] { font-size: 12.5px !important; }
+                .public-menu-container .text-\\[11px\\] { font-size: 13px !important; }
+                .public-menu-container .text-\\[12px\\] { font-size: 14px !important; }
+                .public-menu-container .text-xs { font-size: 14px !important; }
+                .public-menu-container .text-sm { font-size: 15.5px !important; }
+                .public-menu-container .text-base { font-size: 17.5px !important; }
+                .public-menu-container .text-lg { font-size: 19.5px !important; }
+                .public-menu-container .text-xl { font-size: 22px !important; }
+                .public-menu-container .text-2xl { font-size: 26px !important; }
+                .public-menu-container .text-3xl { font-size: 32px !important; }
+            `}</style>
             {/* Header with Shop Name */}
             <header
                 className="sticky top-0 z-50 text-white shadow-xl"
@@ -1226,7 +1251,7 @@ const PublicMenu = () => {
                         <div className="flex items-center gap-2 flex-shrink-0">
                             {tableNo && (
                                 <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                                    T{tableNo}
+                                    T{tableNo}{seatId ? ` - Seat ${seatId}` : ''}
                                 </Badge>
                             )}
                             <Button
@@ -1742,7 +1767,7 @@ const PublicMenu = () => {
                             >
                                 <div className="flex items-center gap-2">
                                     <ChefHat className="w-5 h-5 text-blue-600" />
-                                    <span className="font-bold text-blue-900">Your Orders — Table {tableNo}</span>
+                                    <span className="font-bold text-blue-900">Your Orders — Table {tableNo}{seatId ? ` (Seat ${seatId})` : ''}</span>
                                     <Badge className="bg-blue-100 text-blue-700 text-xs">{sessionOrders.length}</Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -2081,7 +2106,7 @@ const PublicMenu = () => {
                                 {/* Handle */}
                                 <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
                                 <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">Need Assistance?</h3>
-                                <p className="text-xs text-gray-500 mb-4 text-center">Table {tableNo} • Tap to notify staff</p>
+                                <p className="text-xs text-gray-500 mb-4 text-center">Table {tableNo}{seatId ? ` - Seat ${seatId}` : ''} • Tap to notify staff</p>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     {HELP_ACTIONS.filter(a => a.type !== 'custom').map((action) => {
@@ -2187,7 +2212,7 @@ const PublicMenu = () => {
                             <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 text-center">
                                 <span className="text-xs text-emerald-700 font-semibold uppercase tracking-wider block mb-1">Amount to Pay</span>
                                 <span className="text-3xl font-extrabold text-emerald-900">₹{sessionTotal.toFixed(2)}</span>
-                                <p className="text-[11px] text-emerald-600/80 mt-1">Table {tableNo} • Order Total</p>
+                                <p className="text-[11px] text-emerald-600/80 mt-1">Table {tableNo}{seatId ? ` (Seat ${seatId})` : ''} • Order Total</p>
                             </div>
 
                             {/* Merchant Details */}
@@ -2217,7 +2242,7 @@ const PublicMenu = () => {
                                     {/* Mobile Quick Pay Button */}
                                     <div className="block md:hidden">
                                         <a
-                                            href={`upi://pay?pa=${shopSettings?.upi_id}&pn=${encodeURIComponent(shopSettings?.upi_name || '')}&am=${sessionTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + tableNo + ' Bill')}`}
+                                            href={`upi://pay?pa=${shopSettings?.upi_id}&pn=${encodeURIComponent(shopSettings?.upi_name || '')}&am=${sessionTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + tableNo + (seatId ? ' Seat ' + seatId : '') + ' Bill')}`}
                                             className="w-full h-12 text-sm font-bold rounded-xl text-white flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
                                             style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
                                         >
@@ -2234,7 +2259,7 @@ const PublicMenu = () => {
                                     <div className="flex flex-col items-center justify-center p-3 bg-white border border-gray-100 rounded-2xl shadow-sm max-w-[240px] mx-auto">
                                         <img
                                             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                                                `upi://pay?pa=${shopSettings?.upi_id}&pn=${encodeURIComponent(shopSettings?.upi_name || '')}&am=${sessionTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + tableNo + ' Bill')}`
+                                                `upi://pay?pa=${shopSettings?.upi_id}&pn=${encodeURIComponent(shopSettings?.upi_name || '')}&am=${sessionTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + tableNo + (seatId ? ' Seat ' + seatId : '') + ' Bill')}`
                                             )}`}
                                             alt="UPI QR Code"
                                             className="w-40 h-40 object-contain"

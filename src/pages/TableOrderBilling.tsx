@@ -21,6 +21,7 @@ interface TableOrder {
     admin_id: string;
     table_number: string;
     session_id: string;
+    seat_id?: string | null;
     order_number: number;
     items: Array<{
         item_id: string;
@@ -40,6 +41,7 @@ interface TableOrder {
 
 interface TableWithOrders {
     table_number: string;
+    seat_id?: string | null;
     orders: TableOrder[];
     total: number;
     orderCount: number;
@@ -60,6 +62,8 @@ interface CartItem {
     unit?: string;
     base_value?: number;
     quantity_step?: number;
+    stock_quantity?: number;
+    unlimited_stock?: boolean;
 }
 
 const getTimeElapsed = (created: string) => {
@@ -92,6 +96,18 @@ const TableOrderBilling: React.FC = () => {
     const [whatsappEnabled, setWhatsappEnabled] = useState(false);
     const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
     const [billSettings, setBillSettings] = useState<any>(null);
+    const [showOrderType, setShowOrderType] = useState(false);
+    const [gstSettings, setGstSettings] = useState<{
+        enabled: boolean;
+        gstin: string;
+        isComposition: boolean;
+        taxRatesMap: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
+    }>({
+        enabled: false,
+        gstin: '',
+        isComposition: false,
+        taxRatesMap: {}
+    });
     const syncChannelRef = useRef<any>(null);
     const tableOrderChannelRef = useRef<any>(null);
 
@@ -171,14 +187,53 @@ const TableOrderBilling: React.FC = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data } = await supabase
+            let query = supabase
                 .from('shop_settings')
                 .select('*')
-                .eq('user_id', user.id)
-                .single();
+                .eq('user_id', user.id);
+
+            if (operatingBranchId) {
+                query = query.eq('branch_id', operatingBranchId);
+            } else {
+                query = query.is('branch_id', null);
+            }
+
+            let { data, error } = await query.maybeSingle();
+
+            // Fallback: main branch or any branch
+            if (!data && !error) {
+                const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
+                const { data: mainBranch } = await supabase
+                    .from('branches')
+                    .select('id')
+                    .eq('admin_id', adminId || user.id)
+                    .eq('is_main', true)
+                    .maybeSingle();
+
+                if (mainBranch?.id) {
+                    const { data: fallbackData } = await supabase
+                        .from('shop_settings')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('branch_id', mainBranch.id)
+                        .maybeSingle();
+                    data = fallbackData;
+                }
+
+                if (!data) {
+                    const { data: anyData } = await supabase
+                        .from('shop_settings')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('branch_id', { nullsFirst: false })
+                        .limit(1)
+                        .maybeSingle();
+                    data = anyData;
+                }
+            }
 
             if (data) {
-                setBillSettings({
+                const settings = {
                     shopName: data.shop_name || '',
                     address: data.address || '',
                     contactNumber: data.contact_number || '',
@@ -186,14 +241,70 @@ const TableOrderBilling: React.FC = () => {
                     whatsapp: data.whatsapp || '',
                     showWhatsapp: data.show_whatsapp,
                     printerWidth: data.printer_width as '58mm' | '80mm' || '58mm',
-                });
+                    whatsappEnabled: data.whatsapp_bill_share_enabled || false,
+                    whatsappShareMode: (data as any).whatsapp_share_mode || 'text',
+                    showOrderType: (data as any).show_order_type || false
+                };
+                setBillSettings(settings);
                 setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
                 setWhatsappShareMode((data as any).whatsapp_share_mode === 'image' ? 'image' : 'text');
+                setShowOrderType((data as any).show_order_type || false);
+
+                // Update cache
+                const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+                localStorage.setItem(headerKey, JSON.stringify(settings));
+
+                // Load GST settings
+                if ((data as any).gst_enabled) {
+                    const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
+                    if (adminId) {
+                        const { data: rates } = await (supabase as any)
+                            .from('tax_rates')
+                            .select('id, name, rate, cess_rate, hsn_code')
+                            .eq('admin_id', adminId)
+                            .eq('is_active', true);
+                        const taxRatesMap: Record<string, any> = {};
+                        (rates || []).forEach((r: any) => {
+                            taxRatesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0, hsn_code: r.hsn_code || '' };
+                        });
+                        setGstSettings({
+                            enabled: true,
+                            gstin: (data as any).gstin || '',
+                            isComposition: (data as any).is_composition_scheme || false,
+                            taxRatesMap
+                        });
+                    }
+                } else {
+                    setGstSettings({ enabled: false, gstin: '', isComposition: false, taxRatesMap: {} });
+                }
             }
         } catch (error) {
             console.error('Error fetching shop settings:', error);
         }
-    }, []);
+    }, [operatingBranchId, profile]);
+
+    // Cache-first shop settings loading
+    const loadShopSettingsFromCache = useCallback(() => {
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setBillSettings({
+                    shopName: parsed.shopName || '',
+                    address: parsed.address || '',
+                    contactNumber: parsed.contactNumber || '',
+                    logoUrl: parsed.logoUrl || '',
+                    whatsapp: parsed.whatsapp || '',
+                    showWhatsapp: parsed.showWhatsapp !== false,
+                    printerWidth: parsed.printerWidth || '58mm'
+                });
+                setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
+                setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
+                setShowOrderType(parsed.showOrderType || false);
+            } catch (e) { /* ignore */ }
+        }
+    }, [operatingBranchId]);
 
     // Fetch all unbilled table orders grouped by table
     const fetchTableOrders = useCallback(async () => {
@@ -209,23 +320,36 @@ const TableOrderBilling: React.FC = () => {
 
             if (error) throw error;
 
-            // Group by table_number
+            // Group by table_number AND seat_id
             const grouped: Record<string, TableOrder[]> = {};
             (data || []).forEach((order: TableOrder) => {
-                if (!grouped[order.table_number]) {
-                    grouped[order.table_number] = [];
+                const key = order.seat_id 
+                    ? `${order.table_number}-seat-${order.seat_id}` 
+                    : `${order.table_number}-general`;
+                if (!grouped[key]) {
+                    grouped[key] = [];
                 }
-                grouped[order.table_number].push(order);
+                grouped[key].push(order);
             });
 
             const tablesWithOrders: TableWithOrders[] = Object.entries(grouped)
-                .map(([tableNum, orders]) => ({
-                    table_number: tableNum,
-                    orders,
-                    total: orders.reduce((sum, o) => sum + o.total_amount, 0),
-                    orderCount: orders.length,
-                }))
-                .sort((a, b) => a.table_number.localeCompare(b.table_number, undefined, { numeric: true }));
+                .map(([key, orders]) => {
+                    const firstOrder = orders[0];
+                    return {
+                        table_number: firstOrder.table_number,
+                        seat_id: firstOrder.seat_id || null,
+                        orders,
+                        total: orders.reduce((sum, o) => sum + o.total_amount, 0),
+                        orderCount: orders.length,
+                    };
+                })
+                .sort((a, b) => {
+                    const tableCompare = a.table_number.localeCompare(b.table_number, undefined, { numeric: true });
+                    if (tableCompare !== 0) return tableCompare;
+                    const seatA = a.seat_id || '';
+                    const seatB = b.seat_id || '';
+                    return seatA.localeCompare(seatB);
+                });
 
             setTables(tablesWithOrders);
         } catch (err) {
@@ -241,6 +365,7 @@ const TableOrderBilling: React.FC = () => {
         fetchTableOrders();
         fetchPaymentTypes();
         fetchAdditionalCharges();
+        loadShopSettingsFromCache();
         fetchShopSettings();
 
         // Seed bill counter
@@ -275,7 +400,7 @@ const TableOrderBilling: React.FC = () => {
             supabase.removeChannel(pgChannel);
             supabase.removeChannel(syncChannel);
         };
-    }, [fetchTableOrders, fetchPaymentTypes, fetchAdditionalCharges, fetchShopSettings, adminId]);
+    }, [fetchTableOrders, fetchPaymentTypes, fetchAdditionalCharges, loadShopSettingsFromCache, fetchShopSettings, adminId]);
 
     // Map payment mode string to database enum
     const mapPaymentMode = (method: string): string => {
@@ -394,14 +519,14 @@ const TableOrderBilling: React.FC = () => {
                 return;
             }
 
-            // Calculate totals with rounding
+            // Calculate totals (float precision for accuracy)
             const subtotal = validItems.reduce((sum, item) => {
                 const baseValue = item.base_value || 1;
-                return sum + Math.round((item.quantity / baseValue) * item.price);
+                return sum + ((item.quantity / baseValue) * item.price);
             }, 0);
 
             const totalAdditionalCharges = paymentData.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
-            const totalAmount = Math.round(subtotal + totalAdditionalCharges - paymentData.discount);
+            let totalAmount = subtotal + totalAdditionalCharges - paymentData.discount;
 
             const billNumber = getInstantBillNumber(adminId, operatingBranchId);
             const now = new Date();
@@ -410,8 +535,64 @@ const TableOrderBilling: React.FC = () => {
             const paymentMode = mapPaymentMode(paymentData.paymentMethod);
             const additionalChargesArray = paymentData.additionalCharges.map(c => ({ name: c.name, amount: c.amount }));
 
+            // Calculate GST if enabled
+            let taxSummary: any = null;
+            let totalTax = 0;
+            let itemTaxes: any[] = [];
+            let roundOff = 0;
+
+            if (gstSettings.enabled) {
+                const itemIds = validItems.map(item => item.id);
+                const { data: dbItems } = await supabase
+                    .from('items')
+                    .select('id, tax_rate_id, is_tax_inclusive, hsn_code')
+                    .in('id', itemIds);
+                const dbItemsMap = new Map((dbItems || []).map(i => [i.id, i]));
+
+                const { calculateItemTax, calculateBillTaxSummary } = await import('@/utils/gstCalculator');
+                itemTaxes = validItems.map(item => {
+                    const dbItem = dbItemsMap.get(item.id);
+                    const taxRateId = dbItem?.tax_rate_id;
+                    const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
+                    if (!taxRateInfo) return { taxableAmount: 0, cgst: 0, sgst: 0, cess: 0, totalTax: 0, totalWithTax: (item.quantity / (item.base_value || 1)) * item.price, taxRate: 0, _cessRate: 0, _taxName: '', _isTaxInclusive: true };
+                    const lineTotal = (item.quantity / (item.base_value || 1)) * item.price;
+                    const isTaxInclusive = dbItem?.is_tax_inclusive !== false;
+                    const cessRate = (taxRateInfo as any).cess_rate || taxRateInfo.cess || 0;
+                    const result = calculateItemTax(lineTotal, taxRateInfo.rate, cessRate, isTaxInclusive);
+                    return { ...result, _cessRate: cessRate, _taxName: taxRateInfo.name || `GST ${taxRateInfo.rate}%`, _isTaxInclusive: isTaxInclusive };
+                });
+
+                const summary = calculateBillTaxSummary(validItems.map((item, i) => {
+                    const dbItem = dbItemsMap.get(item.id);
+                    return {
+                        price: item.price,
+                        quantity: item.quantity,
+                        total: (item.quantity / (item.base_value || 1)) * item.price,
+                        taxRate: itemTaxes[i].taxRate,
+                        taxName: (itemTaxes[i] as any)._taxName || `GST ${itemTaxes[i].taxRate}%`,
+                        cessRate: (itemTaxes[i] as any)._cessRate || 0,
+                        isTaxInclusive: (itemTaxes[i] as any)._isTaxInclusive !== false,
+                        hsnCode: dbItem?.hsn_code || gstSettings.taxRatesMap[dbItem?.tax_rate_id || '']?.hsn_code || ''
+                    };
+                }));
+                taxSummary = summary;
+                totalTax = itemTaxes.reduce((s, t) => s + t.totalTax, 0);
+
+                // Round-off: round total to nearest integer
+                const rawTotal = totalAmount;
+                const roundedTotal = Math.round(rawTotal);
+                roundOff = roundedTotal - rawTotal;
+                if (Math.abs(roundOff) > 0.001) {
+                    totalAmount = roundedTotal;
+                } else {
+                    roundOff = 0;
+                }
+            } else {
+                totalAmount = Math.round(totalAmount);
+            }
+
             // 1. Create Bill
-            const billPayload = {
+            const billPayload: any = {
                 bill_no: billNumber,
                 total_amount: totalAmount,
                 discount: paymentData.discount,
@@ -425,8 +606,16 @@ const TableOrderBilling: React.FC = () => {
                 service_status: 'completed',
                 kitchen_status: 'completed',
                 status_updated_at: now.toISOString(),
-                table_no: `T${tableNumber}`,
+                table_no: selectedTable.seat_id ? `T${tableNumber} (Seat ${selectedTable.seat_id})` : `T${tableNumber}`,
+                round_off: roundOff !== 0 ? roundOff : 0,
+                order_type: paymentData.orderType || 'dine_in'
             };
+
+            if (gstSettings.enabled && taxSummary) {
+                billPayload.tax_summary = JSON.stringify(taxSummary);
+                billPayload.total_tax = totalTax;
+                billPayload.customer_gstin = paymentData.customerGstin || null;
+            }
 
             const { data: billData, error: billError } = await supabase
                 .from('bills')
@@ -467,31 +656,48 @@ const TableOrderBilling: React.FC = () => {
                 console.warn('Failed to mark orders as billed:', updateError);
             }
 
-            // 4. Free the table
-            const { error: tableError } = await supabase
-                .from('tables')
-                .update({ status: 'available', current_bill_id: null })
+            // 4. Free the table only if there are no other active (unbilled) orders for this table
+            const { count: remainingCount, error: countError } = await supabase
+                .from('table_orders')
+                .select('id', { count: 'exact', head: true })
                 .eq('admin_id', adminId)
-                .eq('table_number', tableNumber);
+                .eq('table_number', tableNumber)
+                .eq('is_billed', false)
+                .neq('status', 'cancelled')
+                .not('id', 'in', `(${orderIds.join(',')})`);
 
-            if (tableError) {
-                console.warn('Failed to free table:', tableError);
+            if (countError) {
+                console.warn('Failed to count remaining orders:', countError);
             }
 
-            // Broadcast table freed to TableManagement via shared channel
-            // syncChannelRef is pos-global-sync (for Kitchen/ServiceArea)
-            syncChannelRef.current?.send({
-                type: 'broadcast',
-                event: 'table-status-updated',
-                payload: { table_number: tableNumber, status: 'available', timestamp: Date.now() }
-            });
-            // Also send on the shared table-order-sync channel (for Tables/TableBilling)
-            // Use persistent ref to avoid destroying the listener
-            tableOrderChannelRef.current?.send({
-                type: 'broadcast',
-                event: 'table-status-updated',
-                payload: { table_number: tableNumber, status: 'available', timestamp: Date.now() }
-            });
+            const shouldFreeTable = !remainingCount || remainingCount === 0;
+
+            if (shouldFreeTable) {
+                const { error: tableError } = await supabase
+                    .from('tables')
+                    .update({ status: 'available', current_bill_id: null })
+                    .eq('admin_id', adminId)
+                    .eq('table_number', tableNumber);
+
+                if (tableError) {
+                    console.warn('Failed to free table:', tableError);
+                }
+
+                // Broadcast table freed to TableManagement via shared channel
+                // syncChannelRef is pos-global-sync (for Kitchen/ServiceArea)
+                syncChannelRef.current?.send({
+                    type: 'broadcast',
+                    event: 'table-status-updated',
+                    payload: { table_number: tableNumber, status: 'available', timestamp: Date.now() }
+                });
+                // Also send on the shared table-order-sync channel (for Tables/TableBilling)
+                // Use persistent ref to avoid destroying the listener
+                tableOrderChannelRef.current?.send({
+                    type: 'broadcast',
+                    event: 'table-status-updated',
+                    payload: { table_number: tableNumber, status: 'available', timestamp: Date.now() }
+                });
+            }
 
             // 5. Broadcast bill creation (4-layer sync)
             window.dispatchEvent(new CustomEvent('bills-updated'));
@@ -539,6 +745,54 @@ const TableOrderBilling: React.FC = () => {
                     paymentData.discount,
                     additionalChargesArray
                 );
+            }
+
+            // 8. Auto Print receipt (if enabled)
+            const printData = {
+                billNo: billNumber,
+                date: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+                items: validItems.map(item => {
+                    const baseValue = item.base_value || 1;
+                    return {
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        total: (item.quantity / baseValue) * item.price,
+                        unit: item.unit,
+                        base_value: item.base_value
+                    };
+                }),
+                subtotal: subtotal,
+                additionalCharges: additionalChargesArray,
+                discount: paymentData.discount,
+                total: totalAmount,
+                paymentMethod: paymentData.paymentMethod.toUpperCase(),
+                paymentDetails: paymentData.paymentAmounts,
+                shopName: billSettings?.shopName,
+                address: billSettings?.address,
+                contactNumber: billSettings?.contactNumber,
+                printerWidth: billSettings?.printerWidth || '58mm',
+                logoUrl: billSettings?.logoUrl,
+                tableNo: selectedTable.seat_id ? `T${tableNumber} (${selectedTable.seat_id})` : `T${tableNumber}`,
+                // GST fields
+                gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
+                taxSummary: billPayload.tax_summary || undefined,
+                totalTax: billPayload.total_tax || undefined,
+                isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
+                roundOff: roundOff !== 0 ? roundOff : undefined,
+                orderType: paymentData.orderType
+            };
+
+            const autoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
+
+            if (autoPrintEnabled) {
+                try {
+                    const { printReceipt } = await import('@/utils/bluetoothPrinter');
+                    await printReceipt(printData as any);
+                } catch (printErr) {
+                    console.error('Print failed:', printErr);
+                }
             }
 
             toast({
@@ -612,14 +866,21 @@ const TableOrderBilling: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {tables.map((table) => (
                             <Card
-                                key={table.table_number}
+                                key={table.seat_id ? `${table.table_number}-seat-${table.seat_id}` : `${table.table_number}-general`}
                                 className="cursor-pointer transition-all hover:shadow-md border-l-4 border-l-purple-500"
                                 onClick={() => handleTableSelect(table)}
                             >
                                 <CardContent className="p-4">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-2xl font-black">T{table.table_number}</h3>
+                                            <h3 className="text-2xl font-black flex items-baseline">
+                                                T{table.table_number}
+                                                {table.seat_id && (
+                                                    <span className="text-xs font-bold text-purple-600 ml-1 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                                                        Seat {table.seat_id}
+                                                    </span>
+                                                )}
+                                            </h3>
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">
                                                 <ShoppingCart className="w-2.5 h-2.5 mr-0.5" />
                                                 {table.orderCount} order{table.orderCount > 1 ? 's' : ''}
@@ -674,6 +935,8 @@ const TableOrderBilling: React.FC = () => {
                     onCompletePayment={handleCompletePayment}
                     whatsappEnabled={whatsappEnabled}
                     whatsappShareMode={whatsappShareMode}
+                    gstEnabled={gstSettings.enabled}
+                    showOrderType={showOrderType}
                 />
             </div>
         </div>

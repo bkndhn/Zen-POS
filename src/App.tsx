@@ -7,9 +7,128 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
-import { BranchProvider } from "@/contexts/BranchContext";
+import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { Layout } from "@/components/Layout";
 import { useWakeLock } from "@/hooks/useWakeLock";
+
+const ThemeLoader = () => {
+  const { operatingBranchId } = useBranch();
+
+  useEffect(() => {
+    const applyGlobalTheme = () => {
+      const themeKey = operatingBranchId ? `hotel_pos_theme_${operatingBranchId}` : 'hotel_pos_theme';
+      const savedTheme = localStorage.getItem(themeKey) ?? localStorage.getItem('hotel_pos_theme') ?? 'blue';
+      const customColorKey = operatingBranchId ? `hotel_pos_custom_color_${operatingBranchId}` : 'hotel_pos_custom_color';
+      const customColor = localStorage.getItem(customColorKey) ?? localStorage.getItem('hotel_pos_custom_color') ?? '#0324fc';
+
+      const themes = [
+        { id: 'blue', class: '' },
+        { id: 'blue-bright', class: 'theme-blue-bright' },
+        { id: 'purple', class: 'theme-purple' },
+        { id: 'green', class: 'theme-green' },
+        { id: 'rose', class: 'theme-rose' },
+        { id: 'sunset', class: 'theme-sunset' },
+        { id: 'navy', class: 'theme-navy' },
+        { id: 'hotpink', class: 'theme-hotpink' }
+      ];
+
+      const themeColors: Record<string, string> = {
+        'blue': '#3b82f6',
+        'blue-bright': '#0324fc',
+        'purple': '#9333ea',
+        'green': '#10b981',
+        'rose': '#e11d48',
+        'sunset': '#f97316',
+        'navy': '#1e3a8a',
+        'hotpink': '#c11c84'
+      };
+
+      if (savedTheme === 'custom') {
+        const hexToHSL = (hex: string) => {
+          let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          if (!result) return { h: 0, s: 0, l: 0 };
+          let r = parseInt(result[1], 16) / 255;
+          let g = parseInt(result[2], 16) / 255;
+          let b = parseInt(result[3], 16) / 255;
+          let max = Math.max(r, g, b), min = Math.min(r, g, b);
+          let h = 0, s = 0, l = (max + min) / 2;
+          if (max !== min) {
+            let d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+              case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+              case g: h = (b - r) / d + 2; break;
+              case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+          }
+          return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        };
+
+        const { h, s, l } = hexToHSL(customColor);
+        const hslString = `${h} ${s}% ${l}%`;
+        const glowString = `${h} ${Math.min(s + 5, 100)}% ${Math.min(l + 10, 95)}%`;
+
+        themes.forEach(t => {
+          if (t.class) document.documentElement.classList.remove(t.class);
+        });
+
+        document.documentElement.style.setProperty('--primary', hslString);
+        document.documentElement.style.setProperty('--primary-foreground', '0 0% 100%');
+        document.documentElement.style.setProperty('--primary-glow', glowString);
+        document.documentElement.style.setProperty('--ring', hslString);
+        document.documentElement.style.setProperty('--gradient-primary', `linear-gradient(135deg, hsl(${h} ${s}% ${l}%), hsl(${h} ${Math.max(s - 10, 0)}% ${Math.min(l + 5, 100)}%))`);
+
+        document.documentElement.style.setProperty('--sidebar-primary', hslString);
+        document.documentElement.style.setProperty('--sidebar-ring', hslString);
+        document.documentElement.style.setProperty('--btn-increment', hslString);
+        document.documentElement.style.setProperty('--qty-badge', hslString);
+
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', customColor);
+        }
+      } else {
+        document.documentElement.style.removeProperty('--primary');
+        document.documentElement.style.removeProperty('--primary-foreground');
+        document.documentElement.style.removeProperty('--primary-glow');
+        document.documentElement.style.removeProperty('--ring');
+        document.documentElement.style.removeProperty('--gradient-primary');
+        document.documentElement.style.removeProperty('--sidebar-primary');
+        document.documentElement.style.removeProperty('--sidebar-ring');
+        document.documentElement.style.removeProperty('--btn-increment');
+        document.documentElement.style.removeProperty('--qty-badge');
+
+        themes.forEach(t => {
+          if (t.class) document.documentElement.classList.remove(t.class);
+        });
+
+        if (savedTheme && savedTheme !== 'blue') {
+          const themeClass = `theme-${savedTheme}`;
+          document.documentElement.classList.add(themeClass);
+        }
+
+        const themeColor = themeColors[savedTheme] || '#3b82f6';
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', themeColor);
+        }
+      }
+    };
+
+    applyGlobalTheme();
+
+    // Listen for custom theme change events
+    window.addEventListener('theme-changed', applyGlobalTheme);
+    window.addEventListener('branch-changed', applyGlobalTheme);
+    return () => {
+      window.removeEventListener('theme-changed', applyGlobalTheme);
+      window.removeEventListener('branch-changed', applyGlobalTheme);
+    };
+  }, [operatingBranchId]);
+
+  return null;
+};
 
 // Direct imports for faster navigation (no lazy loading overhead)
 import Auth from "./pages/Auth";
@@ -237,7 +356,8 @@ const App = () => {
             <AuthProvider>
               <PermissionsProvider>
                 <BranchProvider>
-                <Routes>
+                  <ThemeLoader />
+                  <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Layout><ProtectedRoute requiredPermission="billing"><Billing /></ProtectedRoute></Layout>} />
                   <Route path="/dashboard" element={<Layout><ProtectedRoute requiredPermission="dashboard"><Dashboard /></ProtectedRoute></Layout>} />

@@ -62,7 +62,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
   const [taxRates, setTaxRates] = useState<TaxRateOption[]>([]);
   const shortUnit = getShortUnit(item.unit || 'Piece (pc)');
   const isMlOrG = shortUnit === 'ml' || shortUnit === 'g';
-  const initialStockUnit = (isMlOrG && item.stock_quantity && item.stock_quantity % 1000 === 0) ? 'bulk' : 'base';
+  const initialStockUnit = isMlOrG ? 'bulk' : 'base';
 
   const [stockInputUnit, setStockInputUnit] = useState<'base' | 'bulk'>(initialStockUnit);
   const [stockUpdateMode, setStockUpdateMode] = useState<'add' | 'replace'>('add');
@@ -124,7 +124,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
       const currentShortUnit = getShortUnit(item.unit || 'Piece (pc)');
       const currentIsMlOrG = currentShortUnit === 'ml' || currentShortUnit === 'g';
-      const currentStockUnit = (currentIsMlOrG && item.stock_quantity && item.stock_quantity % 1000 === 0) ? 'bulk' : 'base';
+      const currentStockUnit = currentIsMlOrG ? 'bulk' : 'base';
       setStockInputUnit(currentStockUnit);
       setStockUpdateMode('add');
 
@@ -434,7 +434,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                 value={formData.unit}
                 onValueChange={(value) => {
                   setFormData({ ...formData, unit: value });
-                  setStockInputUnit('base');
+                  const currentShort = getShortUnit(value);
+                  setStockInputUnit((currentShort === 'ml' || currentShort === 'g') ? 'bulk' : 'base');
                 }}
               >
                 <SelectTrigger className="bg-background">

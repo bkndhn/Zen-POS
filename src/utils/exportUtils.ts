@@ -118,9 +118,13 @@ interface PaymentForExport {
 }
 
 interface ProfitLossForExport {
-  description: string;
-  amount: number;
-  type: 'revenue' | 'expense';
+  totalSales: number;
+  totalCOGS: number;
+  grossProfit: number;
+  totalExpenses: number;
+  netProfit: number;
+  totalPurchases: number;
+  netCashFlow: number;
 }
 
 // Export all reports to Excel with separate sheets
@@ -128,7 +132,7 @@ export const exportAllReportsToExcel = (data: {
   bills: BillForExport[];
   items: ItemForExport[];
   payments: PaymentForExport[];
-  profitLoss: ProfitLossForExport[];
+  profitLoss: ProfitLossForExport;
   dateRange: string;
   branchName?: string;
 }) => {
@@ -198,22 +202,17 @@ export const exportAllReportsToExcel = (data: {
   }
 
   // P&L section
-  if (data.profitLoss.length > 0) {
-    const plData: Record<string, any>[] = data.profitLoss.map((item, index) => ({
-      '#': index + 1,
-      'Description': item.description,
-      'Type': item.type.toUpperCase(),
-      'Amount': item.amount,
-    }));
-    const revenue = data.profitLoss.filter((i) => i.type === 'revenue').reduce((s, i) => s + i.amount, 0);
-    const expenses = data.profitLoss.filter((i) => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
-    const profit = revenue - expenses;
-    plData.push(
-      { '#': '', 'Description': 'TOTAL REVENUE', 'Type': 'REVENUE', 'Amount': revenue },
-      { '#': '', 'Description': 'TOTAL EXPENSES', 'Type': 'EXPENSE', 'Amount': expenses },
-      { '#': '', 'Description': 'NET PROFIT/LOSS', 'Type': profit >= 0 ? 'PROFIT' : 'LOSS', 'Amount': profit },
-    );
-    sections.push('Profit & Loss\r\n' + rowsToCsv(plData));
+  if (data.profitLoss) {
+    const plData: Record<string, any>[] = [
+      { 'Metric': 'Total Sales (Revenue)', 'Amount': data.profitLoss.totalSales },
+      { 'Metric': 'Cost of Goods Sold (COGS)', 'Amount': data.profitLoss.totalCOGS },
+      { 'Metric': 'Gross Profit', 'Amount': data.profitLoss.grossProfit },
+      { 'Metric': 'Operating Expenses', 'Amount': data.profitLoss.totalExpenses },
+      { 'Metric': 'Net Profit (COGS-based)', 'Amount': data.profitLoss.netProfit },
+      { 'Metric': 'Stock Purchases', 'Amount': data.profitLoss.totalPurchases },
+      { 'Metric': 'Net Cash Flow', 'Amount': data.profitLoss.netCashFlow },
+    ];
+    sections.push('Profit & Loss Statement\r\n' + rowsToCsv(plData));
   }
 
   const today = new Date().toISOString().split('T')[0];
@@ -230,18 +229,14 @@ export const exportAllReportsToPDF = (data: {
   bills: BillForExport[];
   items: ItemForExport[];
   payments: PaymentForExport[];
-  profitLoss: ProfitLossForExport[];
+  profitLoss: ProfitLossForExport;
   dateRange: string;
   branchName?: string;
 }) => {
   // Calculate totals
   const billsTotal = data.bills.reduce((sum, bill) => sum + bill.total_amount, 0);
   const itemsTotal = data.items.reduce((sum, item) => sum + item.total_revenue, 0);
-  const itemsQtyTotal = data.items.reduce((sum, item) => sum + item.total_quantity, 0);
   const paymentsTotal = data.payments.reduce((sum, payment) => sum + payment.total_amount, 0);
-  const revenue = data.profitLoss.filter(item => item.type === 'revenue').reduce((sum, item) => sum + item.amount, 0);
-  const expenses = data.profitLoss.filter(item => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
-  const profit = revenue - expenses;
 
   // Simple HTML like browserPrinter.ts - works on mobile
   const html = `<!DOCTYPE html>
@@ -293,12 +288,17 @@ ${data.payments.length > 0 ? `
   </table>
 ` : ''}
 
-${data.profitLoss.length > 0 ? `
-  <h2>Profit & Loss</h2>
+${data.profitLoss ? `
+  <h2>Profit & Loss Statement</h2>
   <table>
-    <tr><th>Description</th><th>Type</th><th class="r">Amount</th></tr>
-    ${data.profitLoss.map(item => `<tr><td>${item.description}</td><td>${item.type.toUpperCase()}</td><td class="r">${item.amount.toFixed(0)}</td></tr>`).join('')}
-    <tr class="b"><td>NET ${profit >= 0 ? 'PROFIT' : 'LOSS'}</td><td></td><td class="r" style="color:${profit >= 0 ? 'green' : 'red'}">${profit.toFixed(0)}</td></tr>
+    <tr><th>Metric</th><th class="r">Amount</th></tr>
+    <tr><td>Total Sales (Revenue)</td><td class="r">₹${data.profitLoss.totalSales.toFixed(0)}</td></tr>
+    <tr><td>Cost of Goods Sold (COGS)</td><td class="r">₹${data.profitLoss.totalCOGS.toFixed(0)}</td></tr>
+    <tr class="b"><td>Gross Profit</td><td class="r">₹${data.profitLoss.grossProfit.toFixed(0)}</td></tr>
+    <tr><td>Operating Expenses</td><td class="r">₹${data.profitLoss.totalExpenses.toFixed(0)}</td></tr>
+    <tr class="b"><td>Net Profit (COGS-based)</td><td class="r" style="color:${data.profitLoss.netProfit >= 0 ? 'green' : 'red'}">₹${data.profitLoss.netProfit.toFixed(0)}</td></tr>
+    <tr><td>Stock Purchases (Cash Outflow)</td><td class="r">₹${data.profitLoss.totalPurchases.toFixed(0)}</td></tr>
+    <tr class="b"><td>Net Cash Flow</td><td class="r" style="color:${data.profitLoss.netCashFlow >= 0 ? 'green' : 'red'}">₹${data.profitLoss.netCashFlow.toFixed(0)}</td></tr>
   </table>
 ` : ''}
 

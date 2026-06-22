@@ -21,6 +21,8 @@ interface CartItem {
   unit?: string;
   base_value?: number;
   quantity_step?: number;
+  stock_quantity?: number;
+  unlimited_stock?: boolean;
 }
 
 interface PaymentType {
@@ -115,13 +117,27 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
 
   // Handle +/- button clicks - update local state
   const handleQuantityChange = (itemId: string, change: number) => {
+    const currentItem = cart.find(item => item.id === itemId);
+    if (!currentItem) return;
+
     setItemQuantityOverrides(prev => {
-      const currentItem = cart.find(item => item.id === itemId);
-      if (!currentItem) return prev;
       const currentQty = prev[itemId] !== undefined ? prev[itemId] : currentItem.quantity;
       const step = currentItem.quantity_step || 1;
       const actualChange = change > 0 ? step : -step;
       const newQty = Math.max(0, currentQty + actualChange);
+
+      // Check stock limit if stock tracking is active
+      if (change > 0 && currentItem.unlimited_stock === false && currentItem.stock_quantity !== undefined) {
+        if (newQty > currentItem.stock_quantity) {
+          toast({
+            title: "🚫 Stock Limit Exceeded",
+            description: `Cannot add more of ${currentItem.name}. Only ${currentItem.stock_quantity} available in stock.`,
+            variant: "destructive"
+          });
+          return prev;
+        }
+      }
+
       return { ...prev, [itemId]: newQty };
     });
   };
@@ -389,6 +405,17 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                         value={effectiveQty}
                         onChange={(e) => {
                           const newQty = Number(e.target.value) || 0;
+                          if (item.unlimited_stock === false && item.stock_quantity !== undefined) {
+                            if (newQty > item.stock_quantity) {
+                              toast({
+                                title: "🚫 Stock Limit Exceeded",
+                                description: `Cannot add more of ${item.name}. Only ${item.stock_quantity} available in stock.`,
+                                variant: "destructive"
+                              });
+                              setItemQuantityOverrides(prev => ({ ...prev, [item.id]: item.stock_quantity! }));
+                              return;
+                            }
+                          }
                           setItemQuantityOverrides(prev => ({ ...prev, [item.id]: newQty }));
                         }}
                         className="h-7 w-12 text-xs text-center p-0 border-primary/30 rounded font-bold"

@@ -433,7 +433,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
               value={formData.unit}
               onValueChange={(value) => {
                 setFormData({ ...formData, unit: value });
-                setStockInputUnit('base');
+                const currentShort = getShortUnit(value);
+                setStockInputUnit((currentShort === 'ml' || currentShort === 'g') ? 'bulk' : 'base');
               }}
             >
               <SelectTrigger className="bg-background">
