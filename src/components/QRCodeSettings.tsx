@@ -165,7 +165,8 @@ const QRCodeSettings = () => {
             let q: any = (supabase as any)
                 .from('tables')
                 .select('id, table_number, branch_id, has_seats, seat_count, seat_configuration')
-                .eq('admin_id', adminId);
+                .eq('admin_id', adminId)
+                .eq('is_active', true);
             if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
             const { data } = await q.order('table_number', { ascending: true });
             if (data) setDbTables(data);
