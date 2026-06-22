@@ -17,7 +17,7 @@ import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { format } from 'date-fns';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
@@ -1236,10 +1236,7 @@ const Billing = () => {
           time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
           paymentMethod,
           totalItemsCount: cartItems.length,
-          smartQtyCount: cartItems.reduce((sum, item) => {
-            const isWeight = item.unit && ['kg', 'g', 'l', 'ml', 'liter', 'litre', 'gram', 'kilogram'].includes(item.unit.toLowerCase());
-            return sum + (isWeight ? 1 : item.quantity);
-          }, 0),
+          smartQtyCount: calculateSmartQtyCount(cartItems),
           paymentDetails,
           // GST fields
           gstin: gstData?.gstin,
@@ -1552,7 +1549,9 @@ const Billing = () => {
               facebook: billSettings?.showFacebook !== false ? billSettings?.facebook : undefined,
               instagram: billSettings?.showInstagram !== false ? billSettings?.instagram : undefined,
               whatsapp: billSettings?.showWhatsapp !== false ? billSettings?.whatsapp : undefined,
-              tableNo: selectedTableNumber || undefined
+              tableNo: selectedTableNumber || undefined,
+              totalItemsCount: validCart.length,
+              smartQtyCount: calculateSmartQtyCount(validCart)
             };
             await printReceipt(offlinePrintData as PrintData);
           } catch (printError) {
@@ -1597,6 +1596,8 @@ const Billing = () => {
         printerWidth: settingsToUse?.printerWidth || '58mm',
         logoUrl: settingsToUse?.logoUrl,
         tableNo: selectedTableNumber || undefined,
+        totalItemsCount: validCart.length,
+        smartQtyCount: calculateSmartQtyCount(validCart),
         // GST fields
         gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
         taxSummary: billPayload.tax_summary || undefined,

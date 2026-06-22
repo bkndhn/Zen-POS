@@ -1,5 +1,5 @@
 import { PrintData } from './bluetoothPrinter';
-import { formatQuantityWithUnit, getShortUnit } from './timeUtils';
+import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './timeUtils';
 
 export const printBrowserReceipt = (data: PrintData) => {
   const width = data.printerWidth || '58mm';
@@ -22,8 +22,8 @@ export const printBrowserReceipt = (data: PrintData) => {
     return `<tr><td style="max-width:40%;word-break:break-word">${item.name}</td><td style="text-align:center;white-space:nowrap">${qtyWithUnit}</td><td style="text-align:right;white-space:nowrap">${rateText}</td><td style="text-align:right">${item.total.toFixed(2)}</td></tr>`;
   }).join('');
 
-  const totalItems = data.totalItemsCount || data.items.length;
-  const smartQty = data.smartQtyCount || 0;
+  const totalItems = data.totalItemsCount !== undefined ? data.totalItemsCount : data.items.length;
+  const smartQty = data.smartQtyCount !== undefined ? data.smartQtyCount : calculateSmartQtyCount(data.items);
 
   // Simple, clean HTML that works reliably on mobile
   const html = `<!DOCTYPE html>

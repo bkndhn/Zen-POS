@@ -296,7 +296,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   const SEP = '-'.repeat(LINE_WIDTH);
   const SEP_DOUBLE = '='.repeat(LINE_WIDTH);
 
-  const { formatQuantityWithUnit, getShortUnit } = await import('./timeUtils');
+  const { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } = await import('./timeUtils');
 
   // Compact format helper - fits more on line
   const fmtLine = (left: string, right: string) => formatLine(left, right, LINE_WIDTH);
@@ -375,8 +375,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
 
   // Totals Area
-  const totalItems = data.totalItemsCount || data.items.length;
-  const smartQty = data.smartQtyCount || 0;
+  const totalItems = data.totalItemsCount !== undefined ? data.totalItemsCount : data.items.length;
+  const smartQty = data.smartQtyCount !== undefined ? data.smartQtyCount : calculateSmartQtyCount(data.items);
 
   commands.push(textToBytes(fmtLine(`Items: ${totalItems}`, `Qty: ${smartQty}`)));
   commands.push(FEED_LINE);

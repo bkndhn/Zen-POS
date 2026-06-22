@@ -6,7 +6,7 @@
  */
 
 import html2canvas from 'html2canvas';
-import { getShortUnit, formatQuantityWithUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
 
 /** Escape HTML special characters to prevent XSS */
 const escapeHtml = (str: string | undefined | null): string => {
@@ -67,8 +67,8 @@ const generateBillHtml = (data: BillImageData): string => {
     `;
   }).join('');
 
-  const totalItems = data.totalItemsCount || data.items.length;
-  const smartQty = data.smartQtyCount || data.items.reduce((sum, i) => sum + i.quantity, 0);
+  const totalItems = data.totalItemsCount !== undefined ? data.totalItemsCount : data.items.length;
+  const smartQty = data.smartQtyCount !== undefined ? data.smartQtyCount : calculateSmartQtyCount(data.items);
 
   // Payment details section
   let paymentHtml = '';

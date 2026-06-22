@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
-import { formatQuantityWithUnit } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 
 // BroadcastChannel for instant cross-tab sync
@@ -452,6 +452,8 @@ const TableOrderBilling: React.FC = () => {
                     shopName: billSettings?.shopName || '',
                     address: billSettings?.address || '',
                     phone: billSettings?.contactNumber || '',
+                    totalItemsCount: items.length,
+                    smartQtyCount: calculateSmartQtyCount(items),
                 };
 
                 const result = await shareBillImageViaWhatsApp(customerMobile, billData);
@@ -775,6 +777,8 @@ const TableOrderBilling: React.FC = () => {
                 printerWidth: billSettings?.printerWidth || '58mm',
                 logoUrl: billSettings?.logoUrl,
                 tableNo: selectedTable.seat_id ? `T${tableNumber} (${selectedTable.seat_id})` : `T${tableNumber}`,
+                totalItemsCount: validItems.length,
+                smartQtyCount: calculateSmartQtyCount(validItems),
                 // GST fields
                 gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
                 taxSummary: billPayload.tax_summary || undefined,
