@@ -21,6 +21,7 @@ export interface UserPermissions {
     suppliers: boolean;
     purchases: boolean;
     stock: boolean;
+    waiterCompanion: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -42,6 +43,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     suppliers: false,
     purchases: false,
     stock: false,
+    waiterCompanion: false,
 };
 
 const ADMIN_PERMISSIONS: UserPermissions = {
@@ -63,6 +65,7 @@ const ADMIN_PERMISSIONS: UserPermissions = {
     suppliers: true,
     purchases: true,
     stock: true,
+    waiterCompanion: true,
 };
 
 interface PermissionsContextType {
@@ -269,6 +272,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
             suppliers: '/suppliers',
             purchases: '/purchases',
             stock: '/stock',
+            waiterCompanion: '/waiter',
         };
 
         const handlePermissionChange = (userId: string, pageName: string, hasAccess: boolean) => {

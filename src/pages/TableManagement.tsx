@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { LayoutGrid, Plus, Edit, Trash2, Users, Utensils, Clock, CheckCircle2, Sparkles, ShoppingCart, Receipt } from 'lucide-react';
+import { LayoutGrid, Plus, Edit, Trash2, Users, Utensils, Clock, CheckCircle2, Sparkles, ShoppingCart, Receipt, ChefHat, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranch } from '@/contexts/BranchContext';
@@ -32,12 +32,42 @@ interface Table {
   seat_configuration?: any;
 }
 
+// Display status config — 6 visual states computed from DB status + order data
+type DisplayStatus = 'available' | 'occupied' | 'food_served' | 'bill_printed' | 'needs_cleaning' | 'reserved';
+
+const displayStatusConfig: Record<DisplayStatus, { label: string; color: string; borderColor: string; ringColor: string; icon: any }> = {
+  available:      { label: 'Available',      color: 'bg-emerald-500',  borderColor: 'border-emerald-400', ringColor: 'ring-emerald-200',  icon: CheckCircle2 },
+  occupied:       { label: 'Ordered',        color: 'bg-amber-500',    borderColor: 'border-amber-400',   ringColor: 'ring-amber-200',    icon: Utensils },
+  food_served:    { label: 'Food Served',    color: 'bg-sky-500',      borderColor: 'border-sky-400',     ringColor: 'ring-sky-200',      icon: ChefHat },
+  bill_printed:   { label: 'Bill Printed',   color: 'bg-purple-500',   borderColor: 'border-purple-400',  ringColor: 'ring-purple-200',   icon: Receipt },
+  needs_cleaning: { label: 'Needs Cleaning', color: 'bg-rose-500',     borderColor: 'border-rose-400',    ringColor: 'ring-rose-200',     icon: Sparkles },
+  reserved:       { label: 'Reserved',       color: 'bg-yellow-500',   borderColor: 'border-yellow-400',  ringColor: 'ring-yellow-200',   icon: Clock },
+};
+
+// Keep original statusConfig for the DB status dropdown
 const statusConfig = {
   available: { label: 'Available', color: 'bg-green-500', icon: CheckCircle2 },
   occupied: { label: 'Occupied', color: 'bg-red-500', icon: Utensils },
   reserved: { label: 'Reserved', color: 'bg-yellow-500', icon: Clock },
   cleaning: { label: 'Cleaning', color: 'bg-blue-500', icon: Sparkles }
 };
+
+/** Format elapsed milliseconds to a human-readable duration string */
+function formatElapsed(ms: number): string {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+/** Return a Tailwind text-color class based on elapsed minutes */
+function timerColor(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes >= 30) return 'text-red-600 font-bold';
+  if (totalMinutes >= 15) return 'text-orange-500 font-semibold';
+  return 'text-green-600';
+}
 
 const TableManagement: React.FC = () => {
   const { profile } = useAuth();
@@ -55,6 +85,12 @@ const TableManagement: React.FC = () => {
   // Active table orders count per table
   const [tableOrderCounts, setTableOrderCounts] = useState<Record<string, number>>({});
   const [tableSeatOrderCounts, setTableSeatOrderCounts] = useState<Record<string, Record<string, number>>>({});
+
+  // Duration timer state
+  const [orderTimestamps, setOrderTimestamps] = useState<Record<string, string>>({}); // table_number -> earliest order created_at
+  const [orderStatuses, setOrderStatuses] = useState<Record<string, string[]>>({}); // table_number -> list of order statuses
+  // Current time tick — updated every 60s for live timers
+  const [currentTime, setCurrentTime] = useState(() => new Date());
 
   // Form state
   const [tableNumber, setTableNumber] = useState('');
@@ -94,34 +130,77 @@ const TableManagement: React.FC = () => {
     fetchTables();
   }, [fetchTables]);
 
-  // Fetch active table order counts
+  // Live timer — update every 60 seconds for duration display
+  useEffect(() => {
+    const timerId = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timerId);
+  }, []);
+
+  // Fetch active table order counts + timestamps + statuses
   const fetchTableOrderCounts = useCallback(async () => {
     if (!adminId) return;
     try {
       const { data, error } = await (supabase as any)
         .from('table_orders')
-        .select('table_number, seat_id')
+        .select('table_number, seat_id, created_at, status')
         .eq('admin_id', adminId)
-        .in('status', ['pending', 'preparing', 'ready'])
+        .in('status', ['pending', 'preparing', 'ready', 'served'])
         .eq('is_billed', false);
 
       if (!error && data) {
         const counts: Record<string, number> = {};
         const seatCounts: Record<string, Record<string, number>> = {};
+        const timestamps: Record<string, string> = {};
+        const statuses: Record<string, string[]> = {};
         (data as any[]).forEach((order: any) => {
           counts[order.table_number] = (counts[order.table_number] || 0) + 1;
           if (order.seat_id) {
             if (!seatCounts[order.table_number]) seatCounts[order.table_number] = {};
             seatCounts[order.table_number][order.seat_id] = (seatCounts[order.table_number][order.seat_id] || 0) + 1;
           }
+          // Track earliest created_at per table
+          if (!timestamps[order.table_number] || order.created_at < timestamps[order.table_number]) {
+            timestamps[order.table_number] = order.created_at;
+          }
+          // Track all order statuses per table
+          if (!statuses[order.table_number]) statuses[order.table_number] = [];
+          statuses[order.table_number].push(order.status);
         });
         setTableOrderCounts(counts);
         setTableSeatOrderCounts(seatCounts);
+        setOrderStatuses(statuses);
+        setOrderTimestamps(timestamps);
       }
     } catch (e) {
       console.warn('Error fetching table order counts:', e);
     }
   }, [adminId]);
+
+  /** Compute the display status for a table from its DB status + order data */
+  const getDisplayStatus = useCallback((table: Table): DisplayStatus => {
+    // Non-occupied DB statuses map directly
+    if (table.status === 'available') return 'available';
+    if (table.status === 'reserved') return 'reserved';
+    if (table.status === 'cleaning') return 'needs_cleaning';
+
+    // DB status is 'occupied' — determine sub-state
+    if (table.current_bill_id) return 'bill_printed';
+    const statuses = orderStatuses[table.table_number] || [];
+    if (statuses.some(s => s === 'ready' || s === 'served')) return 'food_served';
+    
+    // Check if any orders exist
+    const hasOrders = (tableOrderCounts[table.table_number] || 0) > 0;
+    if (hasOrders) return 'occupied';
+    
+    return 'occupied';
+  }, [orderStatuses, tableOrderCounts]);
+
+  /** Pre-compute display statuses for all tables (memo'd) */
+  const tableDisplayStatuses = useMemo<Record<string, DisplayStatus>>(() => {
+    const map: Record<string, DisplayStatus> = {};
+    tables.forEach(t => { map[t.id] = getDisplayStatus(t); });
+    return map;
+  }, [tables, getDisplayStatus]);
 
   useEffect(() => {
     fetchTableOrderCounts();
@@ -309,9 +388,9 @@ const TableManagement: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
-          {Object.entries(statusConfig).map(([status, config]) => {
-            const count = tables.filter(t => t.status === status).length;
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 mb-4">
+          {(Object.entries(displayStatusConfig) as [DisplayStatus, typeof displayStatusConfig[DisplayStatus]][]).map(([status, config]) => {
+            const count = tables.filter(t => tableDisplayStatuses[t.id] === status).length;
             const Icon = config.icon;
             return (
               <Card key={status} className="p-3">
@@ -321,7 +400,7 @@ const TableManagement: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-lg font-bold">{count}</p>
-                    <p className="text-xs text-muted-foreground">{config.label}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{config.label}</p>
                   </div>
                 </div>
               </Card>
@@ -343,19 +422,28 @@ const TableManagement: React.FC = () => {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {tables.map((table) => {
-              const config = statusConfig[table.status];
+              const dStatus = tableDisplayStatuses[table.id] || 'available';
+              const config = displayStatusConfig[dStatus];
               const Icon = config.icon;
+              const isActiveTable = dStatus !== 'available';
+              const isOccupiedState = dStatus === 'occupied' || dStatus === 'food_served';
+
+              // Compute elapsed time for non-available tables
+              const earliestTs = orderTimestamps[table.table_number];
+              const elapsedMs = earliestTs ? Date.now() - new Date(earliestTs).getTime() : 0;
 
               return (
                 <Card
                   key={table.id}
                   className={cn(
-                    "relative overflow-hidden transition-all hover:shadow-md cursor-pointer",
-                    table.status === 'occupied' && "ring-2 ring-red-200"
+                    "relative overflow-hidden transition-all hover:shadow-md cursor-pointer border-2",
+                    config.borderColor,
+                    isOccupiedState && cn("ring-2", config.ringColor),
+                    isOccupiedState && "animate-[pulse_3s_ease-in-out_infinite]"
                   )}
                 >
-                  {/* Status indicator */}
-                  <div className={cn("absolute top-0 left-0 right-0 h-1", config.color)} />
+                  {/* Status indicator bar */}
+                  <div className={cn("absolute top-0 left-0 right-0 h-1.5", config.color)} />
 
                   <CardContent className="p-3 pt-4">
                     <div className="flex items-start justify-between mb-2">
@@ -371,7 +459,8 @@ const TableManagement: React.FC = () => {
                       </Badge>
                     </div>
 
-                    <div className="flex items-center gap-1 mb-3">
+                    {/* Display status + order badge */}
+                    <div className="flex items-center gap-1 mb-1">
                       <Icon className="w-3 h-3" />
                       <span className="text-xs font-medium">{config.label}</span>
                       {tableOrderCounts[table.table_number] > 0 && (
@@ -381,6 +470,14 @@ const TableManagement: React.FC = () => {
                         </Badge>
                       )}
                     </div>
+
+                    {/* Duration timer for active (non-available) tables */}
+                    {isActiveTable && earliestTs && elapsedMs > 0 && (
+                      <div className={cn("flex items-center gap-1 mb-2 text-xs", timerColor(elapsedMs))}>
+                        <Timer className="w-3 h-3" />
+                        <span>{formatElapsed(elapsedMs)}</span>
+                      </div>
+                    )}
 
                     {/* Generate Bill button for occupied tables with orders */}
                     {table.status === 'occupied' && tableOrderCounts[table.table_number] > 0 && (

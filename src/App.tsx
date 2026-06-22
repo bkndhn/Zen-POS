@@ -149,6 +149,7 @@ import CRM from "./pages/CRM";
 import PublicMenu from "./pages/PublicMenu";
 import QRMenu from "./pages/QRMenu";
 import TableOrderBilling from "./pages/TableOrderBilling";
+import WaiterCompanion from "./pages/WaiterCompanion";
 import LandingPage from "./pages/LandingPage";
 import DemoBilling from "./pages/DemoBilling";
 import SuperAdminUsers from "./pages/SuperAdminUsers";
@@ -374,6 +375,7 @@ const App = () => {
                   <Route path="/crm" element={<Layout><ProtectedRoute requiredPermission="settings"><CRM /></ProtectedRoute></Layout>} />
                   <Route path="/qr-menu" element={<Layout><ProtectedRoute requiredPermission="qrMenu"><QRMenu /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />
+                  <Route path="/waiter" element={<Layout><ProtectedRoute requiredPermission="waiterCompanion"><WaiterCompanion /></ProtectedRoute></Layout>} />
                   <Route path="/suppliers" element={<Layout><ProtectedRoute requiredPermission="suppliers"><Suppliers /></ProtectedRoute></Layout>} />
                   <Route path="/purchases" element={<Layout><ProtectedRoute requiredPermission="purchases"><Purchases /></ProtectedRoute></Layout>} />
                   <Route path="/stock" element={<Layout><ProtectedRoute requiredPermission="stock"><StockManagement /></ProtectedRoute></Layout>} />

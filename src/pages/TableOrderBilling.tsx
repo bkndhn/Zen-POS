@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart } from 'lucide-react';
+import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
 import { formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -108,6 +110,13 @@ const TableOrderBilling: React.FC = () => {
         isComposition: false,
         taxRatesMap: {}
     });
+
+    const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
+    const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+    const [splitType, setSplitType] = useState<'item' | 'even' | null>(null);
+    const [checkedSplitItems, setCheckedSplitItems] = useState<Record<string, number>>({});
+    const [evenSplitParts, setEvenSplitParts] = useState(2);
+    const [evenSplitTracking, setEvenSplitTracking] = useState<{ completedParts: number; totalParts: number; totalAmount: number } | null>(null);
     const syncChannelRef = useRef<any>(null);
     const tableOrderChannelRef = useRef<any>(null);
 
@@ -647,18 +656,74 @@ const TableOrderBilling: React.FC = () => {
                 throw itemsError;
             }
 
-            // 3. Mark all table orders as billed
+            // 3. Update table orders / billing state in DB based on split mode
             const orderIds = orders.map(o => o.id);
-            const { error: updateError } = await supabase
-                .from('table_orders')
-                .update({ is_billed: true, status: 'served' })
-                .in('id', orderIds);
+            const isFinalPart = splitType === 'even' && evenSplitTracking
+                ? (evenSplitTracking.completedParts + 1 >= evenSplitTracking.totalParts)
+                : true;
 
-            if (updateError) {
-                console.warn('Failed to mark orders as billed:', updateError);
+            if (splitType === 'item') {
+                // Deduct selected quantities from active orders in DB
+                for (const billedItem of validItems) {
+                    let remainingQtyToDeduct = billedItem.quantity;
+                    for (const order of orders) {
+                        if (remainingQtyToDeduct <= 0) break;
+                        
+                        const orderItems = Array.isArray(order.items) ? [...order.items] : [];
+                        const itemIndex = orderItems.findIndex((i: any) => i.item_id === billedItem.id);
+                        
+                        if (itemIndex > -1) {
+                            const itemQty = orderItems[itemIndex].quantity;
+                            if (itemQty <= remainingQtyToDeduct) {
+                                remainingQtyToDeduct -= itemQty;
+                                orderItems.splice(itemIndex, 1);
+                            } else {
+                                orderItems[itemIndex].quantity -= remainingQtyToDeduct;
+                                remainingQtyToDeduct = 0;
+                            }
+                            
+                            const newTotal = orderItems.reduce((s: number, i: any) => s + (i.quantity * i.price), 0);
+                            if (orderItems.length === 0) {
+                                // Mark this order as fully billed
+                                await supabase
+                                    .from('table_orders')
+                                    .update({ items: [], total_amount: 0, is_billed: true, status: 'served' })
+                                    .eq('id', order.id);
+                            } else {
+                                // Update remaining items in order
+                                await supabase
+                                    .from('table_orders')
+                                    .update({ items: orderItems, total_amount: newTotal })
+                                    .eq('id', order.id);
+                            }
+                        }
+                    }
+                }
+            } else if (splitType === 'even' && evenSplitTracking) {
+                const nextCompleted = evenSplitTracking.completedParts + 1;
+                if (isFinalPart) {
+                    // Mark all orders as billed
+                    await supabase
+                        .from('table_orders')
+                        .update({ is_billed: true, status: 'served' })
+                        .in('id', orderIds);
+                } else {
+                    // Save progress locally in state
+                    setEvenSplitTracking({
+                        ...evenSplitTracking,
+                        completedParts: nextCompleted
+                    });
+                }
+            } else {
+                // Full checkout: Mark all orders as billed
+                await supabase
+                    .from('table_orders')
+                    .update({ is_billed: true, status: 'served' })
+                    .in('id', orderIds);
             }
 
             // 4. Free the table only if there are no other active (unbilled) orders for this table
+            // And only if this is the final split part
             const { count: remainingCount, error: countError } = await supabase
                 .from('table_orders')
                 .select('id', { count: 'exact', head: true })
@@ -672,7 +737,7 @@ const TableOrderBilling: React.FC = () => {
                 console.warn('Failed to count remaining orders:', countError);
             }
 
-            const shouldFreeTable = !remainingCount || remainingCount === 0;
+            const shouldFreeTable = isFinalPart && (!remainingCount || remainingCount === 0);
 
             if (shouldFreeTable) {
                 const { error: tableError } = await supabase
@@ -686,14 +751,11 @@ const TableOrderBilling: React.FC = () => {
                 }
 
                 // Broadcast table freed to TableManagement via shared channel
-                // syncChannelRef is pos-global-sync (for Kitchen/ServiceArea)
                 syncChannelRef.current?.send({
                     type: 'broadcast',
                     event: 'table-status-updated',
                     payload: { table_number: tableNumber, status: 'available', timestamp: Date.now() }
                 });
-                // Also send on the shared table-order-sync channel (for Tables/TableBilling)
-                // Use persistent ref to avoid destroying the listener
                 tableOrderChannelRef.current?.send({
                     type: 'broadcast',
                     event: 'table-status-updated',
@@ -701,7 +763,7 @@ const TableOrderBilling: React.FC = () => {
                 });
             }
 
-            // 5. Broadcast bill creation (4-layer sync)
+            // 5. Broadcast bill creation
             window.dispatchEvent(new CustomEvent('bills-updated'));
 
             billsChannel?.postMessage({
@@ -722,18 +784,20 @@ const TableOrderBilling: React.FC = () => {
                 }
             });
 
-            // 6. Broadcast status update to customer sessions (include is_billed for instant hide)
+            // 6. Broadcast status update to customer sessions (if final part/item is settled)
             const sessionIds = [...new Set(orders.map(o => o.session_id))];
-            for (const sid of sessionIds) {
-                const channel = supabase.channel(`table-order-status-${sid}`);
-                for (const order of orders.filter(o => o.session_id === sid)) {
-                    await channel.send({
-                        type: 'broadcast',
-                        event: 'order-status-update',
-                        payload: { order_id: order.id, status: 'served', is_billed: true }
-                    });
+            if (isFinalPart) {
+                for (const sid of sessionIds) {
+                    const channel = supabase.channel(`table-order-status-${sid}`);
+                    for (const order of orders.filter(o => o.session_id === sid)) {
+                        await channel.send({
+                            type: 'broadcast',
+                            event: 'order-status-update',
+                            payload: { order_id: order.id, status: 'served', is_billed: true }
+                        });
+                    }
+                    supabase.removeChannel(channel);
                 }
-                supabase.removeChannel(channel);
             }
 
             // 7. WhatsApp share (if requested)
@@ -804,7 +868,12 @@ const TableOrderBilling: React.FC = () => {
                 description: `Bill ${billNumber} created for Table ${tableNumber} (₹${totalAmount})`,
             });
 
-            setSelectedTable(null);
+            if (isFinalPart || splitType !== 'even') {
+                setSelectedTable(null);
+                setSplitType(null);
+                setEvenSplitTracking(null);
+                setCheckedSplitItems({});
+            }
             await fetchTableOrders();
 
         } catch (err) {
@@ -822,7 +891,7 @@ const TableOrderBilling: React.FC = () => {
     // Handle opening payment dialog for a table
     const handleTableSelect = (table: TableWithOrders) => {
         setSelectedTable(table);
-        setPaymentDialogOpen(true);
+        setOptionsDialogOpen(true);
     };
 
     if (loading) {
@@ -833,8 +902,30 @@ const TableOrderBilling: React.FC = () => {
         );
     }
 
-    // Build cart items for the currently selected table
-    const currentCart = selectedTable ? getCartForTable(selectedTable) : [];
+    // Build cart items for the currently selected table based on mode
+    const currentCart = useMemo(() => {
+        if (!selectedTable) return [];
+        
+        if (splitType === 'item') {
+            return getCartForTable(selectedTable).map(item => {
+                const qty = checkedSplitItems[item.id] || 0;
+                return { ...item, quantity: qty };
+            }).filter(item => item.quantity > 0);
+        }
+        
+        if (splitType === 'even' && evenSplitTracking) {
+            return [{
+                id: `split-even-${selectedTable.table_number}`,
+                name: `Even Split Part ${evenSplitTracking.completedParts + 1}/${evenSplitTracking.totalParts} - Table T${selectedTable.table_number}`,
+                price: Math.round(evenSplitTracking.totalAmount / evenSplitTracking.totalParts),
+                quantity: 1,
+                unit: 'pc',
+                base_value: 1
+            }];
+        }
+        
+        return getCartForTable(selectedTable);
+    }, [selectedTable, splitType, checkedSplitItems, evenSplitTracking]);
 
     return (
         <div className="min-h-screen p-3 sm:p-4">
@@ -924,12 +1015,239 @@ const TableOrderBilling: React.FC = () => {
                     </div>
                 )}
 
+                {/* Checkout Options Dialog */}
+                <Dialog open={optionsDialogOpen} onOpenChange={setOptionsDialogOpen}>
+                    <DialogContent className="sm:max-w-[400px]">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold">Checkout: Table T{selectedTable?.table_number}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="bg-muted/50 p-4 rounded-xl text-center">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold block mb-1">Total Bill Amount</span>
+                                <span className="text-3xl font-black text-primary">₹{selectedTable ? Math.round(selectedTable.total) : 0}</span>
+                                <span className="text-xs text-muted-foreground block mt-1">{selectedTable?.orderCount} active orders</span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button 
+                                    onClick={() => {
+                                        setOptionsDialogOpen(false);
+                                        setSplitType(null);
+                                        setPaymentDialogOpen(true);
+                                    }}
+                                    className="w-full text-white font-bold h-12 bg-primary hover:bg-primary/95 rounded-xl shadow-md"
+                                >
+                                    Pay Full Bill (₹{selectedTable ? Math.round(selectedTable.total) : 0})
+                                </Button>
+                                
+                                <Button 
+                                    variant="outline"
+                                    onClick={() => {
+                                        setOptionsDialogOpen(false);
+                                        // Initialize items list for splitting
+                                        const initialChecked: Record<string, number> = {};
+                                        if (selectedTable) {
+                                            getCartForTable(selectedTable).forEach(item => {
+                                                initialChecked[item.id] = item.quantity;
+                                            });
+                                        }
+                                        setCheckedSplitItems(initialChecked);
+                                        setSplitType('item'); // Default to item split
+                                        setSplitDialogOpen(true);
+                                    }}
+                                    className="w-full font-bold h-12 border-2 rounded-xl"
+                                >
+                                    Split Bill...
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Split Bill Dialog */}
+                <Dialog open={splitDialogOpen} onOpenChange={(open) => {
+                    setSplitDialogOpen(open);
+                    if (!open) {
+                        setSelectedTable(null);
+                        setSplitType(null);
+                    }
+                }}>
+                    <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold">Split Bill: Table T{selectedTable?.table_number}</DialogTitle>
+                        </DialogHeader>
+                        
+                        <div className="flex border-b mb-4">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setSplitType('item')}
+                                className={cn(
+                                    "flex-1 py-2 rounded-none border-b-2 font-bold text-sm",
+                                    splitType === 'item' || splitType === null ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+                                )}
+                            >
+                                Split by Item
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => setSplitType('even')}
+                                className={cn(
+                                    "flex-1 py-2 rounded-none border-b-2 font-bold text-sm",
+                                    splitType === 'even' ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+                                )}
+                            >
+                                Split Evenly
+                            </Button>
+                        </div>
+
+                        {/* Content: Split by Item */}
+                        {(splitType === 'item' || splitType === null) && selectedTable && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-muted-foreground">Select the items and quantities you want to checkout in this split.</p>
+                                <ScrollArea className="max-h-[300px] pr-2">
+                                    <div className="space-y-3">
+                                        {getCartForTable(selectedTable).map(item => {
+                                            const isChecked = (checkedSplitItems[item.id] || 0) > 0;
+                                            const currentQty = checkedSplitItems[item.id] || 0;
+                                            return (
+                                                <div key={item.id} className="flex items-center justify-between p-3 bg-muted/40 rounded-xl border border-muted">
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={(e) => {
+                                                                setCheckedSplitItems(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: e.target.checked ? item.quantity : 0
+                                                                }));
+                                                            }}
+                                                            className="w-4 h-4 rounded text-primary focus:ring-primary border-muted"
+                                                        />
+                                                        <div>
+                                                            <span className="font-bold text-sm block">{item.name}</span>
+                                                            <span className="text-xs text-muted-foreground">₹{item.price.toFixed(0)} each</span>
+                                                        </div>
+                                                    </div>
+                                                    {isChecked && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-7 w-7 rounded-full"
+                                                                disabled={currentQty <= 1}
+                                                                onClick={() => setCheckedSplitItems(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: Math.max(1, currentQty - 1)
+                                                                }))}
+                                                            >
+                                                                <Minus className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            <span className="font-black text-sm w-4 text-center">{currentQty}</span>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-7 w-7 rounded-full"
+                                                                disabled={currentQty >= item.quantity}
+                                                                onClick={() => setCheckedSplitItems(prev => ({
+                                                                    ...prev,
+                                                                    [item.id]: Math.min(item.quantity, currentQty + 1)
+                                                                }))}
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </ScrollArea>
+                                
+                                <Button
+                                    onClick={() => {
+                                        setSplitType('item');
+                                        setSplitDialogOpen(false);
+                                        setPaymentDialogOpen(true);
+                                    }}
+                                    disabled={Object.values(checkedSplitItems).reduce((sum, q) => sum + q, 0) === 0}
+                                    className="w-full text-white font-bold h-11 bg-primary hover:bg-primary/95 rounded-xl mt-4"
+                                >
+                                    Checkout Selected Items
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Content: Split Evenly */}
+                        {splitType === 'even' && selectedTable && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-muted-foreground">Divide the total bill amount into equal parts and pay sequentially.</p>
+                                
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">Number of Splits</label>
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-9 w-9 rounded-xl border-2"
+                                            disabled={evenSplitParts <= 2}
+                                            onClick={() => setEvenSplitParts(prev => Math.max(2, prev - 1))}
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </Button>
+                                        <span className="font-black text-lg w-8 text-center">{evenSplitParts}</span>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-9 w-9 rounded-xl border-2"
+                                            onClick={() => setEvenSplitParts(prev => prev + 1)}
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 flex justify-between items-center mt-4">
+                                    <div>
+                                        <span className="text-xs text-muted-foreground font-semibold block">Total Amount:</span>
+                                        <span className="font-bold text-sm text-foreground">₹{Math.round(selectedTable.total)}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xs text-muted-foreground font-semibold block">Amount Per Split:</span>
+                                        <span className="font-black text-xl text-primary">₹{Math.round(selectedTable.total / evenSplitParts)}</span>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={() => {
+                                        setSplitType('even');
+                                        setEvenSplitTracking({
+                                            completedParts: 0,
+                                            totalParts: evenSplitParts,
+                                            totalAmount: selectedTable.total
+                                        });
+                                        setSplitDialogOpen(false);
+                                        setPaymentDialogOpen(true);
+                                    }}
+                                    className="w-full text-white font-bold h-11 bg-primary hover:bg-primary/95 rounded-xl mt-4"
+                                >
+                                    Proceed to Split Payment (Part 1/{evenSplitParts})
+                                </Button>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
+
                 {/* Payment Dialog — reuse CompletePaymentDialog */}
                 <CompletePaymentDialog
                     open={paymentDialogOpen}
                     onOpenChange={(open) => {
                         setPaymentDialogOpen(open);
-                        if (!open) setSelectedTable(null);
+                        if (!open) {
+                            setSelectedTable(null);
+                            setSplitType(null);
+                            setEvenSplitTracking(null);
+                            setCheckedSplitItems({});
+                        }
                     }}
                     cart={currentCart}
                     paymentTypes={paymentTypes}

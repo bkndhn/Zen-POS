@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -86,6 +86,7 @@ const KitchenDisplay = () => {
     // Filters
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
     const [timeFilter, setTimeFilter] = useState<'all' | '15' | '30' | '60'>('all');
+    const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
     // Recently processed bills/orders for undo (last 5 minutes)
     const [recentlyProcessed, setRecentlyProcessed] = useState<Array<{
@@ -97,9 +98,9 @@ const KitchenDisplay = () => {
         timestamp: string;
     }>>([]);
 
-    // Update current time every minute
+    // Update current time every 10s for responsive time warnings
     useEffect(() => {
-        const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+        const interval = setInterval(() => setCurrentTime(new Date()), 10000);
         return () => clearInterval(interval);
     }, []);
 
@@ -130,16 +131,81 @@ const KitchenDisplay = () => {
         };
     }, []);
 
-    // Voice announcement function
-    const announce = useCallback((text: string) => {
-        if (!voiceEnabled || !('speechSynthesis' in window)) return;
+    // --- WebAudio Chime Synthesis ---
+    const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const getAudioCtx = useCallback(() => {
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume();
+        }
+        return audioCtxRef.current;
+    }, []);
+
+    const playChime = useCallback((type: 'new-order' | 'order-ready') => {
+        if (!voiceEnabled) return;
+        try {
+            const ctx = getAudioCtx();
+            const now = ctx.currentTime;
+            const masterGain = ctx.createGain();
+            masterGain.gain.setValueAtTime(0.25, now);
+            masterGain.connect(ctx.destination);
+
+            if (type === 'new-order') {
+                // Ascending three-note chime (C5 → E5 → G5)
+                const freqs = [523.25, 659.25, 783.99];
+                freqs.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    // ADSR envelope
+                    gain.gain.setValueAtTime(0, now + i * 0.15);
+                    gain.gain.linearRampToValueAtTime(0.6, now + i * 0.15 + 0.03); // attack
+                    gain.gain.exponentialRampToValueAtTime(0.3, now + i * 0.15 + 0.1); // decay
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.4); // release
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    osc.start(now + i * 0.15);
+                    osc.stop(now + i * 0.15 + 0.5);
+                });
+            } else {
+                // Two-tone ding (G5 → C6) for order ready
+                const freqs = [783.99, 1046.5];
+                freqs.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0, now + i * 0.2);
+                    gain.gain.linearRampToValueAtTime(0.7, now + i * 0.2 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.35, now + i * 0.2 + 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.2 + 0.6);
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    osc.start(now + i * 0.2);
+                    osc.stop(now + i * 0.2 + 0.7);
+                });
+            }
+        } catch (e) {
+            console.warn('[Kitchen] Chime playback error:', e);
+        }
+    }, [voiceEnabled, getAudioCtx]);
+
+    // Voice announcement function (now also plays chime)
+    const announce = useCallback((text: string, chimeType?: 'new-order' | 'order-ready') => {
+        if (!voiceEnabled) return;
+        if (chimeType) playChime(chimeType);
+        if (!('speechSynthesis' in window)) return;
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'en-IN';
         utterance.rate = 0.9;
         utterance.pitch = 1;
         utterance.volume = 1;
         window.speechSynthesis.speak(utterance);
-    }, [voiceEnabled]);
+    }, [voiceEnabled, playChime]);
 
     // Fetch kitchen orders - always try online first, with timeout
     const fetchBills = useCallback(async (silent = false) => {
@@ -248,7 +314,7 @@ const KitchenDisplay = () => {
             .on('broadcast', { event: 'new-bill' }, (payload: any) => {
                 console.log('Kitchen: New bill broadcast received!', payload);
                 if (voiceEnabled && payload?.payload?.bill_no) {
-                    announce(`New order received, Bill number ${payload.payload.bill_no}`);
+                    announce(`New order received, Bill number ${payload.payload.bill_no}`, 'new-order');
                 }
                 fetchBills(true);
             })
@@ -285,7 +351,7 @@ const KitchenDisplay = () => {
                 if (order?.id && !knownTableOrderIds.current.has(order.id)) {
                     knownTableOrderIds.current.add(order.id);
                     if (voiceEnabled) {
-                        announce(`New table order from Table ${order.table_number}${order.seat_id ? `, Seat ${order.seat_id}` : ''}`);
+                        announce(`New table order from Table ${order.table_number}${order.seat_id ? `, Seat ${order.seat_id}` : ''}`, 'new-order');
                     }
                 }
                 fetchTableOrders();
@@ -322,7 +388,7 @@ const KitchenDisplay = () => {
                 if (billId && !knownBillIds.current.has(billId)) {
                     knownBillIds.current.add(billId);
                     if (voiceEnabled && billNo) {
-                        announce(`New order received, Bill number ${billNo}`);
+                        announce(`New order received, Bill number ${billNo}`, 'new-order');
                     }
                 }
                 fetchBills(true);
@@ -345,7 +411,7 @@ const KitchenDisplay = () => {
             if (data?.type === 'new-bill' && voiceEnabled && data?.bill_no) {
                 if (data?.bill_id && !knownBillIds.current.has(data.bill_id)) {
                     knownBillIds.current.add(data.bill_id);
-                    announce(`New order received, Bill number ${data.bill_no}`);
+                    announce(`New order received, Bill number ${data.bill_no}`, 'new-order');
                 }
             }
 
@@ -425,7 +491,7 @@ const KitchenDisplay = () => {
 
             // Voice feedback
             if (status === 'ready') {
-                announce(`Bill number ${billNo} is ready`);
+                announce(`Bill number ${billNo} is ready`, 'order-ready');
                 toast({ title: '🔔 Order Ready!', description: `Bill #${billNo} is ready` });
             } else {
                 toast({ title: '👨‍🍳 Preparing', description: `Started #${billNo}` });
@@ -474,6 +540,42 @@ const KitchenDisplay = () => {
 
     const filteredBills = bills.filter(b => withinWindow(b.created_at) && matchesStatus(b.kitchen_status));
     const filteredTableOrders = tableOrders.filter(o => withinWindow(o.created_at) && matchesStatus(o.status));
+
+    // Extract unique item categories from all visible orders
+    const allCategories = useMemo(() => {
+        const names = new Set<string>();
+        filteredBills.forEach(b => b.bill_items.forEach(bi => {
+            if (bi.items?.name) names.add(bi.items.name);
+        }));
+        filteredTableOrders.forEach(o => o.items.forEach(item => {
+            if (item.name) names.add(item.name);
+        }));
+        return Array.from(names).sort();
+    }, [filteredBills, filteredTableOrders]);
+
+    // Helper: compute urgency level from created_at
+    const getUrgencyColor = useCallback((createdAt: string) => {
+        const elapsed = (currentTime.getTime() - new Date(createdAt).getTime()) / 60000;
+        if (elapsed > 20) return 'red' as const;
+        if (elapsed > 10) return 'orange' as const;
+        return 'green' as const;
+    }, [currentTime]);
+
+    const getElapsedMinutes = useCallback((createdAt: string) => {
+        return Math.floor((currentTime.getTime() - new Date(createdAt).getTime()) / 60000);
+    }, [currentTime]);
+
+    // Urgency styling maps
+    const urgencyBorderClass: Record<string, string> = {
+        green: 'border-green-400 shadow-green-500/10',
+        orange: 'border-orange-400 shadow-orange-500/20',
+        red: 'border-red-500 shadow-red-500/30 shadow-lg',
+    };
+    const urgencyBadgeClass: Record<string, string> = {
+        green: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
+        orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400',
+        red: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 animate-pulse',
+    };
 
     // Group bills by status
     const pendingBills = filteredBills.filter(b => b.kitchen_status === 'pending');
@@ -542,7 +644,7 @@ const KitchenDisplay = () => {
             });
 
             if (status === 'ready') {
-                announce(`Table ${tableNumber}${seatId ? `, Seat ${seatId}` : ''} order is ready`);
+                announce(`Table ${tableNumber}${seatId ? `, Seat ${seatId}` : ''} order is ready`, 'order-ready');
                 toast({ title: '🔔 Table Order Ready!', description: `Table ${tableNumber}${seatLabel} order ready` });
             } else if (status === 'preparing') {
                 toast({ title: '👨‍🍳 Preparing', description: `Table ${tableNumber}${seatLabel} order` });
@@ -663,6 +765,37 @@ const KitchenDisplay = () => {
                         </Button>
                     )}
                 </div>
+
+                {/* Category Tab Strip */}
+                {allCategories.length > 0 && (
+                    <div className="mt-2 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-muted">
+                        <button
+                            onClick={() => setCategoryFilter('all')}
+                            className={cn(
+                                'shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                                categoryFilter === 'all'
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
+                            )}
+                        >
+                            All Items
+                        </button>
+                        {allCategories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setCategoryFilter(cat === categoryFilter ? 'all' : cat)}
+                                className={cn(
+                                    'shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                                    categoryFilter === cat
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
+                                )}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="px-4 pt-3"><AllBranchesReadOnlyBanner message="Switch to a specific branch to manage kitchen orders." /></div>
@@ -696,12 +829,17 @@ const KitchenDisplay = () => {
                                 onAction={() => updateKitchenStatus(bill.id, bill.bill_no, 'preparing')}
                                 actionLabel="Start Preparing"
                                 actionColor="bg-orange-500 hover:bg-orange-600"
+                                currentTime={currentTime}
+                                highlightedCategory={categoryFilter}
                             />
                         ))}
 
                         {/* Table QR Orders - Pending */}
-                        {pendingTableOrders.map((order) => (
-                            <Card key={`to-${order.id}`} className="p-4 border-l-4 border-l-purple-500">
+                        {pendingTableOrders.map((order) => {
+                            const urgency = getUrgencyColor(order.created_at);
+                            const elapsedMin = getElapsedMinutes(order.created_at);
+                            return (
+                            <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-2">
@@ -710,16 +848,22 @@ const KitchenDisplay = () => {
                                         </div>
                                         <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        <Clock className="w-3 h-3" />
-                                        {getTimeElapsed(order.created_at)}
-                                    </div>
+                                    <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        {elapsedMin}m
+                                    </Badge>
                                 </div>
                                 <div className="space-y-1.5 mb-3">
-                                    {order.items.map((item, idx) => (
-                                        <div key={idx} className="bg-muted/30 rounded-lg px-3 py-2">
+                                    {order.items.map((item, idx) => {
+                                        const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
+                                        return (
+                                        <div key={idx} className={cn(
+                                            'rounded-lg px-3 py-2',
+                                            isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
+                                            categoryFilter !== 'all' && !isHighlighted && 'opacity-40'
+                                        )}>
                                             <div className="flex items-center justify-between text-sm">
-                                                <span className="font-medium">{item.name}</span>
+                                                <span className={cn('font-medium', isHighlighted && 'text-primary font-bold')}>{item.name}</span>
                                                 <Badge variant="secondary" className="font-bold text-base min-w-[60px] justify-center ml-2">
                                                     {formatQuantityWithUnit(item.quantity, item.unit)}
                                                 </Badge>
@@ -730,7 +874,8 @@ const KitchenDisplay = () => {
                                                 </p>
                                             )}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 {order.customer_note && (
                                     <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 mb-3 text-xs text-amber-700">
@@ -744,7 +889,8 @@ const KitchenDisplay = () => {
                                     Start Preparing
                                 </Button>
                             </Card>
-                        ))}
+                            );
+                        })}
 
                         {pendingBills.length === 0 && pendingTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
@@ -769,12 +915,17 @@ const KitchenDisplay = () => {
                                 onAction={() => updateKitchenStatus(bill.id, bill.bill_no, 'ready')}
                                 actionLabel="Mark Ready"
                                 actionColor="bg-green-500 hover:bg-green-600"
+                                currentTime={currentTime}
+                                highlightedCategory={categoryFilter}
                             />
                         ))}
 
                         {/* Table QR Orders - Preparing */}
-                        {preparingTableOrders.map((order) => (
-                            <Card key={`to-${order.id}`} className="p-4 border-l-4 border-l-purple-500">
+                        {preparingTableOrders.map((order) => {
+                            const urgency = getUrgencyColor(order.created_at);
+                            const elapsedMin = getElapsedMinutes(order.created_at);
+                            return (
+                            <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-2">
@@ -783,16 +934,22 @@ const KitchenDisplay = () => {
                                         </div>
                                         <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
                                     </div>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        <Clock className="w-3 h-3" />
-                                        {getTimeElapsed(order.created_at)}
-                                    </div>
+                                    <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        {elapsedMin}m
+                                    </Badge>
                                 </div>
                                 <div className="space-y-1.5 mb-3">
-                                    {order.items.map((item, idx) => (
-                                        <div key={idx} className="bg-muted/30 rounded-lg px-3 py-2">
+                                    {order.items.map((item, idx) => {
+                                        const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
+                                        return (
+                                        <div key={idx} className={cn(
+                                            'rounded-lg px-3 py-2',
+                                            isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
+                                            categoryFilter !== 'all' && !isHighlighted && 'opacity-40'
+                                        )}>
                                             <div className="flex items-center justify-between text-sm">
-                                                <span className="font-medium">{item.name}</span>
+                                                <span className={cn('font-medium', isHighlighted && 'text-primary font-bold')}>{item.name}</span>
                                                 <Badge variant="secondary" className="font-bold text-base min-w-[60px] justify-center ml-2">
                                                     {formatQuantityWithUnit(item.quantity, item.unit)}
                                                 </Badge>
@@ -803,7 +960,8 @@ const KitchenDisplay = () => {
                                                 </p>
                                             )}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 {order.customer_note && (
                                     <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 mb-3 text-xs text-amber-700">
@@ -817,7 +975,8 @@ const KitchenDisplay = () => {
                                     Mark Ready
                                 </Button>
                             </Card>
-                        ))}
+                            );
+                        })}
 
                         {preparingBills.length === 0 && preparingTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
@@ -952,6 +1111,8 @@ interface KitchenOrderCardProps {
     onAction: () => void;
     actionLabel: string;
     actionColor: string;
+    currentTime: Date;
+    highlightedCategory: string;
 }
 
 const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
@@ -960,9 +1121,26 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     onAction,
     actionLabel,
     actionColor,
+    currentTime,
+    highlightedCategory,
 }) => {
+    // Compute elapsed time and urgency
+    const elapsedMin = Math.floor((currentTime.getTime() - new Date(bill.created_at).getTime()) / 60000);
+    const urgency: 'green' | 'orange' | 'red' = elapsedMin > 20 ? 'red' : elapsedMin > 10 ? 'orange' : 'green';
+
+    const borderClass: Record<string, string> = {
+        green: 'border-green-400 shadow-green-500/10',
+        orange: 'border-orange-400 shadow-orange-500/20',
+        red: 'border-red-500 shadow-red-500/30 shadow-lg',
+    };
+    const badgeClass: Record<string, string> = {
+        green: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
+        orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400',
+        red: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 animate-pulse',
+    };
+
     return (
-        <Card className={cn("p-4", processing && "opacity-50")}>
+        <Card className={cn("p-4 border-2 transition-shadow", borderClass[urgency], processing && "opacity-50")}>
             {/* Bill Header */}
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -971,10 +1149,10 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                         <Badge className="bg-amber-500 text-white text-[10px]">📦 PARCEL</Badge>
                     )}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    {getTimeElapsed(bill.created_at)}
-                </div>
+                <Badge className={cn('text-xs font-mono font-bold', badgeClass[urgency])}>
+                    <Clock className="w-3 h-3 mr-1" />
+                    {elapsedMin}m
+                </Badge>
                 {bill.table_no && (
                     <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded absolute right-4 top-10">
                         {bill.table_no}
@@ -984,13 +1162,20 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
 
             {/* Items List */}
             <div className="space-y-2 mb-3">
-                {bill.bill_items.map((item) => (
+                {bill.bill_items.map((item) => {
+                    const itemName = item.items?.name || 'Unknown';
+                    const isHighlighted = highlightedCategory !== 'all' && itemName === highlightedCategory;
+                    return (
                     <div
                         key={item.id}
-                        className="flex items-center justify-between text-sm bg-muted/30 rounded-lg px-3 py-2"
+                        className={cn(
+                            'flex items-center justify-between text-sm rounded-lg px-3 py-2',
+                            isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
+                            highlightedCategory !== 'all' && !isHighlighted && 'opacity-40'
+                        )}
                     >
-                        <span className="font-medium flex-1">
-                            {item.items?.name || 'Unknown'}
+                        <span className={cn('font-medium flex-1', isHighlighted && 'text-primary font-bold')}>
+                            {itemName}
                         </span>
                         <Badge
                             variant="secondary"
@@ -999,7 +1184,8 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                             {formatQuantityWithUnit(item.quantity, item.items?.unit)}
                         </Badge>
                     </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Action Button */}
