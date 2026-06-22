@@ -65,6 +65,28 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
   const initialStockUnit = (isMlOrG && item.stock_quantity && item.stock_quantity % 1000 === 0) ? 'bulk' : 'base';
 
   const [stockInputUnit, setStockInputUnit] = useState<'base' | 'bulk'>(initialStockUnit);
+  const [stockUpdateMode, setStockUpdateMode] = useState<'add' | 'replace'>('add');
+
+  const handleStockUpdateModeChange = (mode: 'add' | 'replace') => {
+    setStockUpdateMode(mode);
+    if (mode === 'add') {
+      setFormData(prev => ({ ...prev, stock_quantity: '' }));
+    } else {
+      const currentStock = item.stock_quantity || 0;
+      const displayStock = stockInputUnit === 'bulk' ? (currentStock / 1000).toString() : currentStock.toString();
+      setFormData(prev => ({ ...prev, stock_quantity: displayStock }));
+    }
+  };
+
+  const handleStockInputUnitChange = (newUnit: 'base' | 'bulk') => {
+    setStockInputUnit(newUnit);
+    if (stockUpdateMode === 'replace') {
+      const currentStock = item.stock_quantity || 0;
+      const displayStock = newUnit === 'bulk' ? (currentStock / 1000).toString() : currentStock.toString();
+      setFormData(prev => ({ ...prev, stock_quantity: displayStock }));
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: item.name,
     description: item.description || '',
@@ -104,8 +126,9 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
       const currentIsMlOrG = currentShortUnit === 'ml' || currentShortUnit === 'g';
       const currentStockUnit = (currentIsMlOrG && item.stock_quantity && item.stock_quantity % 1000 === 0) ? 'bulk' : 'base';
       setStockInputUnit(currentStockUnit);
+      setStockUpdateMode('add');
 
-      // Reset form data with current item values when dialog opens
+      // Reset form data with current item values when dialog opens (empty stock_quantity for add mode)
       setFormData({
         name: item.name,
         description: item.description || '',
@@ -113,7 +136,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         purchase_rate: item.purchase_rate?.toString() || '',
         unit: item.unit || 'Piece (pc)',
         base_value: item.base_value?.toString() || '1',
-        stock_quantity: (currentStockUnit === 'bulk' && item.stock_quantity) ? (item.stock_quantity / 1000).toString() : (item.stock_quantity?.toString() || ''),
+        stock_quantity: '',
         minimum_stock_alert: (currentStockUnit === 'bulk' && item.minimum_stock_alert) ? (item.minimum_stock_alert / 1000).toString() : (item.minimum_stock_alert?.toString() || ''),
         quantity_step: item.quantity_step?.toString() || '1',
         quick_chips: item.quick_chips?.join(', ') || '',
@@ -209,12 +232,12 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.price || !formData.purchase_rate || (!formData.unlimited_stock && !formData.stock_quantity)) {
+    if (!formData.name || !formData.price || !formData.purchase_rate || (!formData.unlimited_stock && stockUpdateMode === 'replace' && !formData.stock_quantity)) {
       toast({
         title: "Error",
-        description: formData.unlimited_stock
-          ? "Name, selling price, and purchase rate are required"
-          : "Name, selling price, purchase rate, and stock quantity are required",
+        description: (!formData.unlimited_stock && stockUpdateMode === 'replace')
+          ? "Name, selling price, purchase rate, and stock quantity are required"
+          : "Name, selling price, and purchase rate are required",
         variant: "destructive",
       });
       return;
@@ -227,6 +250,18 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         ? formData.quick_chips.split(',').map(c => c.trim()).filter(c => c.length > 0)
         : null;
 
+      let calculatedStock = null;
+      if (!formData.unlimited_stock) {
+        const enteredVal = parseFloat(formData.stock_quantity) || 0;
+        const enteredInBase = enteredVal * (stockInputUnit === 'bulk' ? 1000 : 1);
+        if (stockUpdateMode === 'add') {
+          const currentStock = item.stock_quantity || 0;
+          calculatedStock = currentStock + enteredInBase;
+        } else {
+          calculatedStock = enteredInBase;
+        }
+      }
+
       const updatePayload: any = {
         name: formData.name,
         description: formData.description || null,
@@ -234,7 +269,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         purchase_rate: parseFloat(formData.purchase_rate),
         unit: formData.unit,
         base_value: parseFloat(formData.base_value),
-        stock_quantity: formData.unlimited_stock ? null : (parseFloat(formData.stock_quantity) * (stockInputUnit === 'bulk' ? 1000 : 1)),
+        stock_quantity: calculatedStock,
         minimum_stock_alert: formData.unlimited_stock ? null : ((parseFloat(formData.minimum_stock_alert) || 0) * (stockInputUnit === 'bulk' ? 1000 : 1)),
         quantity_step: parseFloat(formData.quantity_step),
         quick_chips: parsedChips,
@@ -448,14 +483,14 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                       <div className="flex rounded-md border border-input p-0.5 bg-muted text-[10px]">
                         <button
                           type="button"
-                          onClick={() => setStockInputUnit('base')}
+                          onClick={() => handleStockInputUnitChange('base')}
                           className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'base' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
                         >
                           {currentShortUnit}
                         </button>
                         <button
                           type="button"
-                          onClick={() => setStockInputUnit('bulk')}
+                          onClick={() => handleStockInputUnitChange('bulk')}
                           className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'bulk' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
                         >
                           {currentIsMl ? 'L' : 'KG'}
@@ -463,6 +498,24 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                       </div>
                     )}
                   </div>
+
+                  <div className="flex justify-between items-center mb-2 mt-1 bg-muted p-1 rounded-md text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleStockUpdateModeChange('add')}
+                      className={`flex-1 py-1 rounded-sm text-center font-medium transition-colors ${stockUpdateMode === 'add' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      Add to Existing Stock
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStockUpdateModeChange('replace')}
+                      className={`flex-1 py-1 rounded-sm text-center font-medium transition-colors ${stockUpdateMode === 'replace' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      Replace Existing Stock
+                    </button>
+                  </div>
+
                   <Input
                     id="stock_quantity"
                     type="number"
@@ -470,9 +523,33 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                     min="0"
                     value={formData.stock_quantity}
                     onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                    placeholder={stockInputUnit === 'bulk' ? `Available stock in ${currentIsMl ? 'L' : 'KG'}` : `Available stock in ${currentShortUnit}`}
-                    required={!formData.unlimited_stock}
+                    placeholder={
+                      stockUpdateMode === 'add'
+                        ? `Qty to add (in ${stockInputUnit === 'bulk' ? (currentIsMl ? 'L' : 'KG') : currentShortUnit})`
+                        : `New total stock (in ${stockInputUnit === 'bulk' ? (currentIsMl ? 'L' : 'KG') : currentShortUnit})`
+                    }
+                    required={!formData.unlimited_stock && stockUpdateMode === 'replace'}
                   />
+
+                  <p className="text-[11px] text-muted-foreground mt-1 px-1">
+                    Current Stock: <span className="font-semibold text-foreground">{
+                      item.stock_quantity !== undefined && item.stock_quantity !== null
+                        ? (stockInputUnit === 'bulk' ? `${(item.stock_quantity / 1000).toFixed(2)} ${currentIsMl ? 'L' : 'KG'}` : `${item.stock_quantity} ${currentShortUnit}`)
+                        : `0 ${currentShortUnit}`
+                    }</span>
+                    {stockUpdateMode === 'add' && formData.stock_quantity ? (
+                      <span>
+                        {' '}→ New Stock will be:{' '}
+                        <span className="font-semibold text-primary">
+                          {(
+                            (item.stock_quantity || 0) +
+                            (parseFloat(formData.stock_quantity) || 0) * (stockInputUnit === 'bulk' ? 1000 : 1)
+                          ) / (stockInputUnit === 'bulk' ? 1000 : 1)}{' '}
+                          {stockInputUnit === 'bulk' ? (currentIsMl ? 'L' : 'KG') : currentShortUnit}
+                        </span>
+                      </span>
+                    ) : null}
+                  </p>
                 </div>
 
                 <div>

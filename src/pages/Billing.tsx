@@ -1781,12 +1781,9 @@ const Billing = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="mt-auto space-y-1">
-                    <Button onClick={() => addToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm">
-                      Add
-                    </Button>
+                  <div className="mt-auto space-y-1.5 flex flex-col justify-end">
                     {item.quick_chips && item.quick_chips.length > 0 && (
-                      <div className="flex flex-wrap gap-1 justify-center">
+                      <div className="flex flex-wrap gap-1 justify-center mb-1">
                         {item.quick_chips.map((chip, idx) => (
                           <button
                             key={idx}
@@ -1798,6 +1795,9 @@ const Billing = () => {
                         ))}
                       </div>
                     )}
+                    <Button onClick={() => addToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm">
+                      Add
+                    </Button>
                   </div>
                 )}
               </div>

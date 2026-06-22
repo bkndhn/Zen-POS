@@ -88,6 +88,7 @@ const REQUEST_LABELS: Record<string, { label: string; emoji: string; color: stri
     need_water: { label: 'Need Water', emoji: '💧', color: 'border-blue-400 bg-blue-50 dark:bg-blue-950/30' },
     need_bill: { label: 'Request Bill', emoji: '🧾', color: 'border-green-400 bg-green-50 dark:bg-green-950/30' },
     need_menu: { label: 'Need Menu', emoji: '📋', color: 'border-purple-400 bg-purple-50 dark:bg-purple-950/30' },
+    upi_payment: { label: 'UPI Payment', emoji: '💳', color: 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30' },
     custom: { label: 'Custom', emoji: '✏️', color: 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' },
 };
 

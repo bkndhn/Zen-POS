@@ -19,6 +19,7 @@ export const BottomNavigation: React.FC = () => {
   const { hasAccess, loading } = useUserPermissions();
   const { operatingBranchId } = useBranch();
   const [visiblePages, setVisiblePages] = useState<string[]>([]);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   useEffect(() => {
     // Load from Supabase as primary source, with localStorage as fallback
@@ -163,7 +164,7 @@ export const BottomNavigation: React.FC = () => {
         {primary.map(renderTab)}
 
         {needsMore && (
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <button
                 type="button"
@@ -199,6 +200,7 @@ export const BottomNavigation: React.FC = () => {
                     <NavLink
                       key={item.to}
                       to={item.to}
+                      onClick={() => setIsSheetOpen(false)}
                       className={cn(
                         "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-colors",
                         isActive ? "bg-primary/10 border-primary/40 text-primary" : "bg-card hover:bg-muted border-border text-foreground"

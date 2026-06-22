@@ -32,6 +32,9 @@ export const ShopSettingsForm = () => {
     const [contactNumber, setContactNumber] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [printerWidth, setPrinterWidth] = useState<'58mm' | '80mm'>('58mm');
+    const [upiId, setUpiId] = useState('');
+    const [upiName, setUpiName] = useState('');
+    const [qrPaymentEnabled, setQrPaymentEnabled] = useState(false);
 
     // Menu Slug State
     const [menuSlug, setMenuSlug] = useState('');
@@ -76,6 +79,9 @@ export const ShopSettingsForm = () => {
                 if (parsed.menuShowShopName !== undefined) setMenuShowShopName(parsed.menuShowShopName);
                 if (parsed.menuShowAddress !== undefined) setMenuShowAddress(parsed.menuShowAddress);
                 if (parsed.menuShowPhone !== undefined) setMenuShowPhone(parsed.menuShowPhone);
+                if (parsed.upiId) setUpiId(parsed.upiId);
+                if (parsed.upiName) setUpiName(parsed.upiName);
+                if (parsed.qrPaymentEnabled !== undefined) setQrPaymentEnabled(parsed.qrPaymentEnabled);
             } catch (e) { /* ignore parse errors */ }
         }
         // Always show the form (with cached or empty values)
@@ -125,6 +131,9 @@ export const ShopSettingsForm = () => {
                 setShowInstagram(data.show_instagram !== false);
                 setWhatsapp(data.whatsapp || '');
                 setShowWhatsapp(data.show_whatsapp !== false);
+                setUpiId(data.upi_id || '');
+                setUpiName(data.upi_name || '');
+                setQrPaymentEnabled(data.qr_payment_enabled || false);
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages)) {
                     const savedPages = (data as any).visible_nav_pages as string[];
                     // Auto-inject any new pages that didn't exist when the user last saved
@@ -162,6 +171,9 @@ export const ShopSettingsForm = () => {
                     menuShowShopName: (data as any).menu_show_shop_name !== false,
                     menuShowAddress: (data as any).menu_show_address !== false,
                     menuShowPhone: (data as any).menu_show_phone !== false,
+                    upiId: data.upi_id || '',
+                    upiName: data.upi_name || '',
+                    qrPaymentEnabled: data.qr_payment_enabled || false,
                 };
                 const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
                 localStorage.setItem(headerKey, JSON.stringify(cacheData));
@@ -318,6 +330,15 @@ export const ShopSettingsForm = () => {
             return;
         }
 
+        if (qrPaymentEnabled && (!upiId || !upiId.trim() || !upiName || !upiName.trim())) {
+            toast({
+                title: "Incomplete UPI Details",
+                description: "Merchant UPI ID and Merchant Name are required when UPI payments are enabled.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         if (menuSlug && slugStatus === 'taken') {
             toast({
                 title: "Slug Not Available",
@@ -347,6 +368,9 @@ export const ShopSettingsForm = () => {
                 menu_show_shop_name: menuShowShopName,
                 menu_show_address: menuShowAddress,
                 menu_show_phone: menuShowPhone,
+                upi_id: upiId || null,
+                upi_name: upiName || null,
+                qr_payment_enabled: qrPaymentEnabled,
                 updated_at: new Date().toISOString()
             };
 
@@ -381,7 +405,8 @@ export const ShopSettingsForm = () => {
             const cacheData = {
                 shopName, address, contactNumber, logoUrl, printerWidth,
                 facebook, showFacebook, instagram, showInstagram, whatsapp, showWhatsapp, visiblePages,
-                menuSlug, menuShowShopName, menuShowAddress, menuShowPhone
+                menuSlug, menuShowShopName, menuShowAddress, menuShowPhone,
+                upiId, upiName, qrPaymentEnabled
             };
             const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
             localStorage.setItem(headerKey, JSON.stringify(cacheData));
@@ -558,6 +583,46 @@ export const ShopSettingsForm = () => {
                             />
                         </div>
                     </div>
+                </div>
+
+                {/* Dine-In QR Payments (UPI) */}
+                <div className="space-y-4 pt-4 border-t">
+                    <Label className="text-base font-semibold">Dine-In QR Payments (UPI)</Label>
+                    <CardDescription>
+                        Enable UPI payment checkouts for self-ordering guest tables. Guests can scan a dynamic QR code or deep-link to pay.
+                    </CardDescription>
+
+                    <div className="flex items-center gap-4">
+                        <Switch checked={qrPaymentEnabled} onCheckedChange={setQrPaymentEnabled} />
+                        <span className="text-sm font-medium">Enable Self-Payment (UPI) Checkout</span>
+                    </div>
+
+                    {qrPaymentEnabled && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-0 md:pl-2">
+                            <div className="space-y-2">
+                                <Label>Merchant UPI ID *</Label>
+                                <Input
+                                    placeholder="e.g. merchant@upi or 1234567890@okbizaxis"
+                                    value={upiId}
+                                    onChange={e => setUpiId(e.target.value)}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Funds will be routed directly to this UPI address.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Merchant Name (Business Name) *</Label>
+                                <Input
+                                    placeholder="e.g. Zen Cafe"
+                                    value={upiName}
+                                    onChange={e => setUpiName(e.target.value)}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Shown to customers on their UPI payment screens.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Navigation Menu Settings */}

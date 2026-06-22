@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle } from 'lucide-react';
+import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getShortUnit } from '@/utils/timeUtils';
+import { toast } from '@/hooks/use-toast';
 
 // Types
 interface MenuItem {
@@ -24,8 +25,8 @@ interface MenuItem {
 
 interface PromoBanner {
     id: string;
-    title: string;
-    description?: string;
+    admin_id: string;
+    branch_id: string | null;
     image_url: string;
     link_url?: string;
     is_text_only?: boolean;
@@ -50,6 +51,10 @@ interface ShopSettings {
     // Location settings
     shop_latitude?: number;
     shop_longitude?: number;
+    // UPI payment details
+    upi_id?: string;
+    upi_name?: string;
+    qr_payment_enabled?: boolean;
 }
 
 
@@ -158,6 +163,12 @@ const PublicMenu = () => {
     const [customHelpMsg, setCustomHelpMsg] = useState('');
     const [showCustomInput, setShowCustomInput] = useState(false);
     const helpChannelRef = useRef<any>(null);
+
+    // UPI Checkout States
+    const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+    const [paymentReference, setPaymentReference] = useState('');
+    const [isSubmittingReference, setIsSubmittingReference] = useState(false);
+    const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
 
     // Online/Offline detection
     useEffect(() => {
@@ -690,7 +701,11 @@ const PublicMenu = () => {
             setShowMyOrders(true);
         } catch (err) {
             console.error('Order placement error:', err);
-            alert('Failed to place order. Please try again.');
+            toast({
+                title: "Order Failed",
+                description: "Failed to place order. Please try again.",
+                variant: "destructive"
+            });
         } finally {
             setIsPlacingOrder(false);
         }
@@ -939,7 +954,10 @@ const PublicMenu = () => {
             if (insertErr) {
                 // Unique constraint = already pending
                 if (insertErr.code === '23505') {
-                    alert('You already have a pending request of this type. Staff has been notified!');
+                    toast({
+                        title: "Request Active",
+                        description: "You already have a pending request of this type. Staff has been notified!"
+                    });
                     return;
                 }
                 throw insertErr;
@@ -969,9 +987,81 @@ const PublicMenu = () => {
             setCustomHelpMsg('');
         } catch (err) {
             console.error('Help request error:', err);
-            alert('Failed to send request. Please try again.');
+            toast({
+                title: "Request Failed",
+                description: "Failed to send request. Please try again.",
+                variant: "destructive"
+            });
         }
     }, [adminId, tableNo, sessionId, helpCooldowns]);
+
+    const handleShareLocation = async () => {
+        if (!shopSettings?.shop_latitude || !shopSettings?.shop_longitude) return;
+        const mapsUrl = `https://www.google.com/maps?q=${shopSettings.shop_latitude},${shopSettings.shop_longitude}`;
+        const text = `Visit ${shopSettings.shop_name || 'our shop'}! Here is the location:`;
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: shopSettings.shop_name || 'Shop Location',
+                    text: text,
+                    url: mapsUrl
+                });
+            } catch (err) {
+                if ((err as Error).name !== 'AbortError') {
+                    copyToClipboard(mapsUrl);
+                }
+            }
+        } else {
+            copyToClipboard(mapsUrl);
+        }
+    };
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                toast({
+                    title: "Link Copied",
+                    description: "Location link copied to clipboard!"
+                });
+            })
+            .catch(err => {
+                console.error('Failed to copy link:', err);
+                toast({
+                    title: "Clipboard Error",
+                    description: "Could not copy link. Here is the URL: " + text,
+                    variant: "destructive"
+                });
+            });
+    };
+
+    const submitPaymentReference = async () => {
+        if (!paymentReference.trim()) return;
+        setIsSubmittingReference(true);
+        try {
+            const msg = `Paid: ₹${sessionTotal.toFixed(2)} | UTR/Ref: ${paymentReference.trim()}`;
+            await sendHelpRequest('upi_payment', msg);
+            setIsPaymentConfirmed(true);
+            toast({
+                title: "Receipt Submitted",
+                description: "Payment details sent to staff for instant verification."
+            });
+            setTimeout(() => {
+                setShowCheckoutDialog(false);
+                setIsPaymentConfirmed(false);
+                setPaymentReference('');
+            }, 6000);
+        } catch (err) {
+            console.error('Payment confirmation error:', err);
+            toast({
+                title: "Error",
+                description: "Failed to submit reference. Please tell the waiter.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSubmittingReference(false);
+        }
+    };
 
     // Listen for acknowledgement/resolution from staff
     useEffect(() => {
@@ -1002,6 +1092,31 @@ const PublicMenu = () => {
             supabase.removeChannel(channel);
         };
     }, [adminId, isTableMode, sessionId]);
+
+    // Fetch active help requests on mount or when tableNo/sessionId changes
+    useEffect(() => {
+        if (!adminId || !tableNo || !sessionId) return;
+        const fetchActiveRequests = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('table_service_requests')
+                    .select('request_type, status')
+                    .eq('session_id', sessionId)
+                    .in('status', ['pending', 'acknowledged']);
+                if (error) throw error;
+                if (data) {
+                    const statusMap: Record<string, 'pending' | 'acknowledged' | 'resolved'> = {};
+                    data.forEach((r: any) => {
+                        statusMap[r.request_type] = r.status;
+                    });
+                    setHelpStatus(prev => ({ ...prev, ...statusMap }));
+                }
+            } catch (err) {
+                console.error('Error fetching active service requests:', err);
+            }
+        };
+        fetchActiveRequests();
+    }, [adminId, tableNo, sessionId]);
 
     // Cooldown ticker
     useEffect(() => {
@@ -1235,24 +1350,32 @@ const PublicMenu = () => {
                 </div>
             )}
 
-            {/* Get Directions Bar - Shows when shop location is set */}
+            {/* Get Directions & Share Location Bar - Shows when shop location is set */}
             {shopSettings?.shop_latitude && shopSettings?.shop_longitude && (
                 <div className="max-w-2xl mx-auto px-4 pt-3">
-                    <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${shopSettings.shop_latitude},${shopSettings.shop_longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 text-white py-2.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all text-sm font-medium hover:scale-[1.01] active:scale-[0.99]"
-                        style={{
-                            background: shopSettings?.menu_primary_color
-                                ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
-                                : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                        }}
-                    >
-                        <MapPin className="w-4 h-4" />
-                        <span>Get Directions to Our Shop</span>
-                        <ChevronRight className="w-4 h-4" />
-                    </a>
+                    <div className="flex gap-2.5">
+                        <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${shopSettings.shop_latitude},${shopSettings.shop_longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center gap-2 text-white py-2.5 px-3 rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99]"
+                            style={{
+                                background: shopSettings?.menu_primary_color
+                                    ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
+                                    : 'linear-gradient(135deg, #ea580c, #dc2626)'
+                            }}
+                        >
+                            <MapPin className="w-4 h-4" />
+                            <span>Get Directions</span>
+                        </a>
+                        <button
+                            onClick={handleShareLocation}
+                            className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 py-2.5 px-3 rounded-xl shadow-sm hover:shadow-md transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99] border border-slate-200/50"
+                        >
+                            <Share2 className="w-4 h-4" />
+                            <span>Share Location</span>
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -1663,6 +1786,26 @@ const PublicMenu = () => {
                                     </div>
                                 ))}
                             </div>
+                            {shopSettings?.qr_payment_enabled && (
+                                <div className="p-4 bg-slate-50 border-t border-gray-100 flex flex-col gap-2">
+                                    <div className="flex justify-between items-center text-sm font-semibold text-gray-700 mb-1">
+                                        <span>Total Outstanding Bill:</span>
+                                        <span className="text-base text-gray-900 font-bold">₹{sessionTotal.toFixed(0)}</span>
+                                    </div>
+                                    <Button
+                                        onClick={() => setShowCheckoutDialog(true)}
+                                        className="w-full py-2.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md animate-pulse"
+                                        style={{
+                                            background: shopSettings?.menu_primary_color
+                                                ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
+                                                : 'linear-gradient(135deg, #ea580c, #dc2626)'
+                                        }}
+                                    >
+                                        <QrCode className="w-5 h-5" />
+                                        <span>Pay Bill via UPI (₹{sessionTotal.toFixed(0)})</span>
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )
@@ -1838,14 +1981,25 @@ const PublicMenu = () => {
                                     <RefreshCw className="w-4 h-4" />
                                     Order More
                                 </button>
-                                <button
-                                    onClick={() => sendHelpRequest('need_bill')}
-                                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm bg-white border-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
-                                    style={{ borderColor: shopSettings?.menu_primary_color || '#ea580c', color: shopSettings?.menu_primary_color || '#ea580c' }}
-                                >
-                                    <Receipt className="w-4 h-4" />
-                                    Request Bill
-                                </button>
+                                {shopSettings?.qr_payment_enabled ? (
+                                    <button
+                                        onClick={() => setShowCheckoutDialog(true)}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-95 transition-all"
+                                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                                    >
+                                        <QrCode className="w-4 h-4" />
+                                        Pay Bill (UPI)
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => sendHelpRequest('need_bill')}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm bg-white border-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
+                                        style={{ borderColor: shopSettings?.menu_primary_color || '#ea580c', color: shopSettings?.menu_primary_color || '#ea580c' }}
+                                    >
+                                        <Receipt className="w-4 h-4" />
+                                        Request Bill
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1931,6 +2085,8 @@ const PublicMenu = () => {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     {HELP_ACTIONS.filter(a => a.type !== 'custom').map((action) => {
+                                        const status = helpStatus[action.type];
+                                        const isPending = status === 'pending' || status === 'acknowledged';
                                         const isOnCooldown = Date.now() < (helpCooldowns[action.type] || 0);
                                         const statusText = getHelpStatusText(action.type);
                                         const remainingSec = isOnCooldown
@@ -1939,17 +2095,23 @@ const PublicMenu = () => {
                                         return (
                                             <button
                                                 key={action.type}
-                                                onClick={() => sendHelpRequest(action.type)}
-                                                disabled={isOnCooldown}
-                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl text-white font-semibold text-sm transition-all duration-200 ${action.color} ${isOnCooldown ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 active:scale-95 shadow-lg hover:shadow-xl'
-                                                    }`}
+                                                onClick={() => !isPending && sendHelpRequest(action.type)}
+                                                disabled={isOnCooldown || isPending}
+                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl text-white font-semibold text-sm transition-all duration-200 ${action.color} ${
+                                                    isOnCooldown || isPending
+                                                        ? 'opacity-60 cursor-not-allowed filter saturate-[0.6]'
+                                                        : 'hover:opacity-90 active:scale-95 shadow-lg hover:shadow-xl'
+                                                }`}
                                             >
-                                                <action.icon className="w-6 h-6" />
+                                                <action.icon className={cn("w-6 h-6", isPending && "animate-pulse")} />
                                                 <span>{action.label}</span>
-                                                {isOnCooldown && (
+                                                {isPending && (
+                                                    <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-normal">Active (Pending)</span>
+                                                )}
+                                                {isOnCooldown && !isPending && (
                                                     <span className="text-[10px] opacity-75">Wait {remainingSec}s</span>
                                                 )}
-                                                {statusText && !isOnCooldown && (
+                                                {statusText && !isOnCooldown && !isPending && (
                                                     <span className="text-[10px] opacity-85">{statusText}</span>
                                                 )}
                                             </button>
@@ -2000,6 +2162,115 @@ const PublicMenu = () => {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* UPI Checkout Dialog Overlay */}
+            {showCheckoutDialog && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <QrCode className="w-5 h-5 text-emerald-600" />
+                                UPI Self Checkout
+                            </h3>
+                            <button
+                                onClick={() => { setShowCheckoutDialog(false); setPaymentReference(''); setIsPaymentConfirmed(false); }}
+                                className="p-1 rounded-full hover:bg-gray-100"
+                            >
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                            <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 text-center">
+                                <span className="text-xs text-emerald-700 font-semibold uppercase tracking-wider block mb-1">Amount to Pay</span>
+                                <span className="text-3xl font-extrabold text-emerald-900">₹{sessionTotal.toFixed(2)}</span>
+                                <p className="text-[11px] text-emerald-600/80 mt-1">Table {tableNo} • Order Total</p>
+                            </div>
+
+                            {/* Merchant Details */}
+                            <div className="text-xs space-y-1.5 text-gray-600 bg-gray-50 p-3 rounded-xl">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Merchant Name:</span>
+                                    <span className="font-semibold text-gray-800">{shopSettings?.upi_name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">UPI ID:</span>
+                                    <span className="font-semibold text-gray-800 font-mono">{shopSettings?.upi_id}</span>
+                                </div>
+                            </div>
+
+                            {isPaymentConfirmed ? (
+                                <div className="text-center py-6 space-y-3">
+                                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                                        <CheckCircle2 className="w-10 h-10" />
+                                    </div>
+                                    <h4 className="font-bold text-gray-900">Reference Submitted!</h4>
+                                    <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                                        We have notified the staff of your payment reference ({paymentReference}). Cashier will verify and mark your table as billed shortly.
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Mobile Quick Pay Button */}
+                                    <div className="block md:hidden">
+                                        <a
+                                            href={`upi://pay?pa=${shopSettings?.upi_id}&pn=${encodeURIComponent(shopSettings?.upi_name || '')}&am=${sessionTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + tableNo + ' Bill')}`}
+                                            className="w-full h-12 text-sm font-bold rounded-xl text-white flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
+                                            style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                                        >
+                                            <Send className="w-4 h-4" />
+                                            Open in UPI App & Pay
+                                        </a>
+                                        <div className="relative my-4 text-center">
+                                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                                            <span className="relative bg-white px-3 text-xs text-gray-400">OR SCAN QR CODE</span>
+                                        </div>
+                                    </div>
+
+                                    {/* QR Code Section */}
+                                    <div className="flex flex-col items-center justify-center p-3 bg-white border border-gray-100 rounded-2xl shadow-sm max-w-[240px] mx-auto">
+                                        <img
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                                                `upi://pay?pa=${shopSettings?.upi_id}&pn=${encodeURIComponent(shopSettings?.upi_name || '')}&am=${sessionTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Table ' + tableNo + ' Bill')}`
+                                            )}`}
+                                            alt="UPI QR Code"
+                                            className="w-40 h-40 object-contain"
+                                        />
+                                        <span className="text-[10px] text-gray-400 mt-2 font-medium">Scan using GPay, PhonePe, Paytm etc.</span>
+                                    </div>
+
+                                    {/* Reference Verification Input */}
+                                    <div className="space-y-2 pt-2 border-t">
+                                        <Label htmlFor="payment_ref" className="text-xs font-semibold text-gray-700">Enter Payment Reference (UTR / Txn ID) *</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="payment_ref"
+                                                placeholder="Enter 12-digit UTR or last 4 digits"
+                                                value={paymentReference}
+                                                onChange={e => setPaymentReference(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                                                className="h-10 text-sm font-mono"
+                                                maxLength={24}
+                                            />
+                                            <Button
+                                                onClick={submitPaymentReference}
+                                                disabled={isSubmittingReference || !paymentReference.trim()}
+                                                className="h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold rounded-xl"
+                                            >
+                                                {isSubmittingReference ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
+                                            </Button>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400">
+                                            Crucial: Enter the reference number after completing payment to notify the cashier instantly.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Footer with Contact Info */}
