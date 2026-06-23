@@ -8,6 +8,10 @@ import { toast } from '@/hooks/use-toast';
 import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Bell, Clipboard } from 'lucide-react';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { TableSelector } from '@/components/TableSelector';
 import { getCachedImageUrl, cacheImageUrl } from '@/utils/imageUtils';
@@ -17,7 +21,7 @@ import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { format } from 'date-fns';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
@@ -41,6 +45,8 @@ interface Item {
   stock_quantity?: number;
   minimum_stock_alert?: number;
   unlimited_stock?: boolean;
+  price_zomato?: number;
+  price_swiggy?: number;
 }
 
 // Helper to check if item has low stock
@@ -180,6 +186,331 @@ const Billing = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedTableNumber, setSelectedTableNumber] = useState<string | null>(null);
+
+  // Food Aggregators Integration
+  const [orderChannel, setOrderChannel] = useState<'store' | 'zomato' | 'swiggy'>('store');
+  const [aggregatorDialogOpen, setAggregatorDialogOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [incomingOrders, setIncomingOrders] = useState<any[]>([
+    {
+      id: 'mock-1',
+      orderId: 'ZM-4819401',
+      channel: 'zomato',
+      customerName: 'Aarav Sharma',
+      items: [
+        { name: 'Veg Biryani', quantity: 2 },
+        { name: 'Butter Naan', quantity: 3 }
+      ],
+      total: 470,
+      time: 'Just now'
+    },
+    {
+      id: 'mock-2',
+      orderId: 'SW-9810482',
+      channel: 'swiggy',
+      customerName: 'Priya Patel',
+      items: [
+        { name: 'Masala Dosa', quantity: 1 },
+        { name: 'Beverages', quantity: 2 }
+      ],
+      total: 190,
+      time: '3 mins ago'
+    }
+  ]);
+
+  const getChannelPrice = (item: any, channel: 'store' | 'zomato' | 'swiggy') => {
+    if (channel === 'zomato') return item.price_zomato !== null && item.price_zomato !== undefined && item.price_zomato !== '' ? Number(item.price_zomato) : item.store_price !== undefined ? item.store_price : item.price;
+    if (channel === 'swiggy') return item.price_swiggy !== null && item.price_swiggy !== undefined && item.price_swiggy !== '' ? Number(item.price_swiggy) : item.store_price !== undefined ? item.store_price : item.price;
+    return item.store_price !== undefined ? item.store_price : item.price;
+  };
+
+  const handleChannelChange = (channel: 'store' | 'zomato' | 'swiggy') => {
+    setOrderChannel(channel);
+    setCart(prev => prev.map(item => {
+      const originalPrice = (item as any).store_price !== undefined ? (item as any).store_price : item.price;
+      const newPrice = getChannelPrice({ ...item, price: originalPrice }, channel);
+      return {
+        ...item,
+        store_price: originalPrice,
+        price: newPrice
+      };
+    }));
+  };
+
+  const parsePasteOrder = () => {
+    if (!pasteText.trim()) {
+      toast({
+        title: 'Empty Text',
+        description: 'Please paste some order text first.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const text = pasteText;
+      let channel: 'zomato' | 'swiggy' = 'zomato';
+      if (/swiggy/i.test(text)) {
+        channel = 'swiggy';
+      }
+
+      // Extract Order ID
+      let orderId = 'ONLINE-' + Math.floor(100000 + Math.random() * 900000);
+      const idMatch = text.match(/(?:order\s*(?:id|#)?|#)\s*:?\s*([a-z0-9-]+)/i);
+      if (idMatch && idMatch[1]) {
+        orderId = idMatch[1].trim().toUpperCase();
+      }
+
+      // Set order type and channel
+      setOrderChannel(channel);
+
+      // Extract items
+      const lines = text.split('\n');
+      const parsedItems: Array<{ name: string; quantity: number }> = [];
+
+      lines.forEach(line => {
+        const cleaned = line.trim();
+        if (!cleaned) return;
+
+        // Pattern 1: "1 x Veg Biryani"
+        let match = cleaned.match(/^(\d+(?:\.\d+)?)\s*[x*]\s*(.+)$/i);
+        if (match) {
+          parsedItems.push({
+            name: match[2].trim(),
+            quantity: parseFloat(match[1])
+          });
+          return;
+        }
+
+        // Pattern 2: "Veg Biryani x 2"
+        match = cleaned.match(/^(.+?)\s*[x*]\s*(\d+(?:\.\d+)?)$/i);
+        if (match) {
+          parsedItems.push({
+            name: match[1].trim(),
+            quantity: parseFloat(match[2])
+          });
+          return;
+        }
+
+        // Pattern 3: "Veg Biryani - Qty: 2"
+        match = cleaned.match(/^(.+?)\s*[-((]?\s*qty\s*(?::\s*)?(\d+(?:\.\d+)?)\s*\)?$/i);
+        if (match) {
+          parsedItems.push({
+            name: match[1].trim(),
+            quantity: parseFloat(match[2])
+          });
+          return;
+        }
+
+        // Pattern 4: "2 Veg Biryani"
+        match = cleaned.match(/^(\d+)\s+([a-zA-Z\s]+)$/);
+        if (match) {
+          parsedItems.push({
+            name: match[2].trim(),
+            quantity: parseFloat(match[1])
+          });
+          return;
+        }
+      });
+
+      if (parsedItems.length === 0) {
+        toast({
+          title: 'Parsing Failed',
+          description: 'Could not find any items in the pasted text. Please check format.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const matchedItems: Array<{ item: Item; qty: number }> = [];
+      const unmatchedItems: string[] = [];
+
+      parsedItems.forEach(pi => {
+        const nameToMatch = pi.name.toLowerCase();
+        let found = items.find(it => it.name.toLowerCase() === nameToMatch);
+        if (!found) {
+          found = items.find(it => 
+            it.name.toLowerCase().includes(nameToMatch) || 
+            nameToMatch.includes(it.name.toLowerCase())
+          );
+        }
+
+        if (found) {
+          matchedItems.push({ item: found, qty: pi.quantity });
+        } else {
+          unmatchedItems.push(`${pi.quantity}x ${pi.name}`);
+        }
+      });
+
+      if (matchedItems.length === 0) {
+        toast({
+          title: 'No Matching Items',
+          description: `Found ${parsedItems.length} items but none matched your menu items.`,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      setCart(prev => {
+        const matchedIds = matchedItems.map(m => m.item.id);
+        const filtered = prev.filter(c => !matchedIds.includes(c.id));
+        
+        const newCartItems = matchedItems.map(mi => {
+          const storePrice = mi.item.price;
+          const channelPrice = getChannelPrice(mi.item, channel);
+          return {
+            ...mi.item,
+            store_price: storePrice,
+            price: channelPrice,
+            quantity: mi.qty
+          };
+        });
+        return [...filtered, ...newCartItems];
+      });
+
+      handleChannelChange(channel);
+
+      if (unmatchedItems.length > 0) {
+        toast({
+          title: 'Order Imported (Partial)',
+          description: `Imported ${matchedItems.length} items to cart. Unmatched items: ${unmatchedItems.join(', ')}`,
+        });
+      } else {
+        toast({
+          title: '✅ Order Imported!',
+          description: `Imported ${matchedItems.length} items from ${channel.toUpperCase()} order ${orderId} successfully!`,
+        });
+      }
+
+      setPasteText('');
+      setAggregatorDialogOpen(false);
+    } catch (e: any) {
+      toast({
+        title: 'Error Parsing Order',
+        description: e.message || 'An error occurred during parsing.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const acceptOrderToKDS = async (order: any) => {
+    try {
+      const now = new Date();
+      const billNumber = `BILL-ONLINE-${order.orderId}`;
+      const validCartItems: CartItem[] = [];
+
+      order.items.forEach((oi: any) => {
+        const nameLower = oi.name.toLowerCase();
+        let dbItem = items.find(it => it.name.toLowerCase() === nameLower);
+        if (!dbItem) {
+          dbItem = items.find(it => it.name.toLowerCase().includes(nameLower) || nameLower.includes(it.name.toLowerCase()));
+        }
+
+        if (dbItem) {
+          const basePrice = getChannelPrice(dbItem, order.channel);
+          validCartItems.push({
+            ...dbItem,
+            price: basePrice,
+            store_price: dbItem.price,
+            quantity: oi.quantity
+          });
+        }
+      });
+
+      if (validCartItems.length === 0) {
+        toast({
+          title: 'Order Acceptance Failed',
+          description: 'None of the items in this order matched your database items.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const orderSubtotal = validCartItems.reduce((sum, item) => {
+        const baseValue = item.base_value || 1;
+        return sum + (item.quantity / baseValue) * item.price;
+      }, 0);
+
+      const billPayload: any = {
+        bill_no: billNumber,
+        total_amount: orderSubtotal,
+        discount: 0,
+        payment_mode: 'other',
+        payment_details: { online: orderSubtotal },
+        additional_charges: [],
+        created_by: profile?.user_id,
+        admin_id: profile?.role === 'admin' ? profile.id : profile?.admin_id || null,
+        branch_id: operatingBranchId || null,
+        date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+        service_status: 'pending',
+        kitchen_status: 'preparing',
+        status_updated_at: now.toISOString(),
+        table_no: null,
+        round_off: 0,
+        order_type: 'parcel',
+        channel: order.channel
+      };
+
+      await saveBillToDatabase(billPayload, validCartItems, billNumber);
+
+      toast({
+        title: `✅ Accepted ${order.channel === 'zomato' ? 'Zomato' : 'Swiggy'} Order!`,
+        description: `Order ${order.orderId} sent directly to KDS.`,
+      });
+
+      setIncomingOrders(prev => prev.filter(o => o.id !== order.id));
+    } catch (err: any) {
+      console.error('Accept online order error:', err);
+      toast({
+        title: 'Error accepting order',
+        description: err.message || 'Failed to send order to KDS',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Periodic generator for mock online orders (Swiggy/Zomato)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (items.length === 0) return;
+      const channel = Math.random() > 0.5 ? 'zomato' : 'swiggy';
+      const orderItems = [];
+      const numItems = Math.floor(Math.random() * 2) + 1;
+      let orderTotal = 0;
+      
+      for (let i = 0; i < numItems; i++) {
+        const randItem = items[Math.floor(Math.random() * items.length)];
+        const qty = Math.floor(Math.random() * 2) + 1;
+        const itemPrice = getChannelPrice(randItem, channel);
+        orderItems.push({ name: randItem.name, quantity: qty });
+        orderTotal += (qty / (randItem.base_value || 1)) * itemPrice;
+      }
+
+      const randomNames = ['Aman Gupta', 'Nisha Rao', 'Vikram Singh', 'Kunal Sen', 'Neha Sharma', 'Rohan Das'];
+      const customerName = randomNames[Math.floor(Math.random() * randomNames.length)];
+      const orderId = (channel === 'zomato' ? 'ZM-' : 'SW-') + Math.floor(1000000 + Math.random() * 9000000);
+
+      const newOrder = {
+        id: `mock-${Date.now()}`,
+        orderId,
+        channel,
+        customerName,
+        items: orderItems,
+        total: Math.round(orderTotal),
+        time: 'Just now'
+      };
+
+      setIncomingOrders(prev => [newOrder, ...prev.slice(0, 4)]);
+
+      toast({
+        title: `🔔 New ${channel === 'zomato' ? 'Zomato' : 'Swiggy'} Order!`,
+        description: `${customerName} ordered ${orderItems.map(i => `${i.quantity}x ${i.name}`).join(', ')} (₹${Math.round(orderTotal)})`,
+      });
+    }, 90000);
+
+    return () => clearInterval(interval);
+  }, [items]);
+
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
   const [showOrderType, setShowOrderType] = useState(false);
@@ -693,10 +1024,13 @@ const Billing = () => {
     const targetQty = existing ? existing.quantity + step : baseValue;
 
     if (item.stock_quantity !== null && item.stock_quantity !== undefined) {
-      if (targetQty > item.stock_quantity) {
+      const invUnit = (item as any).inventory_unit;
+      const sellUnit = (item as any).selling_unit || item.unit;
+      const targetInInvUnit = convertToInventoryUnit(targetQty, sellUnit, invUnit);
+      if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add more ${item.name}. Available stock: ${item.stock_quantity}.`,
+          description: `Cannot add more ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -710,16 +1044,21 @@ const Billing = () => {
           quantity: cartItem.quantity + step
         } : cartItem);
       }
+      const storePrice = item.price;
+      const channelPrice = getChannelPrice(item, orderChannel);
       return [...prev, {
         ...item,
+        store_price: storePrice,
+        price: channelPrice,
         quantity: baseValue
       }];
     });
     // Low-stock warning when item drops below configured threshold
     if (isLowStock(item)) {
+      const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${item.stock_quantity} left (alert ≤ ${item.minimum_stock_alert})`,
+        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     // Clear search after adding to cart for user friendliness
@@ -740,10 +1079,13 @@ const Billing = () => {
     const targetQty = existing ? existing.quantity + chipQty : chipQty;
 
     if (item.stock_quantity !== null && item.stock_quantity !== undefined) {
-      if (targetQty > item.stock_quantity) {
+      const invUnit = (item as any).inventory_unit;
+      const sellUnit = (item as any).selling_unit || item.unit;
+      const targetInInvUnit = convertToInventoryUnit(targetQty, sellUnit, invUnit);
+      if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${item.stock_quantity}.`,
+          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -757,12 +1099,20 @@ const Billing = () => {
           quantity: cartItem.quantity + chipQty
         } : cartItem);
       }
-      return [...prev, { ...item, quantity: chipQty }];
+      const storePrice = item.price;
+      const channelPrice = getChannelPrice(item, orderChannel);
+      return [...prev, {
+        ...item,
+        store_price: storePrice,
+        price: channelPrice,
+        quantity: chipQty
+      }];
     });
     if (isLowStock(item)) {
+      const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${item.stock_quantity} left (alert ≤ ${item.minimum_stock_alert})`,
+        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     setSearchQuery('');
@@ -776,10 +1126,13 @@ const Billing = () => {
     const targetQty = cartItem.quantity + actualChange;
 
     if (actualChange > 0 && cartItem.stock_quantity !== null && cartItem.stock_quantity !== undefined) {
-      if (targetQty > cartItem.stock_quantity) {
+      const invUnit = (cartItem as any).inventory_unit;
+      const sellUnit = (cartItem as any).selling_unit || cartItem.unit;
+      const targetInInvUnit = convertToInventoryUnit(targetQty, sellUnit, invUnit);
+      if (targetInInvUnit > Number(cartItem.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot increase quantity. Available stock: ${cartItem.stock_quantity}.`,
+          description: `Cannot increase quantity. Available stock: ${formatQuantityWithUnit(cartItem.stock_quantity, invUnit || cartItem.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -808,10 +1161,13 @@ const Billing = () => {
     if (newQuantity && newQuantity > 0) {
       const cartItem = cart.find(c => c.id === id);
       if (cartItem && cartItem.stock_quantity !== null && cartItem.stock_quantity !== undefined) {
-        if (newQuantity > cartItem.stock_quantity) {
+        const invUnit = (cartItem as any).inventory_unit;
+        const sellUnit = (cartItem as any).selling_unit || cartItem.unit;
+        const targetInInvUnit = convertToInventoryUnit(newQuantity, sellUnit, invUnit);
+        if (targetInInvUnit > Number(cartItem.stock_quantity)) {
           toast({
             title: '🚫 Stock Limit Exceeded',
-            description: `Only ${cartItem.stock_quantity} units available in stock.`,
+            description: `Only ${formatQuantityWithUnit(cartItem.stock_quantity, invUnit || cartItem.unit)} available in stock.`,
             variant: 'destructive',
           });
           return;
@@ -1030,25 +1386,57 @@ const Billing = () => {
       throw itemsError;
     }
 
-    // 3. Stock Deduction - PARALLEL instead of sequential (MUCH FASTER)
-    // Fire all stock updates in parallel, don't wait for each one
+    // 3. Stock Deduction (Recipe-based Ingredient Deduction or Fallback to Item Stock)
     const stockUpdatePromises = validCart.map(async (item) => {
       try {
-        const { data: currentItem } = await supabase
-          .from('items')
-          .select('stock_quantity')
-          .eq('id', item.id)
-          .single();
+        // Query if there is a recipe defined for this item
+        const { data: recipeParts, error: recipeErr } = await supabase
+          .from('recipes')
+          .select('ingredient_id, quantity')
+          .eq('item_id', item.id);
 
-        if (currentItem && currentItem.stock_quantity !== null && currentItem.stock_quantity !== undefined) {
-          await supabase
+        if (!recipeErr && recipeParts && recipeParts.length > 0) {
+          // Recipe exists: Deduct each ingredient's stock
+          for (const part of recipeParts) {
+            try {
+              const { data: currentIng } = await supabase
+                .from('ingredients')
+                .select('stock_quantity')
+                .eq('id', part.ingredient_id)
+                .single();
+
+              if (currentIng) {
+                const totalDeduction = Number(part.quantity) * Number(item.quantity);
+                const newStock = Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction);
+                await supabase
+                  .from('ingredients')
+                  .update({ stock_quantity: newStock })
+                  .eq('id', part.ingredient_id);
+              }
+            } catch (ingErr) {
+              console.error(`Failed to deduct ingredient ${part.ingredient_id} for item ${item.name}:`, ingErr);
+            }
+          }
+        } else {
+          // Fallback: Deduct standard menu item stock
+          const { data: currentItem } = await supabase
             .from('items')
-            .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - item.quantity) })
-            .eq('id', item.id);
+            .select('stock_quantity')
+            .eq('id', item.id)
+            .single();
+
+          if (currentItem && currentItem.stock_quantity !== null && currentItem.stock_quantity !== undefined) {
+            const sellUnit = (item as any).selling_unit || item.unit;
+            const invUnit = (item as any).inventory_unit;
+            const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
+            await supabase
+              .from('items')
+              .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit) })
+              .eq('id', item.id);
+          }
         }
       } catch (stockErr) {
-        console.error(`Stock update failed for item ${item.id}:`, stockErr);
-        // Don't throw - stock update failure shouldn't fail the bill
+        console.error(`Stock update failed for item ${item.name} (${item.id}):`, stockErr);
       }
     });
 
@@ -1423,7 +1811,8 @@ const Billing = () => {
         status_updated_at: now.toISOString(),
         table_no: selectedTableNumber || null,
         round_off: roundOff !== 0 ? roundOff : 0,
-        order_type: paymentData.orderType || 'dine_in'
+        order_type: paymentData.orderType || 'dine_in',
+        channel: orderChannel
       };
 
       // Add GST fields to bill if enabled
@@ -1541,7 +1930,7 @@ const Billing = () => {
               total: totalAmount,
               paymentMethod: paymentMode.toUpperCase(),
               paymentDetails: paymentData.paymentAmounts,
-              hotelName: profile?.hotel_name || 'ZenPOS',
+              hotelName: profile?.hotel_name || '',
               shopName: billSettings?.shopName,
               address: billSettings?.address,
               contactNumber: billSettings?.contactNumber,
@@ -1577,7 +1966,9 @@ const Billing = () => {
             price: item.price,
             total: (item.quantity / baseValue) * item.price,
             unit: item.unit,
-            base_value: item.base_value
+            base_value: item.base_value,
+            selling_unit: (item as any).selling_unit,
+            selling_quantity: (item as any).selling_quantity
           };
         }),
         subtotal: subtotal,
@@ -1586,7 +1977,7 @@ const Billing = () => {
         total: totalAmount,
         paymentMethod: paymentData.paymentMethod.toUpperCase(),
         paymentDetails: paymentData.paymentAmounts,
-        hotelName: profile?.hotel_name || 'ZenPOS',
+        hotelName: profile?.hotel_name || '',
         shopName: settingsToUse?.shopName,
         address: settingsToUse?.address,
         contactNumber: settingsToUse?.contactNumber,
@@ -1726,6 +2117,23 @@ const Billing = () => {
             }}
           />
         </div>
+        <div className="flex items-center gap-2">
+          {/* Bell Icon for Incoming Orders */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAggregatorDialogOpen(true)}
+            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl"
+          >
+            <Bell className="w-4 h-4 mr-1 text-red-500" />
+            🍕 Online Orders
+            {incomingOrders.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                {incomingOrders.length}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -1798,7 +2206,7 @@ const Billing = () => {
                 {/* Low stock badge - shown at top left */}
                 {lowStock && (
                   <div className="absolute top-1 left-1 bg-orange-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    Low: {formatQuantityWithUnit(item.stock_quantity!, item.unit)}
+                    Low: {formatQuantityWithUnit(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
                   </div>
                 )}
 
@@ -1813,7 +2221,7 @@ const Billing = () => {
               <div className="flex-1 flex flex-col min-h-0 px-0.5">
                 <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0">{item.name}</h3>
                 <p className="text-primary mb-1 flex-shrink-0 font-bold text-sm">
-                  ₹{item.price.toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
+                  ₹{getChannelPrice(item, orderChannel).toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
                 </p>
 
                 {isInCart ? (
@@ -1890,7 +2298,7 @@ const Billing = () => {
                       {/* Name and Price */}
                       <div>
                         <h3 className="font-semibold text-sm">{item.name}</h3>
-                        <p className="text-lg font-bold text-primary">₹{item.price}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
+                        <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
                       </div>
                     </div>
 
@@ -1948,6 +2356,45 @@ const Billing = () => {
             Pay
           </Button>
         </div>}
+      </div>
+
+      {/* Channel selector (Store, Zomato, Swiggy) */}
+      <div className="px-4 py-2 border-b bg-muted/30">
+        <div className="flex rounded-lg bg-muted p-1 gap-1">
+          <button
+            onClick={() => handleChannelChange('store')}
+            className={cn(
+              "flex-1 text-[11px] py-1.5 rounded-md font-medium transition-all",
+              orderChannel === 'store'
+                ? "bg-background shadow-sm text-foreground font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            🏪 Store
+          </button>
+          <button
+            onClick={() => handleChannelChange('zomato')}
+            className={cn(
+              "flex-1 text-[11px] py-1.5 rounded-md font-medium transition-all",
+              orderChannel === 'zomato'
+                ? "bg-red-500 shadow-sm text-white font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            🍅 Zomato
+          </button>
+          <button
+            onClick={() => handleChannelChange('swiggy')}
+            className={cn(
+              "flex-1 text-[11px] py-1.5 rounded-md font-medium transition-all",
+              orderChannel === 'swiggy'
+                ? "bg-orange-500 shadow-sm text-white font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            🍊 Swiggy
+          </button>
+        </div>
       </div>
 
       {/* Cart Items */}
@@ -2037,6 +2484,145 @@ const Billing = () => {
       onSaveWithoutPrint={handleSaveWithoutPrint}
       isRetrying={isRetryingPrint}
     />
+
+    {/* Food Aggregator Modal */}
+    <Dialog open={aggregatorDialogOpen} onOpenChange={setAggregatorDialogOpen}>
+      <DialogContent className="max-w-2xl bg-card border shadow-2xl rounded-2xl overflow-hidden p-0">
+        <DialogHeader className="p-6 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-orange-500/10 border-b">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            🍕 Food Aggregators (Zomato & Swiggy)
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-1">
+            Accept incoming online delivery orders directly to the KDS, or parse copied receipt text to load items into the POS instantly.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-800">
+          {/* Column 1: Live Feed */}
+          <div className="space-y-4 pb-6 md:pb-0">
+            <h3 className="font-bold text-sm flex items-center justify-between text-gray-800 dark:text-gray-200">
+              ⚡ Live Incoming Feed
+              <span className="text-[10px] text-green-500 font-semibold flex items-center gap-1 animate-pulse">
+                ● Live Syncing
+              </span>
+            </h3>
+            
+            {incomingOrders.length === 0 ? (
+              <div className="text-center py-10 border border-dashed rounded-2xl bg-muted/20">
+                <Bell className="w-8 h-8 text-gray-400 mx-auto mb-2 animate-bounce" />
+                <p className="text-xs font-semibold text-muted-foreground">Waiting for new orders...</p>
+                <p className="text-[10px] text-gray-400 mt-1">Orders auto-generate periodically</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                {incomingOrders.map(order => (
+                  <div key={order.id} className={cn(
+                    "p-3 rounded-xl border transition-all duration-200 shadow-sm hover:shadow-md",
+                    order.channel === 'zomato' 
+                      ? "bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-900/30" 
+                      : "bg-orange-50/50 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/30"
+                  )}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <Badge className={order.channel === 'zomato' ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}>
+                          {order.channel === 'zomato' ? '🍅 Zomato' : '🍊 Swiggy'}
+                        </Badge>
+                        <span className="font-mono font-bold text-xs ml-2 text-gray-700 dark:text-gray-300">{order.orderId}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{order.time}</span>
+                    </div>
+                    
+                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200 mb-2">Cust: {order.customerName}</p>
+                    
+                    <div className="text-[11px] text-muted-foreground space-y-0.5 border-t border-b border-gray-100 dark:border-gray-800/50 py-1.5 mb-2">
+                      {order.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{item.name}</span>
+                          <span className="font-bold">x{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-primary">₹{order.total}</span>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setCart([]);
+                            order.items.forEach((oi: any) => {
+                              const dbItem = items.find(it => it.name.toLowerCase() === oi.name.toLowerCase() || it.name.toLowerCase().includes(oi.name.toLowerCase()));
+                              if (dbItem) {
+                                const storePrice = dbItem.price;
+                                const channelPrice = getChannelPrice(dbItem, order.channel);
+                                setCart(prev => [...prev, {
+                                  ...dbItem,
+                                  store_price: storePrice,
+                                  price: channelPrice,
+                                  quantity: oi.quantity
+                                }]);
+                              }
+                            });
+                            handleChannelChange(order.channel);
+                            setAggregatorDialogOpen(false);
+                            toast({
+                              title: "Loaded to POS",
+                              description: `Loaded ${order.channel === 'zomato' ? 'Zomato' : 'Swiggy'} order ${order.orderId} into your cart.`
+                            });
+                          }}
+                          className="h-7 text-[10px] px-2"
+                        >
+                          Load to POS
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => acceptOrderToKDS(order)}
+                          className={cn(
+                            "h-7 text-[10px] px-2 text-white border-0",
+                            order.channel === 'zomato' ? 'bg-red-500 hover:bg-red-600' : 'bg-orange-500 hover:bg-orange-600'
+                          )}
+                        >
+                          Accept & KDS
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Column 2: Order Paste Parser */}
+          <div className="space-y-4 pt-6 md:pt-0 md:pl-6">
+            <h3 className="font-bold text-sm flex items-center gap-1.5 text-gray-800 dark:text-gray-200">
+              <Clipboard className="w-4 h-4 text-primary" />
+              Manual Order Paste Parser
+            </h3>
+            
+            <div className="space-y-3">
+              <Label className="text-xs text-muted-foreground block">
+                Copy receipt/order text from Swiggy or Zomato portal, paste it here, and ZenPOS will automatically parse items, quantities, and prices:
+              </Label>
+              <Textarea 
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                placeholder="Example:&#10;Order #SW-248194&#10;1 x Veg Biryani&#10;2 x Butter Naan"
+                rows={7}
+                className="font-mono text-xs p-3"
+              />
+              
+              <Button 
+                onClick={parsePasteOrder} 
+                className="w-full bg-gradient-to-r from-primary to-primary/95 text-white font-bold h-9 text-xs"
+              >
+                📥 Parse & Load to POS
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>;
 };
 export default Billing;

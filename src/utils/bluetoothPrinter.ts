@@ -236,6 +236,8 @@ interface BillItem {
   total: number;
   unit?: string;
   base_value?: number;
+  selling_unit?: string;
+  selling_quantity?: number;
 }
 
 interface PrintData {
@@ -302,17 +304,19 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   const fmtLine = (left: string, right: string) => formatLine(left, right, LINE_WIDTH);
 
   // Compact item line - name x qty @ price/unit = total
-  const fmtItem = (name: string, qty: number, price: number, total: number, unit?: string, baseValue?: number) => {
-    const qtyWithUnit = formatQuantityWithUnit(qty, unit);
-    const shortUnit = getShortUnit(unit);
-    const baseValStr = baseValue && baseValue > 1 ? `${baseValue}` : '';
-    const right = `x${qtyWithUnit} @ ${price.toFixed(0)}/${baseValStr}${shortUnit} = ${total.toFixed(0)}`;
+  const fmtItem = (item: BillItem) => {
+    const targetUnit = item.selling_unit || item.unit;
+    const qtyWithUnit = formatQuantityWithUnit(item.quantity, targetUnit);
+    const shortUnit = getShortUnit(targetUnit);
+    const baseValue = item.selling_quantity || item.base_value;
+    const baseValStr = baseValue && baseValue !== 1 ? `${baseValue}` : '';
+    const right = `x${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`;
     const maxName = LINE_WIDTH - right.length - 1;
     if (maxName >= 10) {
-      const shortName = name.length > maxName ? name.substring(0, maxName) : name;
+      const shortName = item.name.length > maxName ? item.name.substring(0, maxName) : item.name;
       return padRight(shortName, maxName) + ' ' + right;
     } else {
-      return `${name}\n${' '.repeat(LINE_WIDTH - right.length)}${right}`;
+      return `${item.name}\n${' '.repeat(LINE_WIDTH - right.length)}${right}`;
     }
   };
 
@@ -366,7 +370,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // ITEMS
   data.items.forEach(item => {
-    commands.push(textToBytes(fmtItem(item.name, item.quantity, item.price, item.total, item.unit, item.base_value)));
+    commands.push(textToBytes(fmtItem(item)));
     commands.push(FEED_LINE);
   });
 

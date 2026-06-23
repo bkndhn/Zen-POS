@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Plus, Minus, Trash2, Percent, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, convertToInventoryUnit } from '@/utils/timeUtils';
 import { isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { toast } from '@/hooks/use-toast';
 
@@ -23,6 +23,8 @@ interface CartItem {
   quantity_step?: number;
   stock_quantity?: number;
   unlimited_stock?: boolean;
+  selling_unit?: string;
+  inventory_unit?: string;
 }
 
 interface PaymentType {
@@ -128,10 +130,13 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
 
       // Check stock limit if stock tracking is active
       if (change > 0 && currentItem.unlimited_stock === false && currentItem.stock_quantity !== undefined) {
-        if (newQty > currentItem.stock_quantity) {
+        const sellUnit = currentItem.selling_unit || currentItem.unit;
+        const invUnit = currentItem.inventory_unit;
+        const targetInInvUnit = convertToInventoryUnit(newQty, sellUnit, invUnit);
+        if (targetInInvUnit > currentItem.stock_quantity) {
           toast({
             title: "🚫 Stock Limit Exceeded",
-            description: `Cannot add more of ${currentItem.name}. Only ${currentItem.stock_quantity} available in stock.`,
+            description: `Cannot add more of ${currentItem.name}. Only ${formatQuantityWithUnit(currentItem.stock_quantity, invUnit || currentItem.unit)} available in stock.`,
             variant: "destructive"
           });
           return prev;
@@ -406,13 +411,18 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                         onChange={(e) => {
                           const newQty = Number(e.target.value) || 0;
                           if (item.unlimited_stock === false && item.stock_quantity !== undefined) {
-                            if (newQty > item.stock_quantity) {
+                            const sellUnit = item.selling_unit || item.unit;
+                            const invUnit = item.inventory_unit;
+                            const targetInInvUnit = convertToInventoryUnit(newQty, sellUnit, invUnit);
+                            if (targetInInvUnit > item.stock_quantity) {
                               toast({
                                 title: "🚫 Stock Limit Exceeded",
-                                description: `Cannot add more of ${item.name}. Only ${item.stock_quantity} available in stock.`,
+                                description: `Cannot add more of ${item.name}. Only ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)} available in stock.`,
                                 variant: "destructive"
                               });
-                              setItemQuantityOverrides(prev => ({ ...prev, [item.id]: item.stock_quantity! }));
+                              const conversionFactor = convertToInventoryUnit(1, sellUnit, invUnit);
+                              const maxSellingQty = conversionFactor > 0 ? item.stock_quantity / conversionFactor : item.stock_quantity;
+                              setItemQuantityOverrides(prev => ({ ...prev, [item.id]: maxSellingQty }));
                               return;
                             }
                           }

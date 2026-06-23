@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -826,7 +826,9 @@ const TableOrderBilling: React.FC = () => {
                         price: item.price,
                         total: (item.quantity / baseValue) * item.price,
                         unit: item.unit,
-                        base_value: item.base_value
+                        base_value: item.base_value,
+                        selling_unit: (item as any).selling_unit,
+                        selling_quantity: (item as any).selling_quantity
                     };
                 }),
                 subtotal: subtotal,
@@ -894,15 +896,8 @@ const TableOrderBilling: React.FC = () => {
         setOptionsDialogOpen(true);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
     // Build cart items for the currently selected table based on mode
+    // NOTE: This must be BEFORE any early returns to satisfy React's rules of hooks
     const currentCart = useMemo(() => {
         if (!selectedTable) return [];
         
@@ -926,6 +921,14 @@ const TableOrderBilling: React.FC = () => {
         
         return getCartForTable(selectedTable);
     }, [selectedTable, splitType, checkedSplitItems, evenSplitTracking]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen p-3 sm:p-4">

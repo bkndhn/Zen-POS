@@ -4,6 +4,9 @@ import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './
 export const printBrowserReceipt = (data: PrintData) => {
   const width = data.printerWidth || '58mm';
   const widthValue = width === '80mm' ? '80mm' : '58mm';
+  const fontSize = width === '80mm' ? '12px' : '10px';
+  const shopNameFontSize = width === '80mm' ? '15px' : '12px';
+  const totalFontSize = width === '80mm' ? '14px' : '11px';
 
   // Debug logging
   console.log('🖨️ Browser Print Data:', {
@@ -13,13 +16,25 @@ export const printBrowserReceipt = (data: PrintData) => {
   });
 
   // Compact item rows with header: Item Name | Qty | Rate | Value (with two decimals)
-  const itemsHeader = `<tr style="font-weight:bold;border-bottom:1px dashed #000"><td>ITEM</td><td style="text-align:center">QTY</td><td style="text-align:right">RATE</td><td style="text-align:right">Value</td></tr>`;
+  const itemsHeader = `<tr style="font-weight:bold;border-bottom:1px dashed #000">
+    <td style="width:36%;text-align:left;padding-right:4px;">ITEM</td>
+    <td style="width:16%;text-align:center;padding-right:4px;">QTY</td>
+    <td style="width:26%;text-align:right;padding-right:6px;">RATE</td>
+    <td style="width:22%;text-align:right;">VALUE</td>
+  </tr>`;
   let itemsHtml = data.items.map(item => {
-    const qtyWithUnit = formatQuantityWithUnit(item.quantity, item.unit);
-    const shortUnit = getShortUnit(item.unit);
-    const baseValStr = item.base_value && item.base_value > 1 ? `${item.base_value}` : '';
+    const targetUnit = (item as any).selling_unit || item.unit;
+    const qtyWithUnit = formatQuantityWithUnit(item.quantity, targetUnit);
+    const shortUnit = getShortUnit(targetUnit);
+    const baseVal = (item as any).selling_quantity || item.base_value;
+    const baseValStr = baseVal && baseVal !== 1 ? `${baseVal}` : '';
     const rateText = `₹${item.price.toFixed(0)}/${baseValStr}${shortUnit}`;
-    return `<tr><td style="max-width:40%;word-break:break-word">${item.name}</td><td style="text-align:center;white-space:nowrap">${qtyWithUnit}</td><td style="text-align:right;white-space:nowrap">${rateText}</td><td style="text-align:right">${item.total.toFixed(2)}</td></tr>`;
+    return `<tr>
+      <td style="width:36%;text-align:left;word-break:break-all;padding-right:4px;">${item.name}</td>
+      <td style="width:16%;text-align:center;white-space:nowrap;padding-right:4px;">${qtyWithUnit}</td>
+      <td style="width:26%;text-align:right;white-space:nowrap;padding-right:6px;">${rateText}</td>
+      <td style="width:22%;text-align:right;white-space:nowrap;">${item.total.toFixed(2)}</td>
+    </tr>`;
   }).join('');
 
   const totalItems = data.totalItemsCount !== undefined ? data.totalItemsCount : data.items.length;
@@ -36,20 +51,20 @@ export const printBrowserReceipt = (data: PrintData) => {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: monospace;
-      font-size: 12px;
+      font-size: ${fontSize};
       width: ${widthValue};
       max-width: 100%;
       margin: 0 auto;
-      padding: 8px;
+      padding: 6px;
       background: white;
       color: black;
     }
     .center { text-align: center; }
-    .shop-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
-    hr { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 2px 0; vertical-align: top; }
-    .total { font-size: 14px; font-weight: bold; }
+    .shop-name { font-size: ${shopNameFontSize}; font-weight: bold; margin-bottom: 4px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    td { padding: 3px 2px; vertical-align: top; font-size: ${fontSize}; }
+    .total { font-size: ${totalFontSize}; font-weight: bold; }
     .footer { margin-top: 12px; font-size: 10px; }
     @media print {
       body { width: ${widthValue}; }

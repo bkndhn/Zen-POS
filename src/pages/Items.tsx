@@ -42,6 +42,8 @@ interface Item {
   // Aggregated meta for All-Branches view
   __branchCount?: number;
   __branchBreakdown?: Array<{ branch_id: string | null; stock: number }>;
+  price_zomato?: number;
+  price_swiggy?: number;
 }
 
 const Items: React.FC = () => {
@@ -493,9 +495,15 @@ const Items: React.FC = () => {
                   /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
                 </span>
               </span>
+              {(item.price_zomato || item.price_swiggy) && (
+                <div className="flex gap-1.5 text-[10px] text-muted-foreground mt-1">
+                  {item.price_zomato && <span className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 px-1 rounded font-medium border border-red-100 dark:border-red-900/30">Z: ₹{item.price_zomato}</span>}
+                  {item.price_swiggy && <span className="bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 px-1 rounded font-medium border border-orange-100 dark:border-orange-900/30">S: ₹{item.price_swiggy}</span>}
+                </div>
+              )}
               {item.stock_quantity !== null && item.stock_quantity !== undefined && (
                 <span className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>
-                  Stk: {formatQuantityWithUnit(item.stock_quantity, item.unit)}
+                  Stk: {formatQuantityWithUnit(item.stock_quantity, (item as any).inventory_unit || item.unit)}
                   {isAllBranchesView && item.__branchCount && item.__branchCount > 1 && (
                     <span className="ml-1 text-primary">({item.__branchCount} branches)</span>
                   )}

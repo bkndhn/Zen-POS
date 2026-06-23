@@ -6,6 +6,7 @@
 
 import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { convertToInventoryUnit } from '@/utils/timeUtils';
 
 // Database configuration
 const DB_NAME = 'HotelPOS_OfflineDB';
@@ -566,14 +567,17 @@ class OfflineManager {
             try {
                 const { data: currentItem } = await supabase
                     .from('items')
-                    .select('stock_quantity')
+                    .select('stock_quantity, selling_unit, inventory_unit, unit')
                     .eq('id', item.item_id)
                     .single();
 
                 if (currentItem && currentItem.stock_quantity !== null && currentItem.stock_quantity !== undefined) {
+                    const sellUnit = currentItem.selling_unit || currentItem.unit;
+                    const invUnit = currentItem.inventory_unit;
+                    const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
                     await supabase
                         .from('items')
-                        .update({ stock_quantity: currentItem.stock_quantity - item.quantity })
+                        .update({ stock_quantity: Math.max(0, currentItem.stock_quantity - deductionInInvUnit) })
                         .eq('id', item.item_id);
                 }
             } catch (err) {

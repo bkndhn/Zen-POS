@@ -20,9 +20,11 @@ import { cachedFetch, CACHE_KEYS, invalidateRelatedData } from '@/utils/cacheUti
 import { printReceipt } from '@/utils/bluetoothPrinter';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { offlineManager } from '@/utils/offlineManager';
-import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
 import { formatBillMessage, shareViaWhatsApp, isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { shareBillImageViaWhatsApp, type BillImageData } from '@/utils/billImageGenerator';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 
 interface Bill {
@@ -40,6 +42,7 @@ interface Bill {
   table_no?: string;
   tax_summary?: any;
   total_tax?: number;
+  channel?: string;
 }
 
 interface BillItem {
@@ -706,20 +709,48 @@ const Reports: React.FC = () => {
 
       if (error) throw error;
 
-      // Restore stock for each item
+      // Restore stock for each item (checking if a recipe exists first)
       if (billItems) {
         for (const item of billItems) {
-          const { data: currentItem } = await supabase
-            .from('items')
-            .select('stock_quantity')
-            .eq('id', item.item_id)
-            .single();
+          const { data: recipeParts, error: recipeErr } = await supabase
+            .from('recipes')
+            .select('ingredient_id, quantity')
+            .eq('item_id', item.item_id);
 
-          if (currentItem) {
-            await supabase
+          if (!recipeErr && recipeParts && recipeParts.length > 0) {
+            // Recipe exists: add back ingredient quantities
+            for (const part of recipeParts) {
+              const { data: currentIng } = await supabase
+                .from('ingredients')
+                .select('stock_quantity')
+                .eq('id', part.ingredient_id)
+                .single();
+
+              if (currentIng) {
+                const totalRestoration = Number(part.quantity) * Number(item.quantity);
+                await supabase
+                  .from('ingredients')
+                  .update({ stock_quantity: (Number(currentIng.stock_quantity) || 0) + totalRestoration })
+                  .eq('id', part.ingredient_id);
+              }
+            }
+          } else {
+            // Fallback: Restore standard menu item stock
+            const { data: currentItem } = await supabase
               .from('items')
-              .update({ stock_quantity: (currentItem.stock_quantity || 0) + item.quantity })
-              .eq('id', item.item_id);
+              .select('stock_quantity, selling_unit, inventory_unit, unit')
+              .eq('id', item.item_id)
+              .single();
+
+            if (currentItem) {
+              const sellUnit = currentItem.selling_unit || currentItem.unit;
+              const invUnit = currentItem.inventory_unit;
+              const adjustmentInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
+              await supabase
+                .from('items')
+                .update({ stock_quantity: (currentItem.stock_quantity || 0) + adjustmentInInvUnit })
+                .eq('id', item.item_id);
+            }
           }
         }
       }
@@ -773,17 +804,46 @@ const Reports: React.FC = () => {
       // Reduce stock for each item
       if (billItems) {
         for (const item of billItems) {
-          const { data: currentItem } = await supabase
-            .from('items')
-            .select('stock_quantity')
-            .eq('id', item.item_id)
-            .single();
+          const { data: recipeParts, error: recipeErr } = await supabase
+            .from('recipes')
+            .select('ingredient_id, quantity')
+            .eq('item_id', item.item_id);
 
-          if (currentItem) {
-            await supabase
+          if (!recipeErr && recipeParts && recipeParts.length > 0) {
+            // Recipe exists: Deduct each ingredient's stock
+            for (const part of recipeParts) {
+              const { data: currentIng } = await supabase
+                .from('ingredients')
+                .select('stock_quantity')
+                .eq('id', part.ingredient_id)
+                .single();
+
+              if (currentIng) {
+                const totalDeduction = Number(part.quantity) * Number(item.quantity);
+                const newStock = Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction);
+                await supabase
+                  .from('ingredients')
+                  .update({ stock_quantity: newStock })
+                  .eq('id', part.ingredient_id);
+              }
+            }
+          } else {
+            // Fallback: Deduct standard menu item stock
+            const { data: currentItem } = await supabase
               .from('items')
-              .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - item.quantity) })
-              .eq('id', item.item_id);
+              .select('stock_quantity, selling_unit, inventory_unit, unit')
+              .eq('id', item.item_id)
+              .single();
+
+            if (currentItem) {
+              const sellUnit = currentItem.selling_unit || currentItem.unit;
+              const invUnit = currentItem.inventory_unit;
+              const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
+              await supabase
+                .from('items')
+                .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit) })
+                .eq('id', item.item_id);
+            }
           }
         }
       }
@@ -857,7 +917,9 @@ const Reports: React.FC = () => {
           price: item.price,
           total: item.total,
           unit: item.items?.unit,
-          base_value: item.items?.base_value
+          base_value: item.items?.base_value,
+          selling_unit: (item.items as any)?.selling_unit,
+          selling_quantity: (item.items as any)?.selling_quantity
         })) || [],
         subtotal: bill.bill_items?.reduce((sum, item) => sum + item.total, 0) || 0,
         paymentDetails: bill.payment_details as Record<string, number> | undefined,
@@ -868,7 +930,7 @@ const Reports: React.FC = () => {
         discount: bill.discount,
         total: bill.total_amount,
         paymentMethod: bill.payment_mode.toUpperCase(),
-        hotelName: profile?.hotel_name || 'ZenPOS',
+        hotelName: profile?.hotel_name || '',
         shopName: settings?.shopName,
         address: settings?.address,
         contactNumber: settings?.contactNumber,
@@ -876,6 +938,8 @@ const Reports: React.FC = () => {
         facebook: settings?.showFacebook !== false ? settings?.facebook : undefined,
         instagram: settings?.showInstagram !== false ? settings?.instagram : undefined,
         whatsapp: settings?.showWhatsapp !== false ? settings?.whatsapp : undefined,
+        printerWidth: settings?.printerWidth || '58mm',
+        gstin: settings?.gstin,
         totalItemsCount: bill.bill_items?.length || 0,
         smartQtyCount: calculateSmartQtyCount(bill.bill_items?.map(item => ({ quantity: item.quantity, unit: item.items?.unit })) || []),
         orderType: (bill as any).order_type || undefined
@@ -886,7 +950,7 @@ const Reports: React.FC = () => {
         description: `Sending ${bill.bill_no} to printer`,
       });
 
-      const success = await printReceipt(printData);
+      const success = await printReceipt(printData as any);
 
       if (success) {
         toast({
@@ -895,7 +959,7 @@ const Reports: React.FC = () => {
         });
       } else {
         console.log("Bluetooth print failed (returned false), falling back to browser print");
-        printBrowserReceipt(printData);
+        printBrowserReceipt(printData as any);
         // Toast is optional here since browser print dialog will open
       }
     } catch (error) {
@@ -904,6 +968,7 @@ const Reports: React.FC = () => {
 
       // Fallback
       // Re-construct printData if needed, but we have it in scope
+      const fallbackSettings = billSettings;
       const printData = {
         billNo: bill.bill_no,
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
@@ -914,7 +979,9 @@ const Reports: React.FC = () => {
           price: item.price,
           total: item.total,
           unit: item.items?.unit,
-          base_value: item.items?.base_value
+          base_value: item.items?.base_value,
+          selling_unit: (item.items as any)?.selling_unit,
+          selling_quantity: (item.items as any)?.selling_quantity
         })) || [],
         subtotal: bill.bill_items?.reduce((sum, item) => sum + item.total, 0) || 0,
         paymentDetails: bill.payment_details as Record<string, number> | undefined,
@@ -925,19 +992,64 @@ const Reports: React.FC = () => {
         discount: bill.discount,
         total: bill.total_amount,
         paymentMethod: bill.payment_mode.toUpperCase(),
-        hotelName: profile?.hotel_name || 'ZenPOS',
+        hotelName: profile?.hotel_name || '',
+        shopName: fallbackSettings?.shopName,
+        address: fallbackSettings?.address,
+        contactNumber: fallbackSettings?.contactNumber,
+        logoUrl: fallbackSettings?.logoUrl,
+        facebook: fallbackSettings?.showFacebook !== false ? fallbackSettings?.facebook : undefined,
+        instagram: fallbackSettings?.showInstagram !== false ? fallbackSettings?.instagram : undefined,
+        whatsapp: fallbackSettings?.showWhatsapp !== false ? fallbackSettings?.whatsapp : undefined,
+        printerWidth: fallbackSettings?.printerWidth || '58mm',
+        gstin: fallbackSettings?.gstin,
         totalItemsCount: bill.bill_items?.length || 0,
         smartQtyCount: calculateSmartQtyCount(bill.bill_items?.map(item => ({ quantity: item.quantity, unit: item.items?.unit })) || []),
         orderType: (bill as any).order_type || undefined
       };
 
-      printBrowserReceipt(printData);
+      printBrowserReceipt(printData as any);
     }
   };
 
   const activeBills = bills.filter(bill => !bill.is_deleted);
   const totalSales = activeBills.reduce((sum, bill) => sum + bill.total_amount, 0);
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  // Process Channel data
+  const channelSummary = activeBills.reduce((acc, bill) => {
+    const channel = (bill.channel || 'store').toLowerCase();
+    if (!acc[channel]) {
+      acc[channel] = { revenue: 0, count: 0 };
+    }
+    acc[channel].revenue += Number(bill.total_amount) || 0;
+    acc[channel].count += 1;
+    return acc;
+  }, {} as Record<string, { revenue: number; count: number }>);
+
+  // Ensure all three exist in summary for clean display
+  const channelsToShow = ['store', 'zomato', 'swiggy'];
+  const channelData = channelsToShow.map(ch => {
+    const summary = channelSummary[ch] || { revenue: 0, count: 0 };
+    return {
+      name: ch === 'store' ? '🏪 Store' : ch === 'zomato' ? '🍅 Zomato' : '🍊 Swiggy',
+      channelId: ch,
+      revenue: summary.revenue,
+      count: summary.count,
+      aov: summary.count > 0 ? summary.revenue / summary.count : 0
+    };
+  });
+
+  const totalChannelSales = channelData.reduce((sum, c) => sum + c.revenue, 0);
+
+  // Recharts Pie Chart Data
+  const COLORS = ['#4361ee', '#ef4444', '#f97316'];
+  const pieChartData = channelData
+    .filter(c => c.revenue > 0)
+    .map((c, index) => ({
+      name: c.name,
+      value: c.revenue,
+      color: c.channelId === 'store' ? COLORS[0] : c.channelId === 'zomato' ? COLORS[1] : COLORS[2]
+    }));
 
   // Compute detailed P&L
   const totalCOGS = activeBills.reduce((sum, bill) => {
@@ -1316,12 +1428,13 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-5 min-w-[380px] h-10">
+          <TabsList className="grid w-full grid-cols-6 min-w-[480px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
             <TabsTrigger value="profit" disabled={billFilter === 'deleted'} className="text-sm font-medium">P&L</TabsTrigger>
             <TabsTrigger value="gst" disabled={billFilter === 'deleted'} className="text-sm font-medium">GST</TabsTrigger>
+            <TabsTrigger value="channels" disabled={billFilter === 'deleted'} className="text-sm font-medium">Channels</TabsTrigger>
           </TabsList>
         </div>
 
@@ -1906,6 +2019,101 @@ const Reports: React.FC = () => {
               })()}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="channels" className="mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Statistics Cards */}
+            <div className="lg:col-span-2 space-y-4">
+              {channelData.map((channel) => (
+                <Card key={channel.channelId} className={cn(
+                  "border-2 transition-all duration-200 hover:shadow-md",
+                  channel.channelId === 'zomato' && "hover:border-red-500/30 border-red-500/10",
+                  channel.channelId === 'swiggy' && "hover:border-orange-500/30 border-orange-500/10",
+                  channel.channelId === 'store' && "hover:border-blue-500/30 border-blue-500/10"
+                )}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex justify-between items-center text-base font-bold capitalize">
+                      <span>{channel.name}</span>
+                      <Badge variant="outline" className={cn(
+                        "text-[10px] font-semibold px-2 py-0.5",
+                        channel.channelId === 'store' && "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800",
+                        channel.channelId === 'zomato' && "bg-red-50 border-red-200 text-red-700 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800",
+                        channel.channelId === 'swiggy' && "bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-800"
+                      )}>
+                        {((channel.revenue / (totalChannelSales || 1)) * 100).toFixed(1)}% Share
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-3 gap-2 py-2">
+                    <div className="bg-muted/30 p-3 rounded-xl">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Revenue</p>
+                      <p className="text-lg font-bold text-primary mt-1">₹{channel.revenue.toFixed(2)}</p>
+                    </div>
+                    <div className="bg-muted/30 p-3 rounded-xl">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Orders</p>
+                      <p className="text-lg font-bold text-gray-800 dark:text-white mt-1">{channel.count}</p>
+                    </div>
+                    <div className="bg-muted/30 p-3 rounded-xl">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Avg Order Value</p>
+                      <p className="text-lg font-bold text-gray-800 dark:text-white mt-1">₹{channel.aov.toFixed(2)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Recharts Pie Chart Card */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                  Sales Contribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-center items-center py-6 min-h-[250px]">
+                {pieChartData.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground text-xs">
+                    No sales data available for the selected period
+                  </div>
+                ) : (
+                  <div className="w-full h-full min-h-[200px] flex flex-col items-center justify-center relative">
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {pieChartData.map((entry, idx) => (
+                            <Cell key={`cell-${idx}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Sales']}
+                          contentStyle={{ fontSize: '11px', borderRadius: '8px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    
+                    {/* Legend */}
+                    <div className="flex flex-wrap justify-center gap-3 text-xs mt-3">
+                      {pieChartData.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 font-medium">
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
+                          <span>{item.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

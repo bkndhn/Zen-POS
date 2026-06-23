@@ -1985,7 +1985,7 @@ const PublicMenu = () => {
 
             {/* All Orders Served — Re-order or Request Bill */}
             {
-                isTableMode && isAllServed && (
+                isTableMode && isAllServed && cartItemCount === 0 && (
                     <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
                         <div
                             className="w-full max-w-2xl mx-auto rounded-2xl shadow-xl p-4 text-center border"
@@ -1998,14 +1998,14 @@ const PublicMenu = () => {
                             <p className="font-semibold text-sm mb-0.5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>All items served! ✨</p>
                             <p className="text-gray-500 text-xs mb-3">Would you like anything else?</p>
                             <div className="flex items-center gap-2 justify-center">
-                                <button
-                                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-95 transition-all"
-                                    style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    Order More
-                                </button>
+                                    <button
+                                        onClick={() => { setShowMyOrders(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-95 transition-all"
+                                        style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                        Place More Order
+                                    </button>
                                 {shopSettings?.qr_payment_enabled ? (
                                     <button
                                         onClick={() => setShowCheckoutDialog(true)}
@@ -2033,18 +2033,17 @@ const PublicMenu = () => {
 
             {/* Session Complete — Start New Order */}
             {
-                isTableMode && isSessionComplete && (
+                isTableMode && isSessionComplete && cartItemCount === 0 && (
                     <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
                         <div className="w-full max-w-2xl mx-auto bg-green-50 border border-green-200 rounded-2xl shadow-lg p-4 text-center">
-                            <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                            <p className="text-green-800 font-semibold text-sm mb-1">All orders completed & paid!</p>
-                            <p className="text-green-600 text-xs mb-3">Thank you for dining with us 🙏</p>
+                            <p className="text-green-800 font-semibold text-sm mb-1">Bill generated!</p>
+                            <p className="text-green-600 text-xs mb-3">You can still order more items if you wish.</p>
                             <button
-                                onClick={startNewOrder}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm shadow hover:bg-green-700 transition-colors"
+                                onClick={() => { setShowMyOrders(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition-colors"
                             >
-                                <RefreshCw className="w-4 h-4" />
-                                Start New Order
+                                <Utensils className="w-4 h-4" />
+                                Place More Order
                             </button>
                         </div>
                     </div>

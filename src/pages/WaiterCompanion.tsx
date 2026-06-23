@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatQuantityWithUnit } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, getShortUnit } from '@/utils/timeUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 
@@ -31,6 +31,9 @@ interface MenuItem {
     category?: string;
     unit?: string;
     base_value?: number;
+    selling_unit?: string;
+    selling_quantity?: number;
+    is_saleable?: boolean;
     is_active: boolean;
 }
 
@@ -41,6 +44,8 @@ interface CartItem {
     quantity: number;
     unit?: string;
     base_value?: number;
+    selling_unit?: string;
+    selling_quantity?: number;
     instructions: string;
     seatId: string | null; // null represents whole table or no seat assignment
 }
@@ -90,20 +95,44 @@ const WaiterCompanion: React.FC = () => {
     const fetchMenu = useCallback(async () => {
         if (!adminId) return;
         try {
-            const { data, error } = await (supabase as any)
+            let query = (supabase as any)
                 .from('items')
-                .select('id, name, price, category, unit, base_value, is_active')
+                .select('*')
                 .eq('admin_id', adminId)
                 .eq('is_active', true)
                 .order('name', { ascending: true });
             
-            if (error) throw error;
-            setMenuItems(data || []);
+            if (operatingBranchId) {
+                query = query.eq('branch_id', operatingBranchId);
+            }
+            
+            const { data, error } = await query;
+            
+            if (error) {
+                // If branch_id column doesn't exist, retry without it
+                if (error.message?.includes('branch_id') || error.code === 'PGRST204') {
+                    const { data: fallbackData, error: fallbackError } = await (supabase as any)
+                        .from('items')
+                        .select('*')
+                        .eq('admin_id', adminId)
+                        .eq('is_active', true)
+                        .order('name', { ascending: true });
+                    if (fallbackError) throw fallbackError;
+                    // Client-side filter: only show saleable items (default true if column missing)
+                    const filtered = (fallbackData || []).filter((item: any) => item.is_saleable !== false);
+                    setMenuItems(filtered);
+                    return;
+                }
+                throw error;
+            }
+            // Client-side filter: only show saleable items (default true if column missing)
+            const filtered = (data || []).filter((item: any) => item.is_saleable !== false);
+            setMenuItems(filtered);
         } catch (err) {
             console.error('Error fetching menu items:', err);
             toast({ title: 'Error', description: 'Failed to load menu items', variant: 'destructive' });
         }
-    }, [adminId]);
+    }, [adminId, operatingBranchId]);
 
     useEffect(() => {
         fetchTables();
@@ -132,10 +161,32 @@ const WaiterCompanion: React.FC = () => {
     const handleSelectTable = (table: Table) => {
         setSelectedTable(table);
         setSelectedSeatId(null);
-        setCart([]);
         setCustomerNote('');
         setActiveTab('menu');
+        
+        // Load cart from localStorage for this table
+        const savedCart = localStorage.getItem(`waiter_cart_${table.id}`);
+        if (savedCart) {
+            try {
+                setCart(JSON.parse(savedCart));
+            } catch (e) {
+                setCart([]);
+            }
+        } else {
+            setCart([]);
+        }
     };
+
+    // Save cart to localStorage whenever it changes
+    useEffect(() => {
+        if (selectedTable) {
+            if (cart.length > 0) {
+                localStorage.setItem(`waiter_cart_${selectedTable.id}`, JSON.stringify(cart));
+            } else {
+                localStorage.removeItem(`waiter_cart_${selectedTable.id}`);
+            }
+        }
+    }, [cart, selectedTable]);
 
     // Add to cart
     const handleAddToCart = (item: MenuItem) => {
@@ -159,6 +210,8 @@ const WaiterCompanion: React.FC = () => {
                 quantity: 1,
                 unit: item.unit,
                 base_value: item.base_value,
+                selling_unit: item.selling_unit,
+                selling_quantity: item.selling_quantity,
                 instructions: '',
                 seatId: selectedSeatId
             }];
@@ -244,6 +297,8 @@ const WaiterCompanion: React.FC = () => {
                         quantity: item.quantity,
                         unit: item.unit,
                         base_value: item.base_value,
+                        selling_unit: item.selling_unit,
+                        selling_quantity: item.selling_quantity,
                         instructions: item.instructions || undefined
                     })),
                     total_amount: seatTotal,
@@ -454,20 +509,48 @@ const WaiterCompanion: React.FC = () => {
                                                 <h4 className="font-bold text-sm truncate">{item.name}</h4>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-primary font-black text-sm">₹{item.price.toFixed(0)}</span>
-                                                    {item.unit && (
+                                                    {(item.selling_unit || item.unit) && (
                                                         <Badge variant="outline" className="text-[10px] scale-90 px-1 py-0 h-4">
-                                                            per {item.unit}
+                                                            per {item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)}
                                                         </Badge>
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                onClick={() => handleAddToCart(item)}
-                                                className="rounded-full h-8 w-8 p-0"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </Button>
+                                            {(() => {
+                                                const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
+                                                if (cartItem) {
+                                                    return (
+                                                        <div className="flex items-center gap-2 bg-primary/10 rounded-full p-1 border border-primary/20">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="rounded-full h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, -1); }}
+                                                            >
+                                                                <Minus className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            <span className="font-black text-sm w-4 text-center text-primary">{cartItem.quantity}</span>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="rounded-full h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, 1); }}
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
+                                                        className="rounded-full h-8 w-8 p-0"
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                    </Button>
+                                                );
+                                            })()}
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -516,7 +599,7 @@ const WaiterCompanion: React.FC = () => {
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <span className="text-xs text-muted-foreground block mt-0.5">₹{item.price.toFixed(0)} each</span>
+                                                <span className="text-xs text-muted-foreground block mt-0.5">₹{item.price.toFixed(0)} each ({item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)})</span>
                                             </div>
 
                                             {/* Quantity controls */}

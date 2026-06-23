@@ -166,7 +166,7 @@ export const isWeightOrVolumeUnit = (unit?: string): boolean => {
  * - Weight/Volume items (kg, g, L, ml) count as 1
  * - Piece items (pc) count as their actual quantity
  */
-export const calculateSmartQtyCount = (items: { quantity: number; unit?: string }[]): number => {
+export const calculateSmartQtyCount = (items: { quantity: number; unit?: string; selling_unit?: string }[]): number => {
   if (!items || items.length === 0) return 0;
 
   return items.reduce((acc, item) => {
@@ -174,7 +174,7 @@ export const calculateSmartQtyCount = (items: { quantity: number; unit?: string 
     const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity;
     if (isNaN(qty)) return acc;
 
-    if (isWeightOrVolumeUnit(item.unit)) {
+    if (isWeightOrVolumeUnit(item.selling_unit || item.unit)) {
       return acc + 1;
     }
     return acc + qty;
@@ -233,4 +233,41 @@ export const parseQuickChipQuantity = (chipText: string, itemUnit?: string): num
 
   // No conversion needed or unknown — use raw value
   return chipValue;
+};
+
+/**
+ * Converts a quantity from the selling unit to the inventory unit.
+ * This is essential for stock comparisons because stock_quantity is stored
+ * in the inventory unit (e.g., Liters) but the cart tracks quantities in
+ * the selling unit (e.g., Milliliters).
+ *
+ * Example: item sold in 200ml portions, stock tracked in Liters
+ *   convertToInventoryUnit(200, 'Milliliter (ml)', 'Liter (l)') => 0.2
+ *
+ * If both units are the same or no inventory_unit is set, returns the original quantity.
+ */
+export const convertToInventoryUnit = (
+  quantity: number,
+  sellingUnit?: string,
+  inventoryUnit?: string
+): number => {
+  if (!sellingUnit || !inventoryUnit) return quantity;
+
+  const sellShort = getShortUnit(sellingUnit).toLowerCase();
+  const invShort = getShortUnit(inventoryUnit).toLowerCase();
+
+  // Same unit — no conversion needed
+  if (sellShort === invShort) return quantity;
+
+  // ml → L (divide by 1000)
+  if (sellShort === 'ml' && invShort === 'l') return quantity / 1000;
+  // L → ml (multiply by 1000)
+  if (sellShort === 'l' && invShort === 'ml') return quantity * 1000;
+  // g → kg (divide by 1000)
+  if (sellShort === 'g' && invShort === 'kg') return quantity / 1000;
+  // kg → g (multiply by 1000)
+  if (sellShort === 'kg' && invShort === 'g') return quantity * 1000;
+
+  // No known conversion — return as-is
+  return quantity;
 };

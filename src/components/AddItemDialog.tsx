@@ -30,12 +30,23 @@ interface Item {
   is_active: boolean;
   description?: string;
   purchase_rate?: number;
+  // Legacy fields
   unit?: string;
   base_value?: number;
+  quantity_step?: number;
+  
+  // New Product Master fields
+  selling_unit?: string;
+  selling_quantity?: number;
+  inventory_unit?: string;
+  inventory_quantity?: number;
+  is_saleable?: boolean;
+  
   stock_quantity?: number;
   minimum_stock_alert?: number;
-  quantity_step?: number;
   image_url?: string;
+  price_zomato?: number;
+  price_swiggy?: number;
 }
 
 interface Category {
@@ -62,12 +73,16 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     name: '',
     description: '',
     price: '',
+    price_zomato: '',
+    price_swiggy: '',
     purchase_rate: '',
-    unit: 'Piece (pc)',
-    base_value: '1',
+    selling_unit: 'Piece (pc)',
+    selling_quantity: '1',
+    inventory_unit: 'Piece (pc)',
+    inventory_quantity: '1',
+    is_saleable: true,
     stock_quantity: '',
     minimum_stock_alert: '',
-    quantity_step: '1',
     quick_chips: '',
     category: '',
     image_url: '',
@@ -81,12 +96,6 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     expiry_mode: 'none' as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
-  const [stockInputUnit, setStockInputUnit] = useState<'base' | 'bulk'>('base');
-
-  const shortUnit = getShortUnit(formData.unit);
-  const isMl = shortUnit === 'ml';
-  const isG = shortUnit === 'g';
-  const showBulkToggle = isMl || isG;
 
   // Check premium access
   useEffect(() => {
@@ -231,12 +240,25 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         price: parseFloat(formData.price),
+        price_zomato: formData.price_zomato ? parseFloat(formData.price_zomato) : null,
+        price_swiggy: formData.price_swiggy ? parseFloat(formData.price_swiggy) : null,
         purchase_rate: parseFloat(formData.purchase_rate),
-        unit: formData.unit,
-        base_value: parseFloat(formData.base_value),
-        stock_quantity: formData.unlimited_stock ? null : (parseFloat(formData.stock_quantity) * (stockInputUnit === 'bulk' ? 1000 : 1)),
-        minimum_stock_alert: formData.unlimited_stock ? null : ((parseFloat(formData.minimum_stock_alert) || 0) * (stockInputUnit === 'bulk' ? 1000 : 1)),
-        quantity_step: parseFloat(formData.quantity_step),
+        
+        // New Product Master fields
+        selling_unit: formData.selling_unit,
+        selling_quantity: parseFloat(formData.selling_quantity) || 1,
+        inventory_unit: formData.inventory_unit,
+        inventory_quantity: parseFloat(formData.inventory_quantity) || 1,
+        is_saleable: formData.is_saleable,
+        
+        // Legacy fallback
+        unit: formData.selling_unit,
+        base_value: parseFloat(formData.selling_quantity) || 1,
+        quantity_step: 1,
+
+        stock_quantity: formData.unlimited_stock ? null : parseFloat(formData.stock_quantity),
+        minimum_stock_alert: formData.unlimited_stock ? null : (parseFloat(formData.minimum_stock_alert) || 0),
+        
         quick_chips: parsedChips,
         category: formData.category === 'none' ? null : formData.category.trim(),
         image_url: formData.image_url.trim() || null,
@@ -269,12 +291,16 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         name: '',
         description: '',
         price: '',
+        price_zomato: '',
+        price_swiggy: '',
         purchase_rate: '',
-        unit: 'Piece (pc)',
-        base_value: '1',
+        selling_unit: 'Piece (pc)',
+        selling_quantity: '1',
+        inventory_unit: 'Piece (pc)',
+        inventory_quantity: '1',
+        is_saleable: true,
         stock_quantity: '',
         minimum_stock_alert: '',
-        quantity_step: '1',
         quick_chips: '',
         category: '',
         image_url: '',
@@ -288,7 +314,6 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         expiry_mode: 'none'
       });
       setOpen(false);
-      setStockInputUnit('base');
       setCurrentItemCount(prev => prev + 1);
       onItemAdded();
     } catch (error) {
@@ -362,6 +387,35 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg border">
+            <div>
+              <Label htmlFor="price_zomato" className="text-red-500 font-semibold text-xs">Zomato Price</Label>
+              <Input
+                id="price_zomato"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.price_zomato}
+                onChange={(e) => setFormData({ ...formData, price_zomato: e.target.value })}
+                placeholder="0.00"
+                className="mt-1 h-8 text-xs"
+              />
+            </div>
+            <div>
+              <Label htmlFor="price_swiggy" className="text-orange-500 font-semibold text-xs">Swiggy Price</Label>
+              <Input
+                id="price_swiggy"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.price_swiggy}
+                onChange={(e) => setFormData({ ...formData, price_swiggy: e.target.value })}
+                placeholder="0.00"
+                className="mt-1 h-8 text-xs"
+              />
+            </div>
+          </div>
+
           {/* GST Fields - only shown when GST is enabled */}
           {gstEnabled && (
             <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800 space-y-3">
@@ -427,42 +481,90 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             />
           </div>
 
-          <div>
-            <Label htmlFor="unit">Unit *</Label>
-            <Select
-              value={formData.unit}
-              onValueChange={(value) => {
-                setFormData({ ...formData, unit: value });
-                const currentShort = getShortUnit(value);
-                setStockInputUnit((currentShort === 'ml' || currentShort === 'g') ? 'bulk' : 'base');
-              }}
-            >
-              <SelectTrigger className="bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-background border shadow-lg z-50">
-                <SelectItem value="Piece (pc)">Piece (pc)</SelectItem>
-                <SelectItem value="Kilogram (kg)">Kilogram (kg)</SelectItem>
-                <SelectItem value="Gram (g)">Gram (g)</SelectItem>
-                <SelectItem value="Liter (l)">Liter (l)</SelectItem>
-                <SelectItem value="Milliliter (ml)">Milliliter (ml)</SelectItem>
-                <SelectItem value="Box">Box</SelectItem>
-                <SelectItem value="Pack">Pack</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Product Master: Selling Details */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+            <Label className="text-xs font-semibold text-blue-700 dark:text-blue-400">SELLING DETAILS (What the customer sees)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="selling_quantity">Selling Quantity *</Label>
+                <Input
+                  id="selling_quantity"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.selling_quantity}
+                  onChange={(e) => setFormData({ ...formData, selling_quantity: e.target.value })}
+                  placeholder="e.g., 500"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="selling_unit">Selling Unit *</Label>
+                <Select
+                  value={formData.selling_unit}
+                  onValueChange={(value) => setFormData({ ...formData, selling_unit: value })}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    <SelectItem value="Piece (pc)">Piece (pc)</SelectItem>
+                    <SelectItem value="Kilogram (kg)">Kilogram (kg)</SelectItem>
+                    <SelectItem value="Gram (g)">Gram (g)</SelectItem>
+                    <SelectItem value="Liter (l)">Liter (l)</SelectItem>
+                    <SelectItem value="Milliliter (ml)">Milliliter (ml)</SelectItem>
+                    <SelectItem value="Box">Box</SelectItem>
+                    <SelectItem value="Pack">Pack</SelectItem>
+                    <SelectItem value="Cup">Cup</SelectItem>
+                    <SelectItem value="Glass">Glass</SelectItem>
+                    <SelectItem value="Plate">Plate</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="base_value">Base Value</Label>
-            <Input
-              id="base_value"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.base_value}
-              onChange={(e) => setFormData({ ...formData, base_value: e.target.value })}
-              placeholder="1"
-            />
+          {/* Product Master: Inventory Details */}
+          <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 space-y-3">
+            <Label className="text-xs font-semibold text-green-700 dark:text-green-400">INVENTORY DETAILS (What you purchase/track)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="inventory_quantity">Inventory Quantity *</Label>
+                <Input
+                  id="inventory_quantity"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.inventory_quantity}
+                  onChange={(e) => setFormData({ ...formData, inventory_quantity: e.target.value })}
+                  placeholder="e.g., 1"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="inventory_unit">Inventory Unit *</Label>
+                <Select
+                  value={formData.inventory_unit}
+                  onValueChange={(value) => setFormData({ ...formData, inventory_unit: value })}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    <SelectItem value="Piece (pc)">Piece (pc)</SelectItem>
+                    <SelectItem value="Kilogram (kg)">Kilogram (kg)</SelectItem>
+                    <SelectItem value="Gram (g)">Gram (g)</SelectItem>
+                    <SelectItem value="Liter (l)">Liter (l)</SelectItem>
+                    <SelectItem value="Milliliter (ml)">Milliliter (ml)</SelectItem>
+                    <SelectItem value="Box">Box</SelectItem>
+                    <SelectItem value="Pack">Pack</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Example: If you sell "1 Cup" of tea, but buy "1 Kg" of tea leaves.
+            </p>
           </div>
 
           <div className="flex items-center space-x-2 py-2">
@@ -478,25 +580,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             <>
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <Label htmlFor="stock_quantity">Stock Quantity *</Label>
-                  {showBulkToggle && (
-                    <div className="flex rounded-md border border-input p-0.5 bg-muted text-[10px]">
-                      <button
-                        type="button"
-                        onClick={() => setStockInputUnit('base')}
-                        className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'base' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                      >
-                        {shortUnit}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStockInputUnit('bulk')}
-                        className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${stockInputUnit === 'bulk' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                      >
-                        {isMl ? 'L' : 'KG'}
-                      </button>
-                    </div>
-                  )}
+                  <Label htmlFor="stock_quantity">Available Stock *</Label>
                 </div>
                 <Input
                   id="stock_quantity"
@@ -505,7 +589,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
                   min="0"
                   value={formData.stock_quantity}
                   onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                  placeholder={stockInputUnit === 'bulk' ? `Available stock in ${isMl ? 'L' : 'KG'}` : `Available stock in ${shortUnit}`}
+                  placeholder={`Stock available in ${getShortUnit(formData.inventory_unit)}`}
                   required={!formData.unlimited_stock}
                 />
               </div>
@@ -521,27 +605,11 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
                   min="0"
                   value={formData.minimum_stock_alert}
                   onChange={(e) => setFormData({ ...formData, minimum_stock_alert: e.target.value })}
-                  placeholder={stockInputUnit === 'bulk' ? `Alert when below (in ${isMl ? 'L' : 'KG'})` : `Alert when below (in ${shortUnit})`}
+                  placeholder={`Alert when below (in ${getShortUnit(formData.inventory_unit)})`}
                 />
               </div>
             </>
           )}
-
-          <div>
-            <Label htmlFor="quantity_step">Quantity Step</Label>
-            <Input
-              id="quantity_step"
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={formData.quantity_step}
-              onChange={(e) => setFormData({ ...formData, quantity_step: e.target.value })}
-              placeholder="1"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Amount to +/- when clicking buttons in the billing page.
-            </p>
-          </div>
 
           <div>
             <Label htmlFor="quick_chips">Quick Chips (optional)</Label>
@@ -622,7 +690,16 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
               checked={formData.is_active}
               onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked as boolean })}
             />
-            <Label htmlFor="is_active">Item is available for sale</Label>
+            <Label htmlFor="is_active">Item is active (shown in menus)</Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="is_saleable"
+              checked={formData.is_saleable}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_saleable: checked as boolean })}
+            />
+            <Label htmlFor="is_saleable">Item is saleable (customers can buy it)</Label>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">

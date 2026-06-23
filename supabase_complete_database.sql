@@ -100,7 +100,18 @@ CREATE TABLE public.items (
     sale_count integer DEFAULT 0,
     display_order integer DEFAULT 0,
     created_at timestamptz DEFAULT now() NOT NULL,
-    updated_at timestamptz DEFAULT now() NOT NULL
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    
+    -- Product Master Fields
+    selling_quantity numeric DEFAULT 1,
+    selling_unit text,
+    inventory_quantity numeric DEFAULT 1,
+    inventory_unit text,
+    is_saleable boolean DEFAULT true,
+
+    -- Aggregator Pricing Fields
+    price_zomato numeric,
+    price_swiggy numeric
 );
 
 -- -----------------------------------------
@@ -122,7 +133,10 @@ CREATE TABLE public.bills (
     kitchen_status service_status DEFAULT 'pending'::service_status,
     service_status service_status DEFAULT 'pending'::service_status,
     status_updated_at timestamptz DEFAULT now(),
-    created_at timestamptz DEFAULT now() NOT NULL
+    created_at timestamptz DEFAULT now() NOT NULL,
+
+    -- Food Aggregator Channel Scoping
+    channel text DEFAULT 'store'
 );
 
 -- -----------------------------------------
