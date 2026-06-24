@@ -43,7 +43,7 @@ export const PendingBillsQueue: React.FC = () => {
         
         setSyncing(true);
         try {
-            const result = await offlineManager.processSyncQueue();
+            const result = await offlineManager.processSyncQueue(true);
             
             if (result.synced > 0) {
                 toast({

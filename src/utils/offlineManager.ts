@@ -75,6 +75,7 @@ class OfflineManager {
     constructor() {
         this.initializeDB();
         this.setupNetworkListeners();
+        this.setupAuthListeners();
     }
 
     private async initializeDB(): Promise<void> {
@@ -89,6 +90,11 @@ class OfflineManager {
             request.onsuccess = () => {
                 this.db = request.result;
                 console.log('IndexedDB initialized successfully');
+                if (this.isOnline) {
+                    this.processSyncQueue().catch(err => {
+                        console.error('[Sync] Auto-sync on startup failed:', err);
+                    });
+                }
                 resolve();
             };
 
@@ -134,10 +140,17 @@ class OfflineManager {
     }
 
     private setupNetworkListeners(): void {
-        window.addEventListener('online', () => {
+        window.addEventListener('online', async () => {
             this.isOnline = true;
             this.notifyListeners();
             console.log('Network: Online - Starting sync');
+            
+            try {
+                await this.resetSyncRetries();
+            } catch (err) {
+                console.error('Failed to reset retries on network status change:', err);
+            }
+            
             // Auto-sync with delay to ensure stable connection
             setTimeout(() => this.processSyncQueue(), 1000);
         });
@@ -146,6 +159,21 @@ class OfflineManager {
             this.isOnline = false;
             this.notifyListeners();
             console.log('Network: Offline mode active');
+        });
+    }
+
+    private setupAuthListeners(): void {
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                console.log(`[Sync] Auth state changed: ${event}. Resetting retries and syncing...`);
+                try {
+                    await this.resetSyncRetries();
+                    // Sync after a brief delay to let session state settle
+                    setTimeout(() => this.processSyncQueue(), 500);
+                } catch (err) {
+                    console.error('[Sync] Failed to reset retries on auth state change:', err);
+                }
+            }
         });
     }
 
@@ -321,9 +349,52 @@ class OfflineManager {
         await this.delete(STORES.SYNC_QUEUE, id);
     }
 
-    async processSyncQueue(): Promise<{ synced: number; failed: number }> {
+    async resetSyncRetries(): Promise<void> {
+        if (!this.db) await this.initializeDB();
+        
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(STORES.PENDING_BILLS, 'readwrite');
+            const store = transaction.objectStore(STORES.PENDING_BILLS);
+            const request = store.getAll();
+            
+            request.onsuccess = async () => {
+                const bills = request.result || [];
+                const updatePromises = bills.map(bill => {
+                    if (!bill.synced && (bill.retries > 0 || bill.syncError)) {
+                        bill.retries = 0;
+                        bill.syncError = undefined;
+                        return new Promise<void>((res, rej) => {
+                            const putReq = store.put(bill);
+                            putReq.onsuccess = () => res();
+                            putReq.onerror = () => rej(putReq.error);
+                        });
+                    }
+                    return Promise.resolve();
+                });
+                
+                try {
+                    await Promise.all(updatePromises);
+                    console.log('[Sync] Reset retries and error flags for all pending bills');
+                    resolve();
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async processSyncQueue(forceRetry: boolean = false): Promise<{ synced: number; failed: number }> {
         if (!this.isOnline) {
             return { synced: 0, failed: 0 };
+        }
+
+        if (forceRetry) {
+            try {
+                await this.resetSyncRetries();
+            } catch (err) {
+                console.error('[Sync] Failed to reset retries:', err);
+            }
         }
 
         if (navigator.locks) {
@@ -359,6 +430,13 @@ class OfflineManager {
         let failed = 0;
 
         try {
+            // Check active session first
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                console.log('[Sync] No active session. Skipping sync queue processing.');
+                return { synced: 0, failed: 0 };
+            }
+
             // Process pending bills first
             const pendingBills = await this.getPendingBills();
 
@@ -413,6 +491,10 @@ class OfflineManager {
     }
 
     private async generateNextBillNumberForSync(adminId: string, branchId: string | null): Promise<string> {
+        if (!adminId || adminId === '') {
+            throw new Error('Cannot generate bill number: adminId is required');
+        }
+
         try {
             let query = supabase
                 .from('bills')
@@ -425,9 +507,14 @@ class OfflineManager {
                 query = query.is('branch_id', null);
             }
 
-            const { data } = await query
+            const { data, error } = await query
                 .order('created_at', { ascending: false })
                 .limit(10);
+
+            if (error) {
+                console.error('[BillCounterSync] Error fetching recent bills:', error);
+                throw error;
+            }
 
             const today = new Date();
             const dd = String(today.getDate()).padStart(2, '0');
@@ -488,27 +575,68 @@ class OfflineManager {
                 return `${todayPrefix}-001`;
             }
         } catch (e) {
-            console.error('[BillCounterSync] Failed to generate next bill number, using timestamp fallback:', e);
-            return `BILL-SYNC-${Date.now()}`;
+            console.error('[BillCounterSync] Failed to generate next bill number:', e);
+            throw e;
         }
     }
 
     private async syncBillToSupabase(bill: PendingBill): Promise<void> {
+        // Resolve active session details as fallback for data integrity
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUserId = session?.user?.id;
+        
+        let finalCreatedBy = bill.created_by;
+        if (!finalCreatedBy || finalCreatedBy === '' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalCreatedBy)) {
+            finalCreatedBy = currentUserId || '';
+        }
+        
+        let finalAdminId = bill.admin_id;
+        if (!finalAdminId || finalAdminId === '' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalAdminId)) {
+            if (currentUserId) {
+                const cachedProfileStr = localStorage.getItem(`profile_${currentUserId}`);
+                if (cachedProfileStr) {
+                    try {
+                        const prof = JSON.parse(cachedProfileStr);
+                        finalAdminId = prof.admin_id || prof.id;
+                    } catch {}
+                }
+            }
+        }
+        
+        let finalBranchId = bill.branch_id;
+        if (finalBranchId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalBranchId)) {
+            finalBranchId = null;
+        }
+
+        // Sanitize payment mode to match Supabase payment_method enum: cash, card, upi, other
+        let finalPaymentMode = bill.payment_mode ? bill.payment_mode.toLowerCase() : 'cash';
+        if (!['cash', 'card', 'upi', 'other'].includes(finalPaymentMode)) {
+            if (finalPaymentMode.includes('online')) {
+                finalPaymentMode = 'other';
+            } else if (finalPaymentMode === 'split') {
+                finalPaymentMode = 'other';
+            } else {
+                finalPaymentMode = 'cash';
+            }
+        }
+
         // Generate proper sequential or daily reset bill number
-        const properBillNumber = await this.generateNextBillNumberForSync(bill.admin_id || '', bill.branch_id || null);
+        const properBillNumber = await this.generateNextBillNumberForSync(finalAdminId || '', finalBranchId);
 
         // Create the bill in Supabase with full data isolation and GST columns
         const billData: any = {
             bill_no: properBillNumber,
             total_amount: bill.total_amount,
             discount: bill.discount,
-            payment_mode: bill.payment_mode as any,
+            payment_mode: finalPaymentMode as any,
             payment_details: bill.payment_details,
             additional_charges: bill.additional_charges,
-            created_by: bill.created_by,
-            admin_id: bill.admin_id || null,
-            branch_id: bill.branch_id || null,
+            created_by: finalCreatedBy,
+            admin_id: finalAdminId || null,
+            branch_id: finalBranchId || null,
             date: bill.date,
+            created_at: bill.created_at,
+            status_updated_at: bill.created_at,
             service_status: 'pending' as const,
             kitchen_status: 'pending' as const,
             table_no: bill.table_no || null,
@@ -679,6 +807,21 @@ class OfflineManager {
             case 'expense':
                 if (item.action === 'create') {
                     const { error } = await supabase.from('expenses').insert(item.data);
+                    if (error) throw error;
+                }
+                break;
+            case 'table_order':
+                if (item.action === 'create') {
+                    const { error } = await supabase.from('table_orders').insert(item.data);
+                    if (error) throw error;
+                }
+                break;
+            case 'table':
+                if (item.action === 'update_status') {
+                    const { error } = await supabase
+                        .from('tables')
+                        .update({ status: item.data.status })
+                        .eq('id', item.data.id);
                     if (error) throw error;
                 }
                 break;

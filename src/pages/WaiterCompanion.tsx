@@ -17,7 +17,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle } from 'lucide-react';
+import { useNetworkStatus } from '@/hooks/useOffline';
 import { cn } from '@/lib/utils';
 import { formatQuantityWithUnit, getShortUnit } from '@/utils/timeUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -65,6 +66,7 @@ interface CartItem {
 const WaiterCompanion: React.FC = () => {
     const { profile } = useAuth();
     const { operatingBranchId } = useBranch();
+    const isOnline = useNetworkStatus();
     const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
 
     // State
@@ -84,6 +86,14 @@ const WaiterCompanion: React.FC = () => {
     const fetchTables = useCallback(async () => {
         if (!adminId) return;
         try {
+            if (!navigator.onLine) {
+                const cached = localStorage.getItem('hotel_pos_cached_tables');
+                if (cached) {
+                    setTables(JSON.parse(cached));
+                    return;
+                }
+            }
+
             let query = (supabase as any)
                 .from('tables')
                 .select('*')
@@ -98,9 +108,12 @@ const WaiterCompanion: React.FC = () => {
             const { data, error } = await query;
             if (error) throw error;
             setTables(data || []);
+            localStorage.setItem('hotel_pos_cached_tables', JSON.stringify(data || []));
         } catch (err) {
             console.error('Error fetching tables:', err);
-            toast({ title: 'Error', description: 'Failed to load tables', variant: 'destructive' });
+            if (navigator.onLine) {
+                toast({ title: 'Error', description: 'Failed to load tables', variant: 'destructive' });
+            }
         }
     }, [adminId, operatingBranchId]);
 
@@ -108,6 +121,16 @@ const WaiterCompanion: React.FC = () => {
     const fetchMenu = useCallback(async () => {
         if (!adminId) return;
         try {
+            if (!navigator.onLine) {
+                const { offlineManager } = await import('@/utils/offlineManager');
+                const cachedItems = await offlineManager.getCachedItems();
+                if (cachedItems && cachedItems.length > 0) {
+                    const filtered = cachedItems.filter((item: any) => item.is_saleable !== false && item.is_active !== false);
+                    setMenuItems(filtered);
+                    return;
+                }
+            }
+
             let query = (supabase as any)
                 .from('items')
                 .select('*')
@@ -143,7 +166,9 @@ const WaiterCompanion: React.FC = () => {
             setMenuItems(filtered);
         } catch (err) {
             console.error('Error fetching menu items:', err);
-            toast({ title: 'Error', description: 'Failed to load menu items', variant: 'destructive' });
+            if (navigator.onLine) {
+                toast({ title: 'Error', description: 'Failed to load menu items', variant: 'destructive' });
+            }
         }
     }, [adminId, operatingBranchId]);
 
@@ -279,17 +304,24 @@ const WaiterCompanion: React.FC = () => {
 
         setIsSubmitting(true);
         try {
-            // Get order number
-            const { data: lastOrder } = await supabase
-                .from('table_orders')
-                .select('order_number')
-                .eq('admin_id', adminId)
-                .order('order_number', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-            
-            const nextOrderNo = (lastOrder?.order_number || 0) + 1;
+            const isOffline = !navigator.onLine;
+            let nextOrderNo = 1;
             const sessionId = `waiter-${selectedTable.table_number}-${Date.now()}`;
+
+            if (!isOffline) {
+                // Get order number
+                const { data: lastOrder } = await supabase
+                    .from('table_orders')
+                    .select('order_number')
+                    .eq('admin_id', adminId)
+                    .order('order_number', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                
+                nextOrderNo = (lastOrder?.order_number || 0) + 1;
+            } else {
+                nextOrderNo = Math.floor(1000 + Math.random() * 9000);
+            }
 
             // Group cart by seatId and create separate orders for each seat
             const seatGroups: Record<string, CartItem[]> = {};
@@ -298,6 +330,8 @@ const WaiterCompanion: React.FC = () => {
                 if (!seatGroups[key]) seatGroups[key] = [];
                 seatGroups[key].push(item);
             });
+
+            const { offlineManager } = await import('@/utils/offlineManager');
 
             for (const [seatKey, itemsInSeat] of Object.entries(seatGroups)) {
                 const currentSeatId = seatKey === 'table' ? null : seatKey;
@@ -334,39 +368,63 @@ const WaiterCompanion: React.FC = () => {
                     is_billed: false
                 };
 
-                const { data, error } = await supabase
-                    .from('table_orders')
-                    .insert(tableOrderData)
-                    .select()
-                    .single();
+                if (!isOffline) {
+                    const { data, error } = await supabase
+                        .from('table_orders')
+                        .insert(tableOrderData)
+                        .select()
+                        .single();
 
-                if (error) throw error;
+                    if (error) throw error;
 
-                // Send realtime broadcast to notify KDS instantly
-                try {
-                    const channel = supabase.channel('table-order-sync');
-                    channel.subscribe((status) => {
-                        if (status === 'SUBSCRIBED') {
-                            channel.send({
-                                type: 'broadcast',
-                                event: 'new-table-order',
-                                payload: data
-                            });
-                            setTimeout(() => supabase.removeChannel(channel), 1000);
-                        }
+                    // Send realtime broadcast to notify KDS instantly
+                    try {
+                        const channel = supabase.channel('table-order-sync');
+                        channel.subscribe((status) => {
+                            if (status === 'SUBSCRIBED') {
+                                channel.send({
+                                    type: 'broadcast',
+                                    event: 'new-table-order',
+                                    payload: data
+                                });
+                                setTimeout(() => supabase.removeChannel(channel), 1000);
+                            }
+                        });
+                    } catch (broadcastErr) {
+                        console.warn('Realtime broadcast failed, but order was saved', broadcastErr);
+                    }
+                } else {
+                    // Queue the table order offline
+                    await offlineManager.addToSyncQueue({
+                        type: 'table_order' as any,
+                        action: 'create',
+                        data: tableOrderData
                     });
-                } catch (broadcastErr) {
-                    console.warn('Realtime broadcast failed, but order was saved', broadcastErr);
                 }
             }
 
-            // Update table status to occupied
-            await supabase
-                .from('tables')
-                .update({ status: 'occupied' })
-                .eq('id', selectedTable.id);
+            if (!isOffline) {
+                // Update table status to occupied
+                await supabase
+                    .from('tables')
+                    .update({ status: 'occupied' })
+                    .eq('id', selectedTable.id);
+            } else {
+                // Queue table status update offline
+                await offlineManager.addToSyncQueue({
+                    type: 'table' as any,
+                    action: 'update_status',
+                    data: { id: selectedTable.id, status: 'occupied' }
+                });
+            }
 
-            toast({ title: 'Order Pushed!', description: `Order submitted for Table ${selectedTable.table_number}` });
+            // Update UI status immediately
+            setTables(prev => prev.map(t => t.id === selectedTable.id ? { ...t, status: 'occupied' } : t));
+
+            toast({ 
+                title: isOffline ? '📴 Order Saved Offline' : 'Order Pushed!', 
+                description: isOffline ? `Order queued for Table ${selectedTable.table_number}. Will sync when online.` : `Order submitted for Table ${selectedTable.table_number}` 
+            });
             setCart([]);
             setCustomerNote('');
             setSelectedTable(null);

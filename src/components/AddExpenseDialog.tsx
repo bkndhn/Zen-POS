@@ -88,7 +88,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdd
       // Get admin_id for data isolation
       const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
 
-      const { error } = await supabase.from('expenses').insert({
+      const expenseData = {
         expense_name: formData.expense_name.trim() || null,
         amount: parseFloat(formData.amount),
         category: formData.category,
@@ -97,17 +97,32 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdd
         created_by: profile?.user_id,
         admin_id: adminId || null,
         branch_id: operatingBranchId || null,
-      });
+      };
 
-      if (error) throw error;
+      if (!navigator.onLine) {
+        const { offlineManager } = await import('@/utils/offlineManager');
+        await offlineManager.addToSyncQueue({
+          type: 'expense',
+          action: 'create',
+          data: expenseData
+        });
 
-      // Invalidate expenses cache
-      dataCache.invalidatePattern(CACHE_KEYS.EXPENSES);
+        toast({
+          title: "📴 Expense Saved Offline",
+          description: "Expense queued. Will sync when online.",
+        });
+      } else {
+        const { error } = await supabase.from('expenses').insert(expenseData);
+        if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Expense added successfully",
-      });
+        // Invalidate expenses cache
+        dataCache.invalidatePattern(CACHE_KEYS.EXPENSES);
+
+        toast({
+          title: "Success",
+          description: "Expense added successfully",
+        });
+      }
 
       setFormData({ 
         expense_name: '',

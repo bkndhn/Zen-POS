@@ -23,7 +23,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
 
         setSyncing(true);
         try {
-            await offlineManager.processSyncQueue();
+            await offlineManager.processSyncQueue(true);
         } finally {
             setSyncing(false);
         }

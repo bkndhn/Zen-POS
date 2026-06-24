@@ -7,13 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
 import { formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useNetworkStatus } from '@/hooks/useOffline';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -88,6 +90,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: string 
 const TableOrderBilling: React.FC = () => {
     const { profile } = useAuth();
     const { operatingBranchId, activeBranch } = useBranch();
+    const isOnline = useNetworkStatus();
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState<TableWithOrders[]>([]);
     const [selectedTable, setSelectedTable] = useState<TableWithOrders | null>(null);
@@ -892,6 +895,14 @@ const TableOrderBilling: React.FC = () => {
 
     // Handle opening payment dialog for a table
     const handleTableSelect = (table: TableWithOrders) => {
+        if (!isOnline) {
+            toast({
+                title: "Offline Mode",
+                description: "Table billing is restricted while offline. Please use the POS Billing page.",
+                variant: "destructive"
+            });
+            return;
+        }
         setSelectedTable(table);
         setOptionsDialogOpen(true);
     };
@@ -933,6 +944,15 @@ const TableOrderBilling: React.FC = () => {
     return (
         <div className="min-h-screen p-3 sm:p-4">
             <div className="max-w-6xl mx-auto">
+                {!isOnline && (
+                    <Alert className="mb-6 border-amber-500 bg-amber-500/10 text-amber-700">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle className="font-bold">Offline Mode Active</AlertTitle>
+                        <AlertDescription>
+                            Table management and billing are restricted while offline. Please use the <strong>POS Billing</strong> page to create offline bills.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <div className="flex items-center gap-2.5">
