@@ -495,13 +495,11 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(textToBytes('Thank you!'));
   commands.push(FEED_LINE);
 
-  // Minimal feed before cut - just enough to clear the cutter
+  // Feed 2 more lines (making it 3 lines total since footer has 1) to clear the cutter
   commands.push(FEED_LINES(2));
 
-  // Send multiple cut commands for maximum compatibility
-  // Different printers respond to different commands
-  commands.push(CUT_FEED_FULL);    // GS V A 3 - most common
-  commands.push(CUT_FULL);          // GS V 0 - alternative
+  // Send immediate cut commands for maximum compatibility
+  commands.push(CUT_FULL);          // GS V 0
   commands.push(CUT_ALT);           // ESC i - fallback for some printers
 
   // Combine all commands

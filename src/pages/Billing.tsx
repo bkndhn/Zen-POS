@@ -1733,9 +1733,6 @@ const Billing = () => {
     const finalCart = paymentData.finalItems || cart;
     const previousCart = [...finalCart];
 
-    // Clear cart immediately for better UX
-    clearCart();
-
     try {
       console.log('Completing payment with data:', paymentData);
 
@@ -2036,31 +2033,35 @@ const Billing = () => {
       // User can start next bill INSTANTLY while print+save happens behind the scenes
 
       toast({
-        title: "✓ Bill Created",
-        description: `${billNumber} - processing...`,
-        duration: 1500
+        title: "Processing Payment...",
+        description: `Saving ${billNumber}...`,
+        duration: 1000
       });
 
-      // Background operation wrapper for all async tasks
-      const backgroundOperations = async () => {
-        try {
-          // 1. Try printing (non-blocking for bill save)
+      // Await database save FIRST
+      try {
+        await saveBillToDatabase(billPayload, validCart, billNumber);
+
+        // UI success cleanup
+        clearCart();
+        toast({
+          title: "✓ Bill Saved",
+          description: `Bill ${billNumber} created successfully.`,
+          duration: 2000
+        });
+
+        // Background tasks (non-blocking after save)
+        const postSaveTasks = async () => {
+          // 1. Try printing
           if (autoPrintEnabled) {
             try {
-              const printed = await printReceipt(printData);
-              if (!printed) {
-                console.warn('Print may have failed, but bill is being saved');
-              }
+              await printReceipt(printData);
             } catch (printErr) {
               console.error('Print failed:', printErr);
-              // Don't block - continue with save
             }
           }
 
-          // 2. Save bill to database
-          await saveBillToDatabase(billPayload, validCart, billNumber);
-
-          // 3. Auto-free table if one was selected
+          // 2. Auto-free table if one was selected
           if (selectedTableNumber && adminId) {
             try {
               await (supabase as any)
@@ -2069,20 +2070,17 @@ const Billing = () => {
                 .eq('admin_id', adminId)
                 .eq('table_number', selectedTableNumber);
 
-              // Broadcast table status change to all devices/tabs
               syncChannelRef.current?.send({
                 type: 'broadcast',
                 event: 'table-status-updated',
                 payload: { table_number: selectedTableNumber, status: 'available', timestamp: Date.now() }
               });
-
-              console.log(`[Billing] Table ${selectedTableNumber} freed after payment`);
             } catch (tableErr) {
               console.warn('[Billing] Failed to free table:', tableErr);
             }
           }
 
-          // 4. WhatsApp share (if requested)
+          // 3. WhatsApp share
           if (paymentData.sendWhatsApp) {
             handleWhatsAppShare(billNumber, paymentData.customerMobile || '', validCart, totalAmount, paymentData.paymentMethod, adminId, paymentData.paymentAmounts, {
               taxSummary: billPayload.tax_summary,
@@ -2091,22 +2089,29 @@ const Billing = () => {
               roundOff: roundOff !== 0 ? roundOff : undefined,
               gstin: gstSettings.gstin,
               logoUrl: settingsToUse?.logoUrl
-            }, paymentData.orderType)
-              .catch(err => console.error('WhatsApp share failed:', err));
+            }, paymentData.orderType).catch(err => console.error('WhatsApp share failed:', err));
           }
-        } catch (saveError: any) {
-          console.error('Background save failed:', saveError);
-          toast({
-            title: "Save Error",
-            description: `Bill ${billNumber} failed to save. Please check reports.`,
-            variant: "destructive",
-            duration: 5000
-          });
-        }
-      };
+        };
 
-      // Execute ALL operations in background - DON'T AWAIT!
-      backgroundOperations();
+        postSaveTasks();
+
+      } catch (saveError: any) {
+        console.error('Save failed:', saveError);
+        
+        // Revert local bill counter so number isn't skipped
+        const counterKey = `bill_counter_${adminId || 'default'}_${operatingBranchId || 'main'}`;
+        const currentCount = parseInt(localStorage.getItem(counterKey) || '1');
+        if (currentCount > 0) {
+          localStorage.setItem(counterKey, (currentCount - 1).toString());
+        }
+
+        toast({
+          title: "Save Error",
+          description: `Failed to save: ${saveError.message || 'Unknown error'}`,
+          variant: "destructive",
+          duration: 5000
+        });
+      }
 
     } catch (error: any) {
       console.error('Error completing payment:', error);

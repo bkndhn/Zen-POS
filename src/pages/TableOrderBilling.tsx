@@ -87,7 +87,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: string 
 
 const TableOrderBilling: React.FC = () => {
     const { profile } = useAuth();
-    const { operatingBranchId } = useBranch();
+    const { operatingBranchId, activeBranch } = useBranch();
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState<TableWithOrders[]>([]);
     const [selectedTable, setSelectedTable] = useState<TableWithOrders | null>(null);
@@ -243,10 +243,10 @@ const TableOrderBilling: React.FC = () => {
 
             if (data) {
                 const settings = {
-                    shopName: data.shop_name || '',
-                    address: data.address || '',
-                    contactNumber: data.contact_number || '',
-                    logoUrl: data.logo_url || '',
+                    shopName: (activeBranch?.shop_name && activeBranch.shop_name.trim()) || data.shop_name || '',
+                    address: (activeBranch?.address && activeBranch.address.trim()) || data.address || '',
+                    contactNumber: (activeBranch?.contact_number && activeBranch.contact_number.trim()) || data.contact_number || '',
+                    logoUrl: (activeBranch?.logo_url && activeBranch.logo_url.trim()) || data.logo_url || '',
                     whatsapp: data.whatsapp || '',
                     showWhatsapp: data.show_whatsapp,
                     printerWidth: data.printer_width as '58mm' | '80mm' || '58mm',
@@ -290,7 +290,7 @@ const TableOrderBilling: React.FC = () => {
         } catch (error) {
             console.error('Error fetching shop settings:', error);
         }
-    }, [operatingBranchId, profile]);
+    }, [operatingBranchId, profile, activeBranch]);
 
     // Cache-first shop settings loading
     const loadShopSettingsFromCache = useCallback(() => {

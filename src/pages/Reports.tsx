@@ -109,6 +109,98 @@ const Reports: React.FC = () => {
     gstin?: string;
   } | null>(null);
 
+  const [selectedBillSettings, setSelectedBillSettings] = useState<any>(null);
+
+  const fetchSettingsForBill = async (bill: Bill) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      let query = supabase.from('shop_settings').select('*').eq('user_id', user.id);
+      if (bill.branch_id) {
+        query = query.eq('branch_id', bill.branch_id);
+      } else {
+        query = query.is('branch_id', null);
+      }
+      let { data, error } = await query.maybeSingle();
+
+      // Fallback: main branch or any
+      if (!data && !error) {
+        const { data: mainBranch } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('is_main', true)
+          .maybeSingle();
+
+        if (mainBranch?.id) {
+          const { data: fallbackData } = await supabase
+            .from('shop_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('branch_id', mainBranch.id)
+            .maybeSingle();
+          data = fallbackData;
+        }
+
+        if (!data) {
+          const { data: anyData } = await supabase
+            .from('shop_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('branch_id', { nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+          data = anyData;
+        }
+      }
+
+      // Fetch branch details directly from branch table to override
+      let branchDetails = null;
+      if (bill.branch_id) {
+        const { data: branchData } = await supabase
+          .from('branches')
+          .select('*')
+          .eq('id', bill.branch_id)
+          .maybeSingle();
+        branchDetails = branchData;
+      }
+
+      if (data) {
+        return {
+          shopName: (branchDetails?.shop_name && branchDetails.shop_name.trim()) || data.shop_name || '',
+          address: (branchDetails?.address && branchDetails.address.trim()) || data.address || '',
+          contactNumber: (branchDetails?.contact_number && branchDetails.contact_number.trim()) || data.contact_number || '',
+          logoUrl: (branchDetails?.logo_url && branchDetails.logo_url.trim()) || data.logo_url || '',
+          facebook: data.facebook || '',
+          showFacebook: data.show_facebook,
+          instagram: data.instagram || '',
+          showInstagram: data.show_instagram,
+          whatsapp: data.whatsapp || '',
+          showWhatsapp: data.show_whatsapp,
+          gstin: data.gstin || ''
+        };
+      }
+    } catch (e) {
+      console.error("Failed to fetch settings for bill", e);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (!selectedBill) {
+      setSelectedBillSettings(null);
+      return;
+    }
+    const loadSelectedBillSettings = async () => {
+      const settings = await fetchSettingsForBill(selectedBill);
+      if (settings) {
+        setSelectedBillSettings(settings);
+      }
+    };
+    loadSelectedBillSettings();
+  }, [selectedBill]);
+
   // Delete confirmation dialog state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
@@ -121,7 +213,7 @@ const Reports: React.FC = () => {
   const [sharingImage, setSharingImage] = useState(false);
 
   // Handle WhatsApp share for selected bill
-  const handleWhatsAppShareBill = (bill: Bill, mode: 'text' | 'image' = 'text') => {
+  const handleWhatsAppShareBill = async (bill: Bill, mode: 'text' | 'image' = 'text') => {
     // Text mode requires phone number; image mode does not
     if (mode === 'text') {
       if (!whatsappPhone.trim()) {
@@ -134,6 +226,7 @@ const Reports: React.FC = () => {
       }
     }
 
+    const settings = await fetchSettingsForBill(bill) || billSettings;
     const subtotal = bill.bill_items.reduce((sum, item) => sum + item.total, 0);
     const billDate = new Date(bill.created_at);
 
@@ -142,10 +235,10 @@ const Reports: React.FC = () => {
       setSharingImage(true);
       const billData: BillImageData = {
         billNo: bill.bill_no,
-        shopName: billSettings?.shopName || profile?.hotel_name || 'Hotel',
-        address: billSettings?.address,
-        phone: billSettings?.contactNumber,
-        gstin: billSettings?.gstin,
+        shopName: settings?.shopName || profile?.hotel_name || 'Hotel',
+        address: settings?.address,
+        phone: settings?.contactNumber,
+        gstin: settings?.gstin,
         items: bill.bill_items.map(item => ({
           name: item.items?.name || 'Item',
           quantity: item.quantity,
@@ -187,8 +280,8 @@ const Reports: React.FC = () => {
       // Text mode
       const message = formatBillMessage({
         billNo: bill.bill_no,
-        shopName: billSettings?.shopName || profile?.hotel_name || 'Hotel',
-        gstin: billSettings?.gstin,
+        shopName: settings?.shopName || profile?.hotel_name || 'Hotel',
+        gstin: settings?.gstin,
         items: bill.bill_items.map(item => ({
           name: item.items?.name || 'Item',
           quantity: item.quantity,
@@ -247,18 +340,51 @@ const Reports: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase
-        .from('shop_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      let query = supabase.from('shop_settings').select('*').eq('user_id', user.id);
+      if (branchFilterId) {
+        query = query.eq('branch_id', branchFilterId);
+      } else {
+        query = query.is('branch_id', null);
+      }
+      let { data, error } = await query.maybeSingle();
+
+      // Fallback: main branch or any
+      if (!data && !error) {
+        const { data: mainBranch } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('is_main', true)
+          .maybeSingle();
+
+        if (mainBranch?.id) {
+          const { data: fallbackData } = await supabase
+            .from('shop_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('branch_id', mainBranch.id)
+            .maybeSingle();
+          data = fallbackData;
+        }
+
+        if (!data) {
+          const { data: anyData } = await supabase
+            .from('shop_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('branch_id', { nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+          data = anyData;
+        }
+      }
 
       if (data) {
         const settings = {
-          shopName: data.shop_name || '',
-          address: data.address || '',
-          contactNumber: data.contact_number || '',
-          logoUrl: data.logo_url || '',
+          shopName: (activeBranch?.shop_name && activeBranch.shop_name.trim()) || data.shop_name || '',
+          address: (activeBranch?.address && activeBranch.address.trim()) || data.address || '',
+          contactNumber: (activeBranch?.contact_number && activeBranch.contact_number.trim()) || data.contact_number || '',
+          logoUrl: (activeBranch?.logo_url && activeBranch.logo_url.trim()) || data.logo_url || '',
           facebook: data.facebook || '',
           showFacebook: data.show_facebook,
           instagram: data.instagram || '',
@@ -275,7 +401,7 @@ const Reports: React.FC = () => {
     };
 
     syncFromSupabase();
-  }, []);
+  }, [branchFilterId, activeBranch]);
 
   const fetchReportsCallback = useCallback(() => {
     fetchReports();
@@ -880,33 +1006,8 @@ const Reports: React.FC = () => {
 
   const quickPrintBill = async (bill: Bill) => {
     try {
-      // Ensure we have settings
-      let settings = billSettings;
-      if (!settings?.shopName) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data } = await supabase.from('shop_settings').select('*').eq('user_id', user.id).single();
-            if (data) {
-              settings = {
-                shopName: data.shop_name || '',
-                address: data.address || '',
-                contactNumber: data.contact_number || '',
-                logoUrl: data.logo_url || '',
-                facebook: data.facebook || '',
-                showFacebook: data.show_facebook,
-                instagram: data.instagram || '',
-                showInstagram: data.show_instagram,
-                whatsapp: data.whatsapp || '',
-                showWhatsapp: data.show_whatsapp
-              };
-              setBillSettings(settings);
-            }
-          }
-        } catch (e) {
-          console.error("Failed to fetch settings for print", e);
-        }
-      }
+      // Ensure we have settings matching the bill's branch
+      const settings = await fetchSettingsForBill(bill) || billSettings;
       const printData = {
         billNo: bill.bill_no,
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
@@ -965,10 +1066,7 @@ const Reports: React.FC = () => {
     } catch (error) {
       console.error('Print error:', error);
       console.log("Bluetooth print error, falling back to browser print", error);
-
-      // Fallback
       // Re-construct printData if needed, but we have it in scope
-      const fallbackSettings = billSettings;
       const printData = {
         billNo: bill.bill_no,
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
@@ -993,20 +1091,19 @@ const Reports: React.FC = () => {
         total: bill.total_amount,
         paymentMethod: bill.payment_mode.toUpperCase(),
         hotelName: profile?.hotel_name || '',
-        shopName: fallbackSettings?.shopName,
-        address: fallbackSettings?.address,
-        contactNumber: fallbackSettings?.contactNumber,
-        logoUrl: fallbackSettings?.logoUrl,
-        facebook: fallbackSettings?.showFacebook !== false ? fallbackSettings?.facebook : undefined,
-        instagram: fallbackSettings?.showInstagram !== false ? fallbackSettings?.instagram : undefined,
-        whatsapp: fallbackSettings?.showWhatsapp !== false ? fallbackSettings?.whatsapp : undefined,
-        printerWidth: fallbackSettings?.printerWidth || '58mm',
-        gstin: fallbackSettings?.gstin,
+        shopName: settings?.shopName,
+        address: settings?.address,
+        contactNumber: settings?.contactNumber,
+        logoUrl: settings?.logoUrl,
+        facebook: settings?.showFacebook !== false ? settings?.facebook : undefined,
+        instagram: settings?.showInstagram !== false ? settings?.instagram : undefined,
+        whatsapp: settings?.showWhatsapp !== false ? settings?.whatsapp : undefined,
+        printerWidth: settings?.printerWidth || '58mm',
+        gstin: settings?.gstin,
         totalItemsCount: bill.bill_items?.length || 0,
         smartQtyCount: calculateSmartQtyCount(bill.bill_items?.map(item => ({ quantity: item.quantity, unit: item.items?.unit })) || []),
         orderType: (bill as any).order_type || undefined
       };
-
       printBrowserReceipt(printData as any);
     }
   };
@@ -1014,6 +1111,7 @@ const Reports: React.FC = () => {
   const activeBills = bills.filter(bill => !bill.is_deleted);
   const totalSales = activeBills.reduce((sum, bill) => sum + bill.total_amount, 0);
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const settingsToUse = selectedBillSettings || billSettings;
 
   // Process Channel data
   const channelSummary = activeBills.reduce((acc, bill) => {
@@ -2127,55 +2225,55 @@ const Reports: React.FC = () => {
             <div className="space-y-4">
               {/* Header - Shop Name & Logo */}
               <div className="text-center mb-6">
-                {billSettings?.logoUrl && (
+                {settingsToUse?.logoUrl && (
                   <div className="w-[1.5in] h-[1.5in] mx-auto mb-2 flex items-center justify-center">
-                    <img src={billSettings.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                    <img src={settingsToUse.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
                   </div>
                 )}
-                {billSettings?.shopName ? (
-                  <h2 className="text-xl font-bold uppercase tracking-wide">{billSettings.shopName}</h2>
+                {settingsToUse?.shopName ? (
+                  <h2 className="text-xl font-bold uppercase tracking-wide">{settingsToUse.shopName}</h2>
                 ) : (
                   <h2 className="text-xl font-bold uppercase tracking-wide">{profile?.hotel_name || 'BISMILLAH'}</h2>
                 )}
 
                 {/* Address */}
-                {billSettings?.address && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap px-8">{billSettings.address}</p>
+                {settingsToUse?.address && (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap px-8">{settingsToUse.address}</p>
                 )}
 
                 {/* Contact */}
-                {billSettings?.contactNumber && (
-                  <p className="text-sm font-medium mt-1">{billSettings.contactNumber}</p>
+                {settingsToUse?.contactNumber && (
+                  <p className="text-sm font-medium mt-1">{settingsToUse.contactNumber}</p>
                 )}
 
                 {/* GSTIN */}
-                {billSettings?.gstin && (
-                  <p className="text-xs font-semibold text-indigo-600 mt-1">GSTIN: {billSettings.gstin}</p>
+                {settingsToUse?.gstin && (
+                  <p className="text-xs font-semibold text-indigo-600 mt-1">GSTIN: {settingsToUse.gstin}</p>
                 )}
 
                 {/* Social Media */}
                 {(
-                  (billSettings?.showFacebook !== false && billSettings?.facebook) ||
-                  (billSettings?.showInstagram !== false && billSettings?.instagram) ||
-                  (billSettings?.showWhatsapp !== false && billSettings?.whatsapp)
+                  (settingsToUse?.showFacebook !== false && settingsToUse?.facebook) ||
+                  (settingsToUse?.showInstagram !== false && settingsToUse?.instagram) ||
+                  (settingsToUse?.showWhatsapp !== false && settingsToUse?.whatsapp)
                 ) && (
                     <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mt-3 text-xs text-muted-foreground px-4">
-                      {billSettings?.showFacebook !== false && billSettings?.facebook && (
+                      {settingsToUse?.showFacebook !== false && settingsToUse?.facebook && (
                         <div className="flex items-center gap-1.5 min-w-fit">
                           <FacebookIcon className="w-3.5 h-3.5 text-[#1877F2] shrink-0" />
-                          <span className="truncate max-w-[150px]">{billSettings.facebook}</span>
+                          <span className="truncate max-w-[150px]">{settingsToUse.facebook}</span>
                         </div>
                       )}
-                      {billSettings?.showInstagram !== false && billSettings?.instagram && (
+                      {settingsToUse?.showInstagram !== false && settingsToUse?.instagram && (
                         <div className="flex items-center gap-1.5 min-w-fit">
                           <InstagramIcon className="w-3.5 h-3.5 text-[#E4405F] shrink-0" />
-                          <span className="truncate max-w-[150px]">{billSettings.instagram}</span>
+                          <span className="truncate max-w-[150px]">{settingsToUse.instagram}</span>
                         </div>
                       )}
-                      {billSettings?.showWhatsapp !== false && billSettings?.whatsapp && (
+                      {settingsToUse?.showWhatsapp !== false && settingsToUse?.whatsapp && (
                         <div className="flex items-center gap-1.5 min-w-fit">
                           <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
-                          <span className="truncate max-w-[150px]">{billSettings.whatsapp}</span>
+                          <span className="truncate max-w-[150px]">{settingsToUse.whatsapp}</span>
                         </div>
                       )}
                     </div>

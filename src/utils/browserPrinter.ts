@@ -4,9 +4,9 @@ import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './
 export const printBrowserReceipt = (data: PrintData) => {
   const width = data.printerWidth || '58mm';
   const widthValue = width === '80mm' ? '80mm' : '58mm';
-  const fontSize = width === '80mm' ? '12px' : '10px';
-  const shopNameFontSize = width === '80mm' ? '15px' : '12px';
-  const totalFontSize = width === '80mm' ? '14px' : '11px';
+  const fontSize = width === '80mm' ? '14px' : '12px';
+  const shopNameFontSize = width === '80mm' ? '18px' : '15px';
+  const totalFontSize = width === '80mm' ? '16px' : '13px';
 
   // Debug logging
   console.log('🖨️ Browser Print Data:', {
@@ -65,9 +65,10 @@ export const printBrowserReceipt = (data: PrintData) => {
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     td { padding: 3px 2px; vertical-align: top; font-size: ${fontSize}; }
     .total { font-size: ${totalFontSize}; font-weight: bold; }
-    .footer { margin-top: 12px; font-size: 10px; }
+    .footer { margin-top: 12px; font-size: ${fontSize}; }
     @media print {
-      body { width: ${widthValue}; }
+      @page { margin: 0; }
+      body { width: ${widthValue}; margin: 0; padding: 4px; }
     }
   </style>
 </head>

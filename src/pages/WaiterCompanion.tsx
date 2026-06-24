@@ -33,6 +33,7 @@ interface MenuItem {
     base_value?: number;
     selling_unit?: string;
     selling_quantity?: number;
+    quantity_step?: number;
     is_saleable?: boolean;
     is_active: boolean;
 }
@@ -46,6 +47,7 @@ interface CartItem {
     base_value?: number;
     selling_unit?: string;
     selling_quantity?: number;
+    quantity_step?: number;
     instructions: string;
     seatId: string | null; // null represents whole table or no seat assignment
 }
@@ -197,21 +199,23 @@ const WaiterCompanion: React.FC = () => {
         }
 
         setCart(prev => {
+            const step = item.quantity_step || item.base_value || 1;
             const existingIndex = prev.findIndex(i => i.id === item.id && i.seatId === selectedSeatId);
             if (existingIndex > -1) {
                 const updated = [...prev];
-                updated[existingIndex].quantity += 1;
+                updated[existingIndex].quantity += step;
                 return updated;
             }
             return [...prev, {
                 id: item.id,
                 name: item.name,
                 price: item.price,
-                quantity: 1,
+                quantity: item.selling_quantity || item.base_value || 1,
                 unit: item.unit,
                 base_value: item.base_value,
                 selling_unit: item.selling_unit,
                 selling_quantity: item.selling_quantity,
+                quantity_step: item.quantity_step,
                 instructions: '',
                 seatId: selectedSeatId
             }];
@@ -225,13 +229,15 @@ const WaiterCompanion: React.FC = () => {
     };
 
     // Update cart item quantity
-    const handleUpdateQty = (itemId: string, seatId: string | null, delta: number) => {
+    const handleUpdateQty = (itemId: string, seatId: string | null, deltaMultiplier: number) => {
         setCart(prev => {
             const index = prev.findIndex(i => i.id === itemId && i.seatId === seatId);
             if (index === -1) return prev;
             
             const updated = [...prev];
-            const newQty = updated[index].quantity + delta;
+            const item = updated[index];
+            const step = item.quantity_step || item.base_value || 1;
+            const newQty = item.quantity + (deltaMultiplier * step);
             
             if (newQty <= 0) {
                 return updated.filter((_, idx) => idx !== index);
@@ -250,7 +256,10 @@ const WaiterCompanion: React.FC = () => {
 
     // Cart total
     const cartTotal = useMemo(() => {
-        return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        return cart.reduce((sum, item) => {
+            const baseValue = item.base_value || 1;
+            return sum + ((item.quantity / baseValue) * item.price);
+        }, 0);
     }, [cart]);
 
     // Submit table order
@@ -281,7 +290,10 @@ const WaiterCompanion: React.FC = () => {
 
             for (const [seatKey, itemsInSeat] of Object.entries(seatGroups)) {
                 const currentSeatId = seatKey === 'table' ? null : seatKey;
-                const seatTotal = itemsInSeat.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+                const seatTotal = itemsInSeat.reduce((sum, i) => {
+                    const baseValue = i.base_value || 1;
+                    return sum + ((i.quantity / baseValue) * i.price);
+                }, 0);
                 
                 const tableOrderData = {
                     admin_id: adminId,
@@ -290,17 +302,21 @@ const WaiterCompanion: React.FC = () => {
                     session_id: sessionId,
                     seat_id: currentSeatId,
                     order_number: nextOrderNo,
-                    items: itemsInSeat.map(item => ({
-                        item_id: item.id,
-                        name: item.name,
-                        price: item.price,
-                        quantity: item.quantity,
-                        unit: item.unit,
-                        base_value: item.base_value,
-                        selling_unit: item.selling_unit,
-                        selling_quantity: item.selling_quantity,
-                        instructions: item.instructions || undefined
-                    })),
+                    items: itemsInSeat.map(item => {
+                        const baseValue = item.base_value || 1;
+                        return {
+                            item_id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            total: (item.quantity / baseValue) * item.price,
+                            quantity: item.quantity,
+                            unit: item.unit,
+                            base_value: item.base_value,
+                            selling_unit: item.selling_unit,
+                            selling_quantity: item.selling_quantity,
+                            instructions: item.instructions
+                        };
+                    }),
                     total_amount: seatTotal,
                     status: 'pending',
                     customer_note: customerNote || null,
@@ -316,12 +332,21 @@ const WaiterCompanion: React.FC = () => {
                 if (error) throw error;
 
                 // Send realtime broadcast to notify KDS instantly
-                const channel = supabase.channel('table-order-sync');
-                await channel.send({
-                    type: 'broadcast',
-                    event: 'new-table-order',
-                    payload: data
-                });
+                try {
+                    const channel = supabase.channel('table-order-sync');
+                    channel.subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            channel.send({
+                                type: 'broadcast',
+                                event: 'new-table-order',
+                                payload: data
+                            });
+                            setTimeout(() => supabase.removeChannel(channel), 1000);
+                        }
+                    });
+                } catch (broadcastErr) {
+                    console.warn('Realtime broadcast failed, but order was saved', broadcastErr);
+                }
             }
 
             // Update table status to occupied

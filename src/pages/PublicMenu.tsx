@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode } from 'lucide-react';
+import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
@@ -669,31 +669,38 @@ const PublicMenu = () => {
             if (tableErr) console.warn('Table status update failed:', tableErr);
 
             // Broadcast table status change + new order to Kitchen/ServiceArea via shared channel
-            // Use single channel instance for both sends to avoid create-remove-create race
-            const syncChannel = supabase.channel('table-order-sync');
-            await syncChannel.send({
-                type: 'broadcast',
-                event: 'table-status-updated',
-                payload: { table_number: tableNo, status: 'occupied', timestamp: Date.now() }
-            });
-            await syncChannel.send({
-                type: 'broadcast',
-                event: 'new-table-order',
-                payload: {
-                    id: data.id,
-                    admin_id: adminId,
-                    table_number: tableNo,
-                    seat_id: seatId || null,
-                    order_number: orderNumber,
-                    items: orderItems,
-                    total_amount: totalAmount,
-                    customer_note: orderNote || null,
-                    status: 'pending',
-                    session_id: sessionId,
-                    created_at: data.created_at
-                }
-            });
-            supabase.removeChannel(syncChannel);
+            try {
+                const syncChannel = supabase.channel('table-order-sync');
+                syncChannel.subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        syncChannel.send({
+                            type: 'broadcast',
+                            event: 'table-status-updated',
+                            payload: { table_number: tableNo, status: 'occupied', timestamp: Date.now() }
+                        });
+                        syncChannel.send({
+                            type: 'broadcast',
+                            event: 'new-table-order',
+                            payload: {
+                                id: data.id,
+                                admin_id: adminId,
+                                table_number: tableNo,
+                                seat_id: seatId || null,
+                                order_number: orderNumber,
+                                items: orderItems,
+                                total_amount: totalAmount,
+                                customer_note: orderNote || null,
+                                status: 'pending',
+                                session_id: sessionId,
+                                created_at: data.created_at
+                            }
+                        });
+                        setTimeout(() => supabase.removeChannel(syncChannel), 1000);
+                    }
+                });
+            } catch (broadcastErr) {
+                console.warn('Realtime broadcast failed, but order was saved', broadcastErr);
+            }
 
             // Add to local orders
             setSessionOrders(prev => [...prev, {
