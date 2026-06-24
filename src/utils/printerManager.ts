@@ -56,6 +56,12 @@ class PrinterManager {
         const saved = localStorage.getItem(PRINTER_TYPE_KEY);
         if (saved === 'bluetooth' || saved === 'usb') {
             this._printerType = saved;
+            // Attempt background reconnection
+            setTimeout(() => {
+                this.autoReconnect().catch(err => {
+                    console.log('Background auto-reconnect failed:', err);
+                });
+            }, 1000); // delay slightly to ensure browser APIs are fully loaded
         }
     }
 
@@ -118,6 +124,33 @@ class PrinterManager {
 
     // =============== BLUETOOTH CONNECTION ===============
 
+    // Find previously paired/permitted Web Bluetooth device
+    private async findPermittedBluetoothDevice(): Promise<any> {
+        const nav = navigator as any;
+        if (nav.bluetooth && typeof nav.bluetooth.getDevices === 'function') {
+            try {
+                const devices = await nav.bluetooth.getDevices();
+                if (devices && devices.length > 0) {
+                    // Try to find the device that matches the saved printer name
+                    const savedPrinterName = localStorage.getItem('hotel_pos_bluetooth_printer_name');
+                    if (savedPrinterName) {
+                        const matched = devices.find((d: any) => d.name === savedPrinterName);
+                        if (matched) {
+                            console.log('Found matched permitted Bluetooth device:', matched.name);
+                            return matched;
+                        }
+                    }
+                    // Fallback to the first permitted device
+                    console.log('Fallback to first permitted Bluetooth device:', devices[0].name);
+                    return devices[0];
+                }
+            } catch (err) {
+                console.warn('Error fetching permitted Bluetooth devices:', err);
+            }
+        }
+        return null;
+    }
+
     // Connect to Bluetooth printer (will use cached device if available)
     public async connect(forceNewDevice: boolean = false): Promise<boolean> {
         const nav = navigator as any;
@@ -153,6 +186,33 @@ class PrinterManager {
                 }
             }
 
+            // If we don't have a cached device, try to see if there is a previously paired one
+            if (!this.device && !forceNewDevice) {
+                this.device = await this.findPermittedBluetoothDevice();
+                if (this.device) {
+                    this.deviceName = this.device.name || 'Bluetooth Printer';
+                    // Setup disconnect listener
+                    this.device.addEventListener('gattserverdisconnected', () => {
+                        console.log('Printer disconnected');
+                        this.handleDisconnect();
+                    });
+                    
+                    console.log('Attempting to reconnect to permitted device:', this.deviceName);
+                    const reconnected = await this.reconnectToDevice();
+                    if (reconnected) {
+                        this._printerType = 'bluetooth';
+                        localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
+                        if (this.deviceName) {
+                            localStorage.setItem('hotel_pos_bluetooth_printer_name', this.deviceName);
+                        }
+                        this.reconnectAttempts = 0;
+                        this.setState('connected');
+                        this.processQueue();
+                        return true;
+                    }
+                }
+            }
+
             // Request new device from user
             console.log('Requesting new Bluetooth device...');
             this.device = await nav.bluetooth.requestDevice({
@@ -183,6 +243,9 @@ class PrinterManager {
             if (connected) {
                 this._printerType = 'bluetooth';
                 localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
+                if (this.deviceName) {
+                    localStorage.setItem('hotel_pos_bluetooth_printer_name', this.deviceName);
+                }
                 this.reconnectAttempts = 0;
                 this.setState('connected');
                 this.processQueue();
@@ -277,11 +340,24 @@ class PrinterManager {
                 this.setState('connected');
                 return true;
             }
-        } else if (this._printerType === 'bluetooth' && this.device) {
-            const ok = await this.reconnectToDevice();
-            if (ok) {
-                this.setState('connected');
-                return true;
+        } else if (this._printerType === 'bluetooth') {
+            if (!this.device) {
+                this.device = await this.findPermittedBluetoothDevice();
+                if (this.device) {
+                    this.deviceName = this.device.name || 'Bluetooth Printer';
+                    // Setup disconnect listener
+                    this.device.addEventListener('gattserverdisconnected', () => {
+                        console.log('Printer disconnected');
+                        this.handleDisconnect();
+                    });
+                }
+            }
+            if (this.device) {
+                const ok = await this.reconnectToDevice();
+                if (ok) {
+                    this.setState('connected');
+                    return true;
+                }
             }
         }
         return false;

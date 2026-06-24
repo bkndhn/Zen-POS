@@ -65,10 +65,23 @@ export const printBrowserReceipt = (data: PrintData) => {
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     td { padding: 3px 2px; vertical-align: top; font-size: ${fontSize}; }
     .total { font-size: ${totalFontSize}; font-weight: bold; }
-    .footer { margin-top: 12px; font-size: ${fontSize}; }
+    .footer { margin-top: 12px; font-size: ${fontSize}; margin-bottom: 24px; }
     @media print {
-      @page { margin: 0; }
-      body { width: ${widthValue}; margin: 0; padding: 4px; }
+      @page { 
+        size: ${widthValue} auto; 
+        margin: 0; 
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      body { 
+        width: ${widthValue}; 
+        margin: 0; 
+        padding: 4px 4px 30px 4px; 
+      }
     }
   </style>
 </head>
