@@ -469,47 +469,77 @@ const Billing = () => {
     }
   };
 
-  // Periodic generator for mock online orders (Swiggy/Zomato)
+  // Real-time listener for incoming Food Aggregator Webhook orders
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (items.length === 0) return;
-      const channel = Math.random() > 0.5 ? 'zomato' : 'swiggy';
-      const orderItems = [];
-      const numItems = Math.floor(Math.random() * 2) + 1;
-      let orderTotal = 0;
-      
-      for (let i = 0; i < numItems; i++) {
-        const randItem = items[Math.floor(Math.random() * items.length)];
-        const qty = Math.floor(Math.random() * 2) + 1;
-        const itemPrice = getChannelPrice(randItem, channel);
-        orderItems.push({ name: randItem.name, quantity: qty });
-        orderTotal += (qty / (randItem.base_value || 1)) * itemPrice;
+    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+    if (!adminId) return;
+
+    // Fetch initial pending orders
+    const fetchPendingOrders = async () => {
+      let query = supabase
+        .from('online_orders')
+        .select('*')
+        .eq('admin_id', adminId)
+        .eq('status', 'pending');
+        
+      if (operatingBranchId) {
+        query = query.eq('branch_id', operatingBranchId);
       }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (!error && data) {
+        setIncomingOrders(data.map(d => ({
+          id: d.id,
+          orderId: d.order_id,
+          channel: d.channel,
+          customerName: d.customer_name || 'Online Customer',
+          items: d.items,
+          total: d.total,
+          time: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        })));
+      }
+    };
+    
+    fetchPendingOrders();
 
-      const randomNames = ['Aman Gupta', 'Nisha Rao', 'Vikram Singh', 'Kunal Sen', 'Neha Sharma', 'Rohan Das'];
-      const customerName = randomNames[Math.floor(Math.random() * randomNames.length)];
-      const orderId = (channel === 'zomato' ? 'ZM-' : 'SW-') + Math.floor(1000000 + Math.random() * 9000000);
+    // Subscribe to new incoming orders
+    const channel = supabase.channel('online_orders_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'online_orders',
+          filter: `admin_id=eq.${adminId}`
+        },
+        (payload) => {
+          const newRow = payload.new;
+          if (operatingBranchId && newRow.branch_id && newRow.branch_id !== operatingBranchId) return;
+          
+          const mappedOrder = {
+            id: newRow.id,
+            orderId: newRow.order_id,
+            channel: newRow.channel,
+            customerName: newRow.customer_name || 'Online Customer',
+            items: newRow.items,
+            total: newRow.total,
+            time: 'Just now'
+          };
+          
+          setIncomingOrders(prev => [mappedOrder, ...prev]);
+          
+          toast({
+            title: `🔔 New ${newRow.channel.toUpperCase()} Order!`,
+            description: `${mappedOrder.customerName} ordered (${mappedOrder.items.length} items) - ₹${mappedOrder.total}`,
+          });
+        }
+      )
+      .subscribe();
 
-      const newOrder = {
-        id: `mock-${Date.now()}`,
-        orderId,
-        channel,
-        customerName,
-        items: orderItems,
-        total: Math.round(orderTotal),
-        time: 'Just now'
-      };
-
-      setIncomingOrders(prev => [newOrder, ...prev.slice(0, 4)]);
-
-      toast({
-        title: `🔔 New ${channel === 'zomato' ? 'Zomato' : 'Swiggy'} Order!`,
-        description: `${customerName} ordered ${orderItems.map(i => `${i.quantity}x ${i.name}`).join(', ')} (₹${Math.round(orderTotal)})`,
-      });
-    }, 90000);
-
-    return () => clearInterval(interval);
-  }, [items]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile, operatingBranchId]);
 
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
@@ -2487,7 +2517,7 @@ const Billing = () => {
 
     {/* Food Aggregator Modal */}
     <Dialog open={aggregatorDialogOpen} onOpenChange={setAggregatorDialogOpen}>
-      <DialogContent className="max-w-2xl bg-card border shadow-2xl rounded-2xl overflow-hidden p-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border shadow-2xl rounded-2xl p-0">
         <DialogHeader className="p-6 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-orange-500/10 border-b">
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             🍕 Food Aggregators (Zomato & Swiggy)

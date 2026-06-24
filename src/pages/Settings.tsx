@@ -22,6 +22,7 @@ import { OrderTypeSettings } from '@/components/OrderTypeSettings';
 import { BranchManagement } from '@/components/BranchManagement';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
 
 interface AdditionalCharge {
   id: string;
@@ -359,6 +360,11 @@ const Settings = () => {
           {/* WhatsApp Bill Share Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
             <WhatsAppSettings />
+          </ErrorBoundary>
+
+          {/* Food Aggregator Integrations */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Aggregator Settings failed to load. Try refreshing.</div>}>
+            <AggregatorIntegrationSettings />
           </ErrorBoundary>
 
           {/* Bluetooth Printer Settings */}

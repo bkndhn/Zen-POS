@@ -31,6 +31,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
+import { MenuDesignStudio } from '@/components/MenuDesignStudio';
 
 // Simple QR Code generator using a public API
 const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '1a1a6c', bgColor: string = 'ffffff'): string => {
@@ -48,6 +49,7 @@ const QRCodeSettings = () => {
     const [tablesLoading, setTablesLoading] = useState(false);
     const [selectedTable, setSelectedTable] = useState<number | null>(null);
     const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
+    const [qrDownloadMode, setQrDownloadMode] = useState<'poster' | 'qr_only'>('poster');
     const qrRef = useRef<HTMLImageElement>(null);
 
     // Custom URL State
@@ -437,7 +439,8 @@ const QRCodeSettings = () => {
     // Download QR code as a premium branded card
     const handleDownloadQR = async () => {
         try {
-            const qrUrl = generateQRCodeUrl(currentQrUrl, 400, '1a1a6c');
+            const qrSize = 600;
+            const qrUrl = generateQRCodeUrl(currentQrUrl, qrSize, '1a1a6c');
 
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -448,13 +451,34 @@ const QRCodeSettings = () => {
                 img.src = qrUrl;
             });
 
-            // Create canvas for premium QR card
-            const padding = 40;
-            const headerHeight = 70;
-            const footerHeight = 60;
-            const qrSize = img.width;
-            const cardWidth = qrSize + padding * 2;
-            const cardHeight = qrSize + headerHeight + footerHeight + padding;
+            // Create canvas for 10x18 inch poster (1080x1944 pixels)
+            const cardWidth = 1080;
+            const cardHeight = 1944;
+            
+            // Handle QR Only Mode
+            if (qrDownloadMode === 'qr_only') {
+                const qrCanvas = document.createElement('canvas');
+                qrCanvas.width = qrSize;
+                qrCanvas.height = qrSize;
+                const qrCtx = qrCanvas.getContext('2d');
+                if (qrCtx) qrCtx.drawImage(img, 0, 0, qrSize, qrSize);
+
+                qrCanvas.toBlob((blob) => {
+                    if (!blob) throw new Error('Could not create blob');
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = selectedTable
+                        ? (selectedSeat ? `raw-qr-table-${selectedTable}-seat-${selectedSeat}.png` : `raw-qr-table-${selectedTable}.png`)
+                        : 'raw-qr-code.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast({ title: "Downloaded!", description: `Raw QR saved as ${a.download}` });
+                }, 'image/png');
+                return;
+            }
 
             const canvas = document.createElement('canvas');
             canvas.width = cardWidth;
@@ -462,21 +486,60 @@ const QRCodeSettings = () => {
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Canvas not supported');
 
-            // Draw gradient background
-            const grad = ctx.createLinearGradient(0, 0, cardWidth, cardHeight);
-            grad.addColorStop(0, '#667eea');
-            grad.addColorStop(0.5, '#764ba2');
-            grad.addColorStop(1, '#f093fb');
+            // 1. Draw Background Gradient using custom Theme Colors
+            const grad = ctx.createLinearGradient(0, 0, 0, cardHeight);
+            grad.addColorStop(0, menuPrimaryColor); // Primary Brand Color
+            grad.addColorStop(1, menuSecondaryColor); // Secondary Brand Color
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, cardWidth, cardHeight);
 
-            // Draw white rounded container for QR
-            const containerX = padding - 10;
-            const containerY = headerHeight - 5;
-            const containerW = qrSize + 20;
-            const containerH = qrSize + 20;
-            const radius = 16;
+            // 2. Draw Top Curved Header (White)
             ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(cardWidth, 0);
+            ctx.lineTo(cardWidth, 400);
+            ctx.quadraticCurveTo(cardWidth / 2, 550, 0, 400); // Curved bottom
+            ctx.fill();
+
+            // 3. Draw Shop Name in Header
+            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+            const shopNameStr = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+            let displayName = 'Our Restaurant';
+            if (shopNameStr) {
+                try {
+                    const parsed = JSON.parse(shopNameStr);
+                    if (parsed.shopName) displayName = parsed.shopName;
+                } catch { }
+            }
+            
+            ctx.fillStyle = '#1e293b'; // Slate 800
+            ctx.font = 'bold 72px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            // Handle long names
+            const maxTextWidth = cardWidth - 100;
+            if (ctx.measureText(displayName).width > maxTextWidth) {
+                ctx.font = 'bold 56px Arial, sans-serif';
+            }
+            ctx.fillText(displayName.toUpperCase(), cardWidth / 2, 220);
+            
+            // "Scan & Order" text
+            ctx.fillStyle = '#f97316';
+            ctx.font = 'bold 36px Arial, sans-serif';
+            ctx.fillText('SCAN & ORDER', cardWidth / 2, 300);
+
+            // 4. Draw QR Code Container (White Rounded Box with Shadow)
+            const containerW = qrSize + 100;
+            const containerH = qrSize + 100;
+            const containerX = (cardWidth - containerW) / 2;
+            const containerY = 700;
+            const radius = 40;
+
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 30;
+            ctx.shadowOffsetY = 15;
+            ctx.fillStyle = '#ffffff';
+            
             ctx.beginPath();
             ctx.moveTo(containerX + radius, containerY);
             ctx.lineTo(containerX + containerW - radius, containerY);
@@ -490,46 +553,32 @@ const QRCodeSettings = () => {
             ctx.closePath();
             ctx.fill();
 
-            // Draw subtle shadow
-            ctx.shadowColor = 'rgba(0,0,0,0.15)';
-            ctx.shadowBlur = 20;
-            ctx.shadowOffsetY = 5;
-            ctx.fill();
+            // Reset shadow
             ctx.shadowColor = 'transparent';
 
-            // Draw QR code
-            ctx.drawImage(img, padding, headerHeight + 5);
 
-            // Draw header text (shop name or "Scan Menu")
-            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
-            const shopName = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
-            let displayName = 'Scan Our Menu';
-            if (shopName) {
-                try {
-                    const parsed = JSON.parse(shopName);
-                    if (parsed.shopName) displayName = parsed.shopName;
-                } catch { }
-            }
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 22px Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(displayName, cardWidth / 2, 40);
+            // 5. Draw QR code
+            ctx.drawImage(img, containerX + 50, containerY + 50, qrSize, qrSize);
 
-            // Table number and seat if applicable
+            // 6. Draw Table and Seat Number
             if (selectedTable) {
-                ctx.font = 'bold 16px Arial, sans-serif';
-                ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                const labelText = selectedSeat ? `Table ${selectedTable} - Seat ${selectedSeat}` : `Table ${selectedTable}`;
-                ctx.fillText(labelText, cardWidth / 2, 60);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 80px Arial, sans-serif';
+                ctx.textAlign = 'center';
+                const labelText = selectedSeat ? `TABLE ${selectedTable} - SEAT ${selectedSeat}` : `TABLE ${selectedTable}`;
+                ctx.fillText(labelText, cardWidth / 2, 1600);
             }
 
-            // Footer instruction
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            ctx.font = 'bold 14px Arial, sans-serif';
-            ctx.fillText('📱 Scan to View Menu', cardWidth / 2, containerY + containerH + 30);
-            ctx.font = '11px Arial, sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.65)';
-            ctx.fillText('Use Camera or Google Lens', cardWidth / 2, containerY + containerH + 48);
+            // 7. Footer Instructions
+            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            ctx.font = 'bold 42px Arial, sans-serif';
+            ctx.fillText('HOW TO VIEW MENU', cardWidth / 2, 1750);
+            
+            ctx.font = '28px Arial, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillText('1. Open Camera or Google Lens', cardWidth / 2, 1810);
+            ctx.fillText('2. Scan the QR Code above', cardWidth / 2, 1855);
+            ctx.fillText('3. Tap the link to view Menu & Order', cardWidth / 2, 1900);
 
             // Convert to blob and download
             canvas.toBlob((blob) => {
@@ -614,47 +663,100 @@ const QRCodeSettings = () => {
                 : [{ seat: null, url: `${baseUrl}?table=${tableNum}`, label: `Table ${tableNum}`, file: `menu-qr-table-${tableNum}.png` }];
 
             for (const target of targets) {
-                const colors = tableColors[successCount % tableColors.length];
+                const color = tableColors[successCount % tableColors.length];
+                const qrSize = 600;
                 try {
-                    const qrUrl = generateQRCodeUrl(target.url, 350, colors.qr);
+                    const qrUrl = generateQRCodeUrl(target.url, qrSize, color.qr);
 
                     const img = new Image();
                     img.crossOrigin = 'anonymous';
 
-                    await new Promise((resolve, reject) => {
-                        img.onload = resolve;
+                    await new Promise<void>((resolve, reject) => {
+                        img.onload = () => resolve();
                         img.onerror = reject;
                         img.src = qrUrl;
                     });
 
-                    // Premium card dimensions
-                    const padding = 35;
-                    const headerHeight = 80;
-                    const footerHeight = 55;
-                    const qrSize = img.width;
-                    const cardWidth = qrSize + padding * 2;
-                    const cardHeight = qrSize + headerHeight + footerHeight + padding;
+                    const cardWidth = 1080;
+                    const cardHeight = 1944;
+                    
+                    // Handle QR Only Mode
+                    if (qrDownloadMode === 'qr_only') {
+                        const qrCanvas = document.createElement('canvas');
+                        qrCanvas.width = qrSize;
+                        qrCanvas.height = qrSize;
+                        const qrCtx = qrCanvas.getContext('2d');
+                        if (qrCtx) qrCtx.drawImage(img, 0, 0, qrSize, qrSize);
+
+                        await new Promise<void>((resolve) => {
+                            qrCanvas.toBlob((blob) => {
+                                if (blob) {
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `raw-${target.file}`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                    successCount++;
+                                }
+                                resolve();
+                            }, 'image/png');
+                        });
+                        
+                        await new Promise(r => setTimeout(r, 300));
+                        continue;
+                    }
 
                     const canvas = document.createElement('canvas');
                     canvas.width = cardWidth;
                     canvas.height = cardHeight;
                     const ctx = canvas.getContext('2d');
-                    if (!ctx) continue;
+                    if (!ctx) throw new Error('Canvas not supported');
 
-                    // Gradient background
-                    const grad = ctx.createLinearGradient(0, 0, cardWidth, cardHeight);
-                    grad.addColorStop(0, colors.grad1);
-                    grad.addColorStop(1, colors.grad2);
+                    // Background Gradient using Custom Theme Colors
+                    const grad = ctx.createLinearGradient(0, 0, 0, cardHeight);
+                    grad.addColorStop(0, menuPrimaryColor);
+                    grad.addColorStop(1, menuSecondaryColor);
                     ctx.fillStyle = grad;
                     ctx.fillRect(0, 0, cardWidth, cardHeight);
 
-                    // White rounded container
-                    const containerX = padding - 8;
-                    const containerY = headerHeight;
-                    const containerW = qrSize + 16;
-                    const containerH = qrSize + 16;
-                    const radius = 14;
+                    // Top Curved Header
                     ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(cardWidth, 0);
+                    ctx.lineTo(cardWidth, 400);
+                    ctx.quadraticCurveTo(cardWidth / 2, 550, 0, 400);
+                    ctx.fill();
+
+                    // Shop Name
+                    ctx.fillStyle = '#1e293b';
+                    ctx.font = 'bold 72px Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    const maxTextWidth = cardWidth - 100;
+                    if (ctx.measureText(displayName).width > maxTextWidth) {
+                        ctx.font = 'bold 56px Arial, sans-serif';
+                    }
+                    ctx.fillText(displayName.toUpperCase(), cardWidth / 2, 220);
+                    
+                    ctx.fillStyle = color.grad1;
+                    ctx.font = 'bold 36px Arial, sans-serif';
+                    ctx.fillText('SCAN & ORDER', cardWidth / 2, 300);
+
+                    // QR Container
+                    const containerW = qrSize + 100;
+                    const containerH = qrSize + 100;
+                    const containerX = (cardWidth - containerW) / 2;
+                    const containerY = 700;
+                    const radius = 40;
+
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = 30;
+                    ctx.shadowOffsetY = 15;
+                    ctx.fillStyle = '#ffffff';
+                    
                     ctx.beginPath();
                     ctx.moveTo(containerX + radius, containerY);
                     ctx.lineTo(containerX + containerW - radius, containerY);
@@ -666,31 +768,29 @@ const QRCodeSettings = () => {
                     ctx.lineTo(containerX, containerY + radius);
                     ctx.quadraticCurveTo(containerX, containerY, containerX + radius, containerY);
                     ctx.closePath();
-                    ctx.shadowColor = 'rgba(0,0,0,0.15)';
-                    ctx.shadowBlur = 15;
-                    ctx.shadowOffsetY = 4;
                     ctx.fill();
+
                     ctx.shadowColor = 'transparent';
 
-                    // Draw QR code
-                    ctx.drawImage(img, padding, headerHeight + 8);
+                    // QR Image
+                    ctx.drawImage(img, containerX + 50, containerY + 50, qrSize, qrSize);
 
-                    // Header — Table number big + shop name small
+                    // Table Label
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 26px Arial, sans-serif';
+                    ctx.font = 'bold 80px Arial, sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText(target.label, cardWidth / 2, 40);
-                    ctx.font = '14px Arial, sans-serif';
-                    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-                    ctx.fillText(displayName, cardWidth / 2, 62);
+                    ctx.fillText(target.label.toUpperCase(), cardWidth / 2, 1600);
 
-                    // Footer
-                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                    ctx.font = 'bold 13px Arial, sans-serif';
-                    ctx.fillText('📱 Scan to View Menu', cardWidth / 2, containerY + containerH + 25);
-                    ctx.font = '10px Arial, sans-serif';
-                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                    ctx.fillText('Use Camera or Google Lens', cardWidth / 2, containerY + containerH + 42);
+                    // Footer Instructions
+                    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                    ctx.font = 'bold 42px Arial, sans-serif';
+                    ctx.fillText('HOW TO VIEW MENU', cardWidth / 2, 1750);
+                    
+                    ctx.font = '28px Arial, sans-serif';
+                    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                    ctx.fillText('1. Open Camera or Google Lens', cardWidth / 2, 1810);
+                    ctx.fillText('2. Scan the QR Code above', cardWidth / 2, 1855);
+                    ctx.fillText('3. Tap the link to view Menu & Order', cardWidth / 2, 1900);
 
                     // Convert to blob and download
                     await new Promise<void>((resolve) => {
@@ -1098,7 +1198,46 @@ const QRCodeSettings = () => {
 
                     {/* Table-based QR Toggle */}
                     <div className="border-t pt-4 space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="space-y-3 bg-muted/30 rounded-lg p-4 mb-4 border border-border/50">
+                            <Label className="text-sm font-medium flex items-center gap-2">
+                                <Download className="w-4 h-4 text-primary" />
+                                Download Format
+                            </Label>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-1">
+                                <label className="flex items-center gap-2 cursor-pointer bg-background p-2 rounded border hover:border-primary/50 transition-colors flex-1">
+                                    <input 
+                                        type="radio" 
+                                        className="text-primary"
+                                        checked={qrDownloadMode === 'poster'} 
+                                        onChange={() => setQrDownloadMode('poster')} 
+                                    />
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium">Premium Poster (Standee)</span>
+                                        <span className="text-[10px] text-muted-foreground">High-res 10x18" print ready</span>
+                                    </div>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer bg-background p-2 rounded border hover:border-primary/50 transition-colors flex-1">
+                                    <input 
+                                        type="radio" 
+                                        className="text-primary"
+                                        checked={qrDownloadMode === 'qr_only'} 
+                                        onChange={() => setQrDownloadMode('qr_only')} 
+                                    />
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium">Raw QR Code Only</span>
+                                        <span className="text-[10px] text-muted-foreground">For custom designs</span>
+                                    </div>
+                                </label>
+                            </div>
+                            {qrDownloadMode === 'poster' && (
+                                <p className="text-[11px] text-primary/80 bg-primary/10 p-2 rounded flex items-center gap-2">
+                                    <Palette className="w-3 h-3" />
+                                    Posters automatically use your Menu Appearance colors defined below.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-between mt-6 mb-3">
                             <div className="space-y-0.5">
                                 <Label className="text-sm font-medium flex items-center gap-2">
                                     <Table2 className="w-4 h-4" />
@@ -1337,6 +1476,9 @@ const QRCodeSettings = () => {
 
             {/* Promotional Banners Section */}
             <PromoBannerManager />
+
+            {/* Menu Design Studio Section */}
+            <MenuDesignStudio />
         </div>
     );
 };

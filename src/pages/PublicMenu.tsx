@@ -48,6 +48,13 @@ interface ShopSettings {
     menu_background_color?: string;
     menu_text_color?: string;
     menu_items_per_row?: number;
+    // Layout Settings
+    menu_layout_style?: string;
+    menu_font_family?: string;
+    menu_border_radius?: string;
+    menu_glassmorphism?: boolean;
+    menu_ai_features_enabled?: boolean;
+    
     // Location settings
     shop_latitude?: number;
     shop_longitude?: number;
@@ -1200,8 +1207,9 @@ const PublicMenu = () => {
 
     return (
         <div
-            className="min-h-screen public-menu-container"
+            className="min-h-screen public-menu-container pb-24"
             style={{
+                fontFamily: shopSettings?.menu_font_family || 'Inter, sans-serif',
                 background: shopSettings?.menu_background_color
                     ? `linear-gradient(135deg, ${shopSettings.menu_background_color}15 0%, ${shopSettings.menu_background_color}08 50%, ${shopSettings.menu_background_color}15 100%)`
                     : 'linear-gradient(135deg, #fef7ed 0%, #fff7ed 25%, #fefce8 50%, #f0fdf4 75%, #fef7ed 100%)'
@@ -1221,10 +1229,15 @@ const PublicMenu = () => {
             `}</style>
             {/* Header with Shop Name */}
             <header
-                className="sticky top-0 z-50 text-white shadow-xl"
+                className={cn(
+                    "sticky top-0 z-50 text-white shadow-xl transition-all duration-300",
+                    shopSettings?.menu_glassmorphism ? "backdrop-blur-xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : ""
+                )}
                 style={{
                     background: shopSettings?.menu_primary_color
-                        ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
+                        ? (shopSettings.menu_glassmorphism 
+                            ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
+                            : `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`)
                         : 'linear-gradient(135deg, #ea580c, #dc2626)'
                 }}
             >
@@ -1617,18 +1630,30 @@ const PublicMenu = () => {
                                             isCollapsed ? "max-h-0 opacity-0" : "max-h-[5000px] opacity-100"
                                         )}
                                     >
-                                        {categoryItems.map(item => (
+                                        {categoryItems.map(item => {
+                                            const borderRadiusClass = 
+                                                shopSettings?.menu_border_radius === 'none' ? 'rounded-none' :
+                                                shopSettings?.menu_border_radius === 'sm' ? 'rounded-md' :
+                                                shopSettings?.menu_border_radius === 'lg' ? 'rounded-3xl' :
+                                                shopSettings?.menu_border_radius === 'full' ? 'rounded-[2rem]' :
+                                                'rounded-2xl'; // default md
+                                            
+                                            // Determine if we should use horizontal (classic) or vertical (modern_cards) layout for single row
+                                            const isSingleColumn = shopSettings?.menu_items_per_row === 1;
+                                            const useHorizontalLayout = isSingleColumn && shopSettings?.menu_layout_style !== 'modern_cards';
+
+                                            return (
                                             <div
                                                 key={item.id}
                                                 className={cn(
-                                                    "bg-white rounded-2xl shadow-sm border hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group",
-                                                    shopSettings?.menu_items_per_row === 1 ? "flex items-center p-3.5 gap-3.5" : "flex flex-col"
+                                                    `bg-white shadow-sm border hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group ${borderRadiusClass}`,
+                                                    useHorizontalLayout ? "flex items-center p-3.5 gap-3.5" : "flex flex-col"
                                                 )}
                                                 style={{ borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : '#ffedd5' }}
                                             >
-                                                {/* Image - larger for multi-column, side for single */}
-                                                {shopSettings?.menu_items_per_row === 1 ? (
-                                                    // Single column: horizontal layout
+                                                {/* Image */}
+                                                {useHorizontalLayout ? (
+                                                    // Single column: Classic Horizontal Layout
                                                     <>
                                                         <ItemMedia item={item} />
                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
@@ -1745,7 +1770,8 @@ const PublicMenu = () => {
                                                     </>
                                                 )}
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -2357,7 +2383,32 @@ const PublicMenu = () => {
                     </p>
                 </div>
             </footer>
-        </div >
+
+            {/* Smart AI Waiter Floating Button */}
+            {shopSettings?.menu_ai_features_enabled && (
+                <button 
+                    onClick={() => {
+                        // Intelligent Search Logic - populate search with smart tags
+                        const smartTags = ["Spicy", "Vegan", "Sweet", "Bestseller", "Quick"];
+                        const randomTag = smartTags[Math.floor(Math.random() * smartTags.length)];
+                        setSearchQuery(randomTag);
+                        setShowSearch(true);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        toast({
+                            title: "🤖 AI Smart Waiter",
+                            description: `I'm filtering the menu for "${randomTag}" items for you! Try searching for other tastes.`,
+                            duration: 4000
+                        });
+                    }}
+                    className={cn(
+                        "fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 animate-bounce",
+                        shopSettings?.menu_glassmorphism ? "backdrop-blur-md bg-white/90 border border-white/40" : "bg-white border border-gray-200"
+                    )}
+                >
+                    <Sparkles className="w-6 h-6 text-amber-500" />
+                </button>
+            )}
+        </div>
     );
 };
 
