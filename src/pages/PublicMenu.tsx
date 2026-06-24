@@ -192,6 +192,25 @@ const PublicMenu = () => {
         };
     }, []);
 
+    // Dynamically load Google Font for the Public Menu
+    useEffect(() => {
+        const fontFamily = shopSettings?.menu_font_family;
+        if (!fontFamily || fontFamily === 'Inter') {
+            return;
+        }
+
+        const fontName = fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+        const fontId = `google-font-public-${fontName.toLowerCase().replace(/\s+/g, '-')}`;
+
+        if (document.getElementById(fontId)) return;
+
+        const link = document.createElement('link');
+        link.id = fontId;
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@400;500;600;700;800&display=swap`;
+        document.head.appendChild(link);
+    }, [shopSettings?.menu_font_family]);
+
     // Resolve slug or UUID to admin ID
     useEffect(() => {
         const resolveAdminId = async () => {
@@ -1233,6 +1252,17 @@ const PublicMenu = () => {
                 .public-menu-container .text-xl { font-size: 22px !important; }
                 .public-menu-container .text-2xl { font-size: 26px !important; }
                 .public-menu-container .text-3xl { font-size: 32px !important; }
+                
+                /* Custom brand glow shadow hover effects */
+                .menu-card-glow {
+                    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 12px ${shopSettings?.menu_primary_color || '#ea580c'}15;
+                    border-color: ${shopSettings?.menu_primary_color || '#ea580c'}25;
+                }
+                .menu-card-glow:hover {
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 0 20px ${shopSettings?.menu_primary_color || '#ea580c'}30;
+                    border-color: ${shopSettings?.menu_primary_color || '#ea580c'}40;
+                    transform: translateY(-4px);
+                }
             `}</style>
             {/* Header with Shop Name */}
             <header
@@ -1574,8 +1604,10 @@ const PublicMenu = () => {
                                             {categoryItems.map(item => (
                                                 <div
                                                     key={item.id}
-                                                    className="flex-shrink-0 w-[140px] snap-start bg-white rounded-2xl shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col"
-                                                    style={{ borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : '#ffedd5' }}
+                                                    className={cn(
+                                                        "flex-shrink-0 w-[140px] snap-start bg-white rounded-2xl shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col",
+                                                        shopSettings?.menu_primary_color ? 'border-orange-100' : 'border-orange-50'
+                                                    )}
                                                 >
                                                     <div className="aspect-square bg-orange-50 relative overflow-hidden">
                                                         {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
@@ -1645,18 +1677,25 @@ const PublicMenu = () => {
                                                 shopSettings?.menu_border_radius === 'full' ? 'rounded-[2rem]' :
                                                 'rounded-2xl'; // default md
                                             
+                                            const [layoutBase, shadowStyle] = (shopSettings?.menu_layout_style || 'classic').split(':');
+                                            
                                             // Determine if we should use horizontal (classic) or vertical (modern_cards) layout for single row
                                             const isSingleColumn = shopSettings?.menu_items_per_row === 1;
-                                            const useHorizontalLayout = isSingleColumn && shopSettings?.menu_layout_style !== 'modern_cards';
+                                            const useHorizontalLayout = isSingleColumn && layoutBase !== 'modern_cards';
+                                            
+                                            const shadowClass = 
+                                                shadowStyle === 'none' ? 'shadow-none hover:shadow-none hover:translate-y-0 border-gray-100' :
+                                                shadowStyle === 'glow' ? 'menu-card-glow' :
+                                                'shadow-sm border hover:shadow-lg hover:-translate-y-0.5'; // default/subtle
 
                                             return (
                                             <div
                                                 key={item.id}
                                                 className={cn(
-                                                    `bg-white shadow-sm border hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group ${borderRadiusClass}`,
+                                                    `bg-white transition-all duration-300 overflow-hidden group ${borderRadiusClass} ${shadowClass}`,
                                                     useHorizontalLayout ? "flex items-center p-3.5 gap-3.5" : "flex flex-col"
                                                 )}
-                                                style={{ borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : '#ffedd5' }}
+                                                style={{ borderColor: shadowStyle !== 'glow' && shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : undefined }}
                                             >
                                                 {/* Image */}
                                                 {useHorizontalLayout ? (

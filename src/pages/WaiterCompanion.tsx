@@ -4,6 +4,16 @@ import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
@@ -68,6 +78,7 @@ const WaiterCompanion: React.FC = () => {
     const [customerNote, setCustomerNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'cart'>('tables');
+    const [clearCartOpen, setClearCartOpen] = useState(false);
 
     // Fetch tables
     const fetchTables = useCallback(async () => {
@@ -601,7 +612,7 @@ const WaiterCompanion: React.FC = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                    if(confirm("Empty cart?")) setCart([]);
+                                    setClearCartOpen(true);
                                 }}
                                 className="text-destructive h-8 px-2"
                             >
@@ -714,6 +725,30 @@ const WaiterCompanion: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modern Clear Cart Confirmation Dialog */}
+            <AlertDialog open={clearCartOpen} onOpenChange={setClearCartOpen}>
+                <AlertDialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Clear Cart?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to remove all items from this table's cart? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex gap-2 justify-end mt-4">
+                        <AlertDialogCancel className="rounded-xl mt-0">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                setCart([]);
+                                setClearCartOpen(false);
+                            }}
+                            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Clear All
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

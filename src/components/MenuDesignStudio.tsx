@@ -4,11 +4,24 @@ import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
 import { Palette, LayoutTemplate, Type, Sparkles, Box, Check, RefreshCw } from 'lucide-react';
+
+const COLOR_PRESETS = [
+    { id: 'custom', label: 'Custom Colors (Use Pickers)', primary: '', secondary: '', bg: '', text: '' },
+    { id: 'sunset', label: 'Sunset Warmth', primary: '#f97316', secondary: '#ea580c', bg: '#fffbeb', text: '#1c1917' },
+    { id: 'forest', label: 'Forest Mint', primary: '#059669', secondary: '#047857', bg: '#f0fdf4', text: '#064e3b' },
+    { id: 'ocean', label: 'Ocean Breeze', primary: '#0284c7', secondary: '#0369a1', bg: '#f0f9ff', text: '#0c4a6e' },
+    { id: 'royal', label: 'Royal Amethyst', primary: '#7c3aed', secondary: '#6d28d9', bg: '#faf5ff', text: '#4c1d95' },
+    { id: 'rose', label: 'Rose Gold', primary: '#db2777', secondary: '#be185d', bg: '#fff1f2', text: '#881337' },
+    { id: 'midnight', label: 'Midnight Velvet (Dark Theme)', primary: '#a78bfa', secondary: '#c084fc', bg: '#0f172a', text: '#f8fafc' },
+    { id: 'obsidian', label: 'Luxury Obsidian (Dark Theme)', primary: '#fbbf24', secondary: '#f59e0b', bg: '#18181b', text: '#f4f4f5' },
+    { id: 'vintage', label: 'Vintage Diner', primary: '#dc2626', secondary: '#b91c1c', bg: '#fffaf0', text: '#450a0a' }
+];
 
 export const MenuDesignStudio = () => {
     const { profile } = useAuth();
@@ -26,10 +39,48 @@ export const MenuDesignStudio = () => {
     
     // Aesthetics Settings
     const [borderRadius, setBorderRadius] = useState('md');
+    const [cardElevation, setCardElevation] = useState('subtle');
     const [glassmorphism, setGlassmorphism] = useState(false);
     
     // AI Settings
     const [aiEnabled, setAiEnabled] = useState(false);
+
+    // Color Settings & Preset
+    const [colorPreset, setColorPreset] = useState('custom');
+    const [primaryColor, setPrimaryColor] = useState('#f97316');
+    const [secondaryColor, setSecondaryColor] = useState('#ea580c');
+    const [backgroundColor, setBackgroundColor] = useState('#fffbeb');
+    const [textColor, setTextColor] = useState('#1c1917');
+
+    // Preset selection change handler
+    const handlePresetChange = (presetId: string) => {
+        setColorPreset(presetId);
+        const preset = COLOR_PRESETS.find(p => p.id === presetId);
+        if (preset && presetId !== 'custom') {
+            setPrimaryColor(preset.primary);
+            setSecondaryColor(preset.secondary);
+            setBackgroundColor(preset.bg);
+            setTextColor(preset.text);
+        }
+    };
+
+    // Dynamically load Google Font in studio for previewing
+    useEffect(() => {
+        if (!fontFamily || fontFamily === 'Inter') {
+            return;
+        }
+
+        const fontName = fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+        const fontId = `google-font-studio-${fontName.toLowerCase().replace(/\s+/g, '-')}`;
+
+        if (document.getElementById(fontId)) return;
+
+        const link = document.createElement('link');
+        link.id = fontId;
+        link.rel = 'stylesheet';
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@400;500;600;700;800&display=swap`;
+        document.head.appendChild(link);
+    }, [fontFamily]);
 
     useEffect(() => {
         loadSettings();
@@ -42,7 +93,7 @@ export const MenuDesignStudio = () => {
             // Fetch branch-specific settings or fallback to main
             let { data } = await supabase
                 .from('shop_settings')
-                .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled')
+                .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color')
                 .eq('user_id', profile.user_id)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
@@ -50,7 +101,7 @@ export const MenuDesignStudio = () => {
             if (!data) {
                 const { data: fb } = await supabase
                     .from('shop_settings')
-                    .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled')
+                    .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color')
                     .eq('user_id', profile.user_id)
                     .order('branch_id', { nullsFirst: false })
                     .limit(1)
@@ -59,11 +110,35 @@ export const MenuDesignStudio = () => {
             }
 
             if (data) {
-                if (data.menu_layout_style) setLayoutStyle(data.menu_layout_style);
+                if (data.menu_layout_style) {
+                    const parts = data.menu_layout_style.split(':');
+                    setLayoutStyle(parts[0]);
+                    setCardElevation(parts[1] || 'subtle');
+                }
                 if (data.menu_font_family) setFontFamily(data.menu_font_family);
                 if (data.menu_border_radius) setBorderRadius(data.menu_border_radius);
                 if (data.menu_glassmorphism !== null) setGlassmorphism(data.menu_glassmorphism);
                 if (data.menu_ai_features_enabled !== null) setAiEnabled(data.menu_ai_features_enabled);
+                
+                // Color settings
+                if (data.menu_primary_color) setPrimaryColor(data.menu_primary_color);
+                if (data.menu_secondary_color) setSecondaryColor(data.menu_secondary_color);
+                if (data.menu_background_color) setBackgroundColor(data.menu_background_color);
+                if (data.menu_text_color) setTextColor(data.menu_text_color);
+
+                // Determine if preset matches loaded colors
+                const matchedPreset = COLOR_PRESETS.find(p => 
+                    p.id !== 'custom' &&
+                    p.primary.toLowerCase() === (data.menu_primary_color || '').toLowerCase() &&
+                    p.secondary.toLowerCase() === (data.menu_secondary_color || '').toLowerCase() &&
+                    p.bg.toLowerCase() === (data.menu_background_color || '').toLowerCase() &&
+                    p.text.toLowerCase() === (data.menu_text_color || '').toLowerCase()
+                );
+                if (matchedPreset) {
+                    setColorPreset(matchedPreset.id);
+                } else {
+                    setColorPreset('custom');
+                }
             }
         } catch (error) {
             console.error('Error loading menu design settings:', error);
@@ -79,11 +154,15 @@ export const MenuDesignStudio = () => {
             const payload = {
                 user_id: profile.user_id,
                 branch_id: operatingBranchId,
-                menu_layout_style: layoutStyle,
+                menu_layout_style: `${layoutStyle}:${cardElevation}`,
                 menu_font_family: fontFamily,
                 menu_border_radius: borderRadius,
                 menu_glassmorphism: glassmorphism,
-                menu_ai_features_enabled: aiEnabled
+                menu_ai_features_enabled: aiEnabled,
+                menu_primary_color: primaryColor,
+                menu_secondary_color: secondaryColor,
+                menu_background_color: backgroundColor,
+                menu_text_color: textColor
             };
 
             const { data: existing } = await supabase
@@ -165,7 +244,130 @@ export const MenuDesignStudio = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Color Theme & Branding */}
+                    <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Palette className="w-5 h-5 text-purple-600" />
+                            <h3 className="font-semibold text-lg">Color Theme & Branding</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2 md:col-span-1">
+                                <Label>Preset Theme Palette</Label>
+                                <Select value={colorPreset} onValueChange={handlePresetChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Palette" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {COLOR_PRESETS.map(preset => (
+                                            <SelectItem key={preset.id} value={preset.id}>
+                                                {preset.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Select a predefined palette or fine-tune custom colors using the pickers.
+                                </p>
+                            </div>
+                            
+                            <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Primary Color</Label>
+                                    <div className="flex gap-1.5">
+                                        <Input 
+                                            type="color" 
+                                            value={primaryColor} 
+                                            onChange={(e) => {
+                                                setPrimaryColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="w-8 h-8 p-1 border rounded cursor-pointer flex-shrink-0" 
+                                        />
+                                        <Input 
+                                            type="text" 
+                                            value={primaryColor} 
+                                            onChange={(e) => {
+                                                setPrimaryColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="text-[10px] font-mono h-8 px-1.5" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Accent Color</Label>
+                                    <div className="flex gap-1.5">
+                                        <Input 
+                                            type="color" 
+                                            value={secondaryColor} 
+                                            onChange={(e) => {
+                                                setSecondaryColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="w-8 h-8 p-1 border rounded cursor-pointer flex-shrink-0" 
+                                        />
+                                        <Input 
+                                            type="text" 
+                                            value={secondaryColor} 
+                                            onChange={(e) => {
+                                                setSecondaryColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="text-[10px] font-mono h-8 px-1.5" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Background</Label>
+                                    <div className="flex gap-1.5">
+                                        <Input 
+                                            type="color" 
+                                            value={backgroundColor} 
+                                            onChange={(e) => {
+                                                setBackgroundColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="w-8 h-8 p-1 border rounded cursor-pointer flex-shrink-0" 
+                                        />
+                                        <Input 
+                                            type="text" 
+                                            value={backgroundColor} 
+                                            onChange={(e) => {
+                                                setBackgroundColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="text-[10px] font-mono h-8 px-1.5" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Text Color</Label>
+                                    <div className="flex gap-1.5">
+                                        <Input 
+                                            type="color" 
+                                            value={textColor} 
+                                            onChange={(e) => {
+                                                setTextColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="w-8 h-8 p-1 border rounded cursor-pointer flex-shrink-0" 
+                                        />
+                                        <Input 
+                                            type="text" 
+                                            value={textColor} 
+                                            onChange={(e) => {
+                                                setTextColor(e.target.value);
+                                                setColorPreset('custom');
+                                            }}
+                                            className="text-[10px] font-mono h-8 px-1.5" 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t">
                         {/* Typography */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 mb-2">
@@ -183,6 +385,16 @@ export const MenuDesignStudio = () => {
                                         <SelectItem value="'Playfair Display', serif"><span style={{fontFamily: "'Playfair Display', serif"}}>Playfair Display (Elegant, Fine Dining)</span></SelectItem>
                                         <SelectItem value="'Outfit', sans-serif"><span style={{fontFamily: "'Outfit', sans-serif"}}>Outfit (Modern, Geometric)</span></SelectItem>
                                         <SelectItem value="'Caveat', cursive"><span style={{fontFamily: "'Caveat', cursive"}}>Caveat (Playful, Cafe style)</span></SelectItem>
+                                        <SelectItem value="'Poppins', sans-serif"><span style={{fontFamily: "'Poppins', sans-serif"}}>Poppins (Sleek, Geometric)</span></SelectItem>
+                                        <SelectItem value="'Montserrat', sans-serif"><span style={{fontFamily: "'Montserrat', sans-serif"}}>Montserrat (Modern, Strong)</span></SelectItem>
+                                        <SelectItem value="'Cinzel', serif"><span style={{fontFamily: "'Cinzel', serif"}}>Cinzel (Luxury Classic)</span></SelectItem>
+                                        <SelectItem value="'Cormorant Garamond', serif"><span style={{fontFamily: "'Cormorant Garamond', serif"}}>Cormorant Garamond (Prestige Serifs)</span></SelectItem>
+                                        <SelectItem value="'Dancing Script', cursive"><span style={{fontFamily: "'Dancing Script', cursive"}}>Dancing Script (Handwritten)</span></SelectItem>
+                                        <SelectItem value="'Pacifico', cursive"><span style={{fontFamily: "'Pacifico', cursive"}}>Pacifico (Fun, Bold Retro)</span></SelectItem>
+                                        <SelectItem value="'Josefin Sans', sans-serif"><span style={{fontFamily: "'Josefin Sans', sans-serif"}}>Josefin Sans (Art Deco, Elegant)</span></SelectItem>
+                                        <SelectItem value="'Quicksand', sans-serif"><span style={{fontFamily: "'Quicksand', sans-serif"}}>Quicksand (Friendly, Soft)</span></SelectItem>
+                                        <SelectItem value="'Abril Fatface', serif"><span style={{fontFamily: "'Abril Fatface', serif"}}>Abril Fatface (Bold Headline)</span></SelectItem>
+                                        <SelectItem value="'Lobster', cursive"><span style={{fontFamily: "'Lobster', cursive"}}>Lobster (Vintage Script)</span></SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -194,7 +406,7 @@ export const MenuDesignStudio = () => {
                                 <Box className="w-5 h-5 text-teal-500" />
                                 <h3 className="font-semibold text-lg">Aesthetics</h3>
                             </div>
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Border Radius</Label>
                                     <Select value={borderRadius} onValueChange={setBorderRadius}>
@@ -210,13 +422,26 @@ export const MenuDesignStudio = () => {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex items-center justify-between p-3 border rounded-lg bg-background">
-                                    <div className="space-y-0.5">
-                                        <Label>Glassmorphism UI</Label>
-                                        <p className="text-xs text-muted-foreground">Applies frosted glass effect to navigation</p>
-                                    </div>
-                                    <Switch checked={glassmorphism} onCheckedChange={setGlassmorphism} />
+                                <div className="space-y-2">
+                                    <Label>Card Elevation (Shadows)</Label>
+                                    <Select value={cardElevation} onValueChange={setCardElevation}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">Flat (No Shadow)</SelectItem>
+                                            <SelectItem value="subtle">Subtle Shadow</SelectItem>
+                                            <SelectItem value="glow">Elegant Brand Glow</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
+                            </div>
+                            <div className="flex items-center justify-between p-3 border rounded-lg bg-background mt-2">
+                                <div className="space-y-0.5">
+                                    <Label>Glassmorphism UI</Label>
+                                    <p className="text-xs text-muted-foreground">Applies frosted glass effect to navigation</p>
+                                </div>
+                                <Switch checked={glassmorphism} onCheckedChange={setGlassmorphism} />
                             </div>
                         </div>
                     </div>
