@@ -58,8 +58,8 @@ export interface PendingBill {
 
 interface SyncQueueItem {
     id: string;
-    type: 'bill' | 'expense' | 'item';
-    action: 'create' | 'update' | 'delete';
+    type: 'bill' | 'expense' | 'item' | 'table_order' | 'table';
+    action: 'create' | 'update' | 'delete' | 'update_status';
     data: any;
     timestamp: number;
     retryCount: number;
