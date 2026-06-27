@@ -1316,7 +1316,7 @@ const QRCodeSettings = () => {
                                                                 <Button
                                                                     key={seat}
                                                                     variant={selectedSeat === seat ? 'default' : 'outline'}
-                                                                    size="xs"
+                                                                    size="sm"
                                                                     className="h-7 px-2.5 text-[10px] font-bold animate-fade-in"
                                                                     onClick={() => setSelectedSeat(seat)}
                                                                 >
