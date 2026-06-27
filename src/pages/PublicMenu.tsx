@@ -32,6 +32,8 @@ interface PromoBanner {
     is_text_only?: boolean;
     text_color?: string;
     bg_color?: string;
+    title?: string;
+    description?: string;
 }
 
 interface ShopSettings {
