@@ -43,6 +43,7 @@ interface Bill {
   tax_summary?: any;
   total_tax?: number;
   channel?: string;
+  branch_id?: string | null;
 }
 
 interface BillItem {
