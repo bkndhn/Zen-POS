@@ -43,6 +43,7 @@ interface Bill {
   tax_summary?: any;
   total_tax?: number;
   channel?: string;
+  branch_id?: string | null;
 }
 
 interface BillItem {
@@ -1005,9 +1006,11 @@ const Reports: React.FC = () => {
   };
 
   const quickPrintBill = async (bill: Bill) => {
+    // Hoisted so the catch-block fallback can also read it
+    let settings: any = null;
     try {
       // Ensure we have settings matching the bill's branch
-      const settings = await fetchSettingsForBill(bill) || billSettings;
+      settings = (await fetchSettingsForBill(bill)) || billSettings;
       const printData = {
         billNo: bill.bill_no,
         date: format(new Date(bill.date), 'MMM dd, yyyy'),

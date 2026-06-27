@@ -514,6 +514,7 @@ const TableOrderBilling: React.FC = () => {
         customerMobile?: string;
         sendWhatsApp?: boolean;
         customerGstin?: string;
+        orderType?: string;
     }) => {
         if (!selectedTable || !adminId || isBilling) return;
 

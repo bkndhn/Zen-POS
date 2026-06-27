@@ -65,45 +65,91 @@ export const compressImage = (file: File, maxSizeKB: number = 200): Promise<Blob
   });
 };
 
+// Per-item upload-token so rapid Replace clicks always honour the LAST file the
+// user chose. Earlier in-flight uploads see their token superseded and abort.
+const uploadTokens = new Map<string, number>();
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 export const uploadItemImage = async (file: File, itemId: string): Promise<string> => {
+  // Tag this upload attempt so we can detect rapid replace races
+  const myToken = Date.now() + Math.random();
+  uploadTokens.set(itemId, myToken);
+
   // Compress the image (best-effort — fall back to original blob if compression fails)
   let uploadBlob: Blob;
   try {
     uploadBlob = await compressImage(file);
   } catch (err) {
-    console.warn('Compression failed, uploading original:', err);
+    console.warn('[uploadItemImage] compression failed, uploading original:', err);
     uploadBlob = file;
   }
 
+  // Abort if a newer upload was started for the same item
+  if (uploadTokens.get(itemId) !== myToken) {
+    throw new Error('Upload superseded by a newer file selection');
+  }
+
   // Storage RLS requires the first folder segment to equal the user's admin_id.
-  // Fetch it from the DB so the upload always satisfies the policy regardless of caller.
   const { data: adminId, error: adminErr } = await supabase.rpc('get_user_admin_id');
   if (adminErr || !adminId) {
+    console.error('[uploadItemImage] get_user_admin_id failed:', adminErr);
     throw new Error('Unable to resolve account for upload. Please sign in again.');
   }
 
-  // Always-unique filename so re-uploads never collide / hit stale CDN cache
   const timestamp = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
   const fileName = `${itemId}_${timestamp}_${rand}.jpg`;
   const filePath = `${adminId}/items/${fileName}`;
 
-  const { error } = await supabase.storage
-    .from('item-images')
-    .upload(filePath, uploadBlob, {
-      cacheControl: '3600',
-      upsert: true,
-      contentType: 'image/jpeg',
-    });
+  // Retry up to 3 times on transient network/storage errors
+  let lastError: any = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (uploadTokens.get(itemId) !== myToken) {
+      throw new Error('Upload superseded by a newer file selection');
+    }
+    try {
+      const { error } = await supabase.storage
+        .from('item-images')
+        .upload(filePath, uploadBlob, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'image/jpeg',
+        });
 
-  if (error) throw error;
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('item-images')
+          .getPublicUrl(filePath);
+        imageCache.set(itemId, publicUrl);
+        console.log(`[uploadItemImage] success on attempt ${attempt}:`, filePath);
+        return publicUrl;
+      }
+      lastError = error;
+      const msg = (error as any)?.message || '';
+      // Don't retry RLS/auth/permission errors — they won't fix themselves
+      if (/row-level security|unauthorized|permission|forbidden|payload too large/i.test(msg)) {
+        break;
+      }
+      console.warn(`[uploadItemImage] attempt ${attempt} failed, retrying:`, msg);
+    } catch (e: any) {
+      lastError = e;
+      console.warn(`[uploadItemImage] attempt ${attempt} threw, retrying:`, e?.message || e);
+    }
+    await sleep(400 * attempt); // 400ms, 800ms backoff
+  }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('item-images')
-    .getPublicUrl(filePath);
-
-  imageCache.set(itemId, publicUrl);
-  return publicUrl;
+  const msg = (lastError as any)?.message || 'Unknown upload error';
+  if (/row-level security|unauthorized|permission|forbidden/i.test(msg)) {
+    throw new Error('Permission denied while uploading. Please sign in again or contact support.');
+  }
+  if (/payload too large|exceeded/i.test(msg)) {
+    throw new Error('File is too large for upload. Try a smaller image (max 2MB).');
+  }
+  if (/network|fetch|timeout|failed to fetch/i.test(msg)) {
+    throw new Error('Network error during upload. Check your connection and try again.');
+  }
+  throw new Error(`Upload failed after 3 attempts: ${msg}`);
 };
 
 

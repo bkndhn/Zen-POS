@@ -417,12 +417,36 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     const hasAccess = useCallback((page: keyof UserPermissions): boolean => {
         if (profile?.role === 'super_admin') {
+            // Super Admin sees every page — including any newly added ones.
+            // The dev-time assertion below guarantees no nav item is missed.
             return true;
         }
         // For admin, check from permissions state (which may have been blocked by super admin)
         // For child users, permissions already cascade-checked
         return permissions[page] === true;
     }, [profile?.role, permissions]);
+
+    // Dev-time safety check: warn loudly if any nav item references a page key
+    // that the permissions map doesn't know about. Prevents "newly added pages
+    // missing from Super Admin / Users permissions" regressions.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if ((import.meta as any)?.env?.PROD) return;
+        import('@/config/navItems').then(({ ALL_NAV_ITEMS }) => {
+            const known = new Set(Object.keys(DEFAULT_PERMISSIONS));
+            const missing = ALL_NAV_ITEMS
+                .map(i => i.page as string)
+                .filter(k => !known.has(k));
+            if (missing.length) {
+                console.warn(
+                    '[PermissionsContext] navItems references unknown permission keys:',
+                    Array.from(new Set(missing)),
+                    '\nAdd them to UserPermissions / DEFAULT_PERMISSIONS / ADMIN_PERMISSIONS.'
+                );
+            }
+        }).catch(() => {});
+    }, []);
+
 
     const refetch = useCallback(() => {
         fetchedForUserRef.current = null;

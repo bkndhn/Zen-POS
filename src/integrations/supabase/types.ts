@@ -200,6 +200,7 @@ export type Database = {
           admin_id: string | null
           bill_no: string
           branch_id: string | null
+          channel: string
           created_at: string
           created_by: string
           customer_gstin: string | null
@@ -229,6 +230,7 @@ export type Database = {
           admin_id?: string | null
           bill_no: string
           branch_id?: string | null
+          channel?: string
           created_at?: string
           created_by: string
           customer_gstin?: string | null
@@ -258,6 +260,7 @@ export type Database = {
           admin_id?: string | null
           bill_no?: string
           branch_id?: string | null
+          channel?: string
           created_at?: string
           created_by?: string
           customer_gstin?: string | null
@@ -695,6 +698,8 @@ export type Database = {
           minimum_stock_alert: number | null
           name: string
           price: number
+          price_swiggy: number | null
+          price_zomato: number | null
           purchase_rate: number | null
           quantity_step: number | null
           quick_chips: string[] | null
@@ -729,6 +734,8 @@ export type Database = {
           minimum_stock_alert?: number | null
           name: string
           price: number
+          price_swiggy?: number | null
+          price_zomato?: number | null
           purchase_rate?: number | null
           quantity_step?: number | null
           quick_chips?: string[] | null
@@ -763,6 +770,8 @@ export type Database = {
           minimum_stock_alert?: number | null
           name?: string
           price?: number
+          price_swiggy?: number | null
+          price_zomato?: number | null
           purchase_rate?: number | null
           quantity_step?: number | null
           quick_chips?: string[] | null

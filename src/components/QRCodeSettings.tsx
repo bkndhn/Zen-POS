@@ -1306,7 +1306,7 @@ const QRCodeSettings = () => {
                                                         <div className="flex flex-wrap gap-1.5">
                                                             <Button
                                                                 variant={selectedSeat === null ? 'default' : 'outline'}
-                                                                size="xs"
+                                                                size="sm"
                                                                 className="h-7 px-2.5 text-[10px] font-bold"
                                                                 onClick={() => setSelectedSeat(null)}
                                                             >
@@ -1316,7 +1316,7 @@ const QRCodeSettings = () => {
                                                                 <Button
                                                                     key={seat}
                                                                     variant={selectedSeat === seat ? 'default' : 'outline'}
-                                                                    size="xs"
+                                                                    size="sm"
                                                                     className="h-7 px-2.5 text-[10px] font-bold animate-fade-in"
                                                                     onClick={() => setSelectedSeat(seat)}
                                                                 >
