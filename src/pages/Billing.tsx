@@ -59,6 +59,7 @@ const isLowStock = (item: Item): boolean => {
 // Removed inline getSimplifiedUnit - now using getShortUnit from timeUtils
 interface CartItem extends Item {
   quantity: number;
+  store_price?: number;
 }
 interface PaymentType {
   id: string;
