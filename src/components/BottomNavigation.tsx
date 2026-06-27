@@ -114,9 +114,19 @@ export const BottomNavigation: React.FC = () => {
 
   // Filter nav items by permissions AND the user's explicit visibility selection.
   // If visiblePages is empty (never saved) fall back to permission-only filtering.
+  // NEW_PAGE_KEYS = modules added after the original visibility list shipped.
+  // These are auto-included so newly-added pages never silently disappear from
+  // an older user's saved customisation. (Users can still disable them by
+  // re-saving the bottom-nav customiser.)
+  const NEW_PAGE_KEYS = new Set(['suppliers', 'purchases', 'stock', 'tableBilling']);
   const navItems = allNavItems
     .filter(item => hasAccess(item.page))
-    .filter(item => visiblePages.length === 0 || visiblePages.includes(item.page as string));
+    .filter(item =>
+      visiblePages.length === 0
+      || visiblePages.includes(item.page as string)
+      || NEW_PAGE_KEYS.has(item.page as string)
+    );
+
 
   // Split into primary tabs + "More" overflow when too many are enabled
   const needsMore = navItems.length > MAX_BOTTOM_VISIBLE;
