@@ -74,6 +74,42 @@ export type Database = {
           },
         ]
       }
+      aggregator_integrations: {
+        Row: {
+          admin_id: string
+          api_key: string | null
+          branch_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          provider: string
+          updated_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          admin_id: string
+          api_key?: string | null
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          provider: string
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          admin_id?: string
+          api_key?: string | null
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          provider?: string
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: boolean
@@ -553,6 +589,45 @@ export type Database = {
           },
         ]
       }
+      ingredients: {
+        Row: {
+          admin_id: string
+          branch_id: string
+          cost_per_unit: number
+          created_at: string
+          id: string
+          minimum_stock_alert: number | null
+          name: string
+          stock_quantity: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id: string
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          minimum_stock_alert?: number | null
+          name: string
+          stock_quantity?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string
+          cost_per_unit?: number
+          created_at?: string
+          id?: string
+          minimum_stock_alert?: number | null
+          name?: string
+          stock_quantity?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       item_categories: {
         Row: {
           admin_id: string | null
@@ -611,7 +686,10 @@ export type Database = {
           hsn_code: string | null
           id: string
           image_url: string | null
+          inventory_quantity: number | null
+          inventory_unit: string | null
           is_active: boolean
+          is_saleable: boolean | null
           is_tax_inclusive: boolean | null
           media_type: string | null
           minimum_stock_alert: number | null
@@ -619,7 +697,10 @@ export type Database = {
           price: number
           purchase_rate: number | null
           quantity_step: number | null
+          quick_chips: string[] | null
           sale_count: number | null
+          selling_quantity: number | null
+          selling_unit: string | null
           stock_quantity: number | null
           tax_rate_id: string | null
           unit: string | null
@@ -639,7 +720,10 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           image_url?: string | null
+          inventory_quantity?: number | null
+          inventory_unit?: string | null
           is_active?: boolean
+          is_saleable?: boolean | null
           is_tax_inclusive?: boolean | null
           media_type?: string | null
           minimum_stock_alert?: number | null
@@ -647,7 +731,10 @@ export type Database = {
           price: number
           purchase_rate?: number | null
           quantity_step?: number | null
+          quick_chips?: string[] | null
           sale_count?: number | null
+          selling_quantity?: number | null
+          selling_unit?: string | null
           stock_quantity?: number | null
           tax_rate_id?: string | null
           unit?: string | null
@@ -667,7 +754,10 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           image_url?: string | null
+          inventory_quantity?: number | null
+          inventory_unit?: string | null
           is_active?: boolean
+          is_saleable?: boolean | null
           is_tax_inclusive?: boolean | null
           media_type?: string | null
           minimum_stock_alert?: number | null
@@ -675,7 +765,10 @@ export type Database = {
           price?: number
           purchase_rate?: number | null
           quantity_step?: number | null
+          quick_chips?: string[] | null
           sale_count?: number | null
+          selling_quantity?: number | null
+          selling_unit?: string | null
           stock_quantity?: number | null
           tax_rate_id?: string | null
           unit?: string | null
@@ -706,6 +799,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      online_orders: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          channel: string
+          created_at: string | null
+          customer_name: string | null
+          id: string
+          items: Json
+          order_id: string
+          status: string
+          total: number
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          channel: string
+          created_at?: string | null
+          customer_name?: string | null
+          id?: string
+          items?: Json
+          order_id: string
+          status?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          channel?: string
+          created_at?: string | null
+          customer_name?: string | null
+          id?: string
+          items?: Json
+          order_id?: string
+          status?: string
+          total?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -1143,6 +1278,54 @@ export type Database = {
           },
         ]
       }
+      recipes: {
+        Row: {
+          admin_id: string
+          branch_id: string
+          created_at: string
+          id: string
+          ingredient_id: string
+          item_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id: string
+          created_at?: string
+          id?: string
+          ingredient_id: string
+          item_id: string
+          quantity: number
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string
+          created_at?: string
+          id?: string
+          ingredient_id?: string
+          item_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_settings: {
         Row: {
           address: string | null
@@ -1157,8 +1340,13 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           logo_url: string | null
+          menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
+          menu_border_radius: string | null
+          menu_font_family: string | null
+          menu_glassmorphism: boolean | null
           menu_items_per_row: number | null
+          menu_layout_style: string | null
           menu_primary_color: string | null
           menu_secondary_color: string | null
           menu_show_address: boolean | null
@@ -1168,6 +1356,7 @@ export type Database = {
           menu_slug: string | null
           menu_text_color: string | null
           printer_width: string | null
+          qr_payment_enabled: boolean
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -1176,6 +1365,8 @@ export type Database = {
           show_order_type: boolean | null
           show_whatsapp: boolean | null
           updated_at: string | null
+          upi_id: string | null
+          upi_name: string | null
           user_id: string
           visible_nav_pages: string[] | null
           whatsapp: string | null
@@ -1198,8 +1389,13 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           logo_url?: string | null
+          menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
+          menu_border_radius?: string | null
+          menu_font_family?: string | null
+          menu_glassmorphism?: boolean | null
           menu_items_per_row?: number | null
+          menu_layout_style?: string | null
           menu_primary_color?: string | null
           menu_secondary_color?: string | null
           menu_show_address?: boolean | null
@@ -1209,6 +1405,7 @@ export type Database = {
           menu_slug?: string | null
           menu_text_color?: string | null
           printer_width?: string | null
+          qr_payment_enabled?: boolean
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -1217,6 +1414,8 @@ export type Database = {
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
           updated_at?: string | null
+          upi_id?: string | null
+          upi_name?: string | null
           user_id: string
           visible_nav_pages?: string[] | null
           whatsapp?: string | null
@@ -1239,8 +1438,13 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           logo_url?: string | null
+          menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
+          menu_border_radius?: string | null
+          menu_font_family?: string | null
+          menu_glassmorphism?: boolean | null
           menu_items_per_row?: number | null
+          menu_layout_style?: string | null
           menu_primary_color?: string | null
           menu_secondary_color?: string | null
           menu_show_address?: boolean | null
@@ -1250,6 +1454,7 @@ export type Database = {
           menu_slug?: string | null
           menu_text_color?: string | null
           printer_width?: string | null
+          qr_payment_enabled?: boolean
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -1258,6 +1463,8 @@ export type Database = {
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
           updated_at?: string | null
+          upi_id?: string | null
+          upi_name?: string | null
           user_id?: string
           visible_nav_pages?: string[] | null
           whatsapp?: string | null
@@ -1969,8 +2176,13 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           logo_url: string | null
+          menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
+          menu_border_radius: string | null
+          menu_font_family: string | null
+          menu_glassmorphism: boolean | null
           menu_items_per_row: number | null
+          menu_layout_style: string | null
           menu_primary_color: string | null
           menu_secondary_color: string | null
           menu_show_address: boolean | null
@@ -1980,6 +2192,7 @@ export type Database = {
           menu_slug: string | null
           menu_text_color: string | null
           printer_width: string | null
+          qr_payment_enabled: boolean
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -1988,6 +2201,8 @@ export type Database = {
           show_order_type: boolean | null
           show_whatsapp: boolean | null
           updated_at: string | null
+          upi_id: string | null
+          upi_name: string | null
           user_id: string
           visible_nav_pages: string[] | null
           whatsapp: string | null
@@ -2033,6 +2248,14 @@ export type Database = {
       }
       get_signup_enabled: { Args: never; Returns: boolean }
       get_user_admin_id: { Args: never; Returns: string }
+      has_branch_read_access: {
+        Args: { target_admin_id: string; target_branch_id: string }
+        Returns: boolean
+      }
+      has_branch_write_access: {
+        Args: { target_admin_id: string; target_branch_id: string }
+        Returns: boolean
+      }
       has_page_permission: {
         Args: { _page_name: string; _user_id: string }
         Returns: boolean
