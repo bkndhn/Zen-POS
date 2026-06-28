@@ -328,14 +328,8 @@ const PublicMenu = () => {
                     console.error('Categories error:', categoriesError);
                 }
 
-                // Fetch GST settings
-                const { data: shopSettingsData } = await supabase
-                    .from('shop_settings')
-                    .select('gst_enabled')
-                    .eq('user_id', adminId)
-                    .maybeSingle();
-
-                const enabled = shopSettingsData?.gst_enabled || false;
+                // GST: use gst_enabled from the RPC settings response (no extra fetch needed)
+                const enabled = (settingsData as any)?.gst_enabled || false;
                 setGstEnabled(enabled);
 
                 if (enabled) {
@@ -434,14 +428,31 @@ const PublicMenu = () => {
                 const settings = payload.payload;
                 if (settings) {
                     setShopSettings(prev => prev ? { ...prev, ...settings } : settings);
+                    // Keep gst_enabled in sync too
+                    if (settings.gst_enabled !== undefined) {
+                        setGstEnabled(settings.gst_enabled);
+                    }
                 }
             })
+            .on(
+                'postgres_changes' as any,
+                { event: 'UPDATE', schema: 'public', table: 'shop_settings' },
+                async () => {
+                    // Re-fetch settings on any shop_settings change
+                    const { data: freshSettings } = await (supabase as any)
+                        .rpc('get_public_shop_settings_for_branch', { p_admin_id: adminId, p_branch_id: branchId });
+                    if (freshSettings) {
+                        setShopSettings(freshSettings as ShopSettings);
+                        setGstEnabled((freshSettings as any).gst_enabled || false);
+                    }
+                }
+            )
             .subscribe();
 
         return () => {
             supabase.removeChannel(settingsChannel);
         };
-    }, [adminId]);
+    }, [adminId, branchId]);
 
     // Auto-swipe banners every 4 seconds (pauses when user interacts)
     useEffect(() => {
@@ -1319,9 +1330,8 @@ const PublicMenu = () => {
             className="min-h-screen public-menu-container pb-24"
             style={{
                 fontFamily: shopSettings?.menu_font_family || 'Inter, sans-serif',
-                background: shopSettings?.menu_background_color
-                    ? `linear-gradient(135deg, ${shopSettings.menu_background_color}15 0%, ${shopSettings.menu_background_color}08 50%, ${shopSettings.menu_background_color}15 100%)`
-                    : 'linear-gradient(135deg, #fef7ed 0%, #fff7ed 25%, #fefce8 50%, #f0fdf4 75%, #fef7ed 100%)'
+                backgroundColor: shopSettings?.menu_background_color || '#fef7ed',
+                color: shopSettings?.menu_text_color || '#1c1917',
             }}
         >
             <style>{`
@@ -1335,6 +1345,8 @@ const PublicMenu = () => {
                 .public-menu-container .text-xl { font-size: 22px !important; }
                 .public-menu-container .text-2xl { font-size: 26px !important; }
                 .public-menu-container .text-3xl { font-size: 32px !important; }
+                /* Dynamic text color for muted text inheriting brand */
+                .public-menu-container { --menu-primary: ${shopSettings?.menu_primary_color || '#f97316'}; --menu-text: ${shopSettings?.menu_text_color || '#1c1917'}; }
                 
                 /* Custom brand glow shadow hover effects */
                 .menu-card-glow {

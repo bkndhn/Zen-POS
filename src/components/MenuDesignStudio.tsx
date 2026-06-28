@@ -184,12 +184,22 @@ export const MenuDesignStudio = () => {
                 description: "Your customer portal has been updated.",
             });
             
-            // Broadcast so preview updates immediately
-            const channel = supabase.channel(`menu-settings-${profile.id}`);
+            // Broadcast so preview updates immediately (match event name in PublicMenu.tsx)
+            const channel = supabase.channel(`menu-settings-${adminId}`);
             await channel.send({
                 type: 'broadcast',
-                event: 'menu-design-updated',
-                payload
+                event: 'menu-settings-updated',
+                payload: {
+                    menu_primary_color: primaryColor,
+                    menu_secondary_color: secondaryColor,
+                    menu_background_color: backgroundColor,
+                    menu_text_color: textColor,
+                    menu_layout_style: `${layoutStyle}:${cardElevation}`,
+                    menu_font_family: fontFamily,
+                    menu_border_radius: borderRadius,
+                    menu_glassmorphism: glassmorphism,
+                    menu_ai_features_enabled: aiEnabled
+                }
             });
             supabase.removeChannel(channel);
 
