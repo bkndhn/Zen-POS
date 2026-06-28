@@ -198,11 +198,12 @@ const TableOrderBilling: React.FC = () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
+            const targetAdminId = adminId || profile?.id || user.id;
 
             let query = supabase
                 .from('shop_settings')
                 .select('*')
-                .eq('user_id', user.id);
+                .eq('user_id', targetAdminId);
 
             if (operatingBranchId) {
                 query = query.eq('branch_id', operatingBranchId);
@@ -214,11 +215,10 @@ const TableOrderBilling: React.FC = () => {
 
             // Fallback: main branch or any branch
             if (!data && !error) {
-                const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
                 const { data: mainBranch } = await supabase
                     .from('branches')
                     .select('id')
-                    .eq('admin_id', adminId || user.id)
+                    .eq('admin_id', targetAdminId)
                     .eq('is_main', true)
                     .maybeSingle();
 
@@ -226,7 +226,7 @@ const TableOrderBilling: React.FC = () => {
                     const { data: fallbackData } = await supabase
                         .from('shop_settings')
                         .select('*')
-                        .eq('user_id', user.id)
+                        .eq('user_id', targetAdminId)
                         .eq('branch_id', mainBranch.id)
                         .maybeSingle();
                     data = fallbackData;
@@ -236,7 +236,7 @@ const TableOrderBilling: React.FC = () => {
                     const { data: anyData } = await supabase
                         .from('shop_settings')
                         .select('*')
-                        .eq('user_id', user.id)
+                        .eq('user_id', targetAdminId)
                         .order('branch_id', { nullsFirst: false })
                         .limit(1)
                         .maybeSingle();
@@ -461,9 +461,9 @@ const TableOrderBilling: React.FC = () => {
                     additionalCharges: additionalChargesData,
                     total: totalAmount,
                     paymentMethod,
-                    shopName: billSettings?.shopName || '',
-                    address: billSettings?.address || '',
-                    phone: billSettings?.contactNumber || '',
+                    shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Hotel',
+                    address: billSettings?.address || activeBranch?.address || '',
+                    phone: billSettings?.contactNumber || activeBranch?.contact_number || '',
                     totalItemsCount: items.length,
                     smartQtyCount: calculateSmartQtyCount(items),
                 };
@@ -492,7 +492,7 @@ const TableOrderBilling: React.FC = () => {
                     additionalCharges: additionalChargesData,
                     total: totalAmount,
                     paymentMethod,
-                    shopName: billSettings?.shopName || '',
+                    shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Hotel',
                 } as any);
                 shareViaWhatsApp(customerMobile, message);
                 toast({ title: "WhatsApp", description: "Opening WhatsApp to share bill..." });

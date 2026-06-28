@@ -842,11 +842,12 @@ const Billing = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const targetAdminId = adminId || profile?.id || user.id;
 
       let query = supabase
         .from('shop_settings')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', targetAdminId);
 
       if (operatingBranchId) {
         query = query.eq('branch_id', operatingBranchId);
@@ -861,7 +862,7 @@ const Billing = () => {
         const { data: mainBranch } = await supabase
           .from('branches')
           .select('id')
-          .eq('admin_id', profile?.id || user.id)
+          .eq('admin_id', targetAdminId)
           .eq('is_main', true)
           .maybeSingle();
 
@@ -869,7 +870,7 @@ const Billing = () => {
           const { data: fallbackData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', targetAdminId)
             .eq('branch_id', mainBranch.id)
             .maybeSingle();
           data = fallbackData;
@@ -879,7 +880,7 @@ const Billing = () => {
           const { data: anyData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', targetAdminId)
             .order('branch_id', { nullsFirst: false })
             .limit(1)
             .maybeSingle();

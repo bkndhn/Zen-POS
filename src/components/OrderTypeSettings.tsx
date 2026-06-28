@@ -17,12 +17,13 @@ export const OrderTypeSettings: React.FC = () => {
 
   useEffect(() => {
     const fetchSetting = async () => {
-      if (!profile?.user_id || !operatingBranchId) return;
+      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      if (!adminId || !operatingBranchId) return;
       try {
         let { data } = await (supabase as any)
           .from('shop_settings')
           .select('show_order_type')
-          .eq('user_id', profile.user_id)
+          .eq('user_id', adminId)
           .eq('branch_id', operatingBranchId)
           .maybeSingle();
 
@@ -30,7 +31,7 @@ export const OrderTypeSettings: React.FC = () => {
           const { data: mainRow } = await (supabase as any)
             .from('shop_settings')
             .select('show_order_type')
-            .eq('user_id', profile.user_id)
+            .eq('user_id', adminId)
             .eq('branch_id', mainBranchId)
             .maybeSingle();
           data = mainRow;
@@ -44,20 +45,21 @@ export const OrderTypeSettings: React.FC = () => {
       }
     };
     fetchSetting();
-  }, [profile?.user_id, operatingBranchId, mainBranchId]);
+  }, [profile?.id, profile?.admin_id, operatingBranchId, mainBranchId]);
 
   const handleToggle = async (enabled: boolean) => {
     setShowOrderType(enabled);
     try {
-      if (!profile?.user_id || !operatingBranchId) return;
+      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      if (!adminId || !operatingBranchId) return;
 
       const { data: existing } = await (supabase as any)
         .from('shop_settings').select('id')
-        .eq('user_id', profile.user_id).eq('branch_id', operatingBranchId).maybeSingle();
+        .eq('user_id', adminId).eq('branch_id', operatingBranchId).maybeSingle();
 
       const { error } = existing?.id
         ? await (supabase as any).from('shop_settings').update({ show_order_type: enabled }).eq('id', existing.id)
-        : await (supabase as any).from('shop_settings').insert({ user_id: profile.user_id, branch_id: operatingBranchId, show_order_type: enabled });
+        : await (supabase as any).from('shop_settings').insert({ user_id: adminId, branch_id: operatingBranchId, show_order_type: enabled });
 
       if (error) throw error;
 

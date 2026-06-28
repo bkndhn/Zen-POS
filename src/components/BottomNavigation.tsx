@@ -50,10 +50,11 @@ export const BottomNavigation: React.FC = () => {
             "https://ivleyttlqlqawghvfyjz.supabase.co",
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2bGV5dHRscWxxYXdnaHZmeWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMTc1NjAsImV4cCI6MjA4NDc5MzU2MH0.2LpChU5d2awwu_Wu9XckGT6kGPFHqBA0fyhqvNMne3M"
           );
+          const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
           let query = supabase
             .from('shop_settings')
             .select('visible_nav_pages')
-            .eq('user_id', profile.user_id);
+            .eq('user_id', adminId || profile.user_id);
 
           if (operatingBranchId) {
             query = query.eq('branch_id', operatingBranchId);

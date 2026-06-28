@@ -66,14 +66,14 @@ export const GSTSettings: React.FC = () => {
             let { data } = await (supabase as any)
                 .from('shop_settings')
                 .select('gst_enabled, gstin, is_composition_scheme, composition_rate')
-                .eq('user_id', profile?.user_id)
+                .eq('user_id', adminId)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
             if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
                 const { data: mainRow } = await (supabase as any)
                     .from('shop_settings')
                     .select('gst_enabled, gstin, is_composition_scheme, composition_rate')
-                    .eq('user_id', profile?.user_id)
+                    .eq('user_id', adminId)
                     .eq('branch_id', mainBranchId)
                     .maybeSingle();
                 data = mainRow;
@@ -138,14 +138,22 @@ export const GSTSettings: React.FC = () => {
             const { data: existing } = await (supabase as any)
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', profile.user_id)
+                .eq('user_id', adminId)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
             const { error } = existing?.id
                 ? await (supabase as any).from('shop_settings').update(payload).eq('id', existing.id)
-                : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: profile.user_id, branch_id: operatingBranchId });
+                : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminId, branch_id: operatingBranchId });
 
             if (error) throw error;
+
+            // Also mirror GST details onto the branch row
+            await supabase.from('branches').update({
+                gstin: gstEnabled ? (gstin.trim().toUpperCase() || null) : null,
+                gst_enabled: gstEnabled,
+                is_composition_scheme: gstEnabled ? isComposition : null,
+                composition_rate: gstEnabled ? compositionRate : null
+            }).eq('id', operatingBranchId);
 
             // Update local cache
             const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';

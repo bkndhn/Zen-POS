@@ -25,6 +25,7 @@ const COLOR_PRESETS = [
 
 export const MenuDesignStudio = () => {
     const { profile } = useAuth();
+    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
     const { operatingBranchId, branches } = useBranch();
     const isMainBranch = branches.find(b => b.id === operatingBranchId)?.is_main;
 
@@ -87,14 +88,14 @@ export const MenuDesignStudio = () => {
     }, [profile?.user_id, operatingBranchId]);
 
     const loadSettings = async () => {
-        if (!profile?.user_id) return;
+        if (!adminId) return;
         setLoading(true);
         try {
             // Fetch branch-specific settings or fallback to main
             let { data } = await supabase
                 .from('shop_settings')
                 .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color')
-                .eq('user_id', profile.user_id)
+                .eq('user_id', adminId)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
@@ -102,7 +103,7 @@ export const MenuDesignStudio = () => {
                 const { data: fb } = await supabase
                     .from('shop_settings')
                     .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color')
-                    .eq('user_id', profile.user_id)
+                    .eq('user_id', adminId)
                     .order('branch_id', { nullsFirst: false })
                     .limit(1)
                     .maybeSingle();
@@ -148,11 +149,11 @@ export const MenuDesignStudio = () => {
     };
 
     const handleSave = async () => {
-        if (!profile?.user_id) return;
+        if (!adminId) return;
         setSaving(true);
         try {
             const payload = {
-                user_id: profile.user_id,
+                user_id: adminId,
                 branch_id: operatingBranchId,
                 menu_layout_style: `${layoutStyle}:${cardElevation}`,
                 menu_font_family: fontFamily,
@@ -168,7 +169,7 @@ export const MenuDesignStudio = () => {
             const { data: existing } = await supabase
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', profile.user_id)
+                .eq('user_id', adminId)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 

@@ -13,6 +13,7 @@ import { MessageCircle, Settings2, Zap, Info, Image as ImageIcon, FileText } fro
 
 export const WhatsAppSettings: React.FC = () => {
   const { profile } = useAuth();
+  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const { operatingBranchId, branches, isAllBranchesView } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [loading, setLoading] = useState(true);
@@ -26,10 +27,10 @@ export const WhatsAppSettings: React.FC = () => {
   const [whatsappBusinessPhoneId, setWhatsappBusinessPhoneId] = useState('');
 
   useEffect(() => {
-    if (profile?.user_id && operatingBranchId) {
+    if (adminId && operatingBranchId) {
       fetchSettings();
     }
-  }, [profile?.user_id, operatingBranchId]);
+  }, [adminId, operatingBranchId]);
 
   const fetchSettings = async () => {
     try {
@@ -37,7 +38,7 @@ export const WhatsAppSettings: React.FC = () => {
       let { data, error } = await (supabase as any)
         .from('shop_settings')
         .select(cols)
-        .eq('user_id', profile?.user_id)
+        .eq('user_id', adminId)
         .eq('branch_id', operatingBranchId)
         .maybeSingle();
 
@@ -45,7 +46,7 @@ export const WhatsAppSettings: React.FC = () => {
         const { data: mainRow } = await (supabase as any)
           .from('shop_settings')
           .select(cols)
-          .eq('user_id', profile?.user_id)
+          .eq('user_id', adminId)
           .eq('branch_id', mainBranchId)
           .maybeSingle();
         data = mainRow;
@@ -68,7 +69,7 @@ export const WhatsAppSettings: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!profile?.user_id || !operatingBranchId) return;
+    if (!adminId || !operatingBranchId) return;
     setSaving(true);
 
     try {
@@ -82,10 +83,10 @@ export const WhatsAppSettings: React.FC = () => {
       };
       const { data: existing } = await (supabase as any)
         .from('shop_settings').select('id')
-        .eq('user_id', profile.user_id).eq('branch_id', operatingBranchId).maybeSingle();
+        .eq('user_id', adminId).eq('branch_id', operatingBranchId).maybeSingle();
       const { error } = existing?.id
         ? await (supabase as any).from('shop_settings').update(payload).eq('id', existing.id)
-        : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: profile.user_id, branch_id: operatingBranchId });
+        : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminId, branch_id: operatingBranchId });
 
       if (error) throw error;
 

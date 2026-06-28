@@ -116,8 +116,9 @@ const Reports: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+      const targetAdminId = adminId || profile?.id || user.id;
 
-      let query = supabase.from('shop_settings').select('*').eq('user_id', user.id);
+      let query = supabase.from('shop_settings').select('*').eq('user_id', targetAdminId);
       if (bill.branch_id) {
         query = query.eq('branch_id', bill.branch_id);
       } else {
@@ -130,7 +131,7 @@ const Reports: React.FC = () => {
         const { data: mainBranch } = await supabase
           .from('branches')
           .select('id')
-          .eq('admin_id', user.id)
+          .eq('admin_id', targetAdminId)
           .eq('is_main', true)
           .maybeSingle();
 
@@ -138,7 +139,7 @@ const Reports: React.FC = () => {
           const { data: fallbackData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', targetAdminId)
             .eq('branch_id', mainBranch.id)
             .maybeSingle();
           data = fallbackData;
@@ -148,7 +149,7 @@ const Reports: React.FC = () => {
           const { data: anyData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', targetAdminId)
             .order('branch_id', { nullsFirst: false })
             .limit(1)
             .maybeSingle();
@@ -340,8 +341,9 @@ const Reports: React.FC = () => {
     const syncFromSupabase = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const targetAdminId = adminId || profile?.id || user.id;
 
-      let query = supabase.from('shop_settings').select('*').eq('user_id', user.id);
+      let query = supabase.from('shop_settings').select('*').eq('user_id', targetAdminId);
       if (branchFilterId) {
         query = query.eq('branch_id', branchFilterId);
       } else {
@@ -354,7 +356,7 @@ const Reports: React.FC = () => {
         const { data: mainBranch } = await supabase
           .from('branches')
           .select('id')
-          .eq('admin_id', user.id)
+          .eq('admin_id', targetAdminId)
           .eq('is_main', true)
           .maybeSingle();
 
@@ -362,7 +364,7 @@ const Reports: React.FC = () => {
           const { data: fallbackData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', targetAdminId)
             .eq('branch_id', mainBranch.id)
             .maybeSingle();
           data = fallbackData;
@@ -372,7 +374,7 @@ const Reports: React.FC = () => {
           const { data: anyData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', targetAdminId)
             .order('branch_id', { nullsFirst: false })
             .limit(1)
             .maybeSingle();

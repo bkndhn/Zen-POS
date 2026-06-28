@@ -105,11 +105,11 @@ const QRCodeSettings = () => {
             }
 
             // Then sync from Supabase (branch-scoped read with fallback to main branch)
-            if (profile?.user_id) {
+            if (adminId) {
                 let { data } = await (supabase as any)
                     .from('shop_settings')
                     .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
-                    .eq('user_id', profile.user_id)
+                    .eq('user_id', adminId)
                     .eq('branch_id', operatingBranchId)
                     .maybeSingle();
 
@@ -118,7 +118,7 @@ const QRCodeSettings = () => {
                     const { data: fb } = await (supabase as any)
                         .from('shop_settings')
                         .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
-                        .eq('user_id', profile.user_id)
+                        .eq('user_id', adminId)
                         .order('branch_id', { nullsFirst: false })
                         .limit(1)
                         .maybeSingle();
@@ -200,7 +200,7 @@ const QRCodeSettings = () => {
         // Persist appearance + display settings to shop_settings (per-branch row)
         // Only the main branch keeps the slug in shop_settings (legacy admin-wide).
         const ssPayload: any = {
-            user_id: profile.user_id,
+            user_id: adminId || profile.user_id,
             branch_id: operatingBranchId,
             menu_show_shop_name: menuShowShopName,
             menu_show_address: menuShowAddress,
@@ -219,7 +219,7 @@ const QRCodeSettings = () => {
         const { data: existing } = await (supabase as any)
             .from('shop_settings')
             .select('id')
-            .eq('user_id', profile.user_id)
+            .eq('user_id', adminId || profile.user_id)
             .eq('branch_id', operatingBranchId)
             .maybeSingle();
 
@@ -347,7 +347,7 @@ const QRCodeSettings = () => {
                 .from('shop_settings')
                 .select('user_id')
                 .eq('menu_slug', slug)
-                .neq('user_id', profile?.user_id || '')
+                .neq('user_id', adminId || profile?.user_id || '')
                 .maybeSingle();
 
             // Check branches (per-branch slugs)

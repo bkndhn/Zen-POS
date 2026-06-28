@@ -396,10 +396,14 @@ export const ShopSettingsForm = () => {
 
             if (error) throw error;
 
-            // Also mirror slug onto the branch row (so /menu/<branch-slug> resolves)
-            if (menuSlug) {
-                await supabase.from('branches').update({ menu_slug: menuSlug }).eq('id', operatingBranchId);
-            }
+            // Also mirror shop details onto the branch row (for branch-wise isolated print/view/share)
+            await supabase.from('branches').update({
+                shop_name: shopName || null,
+                address: address || null,
+                contact_number: contactNumber || null,
+                logo_url: logoUrl || null,
+                menu_slug: menuSlug || null
+            }).eq('id', operatingBranchId);
 
             // Update Local Cache
             const cacheData = {

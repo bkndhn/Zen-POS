@@ -208,7 +208,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
       const { data: settings } = await (supabase as any)
         .from('shop_settings')
         .select('gst_enabled')
-        .eq('user_id', profile?.user_id)
+        .eq('user_id', adminId)
         .maybeSingle();
 
       const enabled = settings?.gst_enabled || false;
