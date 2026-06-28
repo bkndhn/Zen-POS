@@ -93,6 +93,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: string 
 
 const TableOrderBilling: React.FC = () => {
     const { profile } = useAuth();
+    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
     const { operatingBranchId, activeBranch } = useBranch();
     const isOnline = useNetworkStatus();
     const [loading, setLoading] = useState(true);
@@ -147,7 +148,6 @@ const TableOrderBilling: React.FC = () => {
     const syncChannelRef = useRef<any>(null);
     const tableOrderChannelRef = useRef<any>(null);
 
-    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
 
     const getCartForTable = useCallback((table: TableWithOrders): CartItem[] => {
         const mergedItems: Record<string, CartItem> = {};
