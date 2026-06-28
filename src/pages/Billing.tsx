@@ -845,12 +845,24 @@ const Billing = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const targetAdminId = adminId || profile?.id || user.id;
+      // shop_settings.user_id stores the Auth UID, not the Profile UUID
+      // For sub-users, resolve the parent admin's Auth UID
+      let targetAuthId = user.id;
+      if (profile?.role === 'user' && profile.admin_id) {
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .single();
+        if (parentProfile?.user_id) {
+          targetAuthId = parentProfile.user_id;
+        }
+      }
 
       let query = supabase
         .from('shop_settings')
         .select('*')
-        .eq('user_id', targetAdminId);
+        .eq('user_id', targetAuthId);
 
       if (operatingBranchId) {
         query = query.eq('branch_id', operatingBranchId);
@@ -865,7 +877,7 @@ const Billing = () => {
         const { data: mainBranch } = await supabase
           .from('branches')
           .select('id')
-          .eq('admin_id', targetAdminId)
+          .eq('admin_id', adminId)
           .eq('is_main', true)
           .maybeSingle();
 
@@ -873,7 +885,7 @@ const Billing = () => {
           const { data: fallbackData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', targetAdminId)
+            .eq('user_id', targetAuthId)
             .eq('branch_id', mainBranch.id)
             .maybeSingle();
           data = fallbackData;
@@ -883,7 +895,7 @@ const Billing = () => {
           const { data: anyData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', targetAdminId)
+            .eq('user_id', targetAuthId)
             .order('branch_id', { nullsFirst: false })
             .limit(1)
             .maybeSingle();
@@ -2626,7 +2638,7 @@ const Billing = () => {
     </div>}
 
     {/* Payment Dialog */}
-    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} showOrderType={showOrderType} />
+    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} />
 
     {/* Printer Error Dialog */}
     <PrinterErrorDialog
