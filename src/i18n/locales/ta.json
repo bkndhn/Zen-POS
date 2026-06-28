@@ -61,7 +61,21 @@
     "reports": "அறிக்கைகள்",
     "users": "பயனர்கள்",
     "settings": "அமைப்புகள்",
-    "posManagement": "POS மேலாண்மை"
+    "posManagement": "POS மேலாண்மை",
+    "kitchen": "சமையலறை காட்சி",
+    "waiter": "வெயிட்டர் துணை",
+    "serviceArea": "சேவை பகுதி",
+    "tables": "மேசைகள்",
+    "tableBilling": "மேஜை பில்லிங்",
+    "suppliers": "விநியோகஸ்தர்கள்",
+    "purchases": "கொள்முதல்",
+    "stock": "இருப்பு",
+    "stockTransfers": "இருப்பு மாற்றங்கள்",
+    "purchaseReturns": "கொள்முதல் வருமானம்",
+    "stockLedger": "இருப்பு தணிக்கை",
+    "stockReports": "இருப்பு அறிக்கைகள்",
+    "crm": "CRM",
+    "qrMenu": "QR மெனு"
   },
   "dashboard": {
     "title": "டாஷ்போர்டு கண்ணோட்டம்",

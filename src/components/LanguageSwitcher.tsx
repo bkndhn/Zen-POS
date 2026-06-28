@@ -17,7 +17,7 @@ const languages = [
 export const LanguageSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
 
-  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
+  const currentLanguage = languages.find(lang => i18n.language?.startsWith(lang.code)) || languages[0];
 
   const changeLanguage = (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -37,7 +37,7 @@ export const LanguageSwitcher: React.FC = () => {
           <DropdownMenuItem
             key={lang.code}
             onClick={() => changeLanguage(lang.code)}
-            className={i18n.language === lang.code ? 'bg-accent' : ''}
+            className={i18n.language?.startsWith(lang.code) ? 'bg-accent' : ''}
           >
             <span className="mr-2">{lang.nativeName}</span>
             <span className="text-muted-foreground text-sm">({lang.name})</span>

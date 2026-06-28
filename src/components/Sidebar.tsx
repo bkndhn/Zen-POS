@@ -5,6 +5,32 @@ import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { Users, Settings } from 'lucide-react';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { useTranslation } from 'react-i18next';
+
+const labelMap: Record<string, string> = {
+  '/dashboard': 'nav.dashboard',
+  '/analytics': 'nav.analytics',
+  '/billing': 'nav.billing',
+  '/kitchen': 'nav.kitchen',
+  '/waiter': 'nav.waiter',
+  '/service-area': 'nav.serviceArea',
+  '/tables': 'nav.tables',
+  '/table-billing': 'nav.tableBilling',
+  '/items': 'nav.items',
+  '/suppliers': 'nav.suppliers',
+  '/purchases': 'nav.purchases',
+  '/stock': 'nav.stock',
+  '/stock-transfers': 'nav.stockTransfers',
+  '/purchase-returns': 'nav.purchaseReturns',
+  '/stock-ledger': 'nav.stockLedger',
+  '/stock-reports': 'nav.stockReports',
+  '/expenses': 'nav.expenses',
+  '/reports': 'nav.reports',
+  '/crm': 'nav.crm',
+  '/qr-menu': 'nav.qrMenu',
+  '/users': 'nav.users',
+  '/settings': 'nav.settings'
+};
 
 const allNavItems = ALL_NAV_ITEMS;
 
@@ -15,6 +41,7 @@ export const Sidebar: React.FC = () => {
   const { profile } = useAuth();
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
+  const { t } = useTranslation();
 
   if (!profile || loading) return null;
 
@@ -69,6 +96,8 @@ export const Sidebar: React.FC = () => {
           {navItems.map(({ to, icon: Icon, label }) => {
             const isActive = location.pathname === to ||
               (to === '/billing' && location.pathname === '/');
+            const transKey = labelMap[to];
+            const displayLabel = transKey ? t(transKey) : label;
 
             return (
               <li key={to}>
@@ -82,7 +111,7 @@ export const Sidebar: React.FC = () => {
                   )}
                 >
                   <Icon className="w-4 h-4 mr-3 flex-shrink-0" />
-                  <span className="font-medium truncate">{label}</span>
+                  <span className="font-medium truncate">{displayLabel}</span>
                 </NavLink>
               </li>
             );

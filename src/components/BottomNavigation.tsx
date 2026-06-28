@@ -7,6 +7,32 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { MoreHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+const labelMap: Record<string, string> = {
+  '/dashboard': 'nav.dashboard',
+  '/analytics': 'nav.analytics',
+  '/billing': 'nav.billing',
+  '/kitchen': 'nav.kitchen',
+  '/waiter': 'nav.waiter',
+  '/service-area': 'nav.serviceArea',
+  '/tables': 'nav.tables',
+  '/table-billing': 'nav.tableBilling',
+  '/items': 'nav.items',
+  '/suppliers': 'nav.suppliers',
+  '/purchases': 'nav.purchases',
+  '/stock': 'nav.stock',
+  '/stock-transfers': 'nav.stockTransfers',
+  '/purchase-returns': 'nav.purchaseReturns',
+  '/stock-ledger': 'nav.stockLedger',
+  '/stock-reports': 'nav.stockReports',
+  '/expenses': 'nav.expenses',
+  '/reports': 'nav.reports',
+  '/crm': 'nav.crm',
+  '/qr-menu': 'nav.qrMenu',
+  '/users': 'nav.users',
+  '/settings': 'nav.settings'
+};
 
 const allNavItems = ALL_NAV_ITEMS.filter(i => i.bottomNav);
 const MAX_BOTTOM_VISIBLE = 5; // shown directly; rest go behind "More"
@@ -20,6 +46,7 @@ export const BottomNavigation: React.FC = () => {
   const { operatingBranchId } = useBranch();
   const [visiblePages, setVisiblePages] = useState<string[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Load from Supabase as primary source, with localStorage as fallback
@@ -139,6 +166,9 @@ export const BottomNavigation: React.FC = () => {
     const { to, icon: Icon } = item;
     const label = item.shortLabel || item.label;
     const isActive = location.pathname === to || (to === '/billing' && location.pathname === '/');
+    const transKey = labelMap[to];
+    const displayLabel = transKey ? t(transKey) : label;
+
     return (
       <NavLink
         key={to}
@@ -159,7 +189,7 @@ export const BottomNavigation: React.FC = () => {
         <span className={cn(
           "text-[11px] sm:text-[12px] mt-0.5 transition-all duration-300 font-medium truncate max-w-full",
           isActive ? "text-primary" : "text-muted-foreground"
-        )}>{label}</span>
+        )}>{displayLabel}</span>
       </NavLink>
     );
   };
@@ -207,6 +237,8 @@ export const BottomNavigation: React.FC = () => {
                 {overflow.map(item => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.to;
+                  const itemTransKey = labelMap[item.to];
+                  const itemDisplayLabel = itemTransKey ? t(itemTransKey) : (item.shortLabel || item.label);
                   return (
                     <NavLink
                       key={item.to}
@@ -218,7 +250,7 @@ export const BottomNavigation: React.FC = () => {
                       )}
                     >
                       <Icon className="w-5 h-5" />
-                      <span className="text-[11px] font-medium text-center leading-tight">{item.shortLabel || item.label}</span>
+                      <span className="text-[11px] font-medium text-center leading-tight">{itemDisplayLabel}</span>
                     </NavLink>
                   );
                 })}

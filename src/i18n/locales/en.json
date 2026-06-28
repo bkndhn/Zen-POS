@@ -61,7 +61,21 @@
     "reports": "Reports",
     "users": "Users",
     "settings": "Settings",
-    "posManagement": "POS Management"
+    "posManagement": "POS Management",
+    "kitchen": "Kitchen Display",
+    "waiter": "Waiter Companion",
+    "serviceArea": "Service Area",
+    "tables": "Tables",
+    "tableBilling": "Table Billing",
+    "suppliers": "Suppliers",
+    "purchases": "Purchases",
+    "stock": "Stock",
+    "stockTransfers": "Stock Transfers",
+    "purchaseReturns": "Purchase Returns",
+    "stockLedger": "Audit Trail",
+    "stockReports": "Stock Reports",
+    "crm": "CRM",
+    "qrMenu": "QR Menu"
   },
   "dashboard": {
     "title": "Dashboard Overview",
