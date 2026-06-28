@@ -2069,7 +2069,10 @@ const PublicMenu = () => {
                                         onChange={e => setOrderNote(e.target.value)}
                                         className="h-9 text-sm"
                                     />
-                                      {/* Cart summary + Place Order */}
+                                </div>
+                            </div>
+
+                            {/* Cart summary + Place Order */}
                             <div className="p-4 border-t bg-white space-y-2">
                                 <div className="space-y-1 text-xs text-gray-500">
                                     <div className="flex justify-between">
