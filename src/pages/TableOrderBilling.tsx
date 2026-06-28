@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNetworkStatus } from '@/hooks/useOffline';
+import { printBrowserReceipt } from '@/utils/browserPrinter';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -68,6 +69,9 @@ interface CartItem {
     quantity_step?: number;
     stock_quantity?: number;
     unlimited_stock?: boolean;
+    tax_rate_id?: string | null;
+    is_tax_inclusive?: boolean;
+    hsn_code?: string | null;
 }
 
 const getTimeElapsed = (created: string) => {
@@ -94,6 +98,7 @@ const TableOrderBilling: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState<TableWithOrders[]>([]);
     const [configuredTables, setConfiguredTables] = useState<any[]>([]);
+    const [items, setItems] = useState<any[]>([]);
     const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
     const [selectedTable, setSelectedTable] = useState<TableWithOrders | null>(null);
     const [isBilling, setIsBilling] = useState(false);
@@ -104,6 +109,23 @@ const TableOrderBilling: React.FC = () => {
     const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
     const [billSettings, setBillSettings] = useState<any>(null);
     const [showOrderType, setShowOrderType] = useState(false);
+
+    const fetchItems = useCallback(async () => {
+        if (!adminId) return;
+        try {
+            let q = supabase
+                .from('items')
+                .select('id, tax_rate_id, is_tax_inclusive, hsn_code')
+                .eq('admin_id', adminId)
+                .eq('is_active', true);
+            if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+            const { data } = await q;
+            if (data) setItems(data);
+        } catch (e) {
+            console.error('Error fetching items for tax lookup:', e);
+        }
+    }, [adminId, operatingBranchId]);
+
     const [gstSettings, setGstSettings] = useState<{
         enabled: boolean;
         gstin: string;
@@ -127,12 +149,12 @@ const TableOrderBilling: React.FC = () => {
 
     const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
 
-    // Convert table orders into cart items for CompletePaymentDialog
     const getCartForTable = useCallback((table: TableWithOrders): CartItem[] => {
         const mergedItems: Record<string, CartItem> = {};
 
         table.orders.forEach(order => {
             order.items.forEach(item => {
+                const dbItem = items.find(i => i.id === item.item_id);
                 if (mergedItems[item.item_id]) {
                     mergedItems[item.item_id].quantity += item.quantity;
                 } else {
@@ -143,13 +165,16 @@ const TableOrderBilling: React.FC = () => {
                         quantity: item.quantity,
                         unit: item.unit,
                         base_value: item.base_value,
+                        tax_rate_id: dbItem?.tax_rate_id || null,
+                        is_tax_inclusive: dbItem?.is_tax_inclusive !== false,
+                        hsn_code: dbItem?.hsn_code || null
                     };
                 }
             });
         });
 
         return Object.values(mergedItems);
-    }, []);
+    }, [items]);
 
     // Fetch payment types
     const fetchPaymentTypes = useCallback(async () => {
@@ -270,13 +295,28 @@ const TableOrderBilling: React.FC = () => {
 
                 // Load GST settings
                 if ((data as any).gst_enabled) {
-                    const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
-                    if (adminId) {
-                        const { data: rates } = await (supabase as any)
+                    let adminAuthId = profile?.role === 'admin' ? profile.user_id : null;
+                    if (profile?.role === 'user' && profile.admin_id) {
+                        const { data: parentProfile } = await supabase
+                            .from('profiles')
+                            .select('user_id')
+                            .eq('id', profile.admin_id)
+                            .single();
+                        if (parentProfile?.user_id) {
+                            adminAuthId = parentProfile.user_id;
+                        }
+                    }
+
+                    if (adminAuthId) {
+                        let query = (supabase as any)
                             .from('tax_rates')
                             .select('id, name, rate, cess_rate, hsn_code')
-                            .eq('admin_id', adminId)
+                            .eq('admin_id', adminAuthId)
                             .eq('is_active', true);
+                        if (operatingBranchId) {
+                            query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+                        }
+                        const { data: rates } = await query;
                         const taxRatesMap: Record<string, any> = {};
                         (rates || []).forEach((r: any) => {
                             taxRatesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0, hsn_code: r.hsn_code || '' };
@@ -399,6 +439,7 @@ const TableOrderBilling: React.FC = () => {
     useEffect(() => {
         fetchTableOrders();
         fetchConfiguredTables();
+        fetchItems();
         fetchPaymentTypes();
         fetchAdditionalCharges();
         loadShopSettingsFromCache();
@@ -439,7 +480,7 @@ const TableOrderBilling: React.FC = () => {
             supabase.removeChannel(pgChannel);
             supabase.removeChannel(syncChannel);
         };
-    }, [fetchTableOrders, fetchPaymentTypes, fetchAdditionalCharges, loadShopSettingsFromCache, fetchShopSettings, adminId]);
+    }, [fetchTableOrders, fetchItems, fetchPaymentTypes, fetchAdditionalCharges, loadShopSettingsFromCache, fetchShopSettings, adminId]);
 
     // Map payment mode string to database enum
     const mapPaymentMode = (method: string): string => {
@@ -580,8 +621,10 @@ const TableOrderBilling: React.FC = () => {
             // Calculate GST if enabled
             let taxSummary: any = null;
             let totalTax = 0;
+            let totalExclusiveTax = 0;
             let itemTaxes: any[] = [];
             let roundOff = 0;
+            let dbItemsMap = new Map<string, any>();
 
             if (gstSettings.enabled) {
                 const itemIds = validItems.map(item => item.id);
@@ -589,18 +632,21 @@ const TableOrderBilling: React.FC = () => {
                     .from('items')
                     .select('id, tax_rate_id, is_tax_inclusive, hsn_code')
                     .in('id', itemIds);
-                const dbItemsMap = new Map((dbItems || []).map(i => [i.id, i]));
+                dbItemsMap = new Map((dbItems || []).map(i => [i.id, i]));
 
                 const { calculateItemTax, calculateBillTaxSummary } = await import('@/utils/gstCalculator');
                 itemTaxes = validItems.map(item => {
                     const dbItem = dbItemsMap.get(item.id);
                     const taxRateId = dbItem?.tax_rate_id;
                     const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
-                    if (!taxRateInfo) return { taxableAmount: 0, cgst: 0, sgst: 0, cess: 0, totalTax: 0, totalWithTax: (item.quantity / (item.base_value || 1)) * item.price, taxRate: 0, _cessRate: 0, _taxName: '', _isTaxInclusive: true };
+                    if (!taxRateInfo) return { taxableAmount: (item.quantity / (item.base_value || 1)) * item.price, cgst: 0, sgst: 0, cess: 0, totalTax: 0, totalWithTax: (item.quantity / (item.base_value || 1)) * item.price, taxRate: 0, _cessRate: 0, _taxName: '', _isTaxInclusive: true };
                     const lineTotal = (item.quantity / (item.base_value || 1)) * item.price;
                     const isTaxInclusive = dbItem?.is_tax_inclusive !== false;
                     const cessRate = (taxRateInfo as any).cess_rate || taxRateInfo.cess || 0;
                     const result = calculateItemTax(lineTotal, taxRateInfo.rate, cessRate, isTaxInclusive);
+                    if (!isTaxInclusive) {
+                        totalExclusiveTax += result.totalTax;
+                    }
                     return { ...result, _cessRate: cessRate, _taxName: taxRateInfo.name || `GST ${taxRateInfo.rate}%`, _isTaxInclusive: isTaxInclusive };
                 });
 
@@ -619,7 +665,12 @@ const TableOrderBilling: React.FC = () => {
                 }));
                 taxSummary = summary;
                 totalTax = itemTaxes.reduce((s, t) => s + t.totalTax, 0);
+            }
 
+            // Exclusive tax is added on top of the subtotal
+            totalAmount = subtotal + totalExclusiveTax + totalAdditionalCharges - paymentData.discount;
+
+            if (gstSettings.enabled && totalTax > 0) {
                 // Round-off: round total to nearest integer
                 const rawTotal = totalAmount;
                 const roundedTotal = Math.round(rawTotal);
@@ -670,14 +721,46 @@ const TableOrderBilling: React.FC = () => {
             if (billError) throw billError;
             if (!billData) throw new Error('Failed to create bill');
 
-            // 2. Create Bill Items (with rounding)
-            const billItems = validItems.map(item => ({
-                bill_id: billData.id,
-                item_id: item.id,
-                quantity: item.quantity,
-                price: item.price,
-                total: Math.round((item.quantity / (item.base_value || 1)) * item.price),
-            }));
+            // 2. Create Bill Items (with tax snapshots and rounding)
+            const billItems = validItems.map(item => {
+                const baseValue = item.base_value || 1;
+                const lineTotal = (item.quantity / baseValue) * item.price;
+                const billItem: any = {
+                    bill_id: billData.id,
+                    item_id: item.id,
+                    quantity: item.quantity,
+                    price: item.price,
+                    total: Math.round(lineTotal),
+                };
+
+                if (gstSettings.enabled) {
+                    const dbItem = dbItemsMap.get(item.id);
+                    const taxRateId = dbItem?.tax_rate_id;
+                    const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
+
+                    if (taxRateInfo) {
+                        billItem.tax_rate_snapshot = taxRateInfo.rate;
+                        billItem.tax_rate = taxRateInfo.rate;
+                        billItem.hsn_code = dbItem?.hsn_code || taxRateInfo.hsn_code || null;
+                        billItem.tax_type = 'GST';
+
+                        const taxRate = taxRateInfo.rate;
+                        const isTaxInclusive = dbItem?.is_tax_inclusive !== false;
+                        const cessRate = taxRateInfo.cess || 0;
+                        let taxableValue = lineTotal;
+                        let taxAmount = 0;
+                        if (isTaxInclusive) {
+                            taxableValue = lineTotal / (1 + (taxRate + cessRate) / 100);
+                            taxAmount = lineTotal - taxableValue;
+                        } else {
+                            taxAmount = lineTotal * (taxRate + cessRate) / 100;
+                        }
+                        billItem.taxable_amount = Math.round(taxableValue * 100) / 100;
+                        billItem.tax_amount = Math.round(taxAmount * 100) / 100;
+                    }
+                }
+                return billItem;
+            });
 
             const { error: itemsError } = await supabase
                 .from('bill_items')
@@ -880,6 +963,8 @@ const TableOrderBilling: React.FC = () => {
                 smartQtyCount: calculateSmartQtyCount(validItems),
                 // GST fields
                 gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
+                customerGstin: paymentData.customerGstin || undefined,
+                customerMobile: paymentData.customerMobile || undefined,
                 taxSummary: billPayload.tax_summary || undefined,
                 totalTax: billPayload.total_tax || undefined,
                 isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
@@ -892,10 +977,16 @@ const TableOrderBilling: React.FC = () => {
             if (autoPrintEnabled) {
                 try {
                     const { printReceipt } = await import('@/utils/bluetoothPrinter');
-                    await printReceipt(printData as any);
+                    const printed = await printReceipt(printData as any);
+                    if (!printed) {
+                        printBrowserReceipt(printData as any);
+                    }
                 } catch (printErr) {
-                    console.error('Print failed:', printErr);
+                    console.error('Print failed, falling back to browser print:', printErr);
+                    printBrowserReceipt(printData as any);
                 }
+            } else {
+                printBrowserReceipt(printData as any);
             }
 
             // 9. Save Customer details to CRM (Auto-Save on every Checkout)
@@ -1442,6 +1533,7 @@ const TableOrderBilling: React.FC = () => {
                     whatsappShareMode={whatsappShareMode}
                     gstEnabled={gstSettings.enabled}
                     showOrderType={showOrderType}
+                    taxRatesMap={gstSettings.taxRatesMap}
                 />
             </div>
         </div>

@@ -25,6 +25,9 @@ interface CartItem {
   unlimited_stock?: boolean;
   selling_unit?: string;
   inventory_unit?: string;
+  tax_rate_id?: string | null;
+  is_tax_inclusive?: boolean;
+  hsn_code?: string | null;
 }
 
 interface PaymentType {
@@ -69,6 +72,7 @@ interface CompletePaymentDialogProps {
   whatsappShareMode?: 'text' | 'image';
   gstEnabled?: boolean;
   showOrderType?: boolean;
+  taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
 }
 
 export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
@@ -83,7 +87,8 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   whatsappEnabled = false,
   whatsappShareMode = 'text',
   gstEnabled = false,
-  showOrderType = false
+  showOrderType = false,
+  taxRatesMap = {}
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState(0);
@@ -147,6 +152,62 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     });
   };
 
+  // Calculate item-level inclusive/exclusive taxes and summarize
+  const { totalExclusiveTax, taxSummaryEntries } = React.useMemo(() => {
+    let totalExclusiveTax = 0;
+    const rateGroups: Record<string, { name: string; rate: number; taxable: number; tax: number }> = {};
+
+    cart.forEach(item => {
+      const effectiveQty = itemQuantityOverrides[item.id] !== undefined ? itemQuantityOverrides[item.id] : item.quantity;
+      if (effectiveQty <= 0) return;
+
+      const baseValue = item.base_value || 1;
+      const lineTotal = itemTotalOverrides[item.id] !== undefined 
+        ? itemTotalOverrides[item.id] 
+        : (effectiveQty / baseValue) * item.price;
+
+      const taxRateId = item.tax_rate_id;
+      const taxRateInfo = (taxRateId && taxRatesMap) ? taxRatesMap[taxRateId] : null;
+
+      if (gstEnabled && taxRateInfo) {
+        const rate = taxRateInfo.rate;
+        const cess = taxRateInfo.cess || 0;
+        const totalRate = rate + cess;
+        const isInclusive = item.is_tax_inclusive !== false;
+
+        let taxable = lineTotal;
+        let tax = 0;
+
+        if (isInclusive) {
+          taxable = lineTotal / (1 + totalRate / 100);
+          tax = lineTotal - taxable;
+        } else {
+          taxable = lineTotal;
+          tax = lineTotal * (totalRate / 100);
+          totalExclusiveTax += tax;
+        }
+
+        // Group by rate for the summary breakout
+        const key = String(rate);
+        if (!rateGroups[key]) {
+          rateGroups[key] = {
+            name: taxRateInfo.name || `GST ${rate}%`,
+            rate,
+            taxable: 0,
+            tax: 0
+          };
+        }
+        rateGroups[key].taxable += taxable;
+        rateGroups[key].tax += tax;
+      }
+    });
+
+    return {
+      totalExclusiveTax,
+      taxSummaryEntries: Object.values(rateGroups)
+    };
+  }, [cart, itemQuantityOverrides, itemTotalOverrides, taxRatesMap, gstEnabled]);
+
   // Calculate subtotal with price and quantity overrides
   const cartSubtotal = cart.reduce((sum, item) => {
     const effectiveQty = getEffectiveQty(item);
@@ -176,7 +237,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       return sum;
     }, 0);
 
-  const subtotal = cartSubtotal + totalAdditionalCharges;
+  const subtotal = cartSubtotal + totalExclusiveTax + totalAdditionalCharges;
   const discountAmount = discountType === 'percentage'
     ? (subtotal * discount) / 100
     : discount;
@@ -609,6 +670,12 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
               <span>Subtotal:</span>
               <span>₹{cartSubtotal.toFixed(2)}</span>
             </div>
+            {totalExclusiveTax > 0 && (
+              <div className="flex justify-between text-amber-600">
+                <span>Tax (Exclusive):</span>
+                <span>+₹{totalExclusiveTax.toFixed(2)}</span>
+              </div>
+            )}
             {additionalCharges.filter(charge => selectedCharges[charge.id]).map((charge) => {
               const totalQuantity = getSmartTotalQuantity();
               const displayAmount = chargeAmountOverrides[charge.id] !== undefined ? chargeAmountOverrides[charge.id] :
@@ -626,6 +693,17 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
               <div className="flex justify-between text-green-600">
                 <span>Discount:</span>
                 <span>-₹{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {gstEnabled && taxSummaryEntries.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-dashed border-slate-300 dark:border-slate-700 space-y-0.5 text-[10px] text-muted-foreground">
+                <div className="font-semibold text-slate-500">Tax Breakdown:</div>
+                {taxSummaryEntries.map((entry) => (
+                  <div key={entry.rate} className="flex justify-between pl-2">
+                    <span>{entry.name} (Taxable ₹{entry.taxable.toFixed(2)}):</span>
+                    <span>₹{entry.tax.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>

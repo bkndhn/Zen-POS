@@ -40,6 +40,76 @@ export const printBrowserReceipt = (data: PrintData) => {
   const totalItems = data.totalItemsCount !== undefined ? data.totalItemsCount : data.items.length;
   const smartQty = data.smartQtyCount !== undefined ? data.smartQtyCount : calculateSmartQtyCount(data.items);
 
+  // Parse tax summary
+  let parsedTaxSummary: any = null;
+  if (data.taxSummary) {
+    try {
+      parsedTaxSummary = typeof data.taxSummary === 'string' ? JSON.parse(data.taxSummary) : data.taxSummary;
+    } catch (e) {
+      console.error('Error parsing tax summary in browser printer:', e);
+    }
+  }
+
+  const getTaxEntries = () => {
+    if (!parsedTaxSummary) return [];
+    if (Array.isArray(parsedTaxSummary)) return parsedTaxSummary;
+    if (parsedTaxSummary.entries && Array.isArray(parsedTaxSummary.entries)) {
+      return parsedTaxSummary.entries;
+    }
+    return Object.entries(parsedTaxSummary).map(([rateStr, entry]: [string, any]) => {
+      const rate = parseFloat(rateStr);
+      return {
+        taxName: entry.taxName || `GST ${rate}%`,
+        taxRate: rate,
+        taxableAmount: entry.taxable || entry.taxableAmount || 0,
+        cgst: entry.cgst || 0,
+        sgst: entry.sgst || 0,
+        cess: entry.cess || entry.cessAmount || 0,
+        totalTax: entry.total || entry.totalTax || 0
+      };
+    });
+  };
+
+  let gstHtml = '';
+  const taxEntries = getTaxEntries();
+  if (data.isComposition) {
+    gstHtml = `<hr>
+    <div style="text-align:center;font-size:10px;margin-top:6px;font-style:italic;font-weight:bold;">
+      Composition Scheme - Tax Rate: ${data.totalTax ? ((data.totalTax / data.subtotal) * 100).toFixed(1) : '1'}%<br>(No Input Tax Credit)
+    </div>`;
+  } else if (taxEntries.length > 0) {
+    const rows = taxEntries.map((entry: any) => {
+      const rate = entry.taxRate;
+      const halfRate = rate / 2;
+      return `<tr>
+        <td style="text-align:left;">GST ${rate}%</td>
+        <td style="text-align:right;">₹${entry.taxableAmount.toFixed(2)}</td>
+        <td style="text-align:right;">${halfRate}%<br>₹${entry.cgst.toFixed(2)}</td>
+        <td style="text-align:right;">${halfRate}%<br>₹${entry.sgst.toFixed(2)}</td>
+        <td style="text-align:right;">₹${entry.cess.toFixed(2)}</td>
+        <td style="text-align:right;">₹${entry.totalTax.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    gstHtml = `<hr>
+    <div style="font-size:10px;font-weight:bold;margin-bottom:4px;">GST TAX BREAKUP:</div>
+    <table style="width:100%;font-size:9px;margin-top:4px;border-collapse:collapse;line-height:1.2;">
+      <thead>
+        <tr style="font-weight:bold;border-bottom:1px dashed #000">
+          <td style="width:20%;text-align:left;padding-bottom:4px;">RATE</td>
+          <td style="width:20%;text-align:right;padding-bottom:4px;">TAXABLE</td>
+          <td style="width:18%;text-align:right;padding-bottom:4px;">CGST</td>
+          <td style="width:18%;text-align:right;padding-bottom:4px;">SGST</td>
+          <td style="width:12%;text-align:right;padding-bottom:4px;">CESS</td>
+          <td style="width:12%;text-align:right;padding-bottom:4px;">TOTAL</td>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>`;
+  }
+
   // Simple, clean HTML that works reliably on mobile
   const html = `<!DOCTYPE html>
 <html>
@@ -76,6 +146,8 @@ export const printBrowserReceipt = (data: PrintData) => {
         padding: 0 !important;
         height: auto !important;
         overflow: visible !important;
+        background: white;
+        color: black;
       }
       body { 
         width: ${widthValue}; 
@@ -99,6 +171,9 @@ export const printBrowserReceipt = (data: PrintData) => {
     <tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>
     <tr><td>Time:</td><td style="text-align:right">${data.time}</td></tr>
     ${(data as any).orderType ? `<tr><td><b>Type:</b></td><td style="text-align:right"><b>${(data as any).orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}</b></td></tr>` : ''}
+    ${data.gstin ? `<tr><td><b>GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.gstin}</td></tr>` : ''}
+    ${data.customerMobile ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}
+    ${data.customerGstin ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.customerGstin}</td></tr>` : ''}
   </table>
   
   <hr>
@@ -123,6 +198,8 @@ export const printBrowserReceipt = (data: PrintData) => {
   <table style="margin-top:8px">
     <tr><td>Paid via:</td><td style="text-align:right">${data.paymentMethod.toUpperCase()}</td></tr>
   </table>
+
+  ${gstHtml}
   
   <div class="footer center">
     <div>Thank you!</div>

@@ -22,6 +22,8 @@ interface MenuItem {
     unit?: string;
     base_value?: number;
     is_active: boolean;
+    tax_rate_id?: string | null;
+    is_tax_inclusive?: boolean;
 }
 
 interface PromoBanner {
@@ -77,6 +79,8 @@ interface CartItem {
     unit?: string;
     base_value?: number;
     instructions: string;
+    tax_rate_id?: string | null;
+    is_tax_inclusive?: boolean;
 }
 
 interface TableOrder {
@@ -127,6 +131,8 @@ const PublicMenu = () => {
     const [categories, setCategories] = useState<ItemCategory[]>([]);
     const [shopSettings, setShopSettings] = useState<ShopSettings | null>(null);
     const [banners, setBanners] = useState<PromoBanner[]>([]);
+    const [gstEnabled, setGstEnabled] = useState(false);
+    const [taxRatesMap, setTaxRatesMap] = useState<Record<string, { rate: number; name: string; cess: number }>>({});
     const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -276,7 +282,7 @@ const PublicMenu = () => {
                 // Fetch items for this admin/branch (including video/media fields)
                 let itemsQuery: any = supabase
                     .from('items')
-                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id')
+                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id, tax_rate_id, is_tax_inclusive')
                     .eq('admin_id', adminId)
                     .eq('is_active', true);
                 if (branchId) itemsQuery = itemsQuery.eq('branch_id', branchId);
@@ -320,6 +326,33 @@ const PublicMenu = () => {
 
                 if (categoriesError) {
                     console.error('Categories error:', categoriesError);
+                }
+
+                // Fetch GST settings
+                const { data: shopSettingsData } = await supabase
+                    .from('shop_settings')
+                    .select('gst_enabled')
+                    .eq('user_id', adminId)
+                    .maybeSingle();
+
+                const enabled = shopSettingsData?.gst_enabled || false;
+                setGstEnabled(enabled);
+
+                if (enabled) {
+                    let ratesQuery = supabase
+                        .from('tax_rates')
+                        .select('id, name, rate, cess_rate')
+                        .eq('admin_id', adminId)
+                        .eq('is_active', true);
+                    if (branchId) {
+                        ratesQuery = ratesQuery.or(`branch_id.eq.${branchId},branch_id.is.null`);
+                    }
+                    const { data: rates } = await ratesQuery;
+                    const ratesMap: Record<string, any> = {};
+                    (rates || []).forEach((r: any) => {
+                        ratesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0 };
+                    });
+                    setTaxRatesMap(ratesMap);
                 }
 
                 setItems((itemsData || []) as any);
@@ -581,13 +614,58 @@ const PublicMenu = () => {
 
     // ========== TABLE ORDERING FUNCTIONS ==========
 
-    // Cart total
-    const cartTotal = useMemo(() => {
-        return cart.reduce((sum, item) => {
+    // Calculate cart details (subtotal, taxes, total)
+    const { cartSubtotal, cartExclusiveTax, cartTaxesList, cartTotal } = useMemo(() => {
+        let subtotal = 0;
+        let exclusiveTax = 0;
+        const rateSummary: Record<string, { rate: number; taxable: number; tax: number; name: string }> = {};
+
+        cart.forEach(item => {
             const bv = item.base_value || 1;
-            return sum + Math.round(((item.quantity / bv) * item.price) * 100) / 100;
-        }, 0);
-    }, [cart]);
+            const lineTotal = (item.quantity / bv) * item.price;
+            subtotal += lineTotal;
+
+            const taxRateId = item.tax_rate_id;
+            const taxRateInfo = (gstEnabled && taxRateId) ? taxRatesMap[taxRateId] : null;
+
+            if (taxRateInfo) {
+                const totalRate = taxRateInfo.rate + taxRateInfo.cess;
+                const isInclusive = item.is_tax_inclusive !== false;
+                let taxable = lineTotal;
+                let tax = 0;
+
+                if (isInclusive) {
+                    taxable = lineTotal / (1 + totalRate / 100);
+                    tax = lineTotal - taxable;
+                } else {
+                    taxable = lineTotal;
+                    tax = lineTotal * (totalRate / 100);
+                    exclusiveTax += tax;
+                }
+
+                const key = String(taxRateInfo.rate);
+                if (!rateSummary[key]) {
+                    rateSummary[key] = {
+                        rate: taxRateInfo.rate,
+                        name: taxRateInfo.name || `GST ${taxRateInfo.rate}%`,
+                        taxable: 0,
+                        tax: 0
+                    };
+                }
+                rateSummary[key].taxable += taxable;
+                rateSummary[key].tax += tax;
+            }
+        });
+
+        const total = subtotal + exclusiveTax;
+
+        return {
+            cartSubtotal: subtotal,
+            cartExclusiveTax: exclusiveTax,
+            cartTaxesList: Object.values(rateSummary),
+            cartTotal: total
+        };
+    }, [cart, gstEnabled, taxRatesMap]);
 
     const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity / (item.base_value || 1)), 0), [cart]);
 
@@ -606,7 +684,9 @@ const PublicMenu = () => {
                 quantity: step,
                 unit: item.unit,
                 base_value: item.base_value,
-                instructions: ''
+                instructions: '',
+                tax_rate_id: item.tax_rate_id,
+                is_tax_inclusive: item.is_tax_inclusive
             }];
         });
     }, []);
@@ -1989,14 +2069,29 @@ const PublicMenu = () => {
                                         onChange={e => setOrderNote(e.target.value)}
                                         className="h-9 text-sm"
                                     />
+                                      {/* Cart summary + Place Order */}
+                            <div className="p-4 border-t bg-white space-y-2">
+                                <div className="space-y-1 text-xs text-gray-500">
+                                    <div className="flex justify-between">
+                                        <span>Subtotal:</span>
+                                        <span>₹{cartSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    {cartExclusiveTax > 0 && (
+                                        <div className="flex justify-between text-amber-600 font-medium">
+                                            <span>Tax (Exclusive):</span>
+                                            <span>+₹{cartExclusiveTax.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {gstEnabled && cartTaxesList.map((entry: any) => (
+                                        <div key={entry.rate} className="flex justify-between pl-2 text-[10px] text-gray-400">
+                                            <span>{entry.name} (Taxable ₹{entry.taxable.toFixed(2)}):</span>
+                                            <span>₹{entry.tax.toFixed(2)}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-
-                            {/* Cart summary + Place Order */}
-                            <div className="p-4 border-t bg-white">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-sm text-gray-600">{cartItemCount} item{cartItemCount !== 1 ? 's' : ''}</span>
-                                    <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{cartTotal.toFixed(0)}</span>
+                                <div className="flex justify-between items-center mb-1.5 pt-1.5 border-t">
+                                    <span className="text-sm text-gray-600 font-semibold">{cartItemCount} item{cartItemCount !== 1 ? 's' : ''}</span>
+                                    <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{cartTotal.toFixed(2)}</span>
                                 </div>
                                 <Button
                                     onClick={placeOrder}
@@ -2007,7 +2102,7 @@ const PublicMenu = () => {
                                     {isPlacingOrder ? (
                                         <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Placing Order...</>
                                     ) : (
-                                        <><Send className="w-5 h-5 mr-2" /> Place Order ₹{cartTotal.toFixed(0)}</>
+                                        <><Send className="w-5 h-5 mr-2" /> Place Order ₹{cartTotal.toFixed(2)}</>
                                     )}
                                 </Button>
                             </div>

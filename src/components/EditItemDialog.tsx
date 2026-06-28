@@ -110,13 +110,31 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     expiry_mode: ((item as any).expiry_mode || 'none') as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
+  const [adminAuthId, setAdminAuthId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveAdminAuthId = async () => {
+      if (!profile) return;
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        setAdminAuthId(profile.user_id);
+      } else if (profile.role === 'user' && profile.admin_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .single();
+        if (data?.user_id) {
+          setAdminAuthId(data.user_id);
+        }
+      }
+    };
+    resolveAdminAuthId();
+  }, [profile]);
 
   useEffect(() => {
     if (open) {
       fetchCategories();
       checkPremiumAccess();
-      fetchGstSettings();
-
       setStockUpdateMode('add');
 
       // Reset form data with current item values when dialog opens (empty stock_quantity for add mode)
@@ -149,6 +167,12 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
       });
     }
   }, [open, item]);
+
+  useEffect(() => {
+    if (open && adminAuthId) {
+      fetchGstSettings();
+    }
+  }, [open, adminAuthId, operatingBranchId]);
 
   const fetchCategories = async () => {
     try {
@@ -202,25 +226,27 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   const fetchGstSettings = async () => {
     try {
-      const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
-      if (!adminId) return;
+      if (!adminAuthId) return;
 
       const { data: settings } = await (supabase as any)
         .from('shop_settings')
         .select('gst_enabled')
-        .eq('user_id', adminId)
+        .eq('user_id', adminAuthId)
         .maybeSingle();
 
       const enabled = settings?.gst_enabled || false;
       setGstEnabled(enabled);
 
       if (enabled) {
-        const { data: rates } = await (supabase as any)
+        let query = (supabase as any)
           .from('tax_rates')
           .select('id, name, rate')
-          .eq('admin_id', adminId)
-          .eq('is_active', true)
-          .order('rate', { ascending: true });
+          .eq('admin_id', adminAuthId)
+          .eq('is_active', true);
+        if (operatingBranchId) {
+          query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+        }
+        const { data: rates } = await query.order('rate', { ascending: true });
         setTaxRates(rates || []);
       }
     } catch (e) { /* silent */ }

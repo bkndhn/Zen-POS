@@ -47,6 +47,9 @@ interface Item {
   unlimited_stock?: boolean;
   price_zomato?: number;
   price_swiggy?: number;
+  tax_rate_id?: string | null;
+  is_tax_inclusive?: boolean;
+  hsn_code?: string | null;
 }
 
 // Helper to check if item has low stock
@@ -1288,15 +1291,57 @@ const Billing = () => {
       console.log('Updating bill:', editingBill.id);
       const paymentMode = mapPaymentMode(selectedPayment);
 
-      // Update bill
-      const {
-        error: billError
-      } = await supabase.from('bills').update({
-        total_amount: getTotalAmount(),
+      // Calculate GST if enabled
+      let taxSummary: any = null;
+      let totalTax = 0;
+      let totalExclusiveTax = 0;
+      let itemTaxes: any[] = [];
+      if (gstSettings.enabled) {
+        const { calculateItemTax, calculateBillTaxSummary } = await import('@/utils/gstCalculator');
+        itemTaxes = cart.map(item => {
+          const itemAny = item as any;
+          const taxRateId = itemAny.tax_rate_id;
+          const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
+          if (!taxRateInfo) return { taxableAmount: (item.quantity / (item.base_value || 1)) * item.price, cgst: 0, sgst: 0, cess: 0, totalTax: 0, totalWithTax: (item.quantity / (item.base_value || 1)) * item.price, taxRate: 0, _cessRate: 0, _taxName: '', _isTaxInclusive: true };
+          const lineTotal = (item.quantity / (item.base_value || 1)) * item.price;
+          const isTaxInclusive = itemAny.is_tax_inclusive !== false;
+          const cessRate = (taxRateInfo as any).cess_rate || taxRateInfo.cess || 0;
+          const result = calculateItemTax(lineTotal, taxRateInfo.rate, cessRate, isTaxInclusive);
+          if (!isTaxInclusive) {
+            totalExclusiveTax += result.totalTax;
+          }
+          return { ...result, _cessRate: cessRate, _taxName: taxRateInfo.name || `GST ${taxRateInfo.rate}%`, _isTaxInclusive: isTaxInclusive };
+        });
+        const summary = calculateBillTaxSummary(cart.map((item, i) => ({
+          price: item.price,
+          quantity: item.quantity,
+          total: (item.quantity / (item.base_value || 1)) * item.price,
+          taxRate: itemTaxes[i].taxRate,
+          taxName: (itemTaxes[i] as any)._taxName || `GST ${itemTaxes[i].taxRate}%`,
+          cessRate: (itemTaxes[i] as any)._cessRate || 0,
+          isTaxInclusive: (itemTaxes[i] as any)._isTaxInclusive !== false,
+          hsnCode: (item as any).hsn_code || gstSettings.taxRatesMap[(item as any).tax_rate_id]?.hsn_code || ''
+        })));
+        taxSummary = summary;
+        totalTax = itemTaxes.reduce((s, t) => s + t.totalTax, 0);
+      }
+
+      // Update bill with GST fields
+      const billPayload: any = {
+        total_amount: getTotalAmount() + totalExclusiveTax,
         discount: discount,
         payment_mode: paymentMode,
         is_edited: true
-      }).eq('id', editingBill.id);
+      };
+
+      if (gstSettings.enabled && taxSummary) {
+        billPayload.tax_summary = JSON.stringify(taxSummary);
+        billPayload.total_tax = totalTax;
+      }
+
+      const {
+        error: billError
+      } = await supabase.from('bills').update(billPayload).eq('id', editingBill.id);
       if (billError) {
         console.error('Bill update error:', billError);
         throw billError;
@@ -1314,13 +1359,43 @@ const Billing = () => {
       // Insert new bill items
       const billItems = cart.map(item => {
         const baseValue = item.base_value || 1;
-        return {
+        const lineTotal = (item.quantity / baseValue) * item.price;
+        const billItem: any = {
           bill_id: editingBill.id,
           item_id: item.id,
           quantity: item.quantity,
           price: item.price,
-          total: (item.quantity / baseValue) * item.price
+          total: lineTotal
         };
+
+        if (gstSettings.enabled) {
+          const itemAny = item as any;
+          const taxRateId = itemAny.tax_rate_id;
+          if (taxRateId && gstSettings.taxRatesMap) {
+            const taxRateInfo = gstSettings.taxRatesMap[taxRateId];
+            if (taxRateInfo) {
+              billItem.tax_rate_snapshot = taxRateInfo.rate;
+              billItem.tax_rate = taxRateInfo.rate;
+              billItem.hsn_code = itemAny.hsn_code || taxRateInfo.hsn_code || null;
+              billItem.tax_type = 'GST';
+
+              const taxRate = taxRateInfo.rate;
+              const isTaxInclusive = itemAny.is_tax_inclusive !== false;
+              const cessRate = taxRateInfo.cess || 0;
+              let taxableValue = lineTotal;
+              let taxAmount = 0;
+              if (isTaxInclusive) {
+                taxableValue = lineTotal / (1 + (taxRate + cessRate) / 100);
+                taxAmount = lineTotal - taxableValue;
+              } else {
+                taxAmount = lineTotal * (taxRate + cessRate) / 100;
+              }
+              billItem.taxable_amount = Math.round(taxableValue * 100) / 100;
+              billItem.tax_amount = Math.round(taxAmount * 100) / 100;
+            }
+          }
+        }
+        return billItem;
       });
       const {
         error: itemsError
@@ -1388,7 +1463,9 @@ const Billing = () => {
         const taxRateInfo = taxRatesMap[taxRateId];
         if (taxRateInfo) {
           billItem.tax_rate_snapshot = taxRateInfo.rate;
+          billItem.tax_rate = taxRateInfo.rate;
           billItem.hsn_code = itemAny.hsn_code || taxRateInfo.hsn_code || null;
+          billItem.tax_type = 'GST';
           // Calculate individual item tax for snapshot
           const taxRate = taxRateInfo.rate;
           const isTaxInclusive = itemAny.is_tax_inclusive !== false;
@@ -1401,6 +1478,7 @@ const Billing = () => {
           } else {
             taxAmount = lineTotal * (taxRate + cessRate) / 100;
           }
+          billItem.taxable_amount = Math.round(taxableValue * 100) / 100;
           billItem.tax_amount = Math.round(taxAmount * 100) / 100;
         }
       }
@@ -1729,24 +1807,11 @@ const Billing = () => {
         const baseValue = item.base_value || 1;
         return sum + (item.quantity / baseValue) * item.price;
       }, 0);
-      const totalAdditionalCharges = paymentData.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
-      let totalAmount = subtotal + totalAdditionalCharges - paymentData.discount;
-
-      const mapPaymentMode = (method: string): PaymentMode => {
-        const lower = method.toLowerCase();
-        if (lower.includes('cash')) return 'cash';
-        if (lower.includes('upi')) return 'upi';
-        if (lower === 'card' || lower.includes('card')) return 'card';
-        return 'other';
-      };
-      const paymentMode = mapPaymentMode(paymentData.paymentMethod);
-      const additionalChargesArray = paymentData.additionalCharges.map(c => ({ name: c.name, amount: c.amount }));
-
-      // adminId already defined above for bill number isolation
 
       // Calculate GST if enabled
       let taxSummary: any = null;
       let totalTax = 0;
+      let totalExclusiveTax = 0;
       let itemTaxes: any[] = [];
       if (gstSettings.enabled) {
         const { calculateItemTax, calculateBillTaxSummary } = await import('@/utils/gstCalculator');
@@ -1754,11 +1819,14 @@ const Billing = () => {
           const itemAny = item as any;
           const taxRateId = itemAny.tax_rate_id;
           const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
-          if (!taxRateInfo) return { taxableAmount: 0, cgst: 0, sgst: 0, cess: 0, totalTax: 0, totalWithTax: (item.quantity / (item.base_value || 1)) * item.price, taxRate: 0, _cessRate: 0, _taxName: '', _isTaxInclusive: true };
+          if (!taxRateInfo) return { taxableAmount: (item.quantity / (item.base_value || 1)) * item.price, cgst: 0, sgst: 0, cess: 0, totalTax: 0, totalWithTax: (item.quantity / (item.base_value || 1)) * item.price, taxRate: 0, _cessRate: 0, _taxName: '', _isTaxInclusive: true };
           const lineTotal = (item.quantity / (item.base_value || 1)) * item.price;
           const isTaxInclusive = itemAny.is_tax_inclusive !== false;
           const cessRate = (taxRateInfo as any).cess_rate || taxRateInfo.cess || 0;
           const result = calculateItemTax(lineTotal, taxRateInfo.rate, cessRate, isTaxInclusive);
+          if (!isTaxInclusive) {
+            totalExclusiveTax += result.totalTax;
+          }
           return { ...result, _cessRate: cessRate, _taxName: taxRateInfo.name || `GST ${taxRateInfo.rate}%`, _isTaxInclusive: isTaxInclusive };
         });
         const summary = calculateBillTaxSummary(validCart.map((item, i) => ({
@@ -1774,6 +1842,19 @@ const Billing = () => {
         taxSummary = summary;
         totalTax = itemTaxes.reduce((s, t) => s + t.totalTax, 0);
       }
+
+      const totalAdditionalCharges = paymentData.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
+      let totalAmount = subtotal + totalExclusiveTax + totalAdditionalCharges - paymentData.discount;
+
+      const mapPaymentMode = (method: string): PaymentMode => {
+        const lower = method.toLowerCase();
+        if (lower.includes('cash')) return 'cash';
+        if (lower.includes('upi')) return 'upi';
+        if (lower === 'card' || lower.includes('card')) return 'card';
+        return 'other';
+      };
+      const paymentMode = mapPaymentMode(paymentData.paymentMethod);
+      const additionalChargesArray = paymentData.additionalCharges.map(c => ({ name: c.name, amount: c.amount }));
 
       // Round-off: if GST makes total a decimal, round to nearest rupee
       let roundOff = 0;
@@ -1939,7 +2020,16 @@ const Billing = () => {
               whatsapp: billSettings?.showWhatsapp !== false ? billSettings?.whatsapp : undefined,
               tableNo: selectedTableNumber || undefined,
               totalItemsCount: validCart.length,
-              smartQtyCount: calculateSmartQtyCount(validCart)
+              smartQtyCount: calculateSmartQtyCount(validCart),
+              // GST fields
+              gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
+              customerGstin: paymentData.customerGstin || undefined,
+              customerMobile: paymentData.customerMobile || undefined,
+              taxSummary: billPayload.tax_summary || undefined,
+              totalTax: billPayload.total_tax || undefined,
+              isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
+              roundOff: roundOff !== 0 ? roundOff : undefined,
+              orderType: paymentData.orderType
             };
             await printReceipt(offlinePrintData as PrintData);
           } catch (printError) {
@@ -1990,6 +2080,8 @@ const Billing = () => {
         smartQtyCount: calculateSmartQtyCount(validCart),
         // GST fields
         gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
+        customerGstin: paymentData.customerGstin || undefined,
+        customerMobile: paymentData.customerMobile || undefined,
         taxSummary: billPayload.tax_summary || undefined,
         totalTax: billPayload.total_tax || undefined,
         isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,

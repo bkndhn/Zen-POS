@@ -265,6 +265,8 @@ interface PrintData {
   tableNo?: string;
   // GST fields
   gstin?: string;
+  customerGstin?: string;
+  customerMobile?: string;
   taxSummary?: string; // JSON string of tax summary
   totalTax?: number;
   isComposition?: boolean;

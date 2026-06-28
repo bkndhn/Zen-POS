@@ -123,34 +123,59 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     checkPremiumAccess();
   }, [profile]);
 
+  const [adminAuthId, setAdminAuthId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveAdminAuthId = async () => {
+      if (!profile) return;
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        setAdminAuthId(profile.user_id);
+      } else if (profile.role === 'user' && profile.admin_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .single();
+        if (data?.user_id) {
+          setAdminAuthId(data.user_id);
+        }
+      }
+    };
+    resolveAdminAuthId();
+  }, [profile]);
+
   useEffect(() => {
     fetchCategories();
-    fetchGstSettings();
+    if (adminAuthId) {
+      fetchGstSettings();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operatingBranchId, profile?.id, profile?.admin_id]);
+  }, [operatingBranchId, profile?.id, profile?.admin_id, adminAuthId]);
 
   const fetchGstSettings = async () => {
     try {
-      const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
-      if (!adminId) return;
+      if (!adminAuthId) return;
 
       // Check if GST is enabled
       const { data: settings } = await (supabase as any)
         .from('shop_settings')
         .select('gst_enabled')
-        .eq('user_id', adminId)
+        .eq('user_id', adminAuthId)
         .maybeSingle();
 
       const enabled = settings?.gst_enabled || false;
       setGstEnabled(enabled);
 
       if (enabled) {
-        const { data: rates } = await (supabase as any)
+        let query = (supabase as any)
           .from('tax_rates')
           .select('id, name, rate')
-          .eq('admin_id', adminId)
-          .eq('is_active', true)
-          .order('rate', { ascending: true });
+          .eq('admin_id', adminAuthId)
+          .eq('is_active', true);
+        if (operatingBranchId) {
+          query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+        }
+        const { data: rates } = await query.order('rate', { ascending: true });
         setTaxRates(rates || []);
       }
     } catch (e) { /* silent */ }
