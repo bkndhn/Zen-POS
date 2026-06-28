@@ -19,7 +19,7 @@ export const ShopSettingsForm = () => {
     const { profile } = useAuth();
     const { operatingBranchId, branches, activeBranch, isAllBranchesView } = useBranch();
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
-    const { hasAccess } = useUserPermissions();
+    const { hasAccess, loading: permissionsLoading } = useUserPermissions();
     // Always use the admin's user_id for shop_settings (sub-users share the admin's settings)
     const adminUserId = profile?.role === 'admin' ? profile?.user_id : profile?.admin_id;
     const [loading, setLoading] = useState(true);
@@ -630,42 +630,42 @@ export const ShopSettingsForm = () => {
                 </div>
 
                 {/* Navigation Menu Settings */}
-                <div className="space-y-4 pt-4 border-t">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Navigation className="w-5 h-5" />
-                        <Label className="text-base font-semibold">Customise Bottom Navigation</Label>
+                {!permissionsLoading && hasAccess('bottomNavCustomize') && (
+                    <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Navigation className="w-5 h-5" />
+                            <Label className="text-base font-semibold">Customise Bottom Navigation</Label>
+                        </div>
+                        <CardDescription className="mb-4">
+                            Select which pages should appear in the mobile bottom navigation bar.
+                        </CardDescription>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {ALL_NAV_ITEMS.filter(i => i.bottomNav)
+                                .map(item => ({ id: item.page, label: item.shortLabel || item.label }))
+                                .filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i)
+                                .filter(page => hasAccess(page.id as any))
+                                .map((page) => (
+                                    <div key={page.id} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                                        <Checkbox
+                                            id={`nav-${page.id}`}
+                                            checked={visiblePages.includes(page.id)}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setVisiblePages([...visiblePages, page.id]);
+                                                } else {
+                                                    setVisiblePages(visiblePages.filter(p => p !== page.id));
+                                                }
+                                            }}
+                                        />
+                                        <Label htmlFor={`nav-${page.id}`} className="cursor-pointer flex-1">
+                                            {page.label}
+                                        </Label>
+                                    </div>
+                                ))}
+                        </div>
                     </div>
-                    <CardDescription className="mb-4">
-                        Select which pages should appear in the mobile bottom navigation bar.
-                    </CardDescription>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {ALL_NAV_ITEMS.filter(i => i.bottomNav)
-                            .map(item => ({ id: item.page, label: item.shortLabel || item.label }))
-                            .filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i)
-
-                            .filter(page => hasAccess(page.id as any))
-                            .map((page) => (
-                                <div key={page.id} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-muted/50 transition-colors">
-                                    <Checkbox
-                                        id={`nav-${page.id}`}
-                                        checked={visiblePages.includes(page.id)}
-                                        onCheckedChange={(checked) => {
-                                            if (checked) {
-                                                setVisiblePages([...visiblePages, page.id]);
-                                            } else {
-                                                setVisiblePages(visiblePages.filter(p => p !== page.id));
-                                            }
-                                        }}
-                                    />
-                                    <Label htmlFor={`nav-${page.id}`} className="cursor-pointer flex-1">
-                                        {page.label}
-                                    </Label>
-                                </div>
-                            ))}
-                    </div>
-
-                </div>
+                )}
 
                 <Button onClick={handleSave} disabled={saving || isAllBranchesView} className="w-full md:w-auto">
                     {saving ? 'Saving...' : 'Save Shop Details'}

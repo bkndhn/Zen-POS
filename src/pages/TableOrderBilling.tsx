@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle } from 'lucide-react';
+import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
 import { formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';

@@ -43,6 +43,9 @@ export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
     if (!seen.has('customerDisplay')) {
       out.push({ name: 'customerDisplay', label: 'Customer Display', description: 'Public order board' });
     }
+    if (!seen.has('bottomNavCustomize')) {
+      out.push({ name: 'bottomNavCustomize', label: 'Bottom Nav Customise', description: 'Customise Bottom Navigation' });
+    }
     return out;
   }, []);
 

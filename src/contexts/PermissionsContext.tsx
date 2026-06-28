@@ -22,6 +22,7 @@ export interface UserPermissions {
     purchases: boolean;
     stock: boolean;
     waiterCompanion: boolean;
+    bottomNavCustomize: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -44,6 +45,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     purchases: false,
     stock: false,
     waiterCompanion: false,
+    bottomNavCustomize: false,
 };
 
 const ADMIN_PERMISSIONS: UserPermissions = {
@@ -66,6 +68,7 @@ const ADMIN_PERMISSIONS: UserPermissions = {
     purchases: true,
     stock: true,
     waiterCompanion: true,
+    bottomNavCustomize: true,
 };
 
 interface PermissionsContextType {

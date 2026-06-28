@@ -20,7 +20,7 @@ import { toast } from '@/hooks/use-toast';
 import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle } from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { cn } from '@/lib/utils';
-import { formatQuantityWithUnit, getShortUnit } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, getShortUnit, isWeightOrVolumeUnit } from '@/utils/timeUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 
@@ -235,7 +235,7 @@ const WaiterCompanion: React.FC = () => {
         }
 
         setCart(prev => {
-            const step = item.quantity_step || item.base_value || 1;
+            const step = item.quantity_step || item.selling_quantity || item.base_value || 1;
             const existingIndex = prev.findIndex(i => i.id === item.id && i.seatId === selectedSeatId);
             if (existingIndex > -1) {
                 const updated = [...prev];
@@ -246,12 +246,12 @@ const WaiterCompanion: React.FC = () => {
                 id: item.id,
                 name: item.name,
                 price: item.price,
-                quantity: item.base_value || 1,
-                unit: item.unit,
-                base_value: item.base_value,
+                quantity: item.selling_quantity || item.base_value || 1,
+                unit: item.selling_unit || item.unit,
+                base_value: item.selling_quantity || item.base_value || 1,
                 selling_unit: item.selling_unit,
                 selling_quantity: item.selling_quantity,
-                quantity_step: item.quantity_step,
+                quantity_step: item.quantity_step || item.selling_quantity || item.base_value || 1,
                 instructions: '',
                 seatId: selectedSeatId
             }];
@@ -272,7 +272,7 @@ const WaiterCompanion: React.FC = () => {
             
             const updated = [...prev];
             const item = updated[index];
-            const step = item.quantity_step || item.base_value || 1;
+            const step = item.quantity_step || item.selling_quantity || item.base_value || 1;
             const newQty = item.quantity + (deltaMultiplier * step);
             
             if (newQty <= 0) {
@@ -474,7 +474,7 @@ const WaiterCompanion: React.FC = () => {
                     3. Cart
                     {cart.length > 0 && (
                         <Badge variant="destructive" className="absolute top-1.5 right-1.5 text-[10px] px-1.5 h-4 min-w-4 flex items-center justify-center">
-                            {cart.reduce((sum, i) => sum + i.quantity, 0)}
+                            {cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)}
                         </Badge>
                     )}
                 </Button>
@@ -623,7 +623,7 @@ const WaiterCompanion: React.FC = () => {
                                                             >
                                                                 <Minus className="w-3.5 h-3.5" />
                                                             </Button>
-                                                            <span className="font-black text-sm w-4 text-center text-primary">{cartItem.quantity / (item.base_value || 1)}</span>
+                                                            <span className="font-black text-sm w-4 text-center text-primary">{cartItem.quantity / (item.selling_quantity || item.base_value || 1)}</span>
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
@@ -686,7 +686,13 @@ const WaiterCompanion: React.FC = () => {
                                         <div className="flex items-start justify-between">
                                             <div className="min-w-0 pr-2">
                                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="font-bold text-sm">{item.name}</span>
+                                                    <span className="font-bold text-sm">
+                                                        {isWeightOrVolumeUnit(item.selling_unit || item.unit) ? (
+                                                            `${item.quantity / (item.base_value || 1)} × ${formatQuantityWithUnit(item.base_value || 1, item.selling_unit || item.unit)} ${item.name}`
+                                                        ) : (
+                                                            `${item.quantity} × ${item.name}`
+                                                        )}
+                                                    </span>
                                                     {item.seatId && (
                                                         <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px] h-4 py-0 px-1.5">
                                                             Seat {item.seatId}
