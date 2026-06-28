@@ -438,7 +438,7 @@ const WaiterCompanion: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-background">
+        <div className="flex flex-col h-[calc(100vh-4rem)] bg-background overflow-hidden">
             {/* Mobile Tab Header */}
             <div className="flex border-b bg-card sticky top-0 z-10">
                 <Button
@@ -594,7 +594,7 @@ const WaiterCompanion: React.FC = () => {
                         </div>
 
                         {/* Menu Items Grid */}
-                        <ScrollArea className="flex-1 h-[45vh]">
+                        <div className="flex-1 overflow-y-auto h-[48vh] space-y-3 pr-1">
                             <div className="grid grid-cols-1 gap-2.5">
                                 {filteredMenuItems.map(item => (
                                     <Card key={item.id} className="overflow-hidden border border-muted shadow-sm hover:shadow-md transition-all">
@@ -653,8 +653,7 @@ const WaiterCompanion: React.FC = () => {
                                         No items found.
                                     </div>
                                 )}
-                            </div>
-                        </ScrollArea>
+                        </div>
                     </div>
                 )}
 
@@ -679,7 +678,7 @@ const WaiterCompanion: React.FC = () => {
                         </div>
 
                         {/* Cart List */}
-                        <ScrollArea className="flex-1 max-h-[45vh]">
+                        <div className="flex-1 overflow-y-auto max-h-[48vh] space-y-3 pr-1">
                             <div className="space-y-3 pr-1">
                                 {cart.map((item, idx) => (
                                     <Card key={`${item.id}-${item.seatId}-${idx}`} className="p-3 border border-muted">
@@ -738,8 +737,7 @@ const WaiterCompanion: React.FC = () => {
                                         </div>
                                     </Card>
                                 ))}
-                            </div>
-                        </ScrollArea>
+                        </div>
 
                         {/* Customer Overall Note */}
                         <div className="space-y-1.5 bg-muted/20 p-3 rounded-xl border border-muted">
