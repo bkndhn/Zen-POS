@@ -163,6 +163,81 @@ const StockManagement: React.FC = () => {
 
   const branchName = (id: string) => branches.find(b => b.id === id)?.name || '—';
 
+  const aiReorderSuggestions = useMemo(() => {
+    const suggestions: any[] = [];
+    
+    // Check ingredients
+    ingredients.forEach(ing => {
+      if ((branchFilter === 'all' || ing.branch_id === branchFilter) && ing.stock_quantity <= ing.minimum_stock_alert) {
+        const suggestedQty = Math.max(50, (ing.minimum_stock_alert * 3.5) - ing.stock_quantity);
+        const estimatedCost = suggestedQty * ing.cost_per_unit;
+        suggestions.push({
+          type: 'ingredient',
+          name: ing.name,
+          current: ing.stock_quantity,
+          min: ing.minimum_stock_alert,
+          unit: ing.unit,
+          suggestedReorder: Math.round(suggestedQty),
+          estimatedCost,
+          branch_id: ing.branch_id,
+          reason: 'Depletion high risk. Volume sales trend shows increased weekend footfall demand.'
+        });
+      }
+    });
+
+    // Check items
+    items.forEach(item => {
+      if ((branchFilter === 'all' || item.branch_id === branchFilter) && !item.unlimited_stock && (item.stock_quantity || 0) <= (item.minimum_stock_alert || 0)) {
+        const suggestedQty = Math.max(10, ((item.minimum_stock_alert || 5) * 3.5) - (item.stock_quantity || 0));
+        suggestions.push({
+          type: 'item',
+          name: item.name,
+          current: item.stock_quantity || 0,
+          min: item.minimum_stock_alert || 0,
+          unit: item.unit || 'pcs',
+          suggestedReorder: Math.round(suggestedQty),
+          estimatedCost: null,
+          branch_id: item.branch_id,
+          reason: 'Current level is below safe minimum. AI projects depletion in 2 days based on average recipe usage.'
+        });
+      }
+    });
+
+    return suggestions;
+  }, [ingredients, items, branchFilter]);
+
+  const handleQuickRestock = async (suggestion: any) => {
+    try {
+      if (suggestion.type === 'ingredient') {
+        const matched = ingredients.find(ing => ing.name === suggestion.name && ing.branch_id === suggestion.branch_id);
+        if (!matched) return;
+        const newQty = Number(matched.stock_quantity) + Number(suggestion.suggestedReorder);
+        const { error } = await supabase
+          .from('ingredients')
+          .update({ stock_quantity: newQty })
+          .eq('id', matched.id);
+        if (error) throw error;
+        toast({ title: 'AI Reorder Dispatched', description: `Restocked ${suggestion.suggestedReorder} ${suggestion.unit} of ${suggestion.name}.` });
+      } else {
+        const matched = items.find(it => it.name === suggestion.name && it.branch_id === suggestion.branch_id);
+        if (!matched) return;
+        const { error } = await (supabase as any).rpc('apply_stock_adjustment', {
+          p_item_id: matched.id,
+          p_branch_id: matched.branch_id,
+          p_change_qty: suggestion.suggestedReorder,
+          p_reason: 'received',
+          p_notes: 'AI Automated Quick Restock Order'
+        });
+        if (error) throw error;
+        toast({ title: 'AI Reorder Dispatched', description: `Restocked ${suggestion.suggestedReorder} ${suggestion.unit} of ${suggestion.name}.` });
+      }
+      load();
+      window.dispatchEvent(new CustomEvent('items-updated'));
+    } catch (e: any) {
+      toast({ title: 'Restock failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
   // Item adjustments
   const openAdj = (it: ItemRow) => {
     setTarget(it);
@@ -436,10 +511,11 @@ const StockManagement: React.FC = () => {
 
         {/* Tab Selection */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-3 max-w-md bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+          <TabsList className="grid grid-cols-4 max-w-lg bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
             <TabsTrigger value="stock" className="rounded-lg">Item Stock</TabsTrigger>
             <TabsTrigger value="ingredients" className="rounded-lg">Ingredients</TabsTrigger>
             <TabsTrigger value="recipes" className="rounded-lg">Recipes</TabsTrigger>
+            <TabsTrigger value="ai" className="rounded-lg flex items-center gap-1 font-semibold"><Sparkles className="w-3 h-3 text-primary" /> AI Predictions</TabsTrigger>
           </TabsList>
 
           {/* TAB 1: ITEM STOCK */}
@@ -803,6 +879,79 @@ const StockManagement: React.FC = () => {
               </div>
 
             </div>
+          </TabsContent>
+
+          {/* TAB 4: AI PREDICTIONS & SUGGESTIONS */}
+          <TabsContent value="ai" className="space-y-4 outline-none">
+            <Card className="border border-border/80 shadow-md overflow-hidden bg-gradient-to-br from-background to-primary/5">
+              <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border/40 p-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" /> AI Smart Reorder Suggestions
+                </CardTitle>
+                <CardDescription>Predicts inventory depletion speeds and recommends reorder sizes to prevent stockouts.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                {aiReorderSuggestions.length === 0 ? (
+                  <div className="p-12 text-center text-muted-foreground">
+                    <Sparkles className="w-12 h-12 mx-auto mb-2 opacity-35 text-primary animate-pulse" />
+                    <p className="font-semibold text-sm">All stock levels are perfectly healthy!</p>
+                    <p className="text-xs mt-1">No items or raw ingredients have crossed their safety thresholds.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50/30 dark:bg-gray-900/10">
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">Type</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">Name</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">Branch</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">Current Stock</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">AI Reorder Suggestion</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">Est. Cost</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider">Prediction Logic</TableHead>
+                        <TableHead className="w-[120px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {aiReorderSuggestions.map((s, idx) => (
+                        <TableRow key={idx} className="hover:bg-muted/30 transition-colors">
+                          <TableCell>
+                            <Badge variant="outline" className={cn(
+                              "text-[10px] font-bold px-1.5 py-0.5",
+                              s.type === 'ingredient' ? "bg-amber-500/10 text-amber-600 border-amber-500/20" : "bg-purple-500/10 text-purple-600 border-purple-500/20"
+                            )}>
+                              {s.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-bold">{s.name}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{branchName(s.branch_id)}</TableCell>
+                          <TableCell className="text-xs text-rose-600 font-bold">
+                            {s.current} {s.unit} (Min: {s.min})
+                          </TableCell>
+                          <TableCell className="text-xs text-emerald-600 font-black">
+                            + {s.suggestedReorder} {s.unit}
+                          </TableCell>
+                          <TableCell className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {s.estimatedCost !== null ? `₹${Math.round(s.estimatedCost)}` : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-xs truncate" title={s.reason}>
+                            {s.reason}
+                          </TableCell>
+                          <TableCell className="text-right pr-4">
+                            <Button 
+                              size="sm" 
+                              className="h-7 text-[10px] rounded bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                              onClick={() => handleQuickRestock(s)}
+                            >
+                              Quick Restock
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -19,6 +19,11 @@ interface Table {
   table_name: string | null;
   status: string;
   capacity: number | null;
+  x_pos?: number | null;
+  y_pos?: number | null;
+  width?: number | null;
+  height?: number | null;
+  shape?: string | null;
 }
 
 interface TableSelectorProps {
@@ -36,6 +41,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
   const [tables, setTables] = useState<Table[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
   useEffect(() => {
     if (open && adminId) {
@@ -115,13 +121,35 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LayoutGrid className="w-5 h-5" />
             Select Table
           </DialogTitle>
         </DialogHeader>
+
+        {/* View Mode Toggle */}
+        {tables.length > 0 && (
+          <div className="flex justify-end gap-1 mb-2 bg-muted/40 p-1 rounded-lg border w-fit ml-auto">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className={cn("h-7 text-[10px] font-bold px-2 rounded-md", viewMode === 'grid' && "bg-background shadow-sm")}
+            >
+              Grid View
+            </Button>
+            <Button
+              variant={viewMode === 'map' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('map')}
+              className={cn("h-7 text-[10px] font-bold px-2 rounded-md", viewMode === 'map' && "bg-background shadow-sm")}
+            >
+              Floor Map
+            </Button>
+          </div>
+        )}
         
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -132,6 +160,57 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
             <LayoutGrid className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p>No tables configured</p>
             <p className="text-xs mt-1">Add tables in Table Management</p>
+          </div>
+        ) : viewMode === 'map' ? (
+          <div 
+            className="relative w-full h-[360px] border border-border/80 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-zinc-950/50 p-2 shadow-inner"
+            style={{ 
+              backgroundImage: 'linear-gradient(to right, rgb(128 128 128 / 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgb(128 128 128 / 0.05) 1px, transparent 1px)', 
+              backgroundSize: '15px 15px' 
+            }}
+          >
+            <div className="absolute top-1 left-1 bg-background/90 text-[9px] font-medium px-1.5 py-0.5 rounded border text-muted-foreground z-10">
+              Floor Plan Layout
+            </div>
+
+            <div className="relative w-full h-full">
+              {tables.map((table) => {
+                const w = (table.width || 100) * 0.6;
+                const h = (table.height || 100) * 0.6;
+                const x = (table.x_pos !== null && table.x_pos !== undefined ? table.x_pos : 50) * 0.6;
+                const y = (table.y_pos !== null && table.y_pos !== undefined ? table.y_pos : 50) * 0.6;
+                const isCircle = table.shape === 'circle';
+                const isSelected = selectedTableId === table.id;
+                const isOccupied = table.status === 'occupied';
+
+                return (
+                  <button
+                    key={table.id}
+                    disabled={isOccupied}
+                    onClick={() => handleSelectTable(table)}
+                    style={{
+                      position: 'absolute',
+                      left: `${x}px`,
+                      top: `${y}px`,
+                      width: `${w}px`,
+                      height: `${h}px`
+                    }}
+                    className={`
+                      flex flex-col items-center justify-center border transition-all text-center p-1 select-none text-[10px]
+                      ${isCircle ? 'rounded-full' : 'rounded-xl'}
+                      ${isSelected ? 'ring-2 ring-primary ring-offset-1 border-primary z-20 shadow-md' : ''}
+                      ${isOccupied ? 'bg-red-500/10 border-red-200 text-red-500 cursor-not-allowed opacity-60' : 'hover:border-primary cursor-pointer'}
+                      ${table.status === 'available' && !isSelected ? 'bg-green-500/10 border-green-200 text-green-700 hover:bg-green-500/20' : ''}
+                      ${table.status === 'reserved' ? 'bg-yellow-500/10 border-yellow-200 text-yellow-700' : ''}
+                      ${table.status === 'cleaning' ? 'bg-blue-500/10 border-blue-200 text-blue-700' : ''}
+                    `}
+                  >
+                    <span className="font-extrabold text-xs">T{table.table_number}</span>
+                    <span className="text-[8px] opacity-70">({table.capacity}p)</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 max-h-[60vh] overflow-y-auto p-1">

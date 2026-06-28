@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { LogOut, User, Hotel, Menu } from 'lucide-react';
+import { LogOut, User, Hotel, Menu, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BranchSwitcher } from './BranchSwitcher';
@@ -25,6 +25,22 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const toggleDarkMode = () => {
+    const root = document.documentElement;
+    if (root.classList.contains('dark')) {
+      root.classList.remove('dark');
+      localStorage.setItem('hotel_pos_dark_mode', 'false');
+      setIsDarkMode(false);
+    } else {
+      root.classList.add('dark');
+      localStorage.setItem('hotel_pos_dark_mode', 'true');
+      setIsDarkMode(true);
+    }
+  };
 
   if (!profile) return null;
 
@@ -119,6 +135,16 @@ export const Header: React.FC = () => {
           <div className="flex items-center space-x-2">
             {!isSuperAdmin && <BranchSwitcher />}
             <LanguageSwitcher />
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-xl hover:bg-muted/60"
+              onClick={toggleDarkMode}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkMode ? <Sun className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 animate-pulse" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500 dark:text-indigo-400" />}
+            </Button>
 
             <Badge variant={profile.role === 'admin' || profile.role === 'super_admin' ? 'default' : 'outline'} className="hidden md:flex text-xs">
               {profile.role === 'super_admin' ? 'Super Admin' : profile.role === 'admin' ? t('users.admin') : t('users.user')}

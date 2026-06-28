@@ -93,6 +93,8 @@ const TableOrderBilling: React.FC = () => {
     const isOnline = useNetworkStatus();
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState<TableWithOrders[]>([]);
+    const [configuredTables, setConfiguredTables] = useState<any[]>([]);
+    const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
     const [selectedTable, setSelectedTable] = useState<TableWithOrders | null>(null);
     const [isBilling, setIsBilling] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -318,6 +320,27 @@ const TableOrderBilling: React.FC = () => {
         }
     }, [operatingBranchId]);
 
+    // Fetch configured tables from DB for visual floor layout
+    const fetchConfiguredTables = useCallback(async () => {
+        if (!adminId) return;
+        try {
+            let query = supabase
+                .from('tables')
+                .select('*')
+                .eq('admin_id', adminId)
+                .eq('is_active', true);
+            if (operatingBranchId) {
+                query = query.eq('branch_id', operatingBranchId);
+            }
+            const { data, error } = await query;
+            if (!error && data) {
+                setConfiguredTables(data);
+            }
+        } catch (e) {
+            console.warn('Error fetching configured tables:', e);
+        }
+    }, [adminId, operatingBranchId]);
+
     // Fetch all unbilled table orders grouped by table
     const fetchTableOrders = useCallback(async () => {
         if (!adminId) return;
@@ -375,6 +398,7 @@ const TableOrderBilling: React.FC = () => {
     // Setup real-time sync
     useEffect(() => {
         fetchTableOrders();
+        fetchConfiguredTables();
         fetchPaymentTypes();
         fetchAdditionalCharges();
         loadShopSettingsFromCache();
@@ -383,7 +407,10 @@ const TableOrderBilling: React.FC = () => {
         // Seed bill counter
         initBillCounter(adminId, operatingBranchId).catch(console.warn);
 
-        const interval = setInterval(fetchTableOrders, 15000);
+        const interval = setInterval(() => {
+            fetchTableOrders();
+            fetchConfiguredTables();
+        }, 15000);
 
         // Listen on the SAME shared channel that PublicMenu/Kitchen/ServiceArea use
         const channel = supabase.channel('table-order-sync', {
@@ -1013,8 +1040,99 @@ const TableOrderBilling: React.FC = () => {
                     </Button>
                 </div>
 
-                {/* No tables */}
-                {tables.length === 0 ? (
+                {/* View Mode Toggle */}
+                {configuredTables.length > 0 && (
+                    <div className="flex justify-end gap-2 mb-4 bg-muted/30 p-1.5 rounded-xl border max-w-xs ml-auto">
+                        <Button
+                            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setViewMode('grid')}
+                            className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'grid' && "bg-background shadow-sm")}
+                        >
+                            <LayoutGrid className="w-3.5 h-3.5 mr-1" />
+                            List View
+                        </Button>
+                        <Button
+                            variant={viewMode === 'map' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setViewMode('map')}
+                            className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'map' && "bg-background shadow-sm")}
+                        >
+                            <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />
+                            Floor Map
+                        </Button>
+                    </div>
+                )}
+
+                {/* Content */}
+                {viewMode === 'map' ? (
+                    <div 
+                        className="relative w-full h-[580px] border-2 border-border/80 rounded-2xl overflow-hidden shadow-xl bg-slate-50 dark:bg-zinc-950 p-4"
+                        style={{ 
+                            backgroundImage: 'linear-gradient(to right, rgb(128 128 128 / 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgb(128 128 128 / 0.08) 1px, transparent 1px)', 
+                            backgroundSize: '20px 20px' 
+                        }}
+                    >
+                        <div className="absolute top-2 left-2 bg-background/80 backdrop-blur border text-[11px] font-semibold px-2 py-1 rounded shadow-sm z-10 text-muted-foreground flex items-center gap-1">
+                            🟣 <span className="font-bold text-foreground">Status Map:</span> Highlighted tables have active orders. Click to generate bill.
+                        </div>
+                        
+                        <div className="relative w-full h-full rounded-xl">
+                            {configuredTables.map((cTable) => {
+                                // Find if this table has pending orders
+                                const matchedTables = tables.filter(t => t.table_number === cTable.table_number);
+                                const hasOrders = matchedTables.length > 0;
+                                const totalAmount = matchedTables.reduce((sum, t) => sum + t.total, 0);
+                                const totalOrders = matchedTables.reduce((sum, t) => sum + t.orderCount, 0);
+
+                                const width = cTable.width || 100;
+                                const height = cTable.height || 100;
+                                const x = cTable.x_pos !== null && cTable.x_pos !== undefined ? cTable.x_pos : 50;
+                                const y = cTable.y_pos !== null && cTable.y_pos !== undefined ? cTable.y_pos : 50;
+                                const isCircle = cTable.shape === 'circle';
+
+                                return (
+                                    <button
+                                        key={cTable.id}
+                                        onClick={() => {
+                                            if (hasOrders) {
+                                                handleTableSelect(matchedTables[0]);
+                                            } else {
+                                                toast({ title: 'No Orders', description: `Table T${cTable.table_number} does not have any active orders.` });
+                                            }
+                                        }}
+                                        style={{
+                                            position: 'absolute',
+                                            left: `${x}px`,
+                                            top: `${y}px`,
+                                            width: `${width}px`,
+                                            height: `${height}px`,
+                                        }}
+                                        className={cn(
+                                            "flex flex-col items-center justify-center border-2 shadow-md transition-all text-center p-2",
+                                            isCircle ? "rounded-full" : "rounded-2xl",
+                                            hasOrders 
+                                                ? "border-purple-400 bg-purple-500/10 text-purple-700 dark:text-purple-400 hover:bg-purple-500/20 cursor-pointer ring-2 ring-purple-200" 
+                                                : "border-gray-200 bg-card text-muted-foreground opacity-40 cursor-default",
+                                        )}
+                                    >
+                                        <span className="font-black text-sm md:text-base">T{cTable.table_number}</span>
+                                        {hasOrders ? (
+                                            <>
+                                                <span className="text-[10px] font-bold text-primary">₹{Math.round(totalAmount)}</span>
+                                                <Badge className="bg-purple-500 text-white text-[9px] scale-95 mt-1">
+                                                    {totalOrders} Order{totalOrders > 1 ? 's' : ''}
+                                                </Badge>
+                                            </>
+                                        ) : (
+                                            <span className="text-[9px] opacity-70">Empty</span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : tables.length === 0 ? (
                     <Card className="p-12 text-center border-dashed bg-muted/20">
                         <div className="text-muted-foreground">
                             <Receipt className="w-16 h-16 mx-auto mb-4 opacity-20" />

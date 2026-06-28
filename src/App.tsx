@@ -16,6 +16,14 @@ const ThemeLoader = () => {
 
   useEffect(() => {
     const applyGlobalTheme = () => {
+      const savedDarkMode = localStorage.getItem('hotel_pos_dark_mode');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (savedDarkMode === 'true' || (savedDarkMode === null && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
       const themeKey = operatingBranchId ? `hotel_pos_theme_${operatingBranchId}` : 'hotel_pos_theme';
       const savedTheme = localStorage.getItem(themeKey) ?? localStorage.getItem('hotel_pos_theme') ?? 'blue';
       const customColorKey = operatingBranchId ? `hotel_pos_custom_color_${operatingBranchId}` : 'hotel_pos_custom_color';
@@ -160,6 +168,7 @@ import StockReports from "./pages/StockReports";
 import StockTransfers from "./pages/StockTransfers";
 import PurchaseReturns from "./pages/PurchaseReturns";
 import StockLedger from "./pages/StockLedger";
+import { MenuTV } from "./pages/MenuTV";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PendingBillsQueue } from "./components/PendingBillsQueue";
@@ -388,6 +397,7 @@ const App = () => {
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/demo" element={<DemoBilling />} />
+                  <Route path="/menu-tv/:adminId" element={<MenuTV />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </BranchProvider>

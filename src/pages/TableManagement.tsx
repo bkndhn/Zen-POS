@@ -30,6 +30,12 @@ interface Table {
   has_seats?: boolean;
   seat_count?: number | null;
   seat_configuration?: any;
+  x_pos?: number | null;
+  y_pos?: number | null;
+  width?: number | null;
+  height?: number | null;
+  shape?: string | null;
+  floor_name?: string | null;
 }
 
 // Display status config — 6 visual states computed from DB status + order data
@@ -99,6 +105,70 @@ const TableManagement: React.FC = () => {
   const [hasSeats, setHasSeats] = useState(false);
   const [seatCount, setSeatCount] = useState('2');
   const [seatLabels, setSeatLabels] = useState<string[]>([]);
+
+  // Floor plan visual editor states
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [shape, setShape] = useState('rectangle');
+  const [width, setWidth] = useState('100');
+  const [height, setHeight] = useState('100');
+  const [xPos, setXPos] = useState('50');
+  const [yPos, setYPos] = useState('50');
+  const [floorName, setFloorName] = useState('Main Floor');
+
+  const [draggingTableId, setDraggingTableId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent, table: Table) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('select') || (e.target as HTMLElement).closest('a')) {
+      return;
+    }
+    e.preventDefault();
+    setDraggingTableId(table.id);
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    const x = table.x_pos !== null && table.x_pos !== undefined ? table.x_pos : 50;
+    const y = table.y_pos !== null && table.y_pos !== undefined ? table.y_pos : 50;
+    setDragOffset({
+      x: clientX - x,
+      y: clientY - y
+    });
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent, tableId: string) => {
+    if (draggingTableId !== tableId) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    let newX = clientX - dragOffset.x;
+    let newY = clientY - dragOffset.y;
+    
+    newX = Math.max(0, Math.min(newX, 900));
+    newY = Math.max(0, Math.min(newY, 480));
+    
+    newX = Math.round(newX / 10) * 10;
+    newY = Math.round(newY / 10) * 10;
+
+    setTables(prev => prev.map(t => t.id === tableId ? { ...t, x_pos: newX, y_pos: newY } : t));
+  };
+
+  const handlePointerUp = async (e: React.PointerEvent, table: Table) => {
+    if (draggingTableId !== table.id) return;
+    setDraggingTableId(null);
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+
+    try {
+      const { error } = await supabase
+        .from('tables')
+        .update({
+          x_pos: table.x_pos || 50,
+          y_pos: table.y_pos || 50
+        })
+        .eq('id', table.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to save table position:', err);
+    }
+  };
 
   const fetchTables = useCallback(async () => {
     try {
@@ -262,6 +332,12 @@ const TableManagement: React.FC = () => {
       setHasSeats(table.has_seats || false);
       setSeatCount(String(table.seat_count || 2));
       setSeatLabels(Array.isArray(table.seat_configuration) ? (table.seat_configuration as string[]) : getDefaultSeatLabels(table.seat_count || 2));
+      setShape(table.shape || 'rectangle');
+      setWidth(String(table.width || 100));
+      setHeight(String(table.height || 100));
+      setXPos(String(table.x_pos !== null && table.x_pos !== undefined ? table.x_pos : 50));
+      setYPos(String(table.y_pos !== null && table.y_pos !== undefined ? table.y_pos : 50));
+      setFloorName(table.floor_name || 'Main Floor');
     } else {
       setEditingTable(null);
       setTableNumber('');
@@ -270,6 +346,12 @@ const TableManagement: React.FC = () => {
       setHasSeats(false);
       setSeatCount('2');
       setSeatLabels(getDefaultSeatLabels(2));
+      setShape('rectangle');
+      setWidth('100');
+      setHeight('100');
+      setXPos('50');
+      setYPos('50');
+      setFloorName('Main Floor');
     }
     setDialogOpen(true);
   };
@@ -290,6 +372,12 @@ const TableManagement: React.FC = () => {
         has_seats: hasSeats,
         seat_count: hasSeats ? parseInt(seatCount) : 0,
         seat_configuration: hasSeats ? seatLabels : [],
+        shape: shape,
+        width: parseInt(width) || 100,
+        height: parseInt(height) || 100,
+        x_pos: parseInt(xPos) || 50,
+        y_pos: parseInt(yPos) || 50,
+        floor_name: floorName.trim() || 'Main Floor'
       };
 
       if (editingTable) {
@@ -408,7 +496,29 @@ const TableManagement: React.FC = () => {
           })}
         </div>
 
-        {/* Tables Grid */}
+        {/* View Mode Toggle */}
+        <div className="flex justify-end gap-2 mb-4 bg-muted/30 p-1.5 rounded-xl border max-w-xs ml-auto">
+          <Button
+            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+            className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'grid' && "bg-background shadow-sm")}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 mr-1" />
+            Grid View
+          </Button>
+          <Button
+            variant={viewMode === 'map' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('map')}
+            className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'map' && "bg-background shadow-sm")}
+          >
+            <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />
+            Floor Map
+          </Button>
+        </div>
+
+        {/* Tables Content */}
         {tables.length === 0 ? (
           <Card className="p-8 text-center">
             <LayoutGrid className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -419,6 +529,66 @@ const TableManagement: React.FC = () => {
               Add First Table
             </Button>
           </Card>
+        ) : viewMode === 'map' ? (
+          <div 
+            className="relative w-full h-[580px] border-2 border-border/80 rounded-2xl overflow-hidden shadow-xl bg-slate-50 dark:bg-zinc-950 p-4"
+            style={{ 
+              backgroundImage: 'linear-gradient(to right, rgb(128 128 128 / 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgb(128 128 128 / 0.08) 1px, transparent 1px)', 
+              backgroundSize: '20px 20px' 
+            }}
+          >
+            <div className="absolute top-2 left-2 bg-background/80 backdrop-blur border text-[11px] font-semibold px-2 py-1 rounded shadow-sm z-10 text-muted-foreground flex items-center gap-1">
+              ✨ <span className="font-bold text-foreground">Tip:</span> Drag tables to arrange layout. Double click to edit details.
+            </div>
+            
+            <div className="relative w-full h-full rounded-xl">
+              {tables.map((table) => {
+                const dStatus = tableDisplayStatuses[table.id] || 'available';
+                const config = displayStatusConfig[dStatus];
+                const Icon = config.icon;
+                const width = table.width || 100;
+                const height = table.height || 100;
+                const x = table.x_pos !== null && table.x_pos !== undefined ? table.x_pos : 50;
+                const y = table.y_pos !== null && table.y_pos !== undefined ? table.y_pos : 50;
+                const isCircle = table.shape === 'circle';
+
+                return (
+                  <div
+                    key={table.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${x}px`,
+                      top: `${y}px`,
+                      width: `${width}px`,
+                      height: `${height}px`,
+                      touchAction: 'none'
+                    }}
+                    onPointerDown={(e) => handlePointerDown(e, table)}
+                    onPointerMove={(e) => handlePointerMove(e, table.id)}
+                    onPointerUp={(e) => handlePointerUp(e, table)}
+                    onDoubleClick={() => handleOpenDialog(table)}
+                    className={cn(
+                      "flex flex-col items-center justify-center border-2 shadow-md transition-shadow cursor-grab select-none p-2 text-center",
+                      isCircle ? "rounded-full" : "rounded-2xl",
+                      config.borderColor,
+                      draggingTableId === table.id ? "shadow-2xl cursor-grabbing scale-105 z-50 border-primary bg-primary/5" : "bg-card hover:shadow-lg",
+                      dStatus !== 'available' && "ring-2 " + config.ringColor
+                    )}
+                  >
+                    <div className={cn(isCircle ? "hidden" : "absolute top-0 left-0 right-0 h-1.5 rounded-t-xl", config.color)} />
+                    <span className="font-black text-sm md:text-base">T{table.table_number}</span>
+                    {table.table_name && (
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[65px] font-medium leading-none mb-1">{table.table_name}</span>
+                    )}
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-bold scale-90 mt-1">
+                      <Users className="w-2 h-2 mr-0.5" />
+                      {table.capacity}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {tables.map((table) => {
@@ -599,6 +769,48 @@ const TableManagement: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Floor Plan Position / Size settings */}
+              <div className="border-t pt-4 space-y-3">
+                <h4 className="text-xs font-bold uppercase text-primary tracking-wider">Floor Plan Layout</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="shape" className="text-xs">Table Shape</Label>
+                    <Select value={shape} onValueChange={setShape}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rectangle">Rectangle</SelectItem>
+                        <SelectItem value="circle">Circle</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="floorName" className="text-xs">Floor Area</Label>
+                    <Input id="floorName" className="h-8 text-xs" value={floorName} onChange={(e) => setFloorName(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="space-y-1 col-span-2">
+                    <Label className="text-xs">Size (Width x Height)</Label>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" min="40" max="250" className="h-8 text-xs" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="W" />
+                      <span className="text-xs text-muted-foreground">×</span>
+                      <Input type="number" min="40" max="250" className="h-8 text-xs" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="H" />
+                    </div>
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <Label className="text-xs">Position (X, Y)</Label>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" min="0" max="1000" className="h-8 text-xs" value={xPos} onChange={(e) => setXPos(e.target.value)} placeholder="X" />
+                      <span className="text-xs text-muted-foreground">,</span>
+                      <Input type="number" min="0" max="800" className="h-8 text-xs" value={yPos} onChange={(e) => setYPos(e.target.value)} placeholder="Y" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between border-t pt-4">
