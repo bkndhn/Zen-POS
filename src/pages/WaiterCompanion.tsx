@@ -81,6 +81,52 @@ const WaiterCompanion: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'cart'>('tables');
     const [clearCartOpen, setClearCartOpen] = useState(false);
+    const [gstSettings, setGstSettings] = useState<{
+        enabled: boolean;
+        taxRatesMap: Record<string, { rate: number; name: string; cess: number }>;
+    }>({ enabled: false, taxRatesMap: {} });
+
+    // Fetch GST settings using correct Auth UID
+    const fetchGstSettings = useCallback(async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            // Resolve admin Auth UID (shop_settings.user_id = Auth UID)
+            let targetAuthId = user.id;
+            if (profile?.role === 'user' && profile.admin_id) {
+                const { data: parentProfile } = await supabase
+                    .from('profiles')
+                    .select('user_id')
+                    .eq('id', profile.admin_id)
+                    .single();
+                if (parentProfile?.user_id) targetAuthId = parentProfile.user_id;
+            }
+            // Check gst_enabled from shop_settings
+            let ssQuery = supabase.from('shop_settings').select('gst_enabled, gstin').eq('user_id', targetAuthId);
+            if (operatingBranchId) ssQuery = ssQuery.eq('branch_id', operatingBranchId);
+            else ssQuery = ssQuery.is('branch_id', null);
+            let { data: ss } = await ssQuery.maybeSingle();
+            if (!ss) {
+                const { data: anyss } = await supabase.from('shop_settings').select('gst_enabled, gstin').eq('user_id', targetAuthId).limit(1).maybeSingle();
+                ss = anyss;
+            }
+            if (ss?.gst_enabled) {
+                // tax_rates.admin_id = Auth UID
+                let ratesQuery = (supabase as any).from('tax_rates').select('id, name, rate, cess_rate').eq('admin_id', targetAuthId).eq('is_active', true);
+                if (operatingBranchId) ratesQuery = ratesQuery.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+                const { data: rates } = await ratesQuery;
+                const taxRatesMap: Record<string, any> = {};
+                (rates || []).forEach((r: any) => {
+                    taxRatesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0 };
+                });
+                setGstSettings({ enabled: true, taxRatesMap });
+            } else {
+                setGstSettings({ enabled: false, taxRatesMap: {} });
+            }
+        } catch (err) {
+            console.warn('Could not load GST settings:', err);
+        }
+    }, [profile, operatingBranchId]);
 
     // Fetch tables
     const fetchTables = useCallback(async () => {
@@ -175,7 +221,8 @@ const WaiterCompanion: React.FC = () => {
     useEffect(() => {
         fetchTables();
         fetchMenu();
-    }, [fetchTables, fetchMenu]);
+        fetchGstSettings();
+    }, [fetchTables, fetchMenu, fetchGstSettings]);
 
     // Extract unique categories
     const categories = useMemo(() => {
@@ -253,7 +300,9 @@ const WaiterCompanion: React.FC = () => {
                 selling_quantity: item.selling_quantity,
                 quantity_step: item.quantity_step || item.selling_quantity || item.base_value || 1,
                 instructions: '',
-                seatId: selectedSeatId
+                seatId: selectedSeatId,
+                tax_rate_id: (item as any).tax_rate_id || null,
+                is_tax_inclusive: (item as any).is_tax_inclusive !== false
             }];
         });
 
@@ -290,13 +339,47 @@ const WaiterCompanion: React.FC = () => {
         ));
     };
 
-    // Cart total
-    const cartTotal = useMemo(() => {
-        return cart.reduce((sum, item) => {
-            const baseValue = item.base_value || 1;
-            return sum + ((item.quantity / baseValue) * item.price);
-        }, 0);
-    }, [cart]);
+    // Cart totals — including GST if enabled
+    const { cartSubtotal, cartExclusiveTax, cartTaxesList, cartTotal } = useMemo(() => {
+        let subtotal = 0;
+        let exclusiveTax = 0;
+        const rateSummary: Record<string, { rate: number; taxable: number; tax: number; name: string }> = {};
+
+        cart.forEach(item => {
+            const bv = item.base_value || 1;
+            const lineTotal = (item.quantity / bv) * item.price;
+            subtotal += lineTotal;
+
+            const taxRateId = (item as any).tax_rate_id;
+            const taxRateInfo = (gstSettings.enabled && taxRateId) ? gstSettings.taxRatesMap[taxRateId] : null;
+
+            if (taxRateInfo) {
+                const totalRate = taxRateInfo.rate + taxRateInfo.cess;
+                const isInclusive = (item as any).is_tax_inclusive !== false;
+                let taxable = lineTotal;
+                let tax = 0;
+                if (isInclusive) {
+                    taxable = lineTotal / (1 + totalRate / 100);
+                    tax = lineTotal - taxable;
+                } else {
+                    taxable = lineTotal;
+                    tax = lineTotal * (totalRate / 100);
+                    exclusiveTax += tax;
+                }
+                const key = String(taxRateInfo.rate);
+                if (!rateSummary[key]) rateSummary[key] = { rate: taxRateInfo.rate, name: taxRateInfo.name || `GST ${taxRateInfo.rate}%`, taxable: 0, tax: 0 };
+                rateSummary[key].taxable += taxable;
+                rateSummary[key].tax += tax;
+            }
+        });
+
+        return {
+            cartSubtotal: subtotal,
+            cartExclusiveTax: exclusiveTax,
+            cartTaxesList: Object.values(rateSummary),
+            cartTotal: subtotal + exclusiveTax
+        };
+    }, [cart, gstSettings]);
 
     // Submit table order
     const handleSubmitOrder = async () => {
@@ -337,7 +420,15 @@ const WaiterCompanion: React.FC = () => {
                 const currentSeatId = seatKey === 'table' ? null : seatKey;
                 const seatTotal = itemsInSeat.reduce((sum, i) => {
                     const baseValue = i.base_value || 1;
-                    return sum + ((i.quantity / baseValue) * i.price);
+                    const lineTotal = (i.quantity / baseValue) * i.price;
+                    // Add exclusive tax for this item if applicable
+                    let excTax = 0;
+                    const txRateId = (i as any).tax_rate_id;
+                    const txInfo = (gstSettings.enabled && txRateId) ? gstSettings.taxRatesMap[txRateId] : null;
+                    if (txInfo && (i as any).is_tax_inclusive === false) {
+                        excTax = lineTotal * (txInfo.rate + txInfo.cess) / 100;
+                    }
+                    return sum + lineTotal + excTax;
                 }, 0);
                 
                 const tableOrderData = {
@@ -754,6 +845,24 @@ const WaiterCompanion: React.FC = () => {
 
                         {/* Bottom Total & Checkout Summary */}
                         <div className="bg-card border-t pt-3 space-y-3 mt-auto">
+                            <div className="space-y-1 text-xs text-muted-foreground px-1">
+                                <div className="flex justify-between">
+                                    <span>Subtotal:</span>
+                                    <span>₹{cartSubtotal.toFixed(2)}</span>
+                                </div>
+                                {cartExclusiveTax > 0 && (
+                                    <div className="flex justify-between text-amber-600 font-medium">
+                                        <span>Tax (Exclusive):</span>
+                                        <span>+₹{cartExclusiveTax.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {gstSettings.enabled && cartTaxesList.map((entry: any) => (
+                                    <div key={entry.rate} className="flex justify-between pl-2 text-[10px]">
+                                        <span>{entry.name} (Taxable ₹{entry.taxable.toFixed(2)}):</span>
+                                        <span>₹{entry.tax.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
                             <div className="flex justify-between items-center px-1">
                                 <span className="font-bold text-muted-foreground text-sm">Estimated Total:</span>
                                 <span className="text-xl font-black text-primary">₹{cartTotal.toFixed(0)}</span>

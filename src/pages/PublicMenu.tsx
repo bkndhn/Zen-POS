@@ -333,20 +333,29 @@ const PublicMenu = () => {
                 setGstEnabled(enabled);
 
                 if (enabled) {
-                    let ratesQuery = supabase
-                        .from('tax_rates')
-                        .select('id, name, rate, cess_rate')
-                        .eq('admin_id', adminId)
-                        .eq('is_active', true);
-                    if (branchId) {
-                        ratesQuery = ratesQuery.or(`branch_id.eq.${branchId},branch_id.is.null`);
+                    // tax_rates.admin_id stores Auth UID; resolve it from Profile UUID
+                    const { data: profileRow } = await supabase
+                        .from('profiles')
+                        .select('user_id')
+                        .eq('id', adminId)
+                        .maybeSingle();
+                    const authUid = profileRow?.user_id;
+                    if (authUid) {
+                        let ratesQuery = supabase
+                            .from('tax_rates')
+                            .select('id, name, rate, cess_rate')
+                            .eq('admin_id', authUid)
+                            .eq('is_active', true);
+                        if (branchId) {
+                            ratesQuery = ratesQuery.or(`branch_id.eq.${branchId},branch_id.is.null`);
+                        }
+                        const { data: rates } = await ratesQuery;
+                        const ratesMap: Record<string, any> = {};
+                        (rates || []).forEach((r: any) => {
+                            ratesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0 };
+                        });
+                        setTaxRatesMap(ratesMap);
                     }
-                    const { data: rates } = await ratesQuery;
-                    const ratesMap: Record<string, any> = {};
-                    (rates || []).forEach((r: any) => {
-                        ratesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0 };
-                    });
-                    setTaxRatesMap(ratesMap);
                 }
 
                 setItems((itemsData || []) as any);
