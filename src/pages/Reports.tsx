@@ -116,9 +116,18 @@ const Reports: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
-      const targetAdminId = adminId || profile?.id || user.id;
+      // shop_settings.user_id = Auth UID (not Profile UUID)
+      let targetAuthId = user.id;
+      if (profile?.role === 'user' && profile.admin_id) {
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .single();
+        if (parentProfile?.user_id) targetAuthId = parentProfile.user_id;
+      }
 
-      let query = supabase.from('shop_settings').select('*').eq('user_id', targetAdminId);
+      let query = supabase.from('shop_settings').select('*').eq('user_id', targetAuthId);
       if (bill.branch_id) {
         query = query.eq('branch_id', bill.branch_id);
       } else {
@@ -131,7 +140,7 @@ const Reports: React.FC = () => {
         const { data: mainBranch } = await supabase
           .from('branches')
           .select('id')
-          .eq('admin_id', targetAdminId)
+          .eq('admin_id', adminId)
           .eq('is_main', true)
           .maybeSingle();
 
@@ -139,7 +148,7 @@ const Reports: React.FC = () => {
           const { data: fallbackData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', targetAdminId)
+            .eq('user_id', targetAuthId)
             .eq('branch_id', mainBranch.id)
             .maybeSingle();
           data = fallbackData;
@@ -149,7 +158,7 @@ const Reports: React.FC = () => {
           const { data: anyData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', targetAdminId)
+            .eq('user_id', targetAuthId)
             .order('branch_id', { nullsFirst: false })
             .limit(1)
             .maybeSingle();
@@ -180,7 +189,8 @@ const Reports: React.FC = () => {
           showInstagram: data.show_instagram,
           whatsapp: data.whatsapp || '',
           showWhatsapp: data.show_whatsapp,
-          gstin: data.gstin || ''
+          gstin: data.gstin || '',
+          printerWidth: data.printer_width || '58mm'
         };
       }
     } catch (e) {
@@ -341,9 +351,18 @@ const Reports: React.FC = () => {
     const syncFromSupabase = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const targetAdminId = adminId || profile?.id || user.id;
+      // shop_settings.user_id = Auth UID (not Profile UUID)
+      let targetAuthId = user.id;
+      if (profile?.role === 'user' && profile.admin_id) {
+        const { data: parentProfile } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .single();
+        if (parentProfile?.user_id) targetAuthId = parentProfile.user_id;
+      }
 
-      let query = supabase.from('shop_settings').select('*').eq('user_id', targetAdminId);
+      let query = supabase.from('shop_settings').select('*').eq('user_id', targetAuthId);
       if (branchFilterId) {
         query = query.eq('branch_id', branchFilterId);
       } else {
@@ -356,7 +375,7 @@ const Reports: React.FC = () => {
         const { data: mainBranch } = await supabase
           .from('branches')
           .select('id')
-          .eq('admin_id', targetAdminId)
+          .eq('admin_id', adminId)
           .eq('is_main', true)
           .maybeSingle();
 
@@ -364,7 +383,7 @@ const Reports: React.FC = () => {
           const { data: fallbackData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', targetAdminId)
+            .eq('user_id', targetAuthId)
             .eq('branch_id', mainBranch.id)
             .maybeSingle();
           data = fallbackData;
@@ -374,7 +393,7 @@ const Reports: React.FC = () => {
           const { data: anyData } = await supabase
             .from('shop_settings')
             .select('*')
-            .eq('user_id', targetAdminId)
+            .eq('user_id', targetAuthId)
             .order('branch_id', { nullsFirst: false })
             .limit(1)
             .maybeSingle();
@@ -1048,7 +1067,12 @@ const Reports: React.FC = () => {
         gstin: settings?.gstin,
         totalItemsCount: bill.bill_items?.length || 0,
         smartQtyCount: calculateSmartQtyCount(bill.bill_items?.map(item => ({ quantity: item.quantity, unit: item.items?.unit })) || []),
-        orderType: (bill as any).order_type || undefined
+        orderType: (bill as any).order_type || undefined,
+        taxSummary: bill.tax_summary ? (typeof bill.tax_summary === 'string' ? bill.tax_summary : JSON.stringify(bill.tax_summary)) : undefined,
+        totalTax: bill.total_tax || undefined,
+        isComposition: (bill as any).is_composition || undefined,
+        customerGstin: (bill as any).customer_gstin || undefined,
+        roundOff: (bill as any).round_off || undefined
       };
 
       toast({
@@ -1107,7 +1131,12 @@ const Reports: React.FC = () => {
         gstin: settings?.gstin,
         totalItemsCount: bill.bill_items?.length || 0,
         smartQtyCount: calculateSmartQtyCount(bill.bill_items?.map(item => ({ quantity: item.quantity, unit: item.items?.unit })) || []),
-        orderType: (bill as any).order_type || undefined
+        orderType: (bill as any).order_type || undefined,
+        taxSummary: bill.tax_summary ? (typeof bill.tax_summary === 'string' ? bill.tax_summary : JSON.stringify(bill.tax_summary)) : undefined,
+        totalTax: bill.total_tax || undefined,
+        isComposition: (bill as any).is_composition || undefined,
+        customerGstin: (bill as any).customer_gstin || undefined,
+        roundOff: (bill as any).round_off || undefined
       };
       printBrowserReceipt(printData as any);
     }
