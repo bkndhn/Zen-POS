@@ -228,11 +228,18 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     try {
       if (!adminAuthId) return;
 
-      const { data: settings } = await (supabase as any)
+      let settingsQuery = (supabase as any)
         .from('shop_settings')
         .select('gst_enabled')
-        .eq('user_id', adminAuthId)
-        .maybeSingle();
+        .eq('user_id', adminAuthId);
+
+      if (operatingBranchId) {
+        settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
+      } else {
+        settingsQuery = settingsQuery.is('branch_id', null);
+      }
+
+      const { data: settings } = await settingsQuery.maybeSingle();
 
       const enabled = settings?.gst_enabled || false;
       setGstEnabled(enabled);
