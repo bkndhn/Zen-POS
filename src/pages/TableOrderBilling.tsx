@@ -623,7 +623,9 @@ const TableOrderBilling: React.FC = () => {
                 status_updated_at: now.toISOString(),
                 table_no: selectedTable.seat_id ? `T${tableNumber} (Seat ${selectedTable.seat_id})` : `T${tableNumber}`,
                 round_off: roundOff !== 0 ? roundOff : 0,
-                order_type: paymentData.orderType || 'dine_in'
+                order_type: paymentData.orderType || 'dine_in',
+                customer_mobile: paymentData.customerMobile || null,
+                customer_phone: paymentData.customerMobile || null
             };
 
             if (gstSettings.enabled && taxSummary) {
@@ -866,6 +868,45 @@ const TableOrderBilling: React.FC = () => {
                     await printReceipt(printData as any);
                 } catch (printErr) {
                     console.error('Print failed:', printErr);
+                }
+            }
+
+            // 9. Save Customer details to CRM (Auto-Save on every Checkout)
+            const cleanPhone = paymentData.customerMobile?.replace(/[\s\-\(\)\+]/g, '') || '';
+            if (adminId && cleanPhone.length >= 10) {
+                try {
+                    let lookup: any = supabase
+                        .from('customers')
+                        .select('id, visit_count, total_spent')
+                        .eq('admin_id', adminId)
+                        .eq('phone', cleanPhone);
+                    if (operatingBranchId) lookup = lookup.eq('branch_id', operatingBranchId);
+                    const { data: existingCustomer } = await lookup.maybeSingle();
+
+                    if (existingCustomer) {
+                        await supabase
+                            .from('customers')
+                            .update({
+                                visit_count: existingCustomer.visit_count + 1,
+                                total_spent: Number(existingCustomer.total_spent) + totalAmount,
+                                last_visit: new Date().toISOString()
+                            })
+                            .eq('id', existingCustomer.id);
+                    } else {
+                        await supabase
+                            .from('customers')
+                            .insert({
+                                admin_id: adminId,
+                                branch_id: operatingBranchId || null,
+                                phone: cleanPhone,
+                                name: `Customer (${cleanPhone.slice(-4)})`,
+                                visit_count: 1,
+                                total_spent: totalAmount,
+                                last_visit: new Date().toISOString()
+                            });
+                    }
+                } catch (crmErr) {
+                    console.warn('[CRM] Failed to save/update customer:', crmErr);
                 }
             }
 

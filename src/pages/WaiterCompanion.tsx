@@ -246,7 +246,7 @@ const WaiterCompanion: React.FC = () => {
                 id: item.id,
                 name: item.name,
                 price: item.price,
-                quantity: item.selling_quantity || item.base_value || 1,
+                quantity: item.base_value || 1,
                 unit: item.unit,
                 base_value: item.base_value,
                 selling_unit: item.selling_unit,
@@ -623,7 +623,7 @@ const WaiterCompanion: React.FC = () => {
                                                             >
                                                                 <Minus className="w-3.5 h-3.5" />
                                                             </Button>
-                                                            <span className="font-black text-sm w-4 text-center text-primary">{cartItem.quantity}</span>
+                                                            <span className="font-black text-sm w-4 text-center text-primary">{cartItem.quantity / (item.base_value || 1)}</span>
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
@@ -707,7 +707,7 @@ const WaiterCompanion: React.FC = () => {
                                                     <Minus className="w-3.5 h-3.5" />
                                                 </Button>
                                                 <span className="font-black text-sm w-4 text-center">
-                                                    {item.quantity}
+                                                    {item.quantity / (item.base_value || 1)}
                                                 </span>
                                                 <Button
                                                     variant="outline"

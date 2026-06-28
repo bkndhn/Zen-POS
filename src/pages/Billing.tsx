@@ -1592,40 +1592,6 @@ const Billing = () => {
         return;
       }
 
-      // Save/Update customer in CRM (only if valid phone provided)
-      const cleanPhone = customerMobile?.replace(/[\s\-\(\)\+]/g, '') || '';
-
-      if (adminId && cleanPhone.length >= 10) {
-        let lookup: any = (supabase as any)
-          .from('customers')
-          .select('id, visit_count, total_spent')
-          .eq('admin_id', adminId)
-          .eq('phone', cleanPhone);
-        if (operatingBranchId) lookup = lookup.eq('branch_id', operatingBranchId);
-        const { data: existingCustomer } = await lookup.maybeSingle();
-
-        if (existingCustomer) {
-          await (supabase as any)
-            .from('customers')
-            .update({
-              visit_count: existingCustomer.visit_count + 1,
-              total_spent: existingCustomer.total_spent + total,
-              last_visit: new Date().toISOString()
-            })
-            .eq('id', existingCustomer.id);
-        } else {
-          await (supabase as any)
-            .from('customers')
-            .insert({
-              admin_id: adminId,
-              branch_id: operatingBranchId || null,
-              phone: cleanPhone,
-              visit_count: 1,
-              total_spent: total,
-              last_visit: new Date().toISOString()
-            });
-        }
-      }
 
       const now = new Date();
       const subtotal = cartItems.reduce((sum, item) => {
@@ -1841,7 +1807,9 @@ const Billing = () => {
         table_no: selectedTableNumber || null,
         round_off: roundOff !== 0 ? roundOff : 0,
         order_type: paymentData.orderType || 'dine_in',
-        channel: orderChannel
+        channel: orderChannel,
+        customer_mobile: paymentData.customerMobile || null,
+        customer_phone: paymentData.customerMobile || null
       };
 
       // Add GST fields to bill if enabled
@@ -1904,6 +1872,8 @@ const Billing = () => {
           tax_summary: taxSummary ? JSON.stringify(taxSummary) : null,
           total_tax: totalTax,
           customer_gstin: paymentData.customerGstin || null,
+          customer_mobile: paymentData.customerMobile || null,
+          customer_phone: paymentData.customerMobile || null,
           items: pendingBillItems
         };
 
@@ -2092,6 +2062,45 @@ const Billing = () => {
               gstin: gstSettings.gstin,
               logoUrl: settingsToUse?.logoUrl
             }, paymentData.orderType).catch(err => console.error('WhatsApp share failed:', err));
+          }
+
+          // 4. Save Customer details to CRM (Auto-Save on every Checkout)
+          const cleanPhone = paymentData.customerMobile?.replace(/[\s\-\(\)\+]/g, '') || '';
+          if (adminId && cleanPhone.length >= 10) {
+            try {
+              let lookup: any = supabase
+                .from('customers')
+                .select('id, visit_count, total_spent')
+                .eq('admin_id', adminId)
+                .eq('phone', cleanPhone);
+              if (operatingBranchId) lookup = lookup.eq('branch_id', operatingBranchId);
+              const { data: existingCustomer } = await lookup.maybeSingle();
+
+              if (existingCustomer) {
+                await supabase
+                  .from('customers')
+                  .update({
+                    visit_count: existingCustomer.visit_count + 1,
+                    total_spent: Number(existingCustomer.total_spent) + totalAmount,
+                    last_visit: new Date().toISOString()
+                  })
+                  .eq('id', existingCustomer.id);
+              } else {
+                await supabase
+                  .from('customers')
+                  .insert({
+                    admin_id: adminId,
+                    branch_id: operatingBranchId || null,
+                    phone: cleanPhone,
+                    name: `Customer (${cleanPhone.slice(-4)})`,
+                    visit_count: 1,
+                    total_spent: totalAmount,
+                    last_visit: new Date().toISOString()
+                  });
+              }
+            } catch (crmErr) {
+              console.warn('[CRM] Failed to save/update customer:', crmErr);
+            }
           }
         };
 

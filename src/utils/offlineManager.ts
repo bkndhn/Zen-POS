@@ -54,6 +54,8 @@ export interface PendingBill {
     tax_summary?: string | null;
     total_tax?: number;
     customer_gstin?: string | null;
+    customer_mobile?: string | null;
+    customer_phone?: string | null;
 }
 
 interface SyncQueueItem {
@@ -641,7 +643,9 @@ class OfflineManager {
             kitchen_status: 'pending' as const,
             table_no: bill.table_no || null,
             round_off: bill.round_off || 0,
-            order_type: bill.order_type || 'dine_in'
+            order_type: bill.order_type || 'dine_in',
+            customer_mobile: bill.customer_mobile || null,
+            customer_phone: bill.customer_phone || null
         };
 
         if (bill.tax_summary) {
@@ -688,6 +692,45 @@ class OfflineManager {
             // Rollback
             await supabase.from('bills').delete().eq('id', createdBill.id);
             throw itemsError;
+        }
+
+        // Sync CRM Customer details
+        const cleanPhone = bill.customer_mobile?.replace(/[\s\-\(\)\+]/g, '') || '';
+        if (finalAdminId && cleanPhone.length >= 10) {
+            try {
+                let lookup: any = supabase
+                    .from('customers')
+                    .select('id, visit_count, total_spent')
+                    .eq('admin_id', finalAdminId)
+                    .eq('phone', cleanPhone);
+                if (finalBranchId) lookup = lookup.eq('branch_id', finalBranchId);
+                const { data: existingCustomer } = await lookup.maybeSingle();
+
+                if (existingCustomer) {
+                    await supabase
+                        .from('customers')
+                        .update({
+                            visit_count: existingCustomer.visit_count + 1,
+                            total_spent: Number(existingCustomer.total_spent) + Number(bill.total_amount),
+                            last_visit: new Date().toISOString()
+                        })
+                        .eq('id', existingCustomer.id);
+                } else {
+                    await supabase
+                        .from('customers')
+                        .insert({
+                            admin_id: finalAdminId,
+                            branch_id: finalBranchId || null,
+                            phone: cleanPhone,
+                            name: `Customer (${cleanPhone.slice(-4)})`,
+                            visit_count: 1,
+                            total_spent: bill.total_amount,
+                            last_visit: new Date().toISOString()
+                        });
+                }
+            } catch (crmErr) {
+                console.warn('[Sync] Failed to sync customer to CRM:', crmErr);
+            }
         }
 
         // Deduct stock in Supabase (parallel requests)
