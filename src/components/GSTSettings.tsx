@@ -428,7 +428,7 @@ export const GSTSettings: React.FC = () => {
 
             {/* Add/Edit Tax Rate Dialog */}
             <Dialog open={taxRateDialogOpen} onOpenChange={setTaxRateDialogOpen}>
-                <DialogContent className="max-w-[90vw] sm:max-w-md">
+                <DialogContent className="max-w-[90vw] sm:max-w-md bg-background text-foreground">
                     <DialogHeader>
                         <DialogTitle>{editingTaxRate ? 'Edit Tax Rate' : 'Add Tax Rate'}</DialogTitle>
                     </DialogHeader>

@@ -1200,7 +1200,7 @@ const TableOrderBilling: React.FC = () => {
 
                 {/* Checkout Options Dialog */}
                 <Dialog open={optionsDialogOpen} onOpenChange={setOptionsDialogOpen}>
-                    <DialogContent className="sm:max-w-[400px]">
+                    <DialogContent className="sm:max-w-[400px] bg-background text-foreground">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold">Checkout: Table T{selectedTable?.table_number}</DialogTitle>
                         </DialogHeader>
@@ -1255,7 +1255,7 @@ const TableOrderBilling: React.FC = () => {
                         setSplitType(null);
                     }
                 }}>
-                    <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+                    <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto bg-background text-foreground">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold">Split Bill: Table T{selectedTable?.table_number}</DialogTitle>
                         </DialogHeader>

@@ -121,7 +121,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-background text-foreground">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LayoutGrid className="w-5 h-5" />

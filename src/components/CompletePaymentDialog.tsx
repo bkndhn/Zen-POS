@@ -301,7 +301,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md h-[100dvh] sm:h-[95vh] flex flex-col p-0 gap-0 overflow-hidden border-2 border-primary/20 sm:rounded-lg rounded-none">
+      <DialogContent className="max-w-md h-[100dvh] sm:h-[95vh] flex flex-col p-0 gap-0 overflow-hidden border-2 border-primary/20 sm:rounded-lg rounded-none bg-background text-foreground">
         <DialogHeader className="p-2.5 pb-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground flex-shrink-0">
           <DialogTitle className="text-sm font-bold flex items-center gap-2">
             <span className="bg-white/20 p-1 rounded text-xs">💳</span>
@@ -327,7 +327,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   type="number"
                   value={paymentAmounts[payment.payment_type] || 0}
                   onChange={(e) => handlePaymentAmountChange(payment.payment_type, Number(e.target.value))}
-                  className="h-8 text-sm text-center bg-white dark:bg-gray-800 font-bold border-2 border-primary/20 focus:border-primary rounded-lg w-full"
+                  className="h-8 text-sm text-center bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100 font-bold border-2 border-primary/20 focus:border-primary rounded-lg w-full"
                   placeholder="0"
                   min="0"
                   step="0.01"
@@ -428,7 +428,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                           }
                           setItemQuantityOverrides(prev => ({ ...prev, [item.id]: newQty }));
                         }}
-                        className="h-7 w-12 text-xs text-center p-0 border-primary/30 rounded font-bold"
+                        className="h-7 w-12 text-xs text-center p-0 border-primary/30 rounded font-bold bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
                         min="0"
                         step={isWeightOrVolumeUnit(item.unit) ? "0.001" : "1"}
                       />
@@ -448,7 +448,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                           const newTotal = Number(e.target.value) || 0;
                           setItemTotalOverrides(prev => ({ ...prev, [item.id]: newTotal }));
                         }}
-                        className="h-7 w-16 text-xs text-center p-0 border-orange-400 bg-orange-50 dark:bg-orange-900/30 rounded font-bold"
+                        className="h-7 w-16 text-xs text-center p-0 border-orange-400 bg-orange-50 dark:bg-orange-950/20 text-slate-900 dark:text-slate-100 rounded font-bold"
                         min="0"
                         step="1"
                         title="Edit total price"
@@ -500,7 +500,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                           const newAmount = Number(e.target.value) || 0;
                           setChargeAmountOverrides(prev => ({ ...prev, [charge.id]: newAmount }));
                         }}
-                        className="h-6 w-14 text-xs text-center p-0 border-cyan-400 bg-cyan-50 dark:bg-cyan-900/30 rounded font-bold"
+                        className="h-6 w-14 text-xs text-center p-0 border-cyan-400 bg-cyan-50 dark:bg-cyan-950/20 text-slate-900 dark:text-slate-100 rounded font-bold"
                         min="0"
                         step="1"
                         disabled={!isSelected}
@@ -531,7 +531,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
               <div className="px-1.5 pb-1.5">
                 <div className="flex items-center gap-1">
                   <Select value={discountType} onValueChange={(value: 'flat' | 'percentage') => setDiscountType(value)}>
-                    <SelectTrigger className="w-14 h-7 text-xs bg-white dark:bg-gray-800">
+                    <SelectTrigger className="w-14 h-7 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -543,7 +543,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                     type="number"
                     value={discount}
                     onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-                    className="flex-1 h-7 text-xs bg-white dark:bg-gray-800"
+                    className="flex-1 h-7 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
                     placeholder="0"
                     min="0"
                     step={discountType === 'percentage' ? '1' : '0.01'}
@@ -569,7 +569,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   value={customerMobile}
                   onChange={(e) => { setCustomerMobile(e.target.value); setSendWhatsApp(true); }}
                   placeholder="Customer mobile (e.g. 9876543210)"
-                  className="h-8 text-xs bg-white dark:bg-gray-800"
+                  className="h-8 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
                 />
                 {customerMobile && !isValidPhoneNumber(customerMobile) && (
                   <p className="text-[10px] text-red-500 mt-0.5">Enter valid 10-digit number</p>
@@ -591,7 +591,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   value={customerGstin}
                   onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
                   placeholder="Customer GSTIN (for B2B bills)"
-                  className="flex-1 h-8 text-xs font-mono"
+                  className="flex-1 h-8 text-xs font-mono bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
                   maxLength={15}
                 />
               </div>
