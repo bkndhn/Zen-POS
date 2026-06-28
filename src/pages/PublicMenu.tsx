@@ -282,12 +282,15 @@ const PublicMenu = () => {
                 // Fetch items for this admin/branch (including video/media fields)
                 let itemsQuery: any = supabase
                     .from('items')
-                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id, tax_rate_id, is_tax_inclusive')
+                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id, tax_rate_id, is_tax_inclusive, is_saleable')
                     .eq('admin_id', adminId)
                     .eq('is_active', true);
                 if (branchId) itemsQuery = itemsQuery.eq('branch_id', branchId);
                 itemsQuery = itemsQuery.order('category').order('name');
-                const { data: itemsData, error: itemsError } = await itemsQuery;
+                const { data: itemsDataRaw, error: itemsError } = await itemsQuery;
+                
+                // Filter saleable items client-side (default true if column is missing)
+                const itemsData = (itemsDataRaw || []).filter((item: any) => item.is_saleable !== false);
 
                 // Fetch promotional banners (branch-scoped, with admin-level fallback)
                 let bannersQuery: any = supabase

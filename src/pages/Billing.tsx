@@ -651,7 +651,7 @@ const Billing = () => {
       if (navigator.onLine) {
         let q = supabase
           .from('items')
-          .select('*')
+          .select('*, is_saleable')
           .eq('admin_id', adminId)
           .eq('is_active', true);
         if (branchFilterId) q = q.eq('branch_id', branchFilterId);
@@ -659,8 +659,11 @@ const Billing = () => {
 
         if (error) throw error;
 
+        // Filter saleable items client-side (default true)
+        const saleableData = (data || []).filter((item: any) => item.is_saleable !== false);
+
         // Sort by display_order client-side if the field exists
-        const sortedData = (data || []).sort((a: any, b: any) => {
+        const sortedData = saleableData.sort((a: any, b: any) => {
           const orderA = a.display_order ?? 9999;
           const orderB = b.display_order ?? 9999;
           if (orderA !== orderB) return orderA - orderB;
@@ -677,7 +680,9 @@ const Billing = () => {
         const { offlineManager } = await import('@/utils/offlineManager');
         const cachedItems = await offlineManager.getCachedItems();
         if (cachedItems.length > 0) {
-          const sortedData = cachedItems.filter((i: any) => i.is_active).sort((a: any, b: any) => {
+          const sortedData = cachedItems
+            .filter((i: any) => i.is_active && i.is_saleable !== false)
+            .sort((a: any, b: any) => {
             const orderA = a.display_order ?? 9999;
             const orderB = b.display_order ?? 9999;
             if (orderA !== orderB) return orderA - orderB;
@@ -1524,63 +1529,19 @@ const Billing = () => {
     }
 
     // 3. Stock Deduction (Recipe-based Ingredient Deduction or Fallback to Item Stock)
-    const stockUpdatePromises = validCart.map(async (item) => {
-      try {
-        // Query if there is a recipe defined for this item
-        const { data: recipeParts, error: recipeErr } = await supabase
-          .from('recipes')
-          .select('ingredient_id, quantity')
-          .eq('item_id', item.id);
-
-        if (!recipeErr && recipeParts && recipeParts.length > 0) {
-          // Recipe exists: Deduct each ingredient's stock
-          for (const part of recipeParts) {
-            try {
-              const { data: currentIng } = await supabase
-                .from('ingredients')
-                .select('stock_quantity')
-                .eq('id', part.ingredient_id)
-                .single();
-
-              if (currentIng) {
-                const totalDeduction = Number(part.quantity) * Number(item.quantity);
-                const newStock = Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction);
-                await supabase
-                  .from('ingredients')
-                  .update({ stock_quantity: newStock })
-                  .eq('id', part.ingredient_id);
-              }
-            } catch (ingErr) {
-              console.error(`Failed to deduct ingredient ${part.ingredient_id} for item ${item.name}:`, ingErr);
-            }
-          }
-        } else {
-          // Fallback: Deduct standard menu item stock
-          const { data: currentItem } = await supabase
-            .from('items')
-            .select('stock_quantity')
-            .eq('id', item.id)
-            .single();
-
-          if (currentItem && currentItem.stock_quantity !== null && currentItem.stock_quantity !== undefined) {
-            const sellUnit = (item as any).selling_unit || item.unit;
-            const invUnit = (item as any).inventory_unit;
-            const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
-            await supabase
-              .from('items')
-              .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit) })
-              .eq('id', item.id);
-          }
-        }
-      } catch (stockErr) {
-        console.error(`Stock update failed for item ${item.name} (${item.id}):`, stockErr);
-      }
-    });
-
-    // Execute all stock updates in parallel (non-blocking for bill creation)
-    Promise.all(stockUpdatePromises).catch(err =>
-      console.error('Some stock updates failed:', err)
-    );
+    try {
+      const { deductStockForItems } = await import('@/utils/stockManager');
+      await deductStockForItems(validCart.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        selling_unit: item.selling_unit,
+        inventory_unit: item.inventory_unit
+      })));
+    } catch (e) {
+      console.error("Stock deduction error:", e);
+    }
 
     toast({
       title: "Success",

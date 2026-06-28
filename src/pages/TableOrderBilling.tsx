@@ -116,12 +116,15 @@ const TableOrderBilling: React.FC = () => {
         try {
             let q = supabase
                 .from('items')
-                .select('id, tax_rate_id, is_tax_inclusive, hsn_code')
+                .select('id, tax_rate_id, is_tax_inclusive, hsn_code, is_saleable')
                 .eq('admin_id', adminId)
                 .eq('is_active', true);
             if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
             const { data } = await q;
-            if (data) setItems(data);
+            if (data) {
+                const filtered = data.filter((item: any) => item.is_saleable !== false);
+                setItems(filtered);
+            }
         } catch (e) {
             console.error('Error fetching items for tax lookup:', e);
         }
@@ -780,6 +783,21 @@ const TableOrderBilling: React.FC = () => {
                 // Rollback bill
                 await supabase.from('bills').delete().eq('id', billData.id);
                 throw itemsError;
+            }
+
+            // 2.5 Stock Deduction (Recipe-based Ingredient Deduction or Fallback to Item Stock)
+            try {
+                const { deductStockForItems } = await import('@/utils/stockManager');
+                await deductStockForItems(validItems.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    selling_unit: item.selling_unit,
+                    inventory_unit: item.inventory_unit
+                })));
+            } catch (e) {
+                console.error("Stock deduction error:", e);
             }
 
             // 3. Update table orders / billing state in DB based on split mode
