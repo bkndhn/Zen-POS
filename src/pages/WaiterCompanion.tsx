@@ -653,6 +653,7 @@ const WaiterCompanion: React.FC = () => {
                                         No items found.
                                     </div>
                                 )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -737,6 +738,7 @@ const WaiterCompanion: React.FC = () => {
                                         </div>
                                     </Card>
                                 ))}
+                            </div>
                         </div>
 
                         {/* Customer Overall Note */}
