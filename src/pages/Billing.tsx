@@ -918,13 +918,28 @@ const Billing = () => {
 
         // Load GST settings
         if ((data as any).gst_enabled) {
-          const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
-          if (adminId) {
-            const { data: rates } = await (supabase as any)
+          let adminAuthId = profile?.role === 'admin' ? profile.user_id : null;
+          if (profile?.role === 'user' && profile.admin_id) {
+            const { data: parentProfile } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .eq('id', profile.admin_id)
+              .single();
+            if (parentProfile?.user_id) {
+              adminAuthId = parentProfile.user_id;
+            }
+          }
+
+          if (adminAuthId) {
+            let ratesQuery = (supabase as any)
               .from('tax_rates')
               .select('id, name, rate, cess_rate, hsn_code')
-              .eq('admin_id', adminId)
+              .eq('admin_id', adminAuthId)
               .eq('is_active', true);
+            if (operatingBranchId) {
+              ratesQuery = ratesQuery.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
+            }
+            const { data: rates } = await ratesQuery;
             const taxRatesMap: Record<string, any> = {};
             (rates || []).forEach((r: any) => {
               taxRatesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0, hsn_code: r.hsn_code || '' };

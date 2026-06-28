@@ -145,12 +145,14 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
   }, [profile]);
 
   useEffect(() => {
-    fetchCategories();
-    if (adminAuthId) {
-      fetchGstSettings();
+    if (open) {
+      fetchCategories();
+      if (adminAuthId) {
+        fetchGstSettings();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operatingBranchId, profile?.id, profile?.admin_id, adminAuthId]);
+  }, [open, operatingBranchId, profile?.id, profile?.admin_id, adminAuthId]);
 
   const fetchGstSettings = async () => {
     try {
