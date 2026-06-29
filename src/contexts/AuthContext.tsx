@@ -115,6 +115,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        // Load client permissions (admins fetch from their own profile, sub-users inherit from parent admin)
+        let clientPermissions = undefined;
+        if (existingProfile.role === 'user' && existingProfile.admin_id) {
+          try {
+            const { data: adminData } = await supabase
+              .from('profiles')
+              .select('client_permissions')
+              .eq('id', existingProfile.admin_id)
+              .single();
+            if (adminData) {
+              clientPermissions = (adminData as any).client_permissions || undefined;
+            }
+          } catch (e) {
+            console.warn('Could not fetch admin client permissions:', e);
+          }
+        } else {
+          clientPermissions = (existingProfile as any).client_permissions || undefined;
+        }
+
         const profile: Profile = {
           id: existingProfile.id,
           user_id: existingProfile.user_id,
@@ -122,7 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: existingProfile.role as UserRole,
           hotel_name: hotelName || undefined,
           status: existingProfile.status as UserStatus,
-          admin_id: existingProfile.admin_id || undefined
+          admin_id: existingProfile.admin_id || undefined,
+          client_permissions: clientPermissions
         };
         // Update cache
         localStorage.setItem(`profile_${user.id}`, JSON.stringify(profile));

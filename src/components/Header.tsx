@@ -78,7 +78,13 @@ export const Header: React.FC = () => {
   const isSuperAdmin = profile.role === 'super_admin';
 
   // Filter nav items based on permissions (empty for super_admin)
-  const navItems = isSuperAdmin ? [] : (permLoading ? [] : ALL_NAV_ITEMS.filter(item => hasAccess(item.page)));
+  const navItems = isSuperAdmin ? [] : (permLoading ? [] : ALL_NAV_ITEMS.filter(item => {
+    if (!hasAccess(item.page)) return false;
+    if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
+      return false;
+    }
+    return true;
+  }));
 
   // Enable swipe gesture to open sidebar on mobile
   useSwipeGesture({

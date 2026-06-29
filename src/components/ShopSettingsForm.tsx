@@ -659,6 +659,12 @@ export const ShopSettingsForm = () => {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {ALL_NAV_ITEMS.filter(i => i.bottomNav)
+                                .filter(item => {
+                                    if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
+                                        return false;
+                                    }
+                                    return true;
+                                })
                                 .map(item => ({ id: item.page, label: item.shortLabel || item.label }))
                                 .filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i)
                                 .filter(page => hasAccess(page.id as any))

@@ -2,6 +2,8 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useLocation } from 'react-router-dom';
+import { ALL_NAV_ITEMS } from '@/config/navItems';
 import type { UserPermissions } from '@/contexts/PermissionsContext';
 
 interface ProtectedRouteProps {

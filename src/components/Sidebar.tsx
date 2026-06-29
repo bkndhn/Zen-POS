@@ -80,7 +80,13 @@ export const Sidebar: React.FC = () => {
   }
 
   // Filter nav items based on permissions
-  const navItems = allNavItems.filter(item => hasAccess(item.page));
+  const navItems = allNavItems.filter(item => {
+    if (!hasAccess(item.page)) return false;
+    if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0">

@@ -148,7 +148,13 @@ export const BottomNavigation: React.FC = () => {
   // re-saving the bottom-nav customiser.)
   const NEW_PAGE_KEYS = new Set(['suppliers', 'purchases', 'stock', 'tableBilling']);
   const navItems = allNavItems
-    .filter(item => hasAccess(item.page))
+    .filter(item => {
+      if (!hasAccess(item.page)) return false;
+      if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
+        return false;
+      }
+      return true;
+    })
     .filter(item =>
       visiblePages.length === 0
       || visiblePages.includes(item.page as string)

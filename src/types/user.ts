@@ -9,6 +9,7 @@ export interface Profile {
   hotel_name?: string;
   status: UserStatus;
   admin_id?: string; // For sub-users, links to their admin
+  client_permissions?: Record<string, boolean>;
 }
 
 export interface UserProfile extends Profile {
