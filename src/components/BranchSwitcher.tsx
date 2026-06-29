@@ -30,7 +30,7 @@ export const BranchSwitcher: React.FC = () => {
       value={value}
       onValueChange={(v) => setActiveBranchId(v === '__all__' ? null : v)}
     >
-      <SelectTrigger className="h-9 w-[140px] sm:w-[170px] text-xs">
+      <SelectTrigger className="h-9 w-[110px] sm:w-[170px] text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
           {isAllBranchesView ? (
             <Layers className="w-3.5 h-3.5 shrink-0 text-primary" />

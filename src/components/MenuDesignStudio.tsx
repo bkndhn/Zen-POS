@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { Palette, LayoutTemplate, Type, Sparkles, Box, Check, RefreshCw } from 'lucide-react';
+import { Palette, LayoutTemplate, LayoutGrid, Type, Sparkles, Box, Check, RefreshCw } from 'lucide-react';
 
 const COLOR_PRESETS = [
     { id: 'custom', label: 'Custom Colors (Use Pickers)', primary: '', secondary: '', bg: '', text: '' },
@@ -34,6 +34,7 @@ export const MenuDesignStudio = () => {
 
     // Layout Settings
     const [layoutStyle, setLayoutStyle] = useState('classic');
+    const [menuItemsPerRow, setMenuItemsPerRow] = useState(1);
     
     // Typography Settings
     const [fontFamily, setFontFamily] = useState('Inter');
@@ -83,27 +84,48 @@ export const MenuDesignStudio = () => {
         document.head.appendChild(link);
     }, [fontFamily]);
 
+    const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
     useEffect(() => {
-        loadSettings();
-    }, [profile?.user_id, operatingBranchId]);
+        const resolveAuthUid = async () => {
+            if (!profile) return;
+            if (profile.role === 'admin') {
+                setAdminAuthUid(profile.user_id);
+            } else if (profile.admin_id) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('user_id')
+                    .eq('id', profile.admin_id)
+                    .maybeSingle();
+                if (data?.user_id) setAdminAuthUid(data.user_id);
+            }
+        };
+        resolveAuthUid();
+    }, [profile]);
+
+    useEffect(() => {
+        if (adminAuthUid) {
+            loadSettings();
+        }
+    }, [adminAuthUid, operatingBranchId]);
 
     const loadSettings = async () => {
-        if (!adminId) return;
+        if (!adminAuthUid) return;
         setLoading(true);
         try {
             // Fetch branch-specific settings or fallback to main
             let { data } = await supabase
                 .from('shop_settings')
-                .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color')
-                .eq('user_id', adminId)
+                .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row')
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
             if (!data) {
                 const { data: fb } = await supabase
                     .from('shop_settings')
-                    .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color')
-                    .eq('user_id', adminId)
+                    .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row')
+                    .eq('user_id', adminAuthUid)
                     .order('branch_id', { nullsFirst: false })
                     .limit(1)
                     .maybeSingle();
@@ -120,6 +142,7 @@ export const MenuDesignStudio = () => {
                 if (data.menu_border_radius) setBorderRadius(data.menu_border_radius);
                 if (data.menu_glassmorphism !== null) setGlassmorphism(data.menu_glassmorphism);
                 if (data.menu_ai_features_enabled !== null) setAiEnabled(data.menu_ai_features_enabled);
+                if (data.menu_items_per_row) setMenuItemsPerRow(data.menu_items_per_row);
                 
                 // Color settings
                 if (data.menu_primary_color) setPrimaryColor(data.menu_primary_color);
@@ -149,11 +172,11 @@ export const MenuDesignStudio = () => {
     };
 
     const handleSave = async () => {
-        if (!adminId) return;
+        if (!adminAuthUid) return;
         setSaving(true);
         try {
             const payload = {
-                user_id: adminId,
+                user_id: adminAuthUid,
                 branch_id: operatingBranchId,
                 menu_layout_style: `${layoutStyle}:${cardElevation}`,
                 menu_font_family: fontFamily,
@@ -163,13 +186,14 @@ export const MenuDesignStudio = () => {
                 menu_primary_color: primaryColor,
                 menu_secondary_color: secondaryColor,
                 menu_background_color: backgroundColor,
-                menu_text_color: textColor
+                menu_text_color: textColor,
+                menu_items_per_row: menuItemsPerRow
             };
 
             const { data: existing } = await supabase
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', adminId)
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
@@ -198,7 +222,8 @@ export const MenuDesignStudio = () => {
                     menu_font_family: fontFamily,
                     menu_border_radius: borderRadius,
                     menu_glassmorphism: glassmorphism,
-                    menu_ai_features_enabled: aiEnabled
+                    menu_ai_features_enabled: aiEnabled,
+                    menu_items_per_row: menuItemsPerRow
                 }
             });
             supabase.removeChannel(channel);
@@ -252,6 +277,35 @@ export const MenuDesignStudio = () => {
                                     <p className="text-xs text-muted-foreground mt-1">{layout.desc}</p>
                                 </div>
                             ))}
+                        </div>
+
+                        {/* Items Per Row */}
+                        <div className="pt-4 border-t border-border mt-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <LayoutGrid className="w-4 h-4 text-blue-600" />
+                                <Label className="text-sm font-medium">Items Per Row</Label>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                {[
+                                    { val: 1, label: '1 Item' },
+                                    { val: 2, label: '2 Items' },
+                                    { val: 3, label: '3 Items' },
+                                    { val: 4, label: '↔ Scroll' },
+                                ].map(opt => (
+                                    <Button
+                                        key={opt.val}
+                                        variant={menuItemsPerRow === opt.val ? 'default' : 'outline'}
+                                        size="sm"
+                                        className="flex-1 min-w-[60px]"
+                                        onClick={() => setMenuItemsPerRow(opt.val)}
+                                    >
+                                        {opt.label}
+                                    </Button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-2">
+                                For mobile devices, 1 or 2 items work best. Scroll mode creates a horizontal carousel.
+                            </p>
                         </div>
                     </div>
 

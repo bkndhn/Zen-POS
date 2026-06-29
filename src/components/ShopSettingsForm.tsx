@@ -21,7 +21,24 @@ export const ShopSettingsForm = () => {
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const { hasAccess, loading: permissionsLoading } = useUserPermissions();
     // Always use the admin's user_id for shop_settings (sub-users share the admin's settings)
-    const adminUserId = profile?.role === 'admin' ? profile?.user_id : profile?.admin_id;
+    const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
+    useEffect(() => {
+        const resolveAuthUid = async () => {
+            if (!profile) return;
+            if (profile.role === 'admin') {
+                setAdminAuthUid(profile.user_id);
+            } else if (profile.admin_id) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('user_id')
+                    .eq('id', profile.admin_id)
+                    .maybeSingle();
+                if (data?.user_id) setAdminAuthUid(data.user_id);
+            }
+        };
+        resolveAuthUid();
+    }, [profile]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,10 +105,10 @@ export const ShopSettingsForm = () => {
         setLoading(false);
 
         // 2. Background sync from Supabase (refetches when active branch changes)
-        if (adminUserId && operatingBranchId) {
+        if (adminAuthUid && operatingBranchId) {
             fetchSettings();
         }
-    }, [adminUserId, operatingBranchId]);
+    }, [adminAuthUid, operatingBranchId]);
 
     const fetchSettings = async () => {
         try {
@@ -99,7 +116,7 @@ export const ShopSettingsForm = () => {
             let { data, error } = await supabase
                 .from('shop_settings')
                 .select('*')
-                .eq('user_id', adminUserId)
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
@@ -110,7 +127,7 @@ export const ShopSettingsForm = () => {
                 const { data: mainRow } = await supabase
                     .from('shop_settings')
                     .select('*')
-                    .eq('user_id', adminUserId)
+                    .eq('user_id', adminAuthUid)
                     .eq('branch_id', mainBranchId)
                     .maybeSingle();
                 data = mainRow as any;
@@ -324,7 +341,7 @@ export const ShopSettingsForm = () => {
     };
 
     const handleSave = async () => {
-        if (!adminUserId) return;
+        if (!adminAuthUid) return;
         if (!operatingBranchId) {
             toast({ title: 'No branch selected', description: 'Pick a branch from the header first.', variant: 'destructive' });
             return;
@@ -378,7 +395,7 @@ export const ShopSettingsForm = () => {
             const { data: existing } = await supabase
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', adminUserId)
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
@@ -391,7 +408,7 @@ export const ShopSettingsForm = () => {
             } else {
                 ({ error } = await supabase
                     .from('shop_settings')
-                    .insert({ ...settingsData, user_id: adminUserId, branch_id: operatingBranchId }));
+                    .insert({ ...settingsData, user_id: adminAuthUid, branch_id: operatingBranchId }));
             }
 
             if (error) throw error;

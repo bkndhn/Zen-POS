@@ -185,6 +185,7 @@ const QRCodeSettings = () => {
 
     // Save settings when changed (branch-scoped)
     const saveSettings = async () => {
+        if (!adminAuthUid) return;
         // Save to localStorage immediately
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
         const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
@@ -200,7 +201,7 @@ const QRCodeSettings = () => {
         // Persist appearance + display settings to shop_settings (per-branch row)
         // Only the main branch keeps the slug in shop_settings (legacy admin-wide).
         const ssPayload: any = {
-            user_id: adminId || profile.user_id,
+            user_id: adminAuthUid || profile.user_id,
             branch_id: operatingBranchId,
             menu_show_shop_name: menuShowShopName,
             menu_show_address: menuShowAddress,
@@ -219,7 +220,7 @@ const QRCodeSettings = () => {
         const { data: existing } = await (supabase as any)
             .from('shop_settings')
             .select('id')
-            .eq('user_id', adminId || profile.user_id)
+            .eq('user_id', adminAuthUid || profile.user_id)
             .eq('branch_id', operatingBranchId)
             .maybeSingle();
 

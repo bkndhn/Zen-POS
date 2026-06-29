@@ -148,39 +148,39 @@ export const Header: React.FC = () => {
               </Sheet>
             )}
 
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="hidden sm:flex w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl items-center justify-center shadow-lg shadow-primary/20 shrink-0">
               <Hotel className="h-5 w-5 text-primary-foreground" />
             </div>
-            <div>
+            <div className="shrink-0">
               <h1 className="font-bold text-base tracking-tight text-foreground">
                 ZenPOS
               </h1>
-              <p className="text-[10px] text-muted-foreground font-medium tracking-wide uppercase">Management System</p>
+              <p className="hidden sm:block text-[10px] text-muted-foreground font-medium tracking-wide uppercase">Management System</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
             {!isSuperAdmin && <BranchSwitcher />}
             <LanguageSwitcher />
 
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-xl hover:bg-muted/60"
+              className="h-9 w-9 rounded-xl hover:bg-muted/60 shrink-0"
               onClick={toggleDarkMode}
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {isDarkMode ? <Sun className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 animate-pulse" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500 dark:text-indigo-400" />}
             </Button>
 
-            <Badge variant={profile.role === 'admin' || profile.role === 'super_admin' ? 'default' : 'outline'} className="hidden md:flex text-xs">
+            <Badge variant={profile.role === 'admin' || profile.role === 'super_admin' ? 'default' : 'outline'} className="hidden md:flex text-xs shrink-0">
               {profile.role === 'super_admin' ? 'Super Admin' : profile.role === 'admin' ? t('users.admin') : t('users.user')}
             </Badge>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex items-center space-x-2 h-10 px-2 rounded-xl hover:bg-muted/60">
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/20">
+                <Button variant="ghost" size="sm" className="flex items-center space-x-1 sm:space-x-2 h-10 px-1.5 sm:px-2 rounded-xl hover:bg-muted/60 shrink-0">
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/20 shrink-0">
                     <User className="w-4 h-4 text-primary" />
                   </div>
                   <span className="hidden md:block text-sm font-medium">

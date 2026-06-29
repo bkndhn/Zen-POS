@@ -54,24 +54,24 @@ const Auth = () => {
   // If user is logged in but account is paused
   if (user && profile?.status === 'paused') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-pink-100 overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900 px-4">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-pink-100 dark:border-zinc-800 overflow-hidden">
           <div className="h-2 bg-gradient-to-r from-pink-500 via-pink-600 to-pink-500"></div>
           <div className="p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
               <Clock className="w-8 h-8 text-orange-500" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Pending</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Account Pending</h2>
             <p className="text-gray-500 text-sm mb-6">Your account is awaiting approval from the administrator.</p>
-            <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
-              <p className="text-sm text-gray-600 mb-1"><span className="font-medium">Name:</span> {profile?.name}</p>
-              <p className="text-sm text-gray-600 mb-1"><span className="font-medium">Role:</span> {profile?.role}</p>
-              {profile?.hotel_name && <p className="text-sm text-gray-600 mb-1"><span className="font-medium">Hotel:</span> {profile?.hotel_name}</p>}
+            <div className="bg-gray-50 dark:bg-zinc-800/50 border dark:border-zinc-800 rounded-xl p-4 mb-6 text-left">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Name:</span> {profile?.name}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Role:</span> {profile?.role}</p>
+              {profile?.hotel_name && <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Hotel:</span> {profile?.hotel_name}</p>}
               <p className="text-sm"><span className="font-medium">Status:</span> <span className="text-orange-600">Pending Approval</span></p>
             </div>
             <button
               onClick={signOut}
-              className="w-full py-3 px-4 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              className="w-full py-3 px-4 border border-gray-300 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
             >
               Sign Out
             </button>
@@ -84,8 +84,8 @@ const Auth = () => {
   // If user is logged in but account is deleted
   if (user && profile?.status === 'deleted') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-pink-100 overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900 px-4">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-pink-100 dark:border-zinc-800 overflow-hidden">
           <div className="h-2 bg-gradient-to-r from-red-500 via-red-600 to-red-500"></div>
           <div className="p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
@@ -95,7 +95,7 @@ const Auth = () => {
             <p className="text-gray-500 text-sm mb-6">Your account has been deactivated. Please contact support.</p>
             <button
               onClick={signOut}
-              className="w-full py-3 px-4 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              className="w-full py-3 px-4 border border-gray-300 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
             >
               Sign Out
             </button>
@@ -247,9 +247,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-white to-pink-50/30 px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-white to-pink-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 px-4 py-8">
       {/* Main Card */}
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-pink-100/50 overflow-hidden">
+      <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-pink-100/50 dark:border-zinc-800/80 overflow-hidden">
         {/* Top Gradient Accent */}
         <div className="h-2 bg-gradient-to-r from-pink-500 via-pink-600 to-pink-500"></div>
 
@@ -263,10 +263,10 @@ const Auth = () => {
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center mb-1">
             {isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome Back' : 'Create Account')}
           </h1>
-          <p className="text-gray-500 text-sm text-center mb-8">
+          <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-8">
             {isForgotPassword
               ? 'Enter your email to receive a reset link'
               : (isLogin
@@ -283,7 +283,7 @@ const Auth = () => {
               <>
                 {/* Full Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium text-gray-700">Full Name</Label>
+                  <Label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
                   <Input
                     id="name"
                     type="text"
@@ -291,13 +291,13 @@ const Auth = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     required
                     placeholder="Enter your full name"
-                    className="h-12 rounded-xl border-gray-200 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
+                    className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
                   />
                 </div>
 
                 {/* Hotel Name - Required for admin signup */}
                 <div className="space-y-2">
-                  <Label htmlFor="hotelName" className="text-sm font-medium text-gray-700">Hotel Name</Label>
+                  <Label htmlFor="hotelName" className="text-sm font-medium text-gray-700 dark:text-gray-300">Hotel Name</Label>
                   <Input
                     id="hotelName"
                     type="text"
@@ -305,13 +305,13 @@ const Auth = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, hotelName: e.target.value }))}
                     required
                     placeholder="Enter your hotel name"
-                    className="h-12 rounded-xl border-gray-200 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
+                    className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
                   />
                 </div>
 
                 {/* Info message */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                  <p className="text-xs text-blue-700">
+                <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-xl p-3">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
                     <strong>Note:</strong> Your account will be reviewed by our team.
                     Staff members can be added after your account is activated.
                   </p>
@@ -321,7 +321,7 @@ const Auth = () => {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -329,14 +329,14 @@ const Auth = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 required
                 placeholder="Enter your email"
-                className="h-12 rounded-xl border-gray-200 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
+                className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
               />
             </div>
 
             {/* Password */}
             {!isForgotPassword && (
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -346,7 +346,7 @@ const Auth = () => {
                     required
                     placeholder="Enter your password"
                     minLength={isLogin ? 6 : 8}
-                    className="h-12 rounded-xl border-gray-200 focus:border-pink-500 focus:ring-pink-500/20 transition-all pr-12"
+                    className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all pr-12"
                   />
                   <button
                     type="button"

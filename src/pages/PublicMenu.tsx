@@ -1565,7 +1565,7 @@ const PublicMenu = () => {
             {
                 banners.length > 0 && (
                     <div className="max-w-2xl mx-auto px-4 pt-4">
-                        <div className="relative rounded-xl overflow-hidden shadow-lg" style={{ maxHeight: '200px' }}>
+                        <div className="relative rounded-xl overflow-hidden shadow-lg h-40 sm:h-48 md:h-56">
                             <div
                                 className="flex transition-transform duration-500 ease-in-out touch-pan-y h-full"
                                 style={{ transform: `translateX(-${currentBannerIndex * 100}%)` }}
@@ -1582,7 +1582,7 @@ const PublicMenu = () => {
                                         {banner.is_text_only ? (
                                             // Text-only banner with solid color background
                                             <div
-                                                className="relative aspect-[16/7] max-h-[200px] flex items-center justify-center"
+                                                className="relative w-full h-full flex items-center justify-center"
                                                 style={{ backgroundColor: banner.bg_color || '#22c55e' }}
                                             >
                                                 <div className="text-center px-6">
@@ -1604,7 +1604,7 @@ const PublicMenu = () => {
                                             </div>
                                         ) : (
                                             // Image banner
-                                            <div className="relative aspect-[16/7] max-h-[200px] bg-gradient-to-r from-orange-400 to-amber-400">
+                                            <div className="relative w-full h-full bg-gradient-to-r from-orange-400 to-amber-400">
                                                 <img
                                                     src={banner.image_url}
                                                     alt={banner.title}
