@@ -28,6 +28,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [alwaysOnDisplay, setAlwaysOnDisplay] = useState(true);
+  const [billingLayout, setBillingLayout] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,6 +38,8 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
     }
     const savedAod = localStorage.getItem('hotel_pos_aod_enabled');
     if (savedAod !== null) setAlwaysOnDisplay(savedAod === 'true');
+    const savedLayout = localStorage.getItem('billing-view-mode') as 'grid' | 'list';
+    if (savedLayout) setBillingLayout(savedLayout);
   }, [userId, operatingBranchId]);
 
   const fetchSettings = async () => {
@@ -130,6 +133,15 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
     toast({
       title: checked ? "Always On Display Enabled" : "Always On Display Disabled",
       description: checked ? "Screen will stay awake while app is open" : "Screen will sleep normally",
+    });
+  };
+
+  const handleLayoutChange = (mode: 'grid' | 'list') => {
+    setBillingLayout(mode);
+    localStorage.setItem('billing-view-mode', mode);
+    toast({
+      title: "Billing Layout Updated",
+      description: `POS Billing will now load in ${mode === 'grid' ? 'Grid' : 'List'} View.`,
     });
   };
 
@@ -263,6 +275,27 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
               onCheckedChange={handleAodChange}
               disabled={isAllBranchesView}
             />
+          </div>
+
+          {/* POS Billing Layout Style */}
+          <div className="space-y-2">
+            <Label htmlFor="billing_layout">POS Billing Layout Style</Label>
+            <Select
+              value={billingLayout}
+              onValueChange={(value: 'grid' | 'list') => handleLayoutChange(value)}
+              disabled={isAllBranchesView}
+            >
+              <SelectTrigger id="billing_layout">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="grid">Grid View (Default)</SelectItem>
+                <SelectItem value="list">List View</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              Choose the item layout style for the POS Quick Billing screen.
+            </p>
           </div>
 
           {/* Items per Row Setting */}

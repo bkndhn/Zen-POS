@@ -2262,11 +2262,33 @@ const Billing = () => {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-3">
-        <div className="flex items-center relative">
+      {/* Search and Layout Toggle */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex-1 flex items-center relative">
           <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search items..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+        </div>
+        <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => handleViewModeChange('grid')}
+            className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            title="Grid View"
+          >
+            <Grid className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => handleViewModeChange('list')}
+            className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            title="List View"
+          >
+            <List className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
