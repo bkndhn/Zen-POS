@@ -173,13 +173,23 @@ export const Header: React.FC = () => {
               {isDarkMode ? <Sun className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 animate-pulse" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500 dark:text-indigo-400" />}
             </Button>
 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/20 text-destructive md:hidden shrink-0"
+              onClick={() => setShowSignOutConfirm(true)}
+              title={t('auth.signOut')}
+            >
+              <LogOut className="h-4.5 w-4.5 animate-pulse" />
+            </Button>
+
             <Badge variant={profile.role === 'admin' || profile.role === 'super_admin' ? 'default' : 'outline'} className="hidden md:flex text-xs shrink-0">
               {profile.role === 'super_admin' ? 'Super Admin' : profile.role === 'admin' ? t('users.admin') : t('users.user')}
             </Badge>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="flex items-center space-x-1 sm:space-x-2 h-10 px-1.5 sm:px-2 rounded-xl hover:bg-muted/60 shrink-0">
+                <Button variant="ghost" size="sm" className="hidden md:flex items-center space-x-1 sm:space-x-2 h-10 px-1.5 sm:px-2 rounded-xl hover:bg-muted/60 shrink-0">
                   <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/20 shrink-0">
                     <User className="w-4 h-4 text-primary" />
                   </div>
