@@ -57,13 +57,25 @@ export const seedAdminDefaults = async (adminProfileId: string) => {
     }));
     await supabase.from('expense_categories').insert(expenseCats);
 
-    // Seed payment types
-    const payments = DEFAULT_PAYMENT_TYPES.map(p => ({
-      ...p,
-      admin_id: adminProfileId,
-      branch_id: branchId,
-    }));
-    await supabase.from('payments').insert(payments);
+    // Seed payment types (only ones that do not exist yet)
+    const { data: existingPayments } = await supabase
+      .from('payments')
+      .select('payment_type')
+      .eq('admin_id', adminProfileId)
+      .eq('branch_id', branchId);
+
+    const existingNames = new Set((existingPayments || []).map(p => p.payment_type.toLowerCase().trim()));
+    const paymentsToSeed = DEFAULT_PAYMENT_TYPES
+      .filter(p => !existingNames.has(p.payment_type.toLowerCase().trim()))
+      .map(p => ({
+        ...p,
+        admin_id: adminProfileId,
+        branch_id: branchId,
+      }));
+
+    if (paymentsToSeed.length > 0) {
+      await supabase.from('payments').insert(paymentsToSeed);
+    }
 
     console.log('[Seed] Default data seeded successfully');
   } catch (error) {

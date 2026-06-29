@@ -74,6 +74,18 @@ export const PaymentTypesManagement: React.FC = () => {
       return;
     }
 
+    const exists = paymentTypes.some(
+      p => p.payment_type.toLowerCase().trim() === newPaymentType.toLowerCase().trim()
+    );
+    if (exists) {
+      toast({
+        title: "Duplicate Payment Type",
+        description: `"${newPaymentType}" already exists for this branch.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await (supabase as any)
