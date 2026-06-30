@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { convertToInventoryUnit } from '@/utils/quantityUtils';
+import { convertToInventoryUnit } from '@/utils/timeUtils';
 
 export interface StockDeductionItem {
   id: string;
