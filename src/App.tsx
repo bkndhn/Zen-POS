@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -138,40 +138,42 @@ const ThemeLoader = () => {
   return null;
 };
 
-// Direct imports for faster navigation (no lazy loading overhead)
+// Keep Auth as direct import for instant login screen
 import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import DashboardAnalytics from "./pages/DashboardAnalytics";
-import Billing from "./pages/Billing";
-import Items from "./pages/Items";
-import Expenses from "./pages/Expenses";
-import Users from "./pages/Users";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import ServiceArea from "./pages/ServiceArea";
-import KitchenDisplay from "./pages/KitchenDisplay";
-import CustomerDisplay from "./pages/CustomerDisplay";
-import TableManagement from "./pages/TableManagement";
-import CRM from "./pages/CRM";
-import PublicMenu from "./pages/PublicMenu";
-import QRMenu from "./pages/QRMenu";
-import TableOrderBilling from "./pages/TableOrderBilling";
-import WaiterCompanion from "./pages/WaiterCompanion";
-import LandingPage from "./pages/LandingPage";
-import DemoBilling from "./pages/DemoBilling";
-import SuperAdminUsers from "./pages/SuperAdminUsers";
-import Suppliers from "./pages/Suppliers";
-import Purchases from "./pages/Purchases";
-import StockManagement from "./pages/StockManagement";
-import StockReports from "./pages/StockReports";
-import StockTransfers from "./pages/StockTransfers";
-import PurchaseReturns from "./pages/PurchaseReturns";
-import StockLedger from "./pages/StockLedger";
-import { MenuTV } from "./pages/MenuTV";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PendingBillsQueue } from "./components/PendingBillsQueue";
+
+// Lazy-loaded pages — each becomes its own chunk
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardAnalytics = lazy(() => import("./pages/DashboardAnalytics"));
+const Billing = lazy(() => import("./pages/Billing"));
+const Items = lazy(() => import("./pages/Items"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const Users = lazy(() => import("./pages/Users"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ServiceArea = lazy(() => import("./pages/ServiceArea"));
+const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));
+const CustomerDisplay = lazy(() => import("./pages/CustomerDisplay"));
+const TableManagement = lazy(() => import("./pages/TableManagement"));
+const CRM = lazy(() => import("./pages/CRM"));
+const PublicMenu = lazy(() => import("./pages/PublicMenu"));
+const QRMenu = lazy(() => import("./pages/QRMenu"));
+const TableOrderBilling = lazy(() => import("./pages/TableOrderBilling"));
+const WaiterCompanion = lazy(() => import("./pages/WaiterCompanion"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const DemoBilling = lazy(() => import("./pages/DemoBilling"));
+const SuperAdminUsers = lazy(() => import("./pages/SuperAdminUsers"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const Purchases = lazy(() => import("./pages/Purchases"));
+const StockManagement = lazy(() => import("./pages/StockManagement"));
+const StockReports = lazy(() => import("./pages/StockReports"));
+const StockTransfers = lazy(() => import("./pages/StockTransfers"));
+const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
+const StockLedger = lazy(() => import("./pages/StockLedger"));
+const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuTV })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -221,97 +223,8 @@ const App = () => {
     return () => window.removeEventListener('font-scale-changed', handleFontScaleChange as EventListener);
   }, []);
 
-  // Theme colors for status bar (meta theme-color)
-  const themeColors: Record<string, string> = {
-    'blue': '#3b82f6',
-    'blue-bright': '#0324fc',
-    'purple': '#9333ea',
-    'green': '#10b981',
-    'rose': '#e11d48',
-    'sunset': '#f97316',
-    'navy': '#1e3a8a',
-    'hotpink': '#c11c84'
-  };
-
-  // Helper to apply custom theme variables
-  const applyCustomTheme = (color: string) => {
-    // Simple Hex to HSL conversion
-    const hexToHSL = (hex: string) => {
-      let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      if (!result) return { h: 0, s: 0, l: 0 };
-      let r = parseInt(result[1], 16) / 255;
-      let g = parseInt(result[2], 16) / 255;
-      let b = parseInt(result[3], 16) / 255;
-      let max = Math.max(r, g, b), min = Math.min(r, g, b);
-      let h = 0, s = 0, l = (max + min) / 2;
-      if (max !== min) {
-        let d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-          case g: h = (b - r) / d + 2; break;
-          case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-      }
-      return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-    };
-
-    const { h, s, l } = hexToHSL(color);
-    const hslString = `${h} ${s}% ${l}%`;
-    const glowString = `${h} ${Math.min(s + 5, 100)}% ${Math.min(l + 10, 95)}%`;
-
-    document.documentElement.style.setProperty('--primary', hslString);
-    document.documentElement.style.setProperty('--primary-foreground', '0 0% 100%');
-    document.documentElement.style.setProperty('--primary-glow', glowString);
-    document.documentElement.style.setProperty('--ring', hslString);
-    document.documentElement.style.setProperty('--gradient-primary', `linear-gradient(135deg, hsl(${h} ${s}% ${l}%), hsl(${h} ${Math.max(s - 10, 0)}% ${Math.min(l + 5, 100)}%))`);
-
-    // Sidebar and Buttons
-    document.documentElement.style.setProperty('--sidebar-primary', hslString);
-    document.documentElement.style.setProperty('--sidebar-ring', hslString);
-    document.documentElement.style.setProperty('--btn-increment', hslString);
-    document.documentElement.style.setProperty('--qty-badge', hslString);
-  };
-
-  // Global cache invalidation listeners and theme initialization
+  // Global cache invalidation listeners (theme is handled by ThemeLoader)
   React.useEffect(() => {
-    // Apply saved theme on startup
-    const savedTheme = localStorage.getItem('hotel_pos_theme') || 'blue';
-
-    if (savedTheme === 'custom') {
-      const customColor = localStorage.getItem('hotel_pos_custom_color') || '#0324fc';
-      applyCustomTheme(customColor);
-
-      // Update meta tag
-      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-      if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', customColor);
-      }
-    } else {
-      // Clean up custom styles if switching from custom
-      document.documentElement.style.removeProperty('--primary');
-      document.documentElement.style.removeProperty('--primary-foreground');
-
-      // Apply theme class
-      if (savedTheme && savedTheme !== 'blue') {
-        const themeClass = `theme-${savedTheme}`;
-        document.documentElement.classList.add(themeClass);
-      }
-
-      // Apply theme-color meta tag for status bar
-      const themeColor = themeColors[savedTheme] || '#3b82f6';
-      let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-      if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', themeColor);
-      } else {
-        metaThemeColor = document.createElement('meta');
-        metaThemeColor.setAttribute('name', 'theme-color');
-        metaThemeColor.setAttribute('content', themeColor);
-        document.head.appendChild(metaThemeColor);
-      }
-    }
-
     const handleInvalidateBills = () => {
       console.log('Global: Invalidating bills cache');
       import('@/utils/cacheUtils').then(({ invalidateRelatedData }) => {
@@ -367,6 +280,7 @@ const App = () => {
               <PermissionsProvider>
                 <BranchProvider>
                   <ThemeLoader />
+                  <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
                   <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Layout><ProtectedRoute requiredPermission="billing"><Billing /></ProtectedRoute></Layout>} />
@@ -400,6 +314,7 @@ const App = () => {
                   <Route path="/menu-tv/:adminId" element={<MenuTV />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </Suspense>
                 </BranchProvider>
               </PermissionsProvider>
             </AuthProvider>

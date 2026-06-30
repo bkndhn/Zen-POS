@@ -15,8 +15,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  console.log('Layout - loading:', loading, 'user:', !!user, 'profile:', !!profile, 'status:', profile?.status);
-
   // Don't show navigation on auth page
   if (location.pathname === '/auth') {
     return <>{children}</>;
@@ -24,7 +22,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Show loading only while auth is being initialized
   if (loading) {
-    console.log('Layout showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -37,22 +34,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // After loading is complete, check authentication
   if (!user) {
-    console.log('No user - redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
   if (!profile) {
-    console.log('No profile - redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
   if (profile.status !== 'active') {
-    console.log('Profile not active:', profile.status, '- redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
   // User is properly authenticated with active profile
-  console.log('User authenticated - showing app');
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background flex w-full max-w-[100vw] overflow-x-hidden">
       <Sidebar />
