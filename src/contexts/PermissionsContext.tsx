@@ -78,6 +78,33 @@ interface PermissionsContextType {
     refetch: () => void;
 }
 
+// Build a reverse mapping from route path → page key (e.g. '/billing' → 'billing')
+// Used to translate client_permissions (keyed by route) into UserPermissions (keyed by page name)
+const routeToPageKey: Record<string, keyof UserPermissions> = {
+    '/dashboard': 'dashboard',
+    '/analytics': 'analytics',
+    '/billing': 'billing',
+    '/kitchen': 'kitchen',
+    '/waiter': 'waiterCompanion',
+    '/service-area': 'serviceArea',
+    '/tables': 'tables',
+    '/table-billing': 'tableBilling',
+    '/items': 'items',
+    '/suppliers': 'suppliers',
+    '/purchases': 'purchases',
+    '/stock': 'stock',
+    '/stock-transfers': 'stock',
+    '/purchase-returns': 'purchases',
+    '/stock-ledger': 'stock',
+    '/stock-reports': 'stock',
+    '/expenses': 'expenses',
+    '/reports': 'reports',
+    '/crm': 'customers',
+    '/qr-menu': 'qrMenu',
+    '/users': 'users',
+    '/settings': 'settings',
+};
+
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
 
 export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -146,6 +173,20 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                 for (const [page, allowed] of Object.entries(adminPermissions)) {
                     if (page in perms && allowed === false) {
                         (perms as any)[page] = false;
+                    }
+                }
+
+                // Apply Super Admin client_permissions (stored by route path, e.g. '/billing')
+                // This enforces page-level blocking set by Super Admin
+                if (profile.client_permissions) {
+                    for (const [routePath, allowed] of Object.entries(profile.client_permissions)) {
+                        if (allowed === false) {
+                            // Find the page key for this route path
+                            const pageKey = routeToPageKey[routePath];
+                            if (pageKey && pageKey in perms) {
+                                (perms as any)[pageKey] = false;
+                            }
+                        }
                     }
                 }
 
@@ -219,6 +260,19 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
 
                 // QR Menu: child can only have access if parent admin has premium access
                 perms.qrMenu = adminHasQrMenuAccess && (userPermissions['qrMenu'] === true);
+
+                // Apply Super Admin client_permissions (inherited from parent admin)
+                // This enforces page-level blocking set by Super Admin for the client
+                if (profile.client_permissions) {
+                    for (const [routePath, allowed] of Object.entries(profile.client_permissions)) {
+                        if (allowed === false) {
+                            const pageKey = routeToPageKey[routePath];
+                            if (pageKey && pageKey in perms) {
+                                (perms as any)[pageKey] = false;
+                            }
+                        }
+                    }
+                }
 
                 setPermissions(perms);
                 fetchedForUserRef.current = profile.user_id;
