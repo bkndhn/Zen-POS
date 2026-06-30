@@ -173,6 +173,7 @@ const Billing = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return localStorage.getItem('billing-view-mode') as 'grid' | 'list' || 'grid';
   });
+  const [billingMode, setBillingMode] = useState<'qty' | 'amount'>('qty');
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<string>('');
   const [discount, setDiscount] = useState(0);
@@ -1184,6 +1185,55 @@ const Billing = () => {
     }
     setSearchQuery('');
   };
+
+  const addToCartWithAmount = (item: Item, amount: number) => {
+    const channelPrice = getChannelPrice(item, orderChannel);
+    if (channelPrice <= 0) return;
+    const baseValue = item.base_value || 1;
+    const calculatedQty = parseFloat(((amount * baseValue) / channelPrice).toFixed(3));
+    
+    const existing = cart.find(cartItem => cartItem.id === item.id);
+    const targetQty = existing ? existing.quantity + calculatedQty : calculatedQty;
+    
+    if (item.stock_quantity !== null && item.stock_quantity !== undefined) {
+      const invUnit = (item as any).inventory_unit;
+      const sellUnit = (item as any).selling_unit || item.unit;
+      const targetInInvUnit = convertToInventoryUnit(targetQty, sellUnit, invUnit);
+      if (targetInInvUnit > Number(item.stock_quantity)) {
+        toast({
+          title: '🚫 Stock Limit Exceeded',
+          description: `Cannot add ₹${amount} worth of ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    
+    setCart(prev => {
+      if (existing) {
+        return prev.map(cartItem => cartItem.id === item.id ? {
+          ...cartItem,
+          quantity: parseFloat((cartItem.quantity + calculatedQty).toFixed(3))
+        } : cartItem);
+      }
+      return [...prev, {
+        ...item,
+        store_price: item.price,
+        price: channelPrice,
+        quantity: calculatedQty
+      }];
+    });
+    
+    if (isLowStock(item)) {
+      const invUnit = (item as any).inventory_unit;
+      toast({
+        title: '⚠️ Low Stock',
+        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+      });
+    }
+    setSearchQuery('');
+  };
+
   const updateQuantity = (id: string, change: number) => {
     const cartItem = cart.find(c => c.id === id);
     if (!cartItem) return;
@@ -2222,9 +2272,9 @@ const Billing = () => {
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>;
   }
-  return <div className="min-h-screen flex overflow-x-hidden max-w-[100vw]">
+  return <div className="min-h-screen flex overflow-x-hidden max-w-[100vw] bg-zinc-50 dark:bg-zinc-950">
     {/* Main Items Area */}
-    <div className="flex-1 p-4 overflow-hidden max-w-full">
+    <div className="flex-1 p-6 overflow-hidden max-w-full lg:p-8">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -2263,32 +2313,34 @@ const Billing = () => {
       </div>
 
       {/* Search and Layout Toggle */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="flex-1 flex items-center relative">
           <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search items..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
         </div>
-        <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleViewModeChange('grid')}
-            className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            title="Grid View"
-          >
-            <Grid className="w-4 h-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleViewModeChange('list')}
-            className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            title="List View"
-          >
-            <List className="w-4 h-4" />
-          </Button>
+        <div className="flex gap-2 justify-end">
+          <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => handleViewModeChange('grid')}
+              className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => handleViewModeChange('list')}
+              className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -2322,7 +2374,7 @@ const Billing = () => {
             const isInCart = cartItem && cartItem.quantity > 0;
             const unitLabel = getShortUnit(item.unit);
             const lowStock = isLowStock(item);
-            return <div key={item.id} className={`relative bg-card rounded-xl border-2 p-1.5 flex flex-col shadow-sm transition-all duration-300 ${isInCart ? 'border-primary shadow-primary/20 shadow-md' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-gray-200 dark:border-gray-700 hover:border-primary/30'}`}>
+            return <div key={item.id} className={`relative bg-white dark:bg-zinc-900 rounded-2xl border-2 p-4 flex flex-col shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-primary shadow-primary/25 shadow-lg' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-zinc-200/80 dark:border-zinc-800/80 hover:border-primary/40'}`}>
               {/* Image container with quantity badge */}
               <div className="relative aspect-[4/3] mb-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden flex-shrink-0">
                 {/* Media rendering - supports images, GIFs, and videos */}
@@ -2386,15 +2438,25 @@ const Billing = () => {
                   <div className="mt-auto space-y-1.5 flex flex-col justify-end">
                     {item.quick_chips && item.quick_chips.length > 0 && (
                       <div className="flex flex-wrap gap-1 justify-center mb-1">
-                        {item.quick_chips.map((chip, idx) => (
-                          <button
-                            key={idx}
-                            onClick={(e) => { e.stopPropagation(); addToCartWithChip(item, chip); }}
-                            className="px-1.5 py-0.5 text-[10px] font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-150"
-                          >
-                            {chip}
-                          </button>
-                        ))}
+                        {item.quick_chips.map((chip, idx) => {
+                          const isAmt = chip.startsWith('₹');
+                          return (
+                            <button
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isAmt) {
+                                  addToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
+                                } else {
+                                  addToCartWithChip(item, chip);
+                                }
+                              }}
+                              className="px-2 py-0.5 text-[10px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
+                            >
+                              {chip}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                     <Button onClick={() => addToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm">
@@ -2415,8 +2477,8 @@ const Billing = () => {
               if (item.image_url && !cachedImageUrl) {
                 cacheImageUrl(item.id, item.image_url);
               }
-              return <Card key={item.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3">
+              return <Card key={item.id} className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       {/* Image */}
@@ -2463,15 +2525,25 @@ const Billing = () => {
                           <Plus className="w-3 h-3" />
                         </Button>
                       </div> : <div className="flex items-center gap-1.5">
-                        {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => (
-                          <button
-                            key={idx}
-                            onClick={(e) => { e.stopPropagation(); addToCartWithChip(item, chip); }}
-                            className="px-2 py-1 text-[11px] font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-150 whitespace-nowrap"
-                          >
-                            {chip}
-                          </button>
-                        ))}
+                        {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
+                          const isAmt = chip.startsWith('₹');
+                          return (
+                            <button
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isAmt) {
+                                  addToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
+                                } else {
+                                  addToCartWithChip(item, chip);
+                                }
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
+                            >
+                              {chip}
+                            </button>
+                          );
+                        })}
                         <Button onClick={() => addToCart(item)} className="bg-primary hover:bg-primary/90 text-white">
                           Add
                         </Button>
@@ -2486,7 +2558,7 @@ const Billing = () => {
     </div>
 
     {/* Desktop Cart Section */}
-    <div className="hidden md:flex w-80 bg-card border-l flex-col">
+    <div className="hidden md:flex w-96 bg-white dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex-col">
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold flex items-center">
@@ -2573,7 +2645,14 @@ const Billing = () => {
                 </Button>
 
                 {editingQuantity === item.id ? <div className="flex items-center space-x-1">
-                  <Input type="number" value={tempQuantity} onChange={e => setTempQuantity(e.target.value)} className="w-12 h-8 text-center p-0 rounded-lg" autoFocus />
+                  <Input 
+                    type="number" 
+                    value={tempQuantity} 
+                    onChange={e => setTempQuantity(e.target.value)} 
+                    placeholder={getShortUnit(item.unit)}
+                    className="w-16 h-8 text-center px-1 rounded-lg" 
+                    autoFocus 
+                  />
                   <Button variant="ghost" size="sm" onClick={() => saveQuantity(item.id)} className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-increment))] text-white">
                     <Check className="w-3 h-3" />
                   </Button>

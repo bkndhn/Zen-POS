@@ -281,6 +281,17 @@ export const validateAndNormalizeQuickChips = (
   const normalizedChips: string[] = [];
 
   for (const chip of chips) {
+    // 0. Check if it's an amount chip (starts with ₹ or Rs.)
+    if (chip.startsWith('₹') || chip.startsWith('Rs') || chip.startsWith('Rs.')) {
+      const amtStr = chip.replace(/^(₹|Rs\.?)/, '').trim();
+      const val = parseFloat(amtStr);
+      if (isNaN(val) || val <= 0) {
+        return { error: `Invalid amount in quick chip: "${chip}"` };
+      }
+      normalizedChips.push(`₹${val}`);
+      continue;
+    }
+
     // 1. Check if it's a plain number (e.g., "500", "1.5")
     const plainMatch = chip.match(/^([\d.]+)$/);
     if (plainMatch) {

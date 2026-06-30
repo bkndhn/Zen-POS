@@ -305,14 +305,16 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   // Compact format helper - fits more on line
   const fmtLine = (left: string, right: string) => formatLine(left, right, LINE_WIDTH);
 
-  // Compact item line - name x qty @ price/unit = total
+  // Compact item line - name x qty @ price/unit = total (or name x qty = total on 58mm)
   const fmtItem = (item: BillItem) => {
     const targetUnit = item.selling_unit || item.unit;
     const qtyWithUnit = formatQuantityWithUnit(item.quantity, targetUnit);
     const shortUnit = getShortUnit(targetUnit);
     const baseValue = item.selling_quantity || item.base_value;
     const baseValStr = baseValue && baseValue !== 1 ? `${baseValue}` : '';
-    const right = `x${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`;
+    const right = LINE_WIDTH >= 48
+      ? `x${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`
+      : `x${qtyWithUnit} = ${item.total.toFixed(0)}`;
     const maxName = LINE_WIDTH - right.length - 1;
     if (maxName >= 10) {
       const shortName = item.name.length > maxName ? item.name.substring(0, maxName) : item.name;
@@ -335,16 +337,25 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(BOLD_OFF);
   }
 
-  // Address + Phone on same line if short
-  const addrPhone = [data.address, data.contactNumber].filter(Boolean).join(' | ');
-  if (addrPhone) {
+  // Address
+  if (data.address) {
     commands.push(ALIGN_CENTER);
-    commands.push(textToBytes(addrPhone));
+    commands.push(textToBytes(data.address));
     commands.push(FEED_LINE);
   }
 
-  // GSTIN - below address
-  if (data.gstin) {
+  // Phone and GSTIN
+  if (data.contactNumber) {
+    commands.push(ALIGN_CENTER);
+    if (data.gstin && LINE_WIDTH >= 48) {
+      commands.push(textToBytes(`Ph: ${data.contactNumber} | GSTIN: ${data.gstin}`));
+    } else {
+      commands.push(textToBytes(`Ph: ${data.contactNumber}`));
+    }
+    commands.push(FEED_LINE);
+  }
+  
+  if (data.gstin && (LINE_WIDTH < 48 || !data.contactNumber)) {
     commands.push(ALIGN_CENTER);
     commands.push(textToBytes(`GSTIN: ${data.gstin}`));
     commands.push(FEED_LINE);
@@ -403,8 +414,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(FEED_LINE);
   }
 
-  // GST Tax Summary - TaxName / Taxable / CGST / SGST table
-  if (data.totalTax && data.totalTax > 0) {
+  // GST Tax Summary - TaxName / Taxable / CGST / SGST table (80mm only)
+  if (data.totalTax && data.totalTax > 0 && LINE_WIDTH >= 48) {
     commands.push(textToBytes(SEP));
     commands.push(FEED_LINE);
     if (data.isComposition) {
@@ -497,12 +508,18 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(textToBytes('Thank you!'));
   commands.push(FEED_LINE);
 
-  // Feed 2 more lines (making it 3 lines total since footer has 1) to clear the cutter
-  commands.push(FEED_LINES(2));
-
-  // Send immediate cut commands for maximum compatibility
-  commands.push(CUT_FULL);          // GS V 0
-  commands.push(CUT_ALT);           // ESC i - fallback for some printers
+  // Check if autoCut is enabled in localStorage
+  const autoCut = localStorage.getItem('hotel_pos_auto_cut') !== 'false';
+  
+  if (autoCut) {
+    // Feed 2 lines to clear cutter, then cut
+    commands.push(FEED_LINES(2));
+    commands.push(CUT_FULL);
+    commands.push(CUT_ALT);
+  } else {
+    // Feed 4 lines so it reaches tear-bar, but DO NOT cut
+    commands.push(FEED_LINES(4));
+  }
 
   // Combine all commands
   const totalLength = commands.reduce((sum, arr) => sum + arr.length, 0);

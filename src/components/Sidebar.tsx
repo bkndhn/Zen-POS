@@ -37,7 +37,11 @@ const allNavItems = ALL_NAV_ITEMS;
 
 
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  collapsed?: boolean;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { profile } = useAuth();
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
@@ -48,7 +52,10 @@ export const Sidebar: React.FC = () => {
   // Super Admin: dedicated minimal sidebar
   if (profile.role === 'super_admin') {
     return (
-      <div className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0">
+      <div className={cn(
+        "hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0",
+        collapsed && "md:hidden"
+      )}>
         <div className="p-6">
           <h2 className="text-xl font-bold text-sidebar-foreground">Super Admin</h2>
           <p className="text-sm text-sidebar-accent-foreground">Platform control</p>
@@ -89,7 +96,10 @@ export const Sidebar: React.FC = () => {
   });
 
   return (
-    <div className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0">
+    <div className={cn(
+      "hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0",
+      collapsed && "md:hidden"
+    )}>
       <div className="p-6 flex-shrink-0">
         <h2 className="text-xl font-bold text-sidebar-foreground">
           {profile.hotel_name || 'ZenPOS'}

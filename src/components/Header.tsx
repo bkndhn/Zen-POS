@@ -43,7 +43,12 @@ const labelMap: Record<string, string> = {
 };
 
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+  sidebarCollapsed?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapsed }) => {
   const { t } = useTranslation();
   const { profile, signOut } = useAuth();
   const { hasAccess, loading: permLoading } = useUserPermissions();
@@ -102,6 +107,18 @@ export const Header: React.FC = () => {
       <header className="bg-card/80 backdrop-blur-lg border-b border-border/50 px-3 sm:px-6 py-2 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
+            {/* Desktop/Tablet Sidebar Toggle Button */}
+            {onToggleSidebar && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleSidebar}
+                className="hidden md:flex h-9 w-9 text-muted-foreground hover:text-foreground rounded-xl"
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
             {/* Mobile Menu Button - Hidden for Super Admin */}
             {!isSuperAdmin && (
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

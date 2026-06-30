@@ -213,6 +213,13 @@ class PrinterManager {
                 }
             }
 
+            // If we still don't have a connection and forceNewDevice is false, do NOT prompt!
+            if (!forceNewDevice) {
+                console.log('Reconnection failed and forceNewDevice is false. Bypassing requestDevice prompt.');
+                this.setState('disconnected');
+                return false;
+            }
+
             // Request new device from user
             console.log('Requesting new Bluetooth device...');
             this.device = await nav.bluetooth.requestDevice({
@@ -299,8 +306,15 @@ class PrinterManager {
                 success = await this.usbTransport.reconnect();
             }
 
-            // If no paired device or reconnect failed, prompt user
-            if (!success) {
+            // If reconnect failed and forceNewDevice is false, do NOT prompt!
+            if (!success && !forceNewDevice) {
+                console.log('[USB] Reconnection failed and forceNewDevice is false. Bypassing prompt.');
+                this.setState('disconnected');
+                return false;
+            }
+
+            // If no paired device or reconnect failed, prompt user (ONLY when forceNewDevice is true)
+            if (!success && forceNewDevice) {
                 success = await this.usbTransport.requestDevice();
             }
 

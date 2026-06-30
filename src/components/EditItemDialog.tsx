@@ -110,6 +110,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     expiry_mode: ((item as any).expiry_mode || 'none') as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
+  const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
   const [adminAuthId, setAdminAuthId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -137,6 +138,9 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
       checkPremiumAccess();
       setStockUpdateMode('add');
 
+      const isAmt = item.quick_chips?.some(c => c.startsWith('₹') || c.startsWith('Rs')) || false;
+      setChipsMode(isAmt ? 'amount' : 'qty');
+
       // Reset form data with current item values when dialog opens (empty stock_quantity for add mode)
       setFormData({
         name: item.name,
@@ -153,7 +157,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         stock_quantity: '',
         minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
         quantity_step: item.quantity_step?.toString() || '1',
-        quick_chips: item.quick_chips?.join(', ') || '',
+        quick_chips: item.quick_chips?.map(c => c.replace(/^(₹|Rs\.?)/, '')).join(', ') || '',
         category: item.category || '',
         image_url: item.image_url || '',
         video_url: item.video_url || '',
@@ -274,9 +278,14 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
     setLoading(true);
     try {
+      const rawChips = formData.quick_chips;
+      const processedChips = chipsMode === 'amount'
+        ? rawChips.split(',').map(c => c.trim()).map(c => c ? (c.startsWith('₹') ? c : `₹${c}`) : '').join(', ')
+        : rawChips;
+
       // Validate and normalize quick chips based on selling unit
       const { error: chipError, normalized: parsedChips } = validateAndNormalizeQuickChips(
-        formData.quick_chips,
+        processedChips,
         formData.selling_unit
       );
 
@@ -689,18 +698,42 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="quick_chips">Quick Chips (optional)</Label>
-              <Input
-                id="quick_chips"
-                type="text"
-                value={formData.quick_chips}
-                onChange={(e) => setFormData({ ...formData, quick_chips: e.target.value })}
-                placeholder="e.g., 250 ml, 500 ml, 1 L"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Comma-separated quick-add buttons shown on the billing card.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="chips_mode">Quick Chips Mode</Label>
+                <Select
+                  value={chipsMode}
+                  onValueChange={(value: 'qty' | 'amount') => {
+                    setChipsMode(value);
+                    setFormData({ ...formData, quick_chips: '' });
+                  }}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground">
+                    <SelectItem value="qty">⚖️ Quantity-based (e.g. 100g, 500ml)</SelectItem>
+                    <SelectItem value="amount">₹ Amount-based (e.g. 10, 20, 50)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="quick_chips">
+                  {chipsMode === 'amount' ? 'Quick Chips Amounts (optional)' : 'Quick Chips (optional)'}
+                </Label>
+                <Input
+                  id="quick_chips"
+                  type="text"
+                  value={formData.quick_chips}
+                  onChange={(e) => setFormData({ ...formData, quick_chips: e.target.value })}
+                  placeholder={chipsMode === 'amount' ? 'e.g., 10, 20, 50, 100' : 'e.g., 250 ml, 500 ml, 1 L'}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {chipsMode === 'amount' 
+                    ? 'Comma-separated currency amounts (no symbols).' 
+                    : 'Comma-separated quick-add quantities.'}
+                </p>
+              </div>
             </div>
 
             <div>

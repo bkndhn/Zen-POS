@@ -45,13 +45,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
 
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('hotel_pos_sidebar_collapsed') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem('hotel_pos_sidebar_collapsed', next ? 'true' : 'false');
+  };
+
   // User is properly authenticated with active profile
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background flex w-full max-w-[100vw] overflow-x-hidden">
-      <Sidebar />
+      <Sidebar collapsed={sidebarCollapsed} />
 
       <div className="flex flex-col flex-1 w-full min-w-0 overflow-x-hidden">
-        <Header />
+        <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
 
         {/* Offline Status Indicator */}
         <div className="px-2 sm:px-4 py-1">

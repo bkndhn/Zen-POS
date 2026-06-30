@@ -4,9 +4,9 @@ import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './
 export const printBrowserReceipt = (data: PrintData) => {
   const width = data.printerWidth || '58mm';
   const widthValue = width === '80mm' ? '80mm' : '58mm';
-  const fontSize = width === '80mm' ? '14px' : '12px';
-  const shopNameFontSize = width === '80mm' ? '18px' : '15px';
-  const totalFontSize = width === '80mm' ? '16px' : '13px';
+  const fontSize = width === '80mm' ? '16px' : '12px';
+  const shopNameFontSize = width === '80mm' ? '22px' : '15px';
+  const totalFontSize = width === '80mm' ? '18px' : '13px';
 
   // Debug logging
   console.log('🖨️ Browser Print Data:', {
@@ -16,11 +16,15 @@ export const printBrowserReceipt = (data: PrintData) => {
   });
 
   // Compact item rows with header: Item Name | Qty | Rate | Value (with two decimals)
-  const itemsHeader = `<tr style="font-weight:bold;border-bottom:1px dashed #000">
+  const itemsHeader = width === '80mm' ? `<tr style="font-weight:bold;border-bottom:1px dashed #000">
     <td style="width:36%;text-align:left;padding-right:4px;">ITEM</td>
     <td style="width:16%;text-align:center;padding-right:4px;">QTY</td>
     <td style="width:26%;text-align:right;padding-right:6px;">RATE</td>
     <td style="width:22%;text-align:right;">VALUE</td>
+  </tr>` : `<tr style="font-weight:bold;border-bottom:1px dashed #000">
+    <td style="width:55%;text-align:left;padding-right:4px;">ITEM</td>
+    <td style="width:20%;text-align:center;padding-right:4px;">QTY</td>
+    <td style="width:25%;text-align:right;">VALUE</td>
   </tr>`;
   let itemsHtml = data.items.map(item => {
     const targetUnit = (item as any).selling_unit || item.unit;
@@ -29,12 +33,21 @@ export const printBrowserReceipt = (data: PrintData) => {
     const baseVal = (item as any).selling_quantity || item.base_value;
     const baseValStr = baseVal && baseVal !== 1 ? `${baseVal}` : '';
     const rateText = `₹${item.price.toFixed(0)}/${baseValStr}${shortUnit}`;
-    return `<tr>
-      <td style="width:36%;text-align:left;word-break:break-all;padding-right:4px;">${item.name}</td>
-      <td style="width:16%;text-align:center;white-space:nowrap;padding-right:4px;">${qtyWithUnit}</td>
-      <td style="width:26%;text-align:right;white-space:nowrap;padding-right:6px;">${rateText}</td>
-      <td style="width:22%;text-align:right;white-space:nowrap;">${item.total.toFixed(2)}</td>
-    </tr>`;
+    
+    if (width === '80mm') {
+      return `<tr>
+        <td style="width:36%;text-align:left;word-break:break-all;padding-right:4px;">${item.name}</td>
+        <td style="width:16%;text-align:center;white-space:nowrap;padding-right:4px;">${qtyWithUnit}</td>
+        <td style="width:26%;text-align:right;white-space:nowrap;padding-right:6px;">${rateText}</td>
+        <td style="width:22%;text-align:right;white-space:nowrap;">${item.total.toFixed(2)}</td>
+      </tr>`;
+    } else {
+      return `<tr>
+        <td style="width:55%;text-align:left;word-break:break-all;padding-right:4px;">${item.name}</td>
+        <td style="width:20%;text-align:center;white-space:nowrap;padding-right:4px;">${qtyWithUnit}</td>
+        <td style="width:25%;text-align:right;white-space:nowrap;">${item.total.toFixed(2)}</td>
+      </tr>`;
+    }
   }).join('');
 
   const totalItems = data.totalItemsCount !== undefined ? data.totalItemsCount : data.items.length;
@@ -77,7 +90,7 @@ export const printBrowserReceipt = (data: PrintData) => {
     <div style="text-align:center;font-size:10px;margin-top:6px;font-style:italic;font-weight:bold;">
       Composition Scheme - Tax Rate: ${data.totalTax ? ((data.totalTax / data.subtotal) * 100).toFixed(1) : '1'}%<br>(No Input Tax Credit)
     </div>`;
-  } else if (taxEntries.length > 0) {
+  } else if (taxEntries.length > 0 && width === '80mm') {
     const rows = taxEntries.map((entry: any) => {
       const rate = entry.taxRate;
       const halfRate = rate / 2;
@@ -138,21 +151,26 @@ export const printBrowserReceipt = (data: PrintData) => {
     .footer { margin-top: 12px; font-size: ${fontSize}; margin-bottom: 24px; }
     @media print {
       @page { 
-        size: ${widthValue} auto; 
-        margin: 0; 
+        margin: 0 !important; 
+        size: auto; 
       }
       html, body {
         margin: 0 !important;
         padding: 0 !important;
         height: auto !important;
-        overflow: visible !important;
+        max-height: 100% !important;
+        overflow: hidden !important;
         background: white;
         color: black;
       }
       body { 
         width: ${widthValue}; 
         margin: 0; 
-        padding: 4px 4px 30px 4px; 
+        padding: 4px 4px 10px 4px !important; 
+      }
+      /* Hide browser default headers and footers */
+      header, footer, .no-print {
+        display: none !important;
       }
     }
   </style>
@@ -162,7 +180,7 @@ export const printBrowserReceipt = (data: PrintData) => {
     ${(data as any).logoUrl ? `<img src="${(data as any).logoUrl}" alt="logo" style="max-height:60px;max-width:120px;object-fit:contain;margin-bottom:4px;" />` : ''}
     <div class="shop-name">${(data.shopName || data.hotelName || 'HOTEL').toUpperCase()}</div>
     ${data.address ? `<div>${data.address}</div>` : ''}
-    ${data.contactNumber ? `<div>Ph: ${data.contactNumber}</div>` : ''}
+    ${data.contactNumber ? `<div>Ph: ${data.contactNumber}${data.gstin ? ` | GSTIN: ${data.gstin}` : ''}</div>` : (data.gstin ? `<div>GSTIN: ${data.gstin}</div>` : '')}
   </div>
   
   <hr>
@@ -171,7 +189,6 @@ export const printBrowserReceipt = (data: PrintData) => {
     <tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>
     <tr><td>Time:</td><td style="text-align:right">${data.time}</td></tr>
     ${(data as any).orderType ? `<tr><td><b>Type:</b></td><td style="text-align:right"><b>${(data as any).orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}</b></td></tr>` : ''}
-    ${data.gstin ? `<tr><td><b>GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.gstin}</td></tr>` : ''}
     ${data.customerMobile ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}
     ${data.customerGstin ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.customerGstin}</td></tr>` : ''}
   </table>
@@ -208,6 +225,15 @@ export const printBrowserReceipt = (data: PrintData) => {
     ${data.instagram ? `<div>IG: ${data.instagram}</div>` : ''}
     ${data.whatsapp ? `<div>WA: ${data.whatsapp}</div>` : ''}
   </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() { window.close(); }, 500);
+      }, 300);
+    };
+  </script>
 </body>
 </html>`;
 
@@ -221,20 +247,4 @@ export const printBrowserReceipt = (data: PrintData) => {
 
   printWindow.document.write(html);
   printWindow.document.close();
-
-  // Wait for document to fully load before printing
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 300);
-  };
-
-  // Fallback if onload doesn't fire
-  setTimeout(() => {
-    if (printWindow && !printWindow.closed) {
-      printWindow.focus();
-      printWindow.print();
-    }
-  }, 1000);
 };

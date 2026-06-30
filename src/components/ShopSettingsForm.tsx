@@ -49,6 +49,7 @@ export const ShopSettingsForm = () => {
     const [contactNumber, setContactNumber] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [printerWidth, setPrinterWidth] = useState<'58mm' | '80mm'>('58mm');
+    const [autoCut, setAutoCut] = useState<boolean>(true);
     const [upiId, setUpiId] = useState('');
     const [upiName, setUpiName] = useState('');
     const [qrPaymentEnabled, setQrPaymentEnabled] = useState(false);
@@ -77,6 +78,12 @@ export const ShopSettingsForm = () => {
         // 1. Instant load from localStorage cache (no loading state)
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
         const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+        
+        const savedAutoCut = localStorage.getItem('hotel_pos_auto_cut');
+        if (savedAutoCut !== null) {
+            setAutoCut(savedAutoCut === 'true');
+        }
+
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
@@ -85,6 +92,7 @@ export const ShopSettingsForm = () => {
                 setContactNumber(parsed.contactNumber || '');
                 setLogoUrl(parsed.logoUrl || '');
                 setPrinterWidth(parsed.printerWidth || '58mm');
+                if (parsed.autoCut !== undefined) setAutoCut(parsed.autoCut);
                 setFacebook(parsed.facebook || '');
                 setShowFacebook(parsed.showFacebook !== false);
                 setInstagram(parsed.instagram || '');
@@ -424,7 +432,7 @@ export const ShopSettingsForm = () => {
 
             // Update Local Cache
             const cacheData = {
-                shopName, address, contactNumber, logoUrl, printerWidth,
+                shopName, address, contactNumber, logoUrl, printerWidth, autoCut,
                 facebook, showFacebook, instagram, showInstagram, whatsapp, showWhatsapp, visiblePages,
                 menuSlug, menuShowShopName, menuShowAddress, menuShowPhone,
                 upiId, upiName, qrPaymentEnabled
@@ -432,6 +440,7 @@ export const ShopSettingsForm = () => {
             const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
             localStorage.setItem(headerKey, JSON.stringify(cacheData));
             localStorage.setItem('hotel_pos_printer_width', printerWidth);
+            localStorage.setItem('hotel_pos_auto_cut', autoCut ? 'true' : 'false');
 
             // Trigger global event
             window.dispatchEvent(new Event('shop-settings-updated'));
@@ -559,6 +568,18 @@ export const ShopSettingsForm = () => {
                         <p className="text-xs text-muted-foreground">
                             Choose the width of your thermal paper roll.
                         </p>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label>Printer Auto Cut</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Send cut command at the end of the receipt. If disabled, prints compact spacing for manual tearing.
+                                </p>
+                            </div>
+                            <Switch checked={autoCut} onCheckedChange={setAutoCut} />
+                        </div>
                     </div>
                 </div>
 

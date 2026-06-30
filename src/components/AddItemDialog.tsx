@@ -96,6 +96,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     expiry_mode: 'none' as 'none' | 'optional' | 'mandatory'
   });
   const [loading, setLoading] = useState(false);
+  const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
 
   // Check premium access
   useEffect(() => {
@@ -146,6 +147,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 
   useEffect(() => {
     if (open) {
+      setChipsMode('qty');
       fetchCategories();
       if (adminAuthId) {
         fetchGstSettings();
@@ -264,9 +266,14 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         }
       }
 
+      const rawChips = formData.quick_chips;
+      const processedChips = chipsMode === 'amount'
+        ? rawChips.split(',').map(c => c.trim()).map(c => c ? (c.startsWith('₹') ? c : `₹${c}`) : '').join(', ')
+        : rawChips;
+
       // Validate and normalize quick chips based on selling unit
       const { error: chipError, normalized: parsedChips } = validateAndNormalizeQuickChips(
-        formData.quick_chips,
+        processedChips,
         formData.selling_unit
       );
 
@@ -655,18 +662,42 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             </>
           )}
 
-          <div>
-            <Label htmlFor="quick_chips">Quick Chips (optional)</Label>
-            <Input
-              id="quick_chips"
-              type="text"
-              value={formData.quick_chips}
-              onChange={(e) => setFormData({ ...formData, quick_chips: e.target.value })}
-              placeholder="e.g., 250 ml, 500 ml, 1 L"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Comma-separated quick-add buttons shown on the billing card.
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="chips_mode">Quick Chips Mode</Label>
+              <Select
+                value={chipsMode}
+                onValueChange={(value: 'qty' | 'amount') => {
+                  setChipsMode(value);
+                  setFormData({ ...formData, quick_chips: '' });
+                }}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover text-popover-foreground">
+                  <SelectItem value="qty">⚖️ Quantity-based (e.g. 100g, 500ml)</SelectItem>
+                  <SelectItem value="amount">₹ Amount-based (e.g. 10, 20, 50)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="quick_chips">
+                {chipsMode === 'amount' ? 'Quick Chips Amounts (optional)' : 'Quick Chips (optional)'}
+              </Label>
+              <Input
+                id="quick_chips"
+                type="text"
+                value={formData.quick_chips}
+                onChange={(e) => setFormData({ ...formData, quick_chips: e.target.value })}
+                placeholder={chipsMode === 'amount' ? 'e.g., 10, 20, 50, 100' : 'e.g., 250 ml, 500 ml, 1 L'}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {chipsMode === 'amount' 
+                  ? 'Comma-separated currency amounts (no symbols).' 
+                  : 'Comma-separated quick-add quantities.'}
+              </p>
+            </div>
           </div>
 
           <div>
