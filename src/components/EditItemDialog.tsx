@@ -14,7 +14,7 @@ import { Edit } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
-import { getShortUnit } from '@/utils/timeUtils';
+import { getShortUnit, validateAndNormalizeQuickChips } from '@/utils/timeUtils';
 
 interface TaxRateOption {
   id: string;
@@ -274,10 +274,21 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
     setLoading(true);
     try {
-      // Parse quick_chips from comma-separated string to text array
-      const parsedChips = formData.quick_chips.trim()
-        ? formData.quick_chips.split(',').map(c => c.trim()).filter(c => c.length > 0)
-        : null;
+      // Validate and normalize quick chips based on selling unit
+      const { error: chipError, normalized: parsedChips } = validateAndNormalizeQuickChips(
+        formData.quick_chips,
+        formData.selling_unit
+      );
+
+      if (chipError) {
+        toast({
+          title: "Invalid Quick Chips",
+          description: chipError,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       let calculatedStock = null;
       if (!formData.unlimited_stock) {

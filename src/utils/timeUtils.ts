@@ -201,7 +201,15 @@ export const parseQuickChipQuantity = (chipText: string, itemUnit?: string): num
 
   // Extract numeric value and unit from chip text (e.g., "500 ml" → 500, "ml")
   const match = chipText.trim().match(/^([\d.]+)\s*(.+)$/);
-  if (!match) return null;
+  if (!match) {
+    // If it's a plain number (e.g. "500"), parse it directly
+    const plainMatch = chipText.trim().match(/^([\d.]+)$/);
+    if (plainMatch) {
+      const val = parseFloat(plainMatch[1]);
+      return isNaN(val) ? null : val;
+    }
+    return null;
+  }
 
   const chipValue = parseFloat(match[1]);
   if (isNaN(chipValue)) return null;
@@ -233,6 +241,95 @@ export const parseQuickChipQuantity = (chipText: string, itemUnit?: string): num
 
   // No conversion needed or unknown — use raw value
   return chipValue;
+};
+
+/**
+ * Validates and normalizes quick chip inputs based on the item's selling unit.
+ *
+ * If a chip is a plain number, the item's selling unit is automatically appended.
+ * Enforces that chip units belong to the same family as the item's selling unit:
+ *   - Weight family (g, kg)
+ *   - Volume family (ml, L)
+ *   - Piece family (pc) or other matching units
+ *
+ * @param quickChipsStr - Comma-separated quick chips string
+ * @param sellingUnit - The item's selling unit string
+ * @returns An object containing either the normalized array of chips or an error message
+ */
+export const validateAndNormalizeQuickChips = (
+  quickChipsStr: string,
+  sellingUnit?: string
+): { error?: string; normalized?: string[] } => {
+  if (!quickChipsStr || !quickChipsStr.trim()) return { normalized: [] };
+
+  const chips = quickChipsStr
+    .split(',')
+    .map(c => c.trim())
+    .filter(c => c.length > 0);
+
+  const shortUnit = getShortUnit(sellingUnit);
+
+  // Helper to determine unit family
+  const getUnitFamily = (unitStr: string): 'weight' | 'volume' | 'piece' => {
+    const u = unitStr.toLowerCase().trim();
+    if (u === 'g' || u === 'kg' || u === 'gram' || u === 'kilogram' || u === 'gm') return 'weight';
+    if (u === 'ml' || u === 'l' || u === 'milliliter' || u === 'liter' || u === 'litre' || u === 'ltr') return 'volume';
+    return 'piece';
+  };
+
+  const itemFamily = getUnitFamily(sellingUnit || '');
+  const normalizedChips: string[] = [];
+
+  for (const chip of chips) {
+    // 1. Check if it's a plain number (e.g., "500", "1.5")
+    const plainMatch = chip.match(/^([\d.]+)$/);
+    if (plainMatch) {
+      const val = parseFloat(plainMatch[1]);
+      if (isNaN(val) || val <= 0) {
+        return { error: `Invalid number in quick chip: "${chip}"` };
+      }
+      // Normalize by appending the item's short unit
+      normalizedChips.push(`${val} ${shortUnit}`);
+      continue;
+    }
+
+    // 2. Check if it has a value and a unit (e.g., "250 ml")
+    const match = chip.match(/^([\d.]+)\s*(.+)$/);
+    if (!match) {
+      return { error: `Invalid format for quick chip: "${chip}". Must be a number optionally followed by a unit.` };
+    }
+
+    const val = parseFloat(match[1]);
+    const unitRaw = match[2].trim().toLowerCase();
+    if (isNaN(val) || val <= 0) {
+      return { error: `Invalid number in quick chip: "${chip}"` };
+    }
+
+    const chipFamily = getUnitFamily(unitRaw);
+    if (chipFamily !== itemFamily) {
+      const allowedUnits =
+        itemFamily === 'weight'
+          ? 'weight units (g, kg)'
+          : itemFamily === 'volume'
+          ? 'volume units (ml, L)'
+          : 'piece units (pc)';
+      return {
+        error: `Quick chip "${chip}" is invalid. Since the item unit is "${sellingUnit || 'Piece (pc)'}", quick chips can only use ${allowedUnits}.`
+      };
+    }
+
+    // Normalize unit string
+    let normalizedUnit = match[2].trim();
+    if (unitRaw === 'ml' || unitRaw === 'milliliter') normalizedUnit = 'ml';
+    else if (unitRaw === 'l' || unitRaw === 'ltr' || unitRaw === 'liter' || unitRaw === 'litre') normalizedUnit = 'L';
+    else if (unitRaw === 'g' || unitRaw === 'gram' || unitRaw === 'gm') normalizedUnit = 'g';
+    else if (unitRaw === 'kg' || unitRaw === 'kilogram') normalizedUnit = 'kg';
+    else if (unitRaw === 'pc' || unitRaw === 'pcs' || unitRaw === 'piece' || unitRaw === 'pieces') normalizedUnit = 'pc';
+
+    normalizedChips.push(`${val} ${normalizedUnit}`);
+  }
+
+  return { normalized: normalizedChips };
 };
 
 /**
