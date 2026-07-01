@@ -905,6 +905,7 @@ export type Database = {
       profiles: {
         Row: {
           admin_id: string | null
+          client_permissions: Json | null
           created_at: string
           has_qr_menu_access: boolean | null
           hotel_name: string | null
@@ -923,6 +924,7 @@ export type Database = {
         }
         Insert: {
           admin_id?: string | null
+          client_permissions?: Json | null
           created_at?: string
           has_qr_menu_access?: boolean | null
           hotel_name?: string | null
@@ -941,6 +943,7 @@ export type Database = {
         }
         Update: {
           admin_id?: string | null
+          client_permissions?: Json | null
           created_at?: string
           has_qr_menu_access?: boolean | null
           hotel_name?: string | null
@@ -1842,15 +1845,21 @@ export type Database = {
           created_at: string
           current_bill_id: string | null
           display_order: number | null
+          floor_name: string | null
           has_seats: boolean
+          height: number | null
           id: string
           is_active: boolean
           seat_configuration: Json | null
           seat_count: number | null
+          shape: string | null
           status: string
           table_name: string | null
           table_number: string
           updated_at: string
+          width: number | null
+          x_pos: number | null
+          y_pos: number | null
         }
         Insert: {
           admin_id?: string | null
@@ -1859,15 +1868,21 @@ export type Database = {
           created_at?: string
           current_bill_id?: string | null
           display_order?: number | null
+          floor_name?: string | null
           has_seats?: boolean
+          height?: number | null
           id?: string
           is_active?: boolean
           seat_configuration?: Json | null
           seat_count?: number | null
+          shape?: string | null
           status?: string
           table_name?: string | null
           table_number: string
           updated_at?: string
+          width?: number | null
+          x_pos?: number | null
+          y_pos?: number | null
         }
         Update: {
           admin_id?: string | null
@@ -1876,15 +1891,21 @@ export type Database = {
           created_at?: string
           current_bill_id?: string | null
           display_order?: number | null
+          floor_name?: string | null
           has_seats?: boolean
+          height?: number | null
           id?: string
           is_active?: boolean
           seat_configuration?: Json | null
           seat_count?: number | null
+          shape?: string | null
           status?: string
           table_name?: string | null
           table_number?: string
           updated_at?: string
+          width?: number | null
+          x_pos?: number | null
+          y_pos?: number | null
         }
         Relationships: [
           {
