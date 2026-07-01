@@ -292,17 +292,13 @@ const PublicMenu = () => {
                 // Filter saleable items client-side (default true if column is missing)
                 const itemsData = (itemsDataRaw || []).filter((item: any) => item.is_saleable !== false);
 
-                // Fetch promotional banners (branch-scoped, with admin-level fallback)
-                let bannersQuery: any = supabase
-                    .from('promo_banners')
-                    .select('id, title, description, image_url, link_url, is_text_only, text_color, bg_color, branch_id')
-                    .eq('admin_id', adminId)
-                    .eq('is_active', true)
-                    .order('display_order');
-                const { data: allBannersData } = await bannersQuery;
+                // Fetch promotional banners via scoped RPC (branch-aware)
+                const { data: allBannersData } = await (supabase as any)
+                    .rpc('get_public_promo_banners', { p_admin_id: adminId, p_branch_id: branchId ?? null });
                 const bannersData = branchId
-                    ? (allBannersData || []).filter((b: any) => b.branch_id === branchId)
+                    ? (allBannersData || []).filter((b: any) => !b.branch_id || b.branch_id === branchId)
                     : (allBannersData || []);
+
 
                 if (itemsError) {
                     console.error('Items fetch error:', itemsError);

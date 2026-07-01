@@ -2267,6 +2267,21 @@ export type Database = {
           name: string
         }[]
       }
+      get_public_promo_banners: {
+        Args: { p_admin_id: string; p_branch_id?: string }
+        Returns: {
+          bg_color: string
+          branch_id: string
+          description: string
+          display_order: number
+          id: string
+          image_url: string
+          is_text_only: boolean
+          link_url: string
+          text_color: string
+          title: string
+        }[]
+      }
       get_public_shop_settings: { Args: { p_user_id: string }; Returns: Json }
       get_public_shop_settings_by_profile: {
         Args: { p_profile_id: string }
