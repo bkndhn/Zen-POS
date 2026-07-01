@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { CalendarDays, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, BarChart3, Edit, Trash2, Eye, Download, FileSpreadsheet, Printer, Search, MessageCircle, Phone, Image as ImageIcon, FileText, Loader2 } from 'lucide-react';
+import { CalendarDays, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, BarChart3, Edit, Trash2, Eye, Download, FileSpreadsheet, Printer, Search, MessageCircle, Phone, Image as ImageIcon, FileText, Loader2, Send } from 'lucide-react';
 import { FacebookIcon, InstagramIcon, WhatsAppIcon } from '@/components/SocialIcons';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';

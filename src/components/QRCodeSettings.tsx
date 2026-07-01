@@ -185,7 +185,8 @@ const QRCodeSettings = () => {
 
     // Save settings when changed (branch-scoped)
     const saveSettings = async () => {
-        if (!adminAuthUid) return;
+        if (!profile?.user_id) return;
+        const adminAuthUid = profile.user_id;
         // Save to localStorage immediately
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
         const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');

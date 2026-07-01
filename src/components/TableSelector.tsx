@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { LayoutGrid, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,

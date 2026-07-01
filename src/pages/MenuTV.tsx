@@ -32,7 +32,7 @@ export const MenuTV: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (adminId) {
@@ -61,12 +61,12 @@ export const MenuTV: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('items')
-        .select('id, name, price, description, image_url, category, is_veg, spicy_level')
+        .select('id, name, price, description, image_url, category')
         .eq('admin_id', adminId)
         .eq('is_active', true);
       
       if (!error && data) {
-        setItems(data as MenuItem[]);
+        setItems(data as unknown as MenuItem[]);
       }
     } catch (e) {
       console.warn('Error loading TV menu:', e);
@@ -85,7 +85,7 @@ export const MenuTV: React.FC = () => {
         .eq('is_billed', false);
       
       if (!error && data) {
-        setOrders(data as TVOrder[]);
+        setOrders(data as unknown as TVOrder[]);
       }
     } catch (e) {
       console.warn('Error loading TV orders:', e);
