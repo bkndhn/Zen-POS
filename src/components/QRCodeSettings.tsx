@@ -1234,7 +1234,7 @@ const QRCodeSettings = () => {
                             {qrDownloadMode === 'poster' && (
                                 <p className="text-[11px] text-primary/80 bg-primary/10 p-2 rounded flex items-center gap-2">
                                     <Palette className="w-3 h-3" />
-                                    Posters automatically use your Menu Appearance colors defined below.
+                                    Posters use the colors from <strong>Menu Design Studio</strong> (Settings → Menu Design).
                                 </p>
                             )}
                         </div>
