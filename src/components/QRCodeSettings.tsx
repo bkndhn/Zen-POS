@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
+import QRPosterStudio from '@/components/QRPosterStudio';
 
 // Simple QR Code generator using a public API
 const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '1a1a6c', bgColor: string = 'ffffff'): string => {
