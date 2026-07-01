@@ -1372,7 +1372,7 @@ const QRCodeSettings = () => {
             <MenuDesignStudio />
 
             {/* QR Poster Studio — 10+ templates + custom design */}
-            <QRPosterStudio menuUrl={currentQrUrl} shopName={shopName} />
+            <QRPosterStudio menuUrl={currentQrUrl} />
         </div>
     );
 };
