@@ -1,1 +1,4 @@
 project_id = "ivleyttlqlqawghvfyjz"
+
+[functions.voice-parse]
+verify_jwt = true
