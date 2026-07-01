@@ -239,7 +239,7 @@ export const ShopSettingsForm = () => {
 
             const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
             const ssTaken = (ssRows || []).some(
-                (r: any) => !(r.user_id === adminUserId && r.branch_id === operatingBranchId)
+                (r: any) => !(r.user_id === profile?.user_id && r.branch_id === operatingBranchId)
             );
             const brTaken = (brRows || []).some(
                 (r: any) => !(r.admin_id === adminId && r.id === operatingBranchId)
