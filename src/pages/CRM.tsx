@@ -556,6 +556,58 @@ const CRM: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bill History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Bill History{historyCustomer ? ` — ${historyCustomer.name || historyCustomer.phone}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-2 pr-1">
+            {historyLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : historyBills.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">No bills found.</p>
+            ) : historyBills.map((b: any) => (
+              <div key={b.id} className="border rounded-lg p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-semibold">#{b.bill_no} <span className="text-xs text-muted-foreground font-normal">· {format(new Date(b.created_at), 'dd MMM yyyy hh:mm a')}</span></div>
+                    <div className="text-xs text-muted-foreground">{(b.bill_items || []).length} items · {b.payment_mode || '-'}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <div className="font-bold text-primary">₹{Number(b.total || 0).toFixed(2)}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      onClick={() => historyCustomer && handleReorder(historyCustomer, b.id)}
+                      disabled={isAllBranchesView}
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" /> Reorder
+                    </Button>
+                  </div>
+                </div>
+                {b.bill_items?.length > 0 && (
+                  <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                    {b.bill_items.slice(0, 8).map((bi: any, idx: number) => (
+                      <li key={idx}>• {bi.items?.name || 'Item'} × {bi.quantity} — ₹{Number(bi.price || 0).toFixed(2)}</li>
+                    ))}
+                    {b.bill_items.length > 8 && <li>… and {b.bill_items.length - 8} more</li>}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
