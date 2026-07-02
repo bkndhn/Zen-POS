@@ -120,6 +120,19 @@ export const ShopSettingsForm = () => {
 
     const fetchSettings = async () => {
         try {
+            // Fetch current branch slug from branches table
+            let branchSlug = '';
+            if (operatingBranchId) {
+                const { data: branchData } = await supabase
+                    .from('branches')
+                    .select('menu_slug')
+                    .eq('id', operatingBranchId)
+                    .maybeSingle();
+                if (branchData?.menu_slug) {
+                    branchSlug = branchData.menu_slug;
+                }
+            }
+
             // Try current branch first
             let { data, error } = await supabase
                 .from('shop_settings')
@@ -169,11 +182,9 @@ export const ShopSettingsForm = () => {
                 }
 
                 // Menu settings
-                if ((data as any).menu_slug && !isFallback) {
-                    setMenuSlug((data as any).menu_slug);
-                } else if (isFallback) {
-                    setMenuSlug('');
-                }
+                const resolvedSlug = branchSlug || (isFallback ? '' : ((data as any).menu_slug || ''));
+                setMenuSlug(resolvedSlug);
+                
                 if ((data as any).menu_show_shop_name !== undefined) setMenuShowShopName((data as any).menu_show_shop_name);
                 if ((data as any).menu_show_address !== undefined) setMenuShowAddress((data as any).menu_show_address);
                 if ((data as any).menu_show_phone !== undefined) setMenuShowPhone((data as any).menu_show_phone);
@@ -192,7 +203,7 @@ export const ShopSettingsForm = () => {
                     whatsapp: data.whatsapp || '',
                     showWhatsapp: data.show_whatsapp !== false,
                     visiblePages: (data as any).visible_nav_pages || ['dashboard', 'billing', 'serviceArea', 'kitchen', 'tables', 'tableBilling', 'items', 'reports', 'settings', 'customers', 'expenses', 'qrMenu'],
-                    menuSlug: isFallback ? '' : ((data as any).menu_slug || ''),
+                    menuSlug: resolvedSlug,
                     menuShowShopName: (data as any).menu_show_shop_name !== false,
                     menuShowAddress: (data as any).menu_show_address !== false,
                     menuShowPhone: (data as any).menu_show_phone !== false,
@@ -376,6 +387,7 @@ export const ShopSettingsForm = () => {
         setSaving(true);
 
         try {
+            const isMainBranch = operatingBranchId === mainBranchId;
             const settingsData: any = {
                 shop_name: shopName || null,
                 address: address || null,
@@ -389,7 +401,7 @@ export const ShopSettingsForm = () => {
                 whatsapp: cleanUrl(whatsapp),
                 show_whatsapp: showWhatsapp,
                 visible_nav_pages: visiblePages,
-                menu_slug: menuSlug || null,
+                menu_slug: isMainBranch ? (menuSlug || null) : null,
                 menu_show_shop_name: menuShowShopName,
                 menu_show_address: menuShowAddress,
                 menu_show_phone: menuShowPhone,
