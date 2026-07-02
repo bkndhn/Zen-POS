@@ -53,7 +53,7 @@ const StockReports: React.FC = () => {
       (supabase as any).from('suppliers').select('id,name').eq('admin_id', adminId).order('name'),
       (supabase as any).from('purchases').select('id,purchase_no,purchase_date,total_amount,supplier_id,invoice_no,suppliers(name)').eq('admin_id', adminId).gte('purchase_date', from).lte('purchase_date', to).order('purchase_date', { ascending: false }),
       (supabase as any).from('purchase_items').select('id,purchase_id,item_name,unit,quantity,rate,total,batch_no,expiry_date,purchase_distributions(branch_id,quantity)').eq('admin_id', adminId),
-      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,minimum_stock_alert,unlimited_stock,purchase_rate,price,unit').eq('admin_id', adminId).eq('is_active', true),
+      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,minimum_stock_alert,unlimited_stock,purchase_rate,price,unit,inventory_unit').eq('admin_id', adminId).eq('is_active', true),
       (supabase as any).from('stock_adjustments').select('id,branch_id,item_id,change_qty,reason,notes,created_at').eq('admin_id', adminId).gte('created_at', from).lte('created_at', `${to}T23:59:59`).order('created_at', { ascending: false }),
     ]);
     setSuppliers((sup.data || []));
@@ -67,6 +67,10 @@ const StockReports: React.FC = () => {
 
   const branchName = (id: string) => branches.find(b => b.id === id)?.name || '—';
   const itemNameById = (id: string) => items.find(i => i.id === id)?.name || '—';
+  const itemUnitById = (id: string) => {
+    const it = items.find(i => i.id === id);
+    return it ? (it.inventory_unit || it.unit || '') : '';
+  };
 
   // Purchase Report
   const purchaseFiltered = purchases.filter(p => supplierFilter === 'all' || p.supplier_id === supplierFilter);
@@ -156,7 +160,7 @@ const StockReports: React.FC = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Stock valuation · ₹{stockValue.toFixed(2)}</CardTitle>
                 <Button size="sm" variant="outline" onClick={() => downloadCsv('stock.csv', toCsv(stockFiltered.map(i => ({
-                  item: i.name, branch: branchName(i.branch_id), stock: i.stock_quantity, unit: i.unit || '', cost: i.purchase_rate || 0, value: Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)
+                  item: i.name, branch: branchName(i.branch_id), stock: i.stock_quantity, unit: i.inventory_unit || i.unit || '', cost: i.purchase_rate || 0, value: Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)
                 })), [{ key: 'item', label: 'Item' }, { key: 'branch', label: 'Branch' }, { key: 'stock', label: 'Stock' }, { key: 'unit', label: 'Unit' }, { key: 'cost', label: 'Cost' }, { key: 'value', label: 'Value' }]))}>
                   <Download className="w-3 h-3 mr-1" /> CSV
                 </Button>
@@ -169,7 +173,7 @@ const StockReports: React.FC = () => {
                       <TableRow key={i.id}>
                         <TableCell className="font-medium">{i.name}</TableCell>
                         <TableCell className="text-xs">{branchName(i.branch_id)}</TableCell>
-                        <TableCell className="text-right">{i.unlimited_stock ? '∞' : `${i.stock_quantity ?? 0} ${i.unit || ''}`}</TableCell>
+                        <TableCell className="text-right">{i.unlimited_stock ? '∞' : `${i.stock_quantity ?? 0} ${i.inventory_unit || i.unit || ''}`}</TableCell>
                         <TableCell className="text-right">₹{Number(i.purchase_rate || 0).toFixed(2)}</TableCell>
                         <TableCell className="text-right">₹{(Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)).toFixed(2)}</TableCell>
                       </TableRow>
@@ -191,8 +195,8 @@ const StockReports: React.FC = () => {
                       <TableRow key={i.id}>
                         <TableCell className="font-medium">{i.name}</TableCell>
                         <TableCell className="text-xs">{branchName(i.branch_id)}</TableCell>
-                        <TableCell className="text-right text-destructive font-semibold">{i.stock_quantity}</TableCell>
-                        <TableCell className="text-right">{i.minimum_stock_alert}</TableCell>
+                        <TableCell className="text-right text-destructive font-semibold">{i.stock_quantity} {i.inventory_unit || i.unit || ''}</TableCell>
+                        <TableCell className="text-right">{i.minimum_stock_alert} {i.inventory_unit || i.unit || ''}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -235,7 +239,7 @@ const StockReports: React.FC = () => {
                         <TableCell className="text-xs">{new Date(a.created_at).toLocaleString()}</TableCell>
                         <TableCell className="font-medium">{itemNameById(a.item_id)}</TableCell>
                         <TableCell className="text-xs">{branchName(a.branch_id)}</TableCell>
-                        <TableCell className={Number(a.change_qty) < 0 ? 'text-destructive' : 'text-success'}>{Number(a.change_qty) > 0 ? '+' : ''}{a.change_qty}</TableCell>
+                        <TableCell className={Number(a.change_qty) < 0 ? 'text-destructive' : 'text-success'}>{Number(a.change_qty) > 0 ? '+' : ''}{a.change_qty} {itemUnitById(a.item_id)}</TableCell>
                         <TableCell><Badge variant="outline" className="capitalize">{a.reason}</Badge></TableCell>
                         <TableCell className="text-xs">{a.notes || '—'}</TableCell>
                       </TableRow>

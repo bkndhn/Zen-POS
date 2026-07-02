@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { History, Download } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 
+interface ItemRow { id: string; name: string; branch_id: string; unit: string | null; inventory_unit?: string | null; }
+
 const SOURCE_LABEL: Record<string, { label: string; variant: any }> = {
   purchase: { label: 'Purchase', variant: 'default' },
   sale: { label: 'Sale', variant: 'secondary' },
@@ -50,7 +52,7 @@ const StockLedger: React.FC = () => {
     const [ledger, it, prof] = await Promise.all([
       (supabase as any).from('stock_ledger').select('*').eq('admin_id', adminId)
         .gte('created_at', from).lte('created_at', `${to}T23:59:59`).order('created_at', { ascending: false }).limit(1000),
-      (supabase as any).from('items').select('id,name,branch_id').eq('admin_id', adminId),
+      (supabase as any).from('items').select('id,name,branch_id,unit,inventory_unit').eq('admin_id', adminId),
       (supabase as any).from('profiles').select('user_id,name').or(`id.eq.${adminId},admin_id.eq.${adminId}`)
     ]);
     setRows(ledger.data || []); setItems(it.data || []); setUsers(prof.data || []);
@@ -59,6 +61,10 @@ const StockLedger: React.FC = () => {
   useEffect(() => { load(); }, [adminId, from, to]);
 
   const itemName = (id: string) => items.find(i => i.id === id)?.name || '—';
+  const itemUnit = (id: string) => {
+    const it = items.find(i => i.id === id);
+    return it ? (it.inventory_unit || it.unit || '') : '';
+  };
   const branchName = (id: string) => branches.find(b => b.id === id)?.name || '—';
   const userName = (id: string) => users.find(u => u.user_id === id)?.name || '—';
 
@@ -153,8 +159,8 @@ const StockLedger: React.FC = () => {
                       <TableCell className="font-medium">{itemName(r.item_id)}</TableCell>
                       <TableCell className="text-xs">{branchName(r.branch_id)}</TableCell>
                       <TableCell><Badge variant={meta.variant}>{meta.label}</Badge></TableCell>
-                      <TableCell className={`text-right font-semibold ${negative ? 'text-destructive' : 'text-success'}`}>{negative ? '' : '+'}{r.change_qty}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{r.balance_after ?? '—'}</TableCell>
+                      <TableCell className={`text-right font-semibold ${negative ? 'text-destructive' : 'text-success'}`}>{negative ? '' : '+'}{r.change_qty} {itemUnit(r.item_id)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{r.balance_after != null ? `${r.balance_after} ${itemUnit(r.item_id)}` : '—'}</TableCell>
                       <TableCell className="text-xs">{r.reason || '—'}{r.notes ? ` · ${r.notes}` : ''}</TableCell>
                       <TableCell className="text-xs">{userName(r.created_by)}</TableCell>
                     </TableRow>

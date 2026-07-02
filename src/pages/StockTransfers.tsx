@@ -15,7 +15,7 @@ import { ArrowRightLeft, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
-interface ItemRow { id: string; name: string; branch_id: string; stock_quantity: number | null; unit: string | null; }
+interface ItemRow { id: string; name: string; branch_id: string; stock_quantity: number | null; unit: string | null; inventory_unit?: string | null; }
 interface Line { from_item_id: string; to_item_id: string; item_name: string; quantity: number; }
 
 const StockTransfers: React.FC = () => {
@@ -38,7 +38,7 @@ const StockTransfers: React.FC = () => {
     if (!adminId) return;
     setLoading(true);
     const [it, tr] = await Promise.all([
-      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
+      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,inventory_unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
       (supabase as any).from('stock_transfers').select('id,transfer_no,transfer_date,from_branch_id,to_branch_id,notes,created_at,stock_transfer_items(item_name,quantity)').eq('admin_id', adminId).order('created_at', { ascending: false }).limit(100)
     ]);
     setItems(it.data || []);
@@ -149,7 +149,7 @@ const StockTransfers: React.FC = () => {
                       <Label className="text-xs">Source item</Label>
                       <Select value={l.from_item_id} onValueChange={v => pickItem(idx, v)}>
                         <SelectTrigger><SelectValue placeholder="Pick item" /></SelectTrigger>
-                        <SelectContent>{fromItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({i.stock_quantity ?? 0})</SelectItem>)}</SelectContent>
+                        <SelectContent>{fromItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({i.stock_quantity ?? 0} {i.inventory_unit || i.unit || ''})</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="col-span-4">
@@ -160,7 +160,7 @@ const StockTransfers: React.FC = () => {
                       </Select>
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Qty {src?.unit ? `(${src.unit})` : ''}</Label>
+                      <Label className="text-xs">Qty {src?.inventory_unit || src?.unit ? `(${src.inventory_unit || src.unit})` : ''}</Label>
                       <Input type="number" value={l.quantity || ''} onChange={e => updateLine(idx, { quantity: +e.target.value })} />
                     </div>
                     <div className="col-span-1"><Button size="icon" variant="ghost" onClick={() => removeLine(idx)}><Trash2 className="w-4 h-4 text-destructive" /></Button></div>

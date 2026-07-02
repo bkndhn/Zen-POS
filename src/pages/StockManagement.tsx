@@ -13,6 +13,7 @@ import { Boxes, Sliders, Plus, Trash2, Edit2, AlertTriangle, ChefHat, Coins, Sca
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { convertToInventoryUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,8 @@ interface ItemRow {
   minimum_stock_alert: number | null;
   unlimited_stock: boolean | null;
   unit: string | null;
+  inventory_unit?: string | null;
+  selling_unit?: string | null;
 }
 
 interface Ingredient {
@@ -66,6 +69,7 @@ const StockManagement: React.FC = () => {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
+  const [recentSales, setRecentSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [q, setQ] = useState('');
@@ -109,7 +113,7 @@ const StockManagement: React.FC = () => {
       // 1. Fetch Items
       const { data: itemsData, error: itemsError } = await supabase
         .from('items')
-        .select('id,name,price,category,branch_id,stock_quantity,minimum_stock_alert,unlimited_stock,unit')
+        .select('id,name,price,category,branch_id,stock_quantity,minimum_stock_alert,unlimited_stock,unit,inventory_unit,selling_unit')
         .eq('admin_id', adminId)
         .eq('is_active', true)
         .order('name');
@@ -132,6 +136,20 @@ const StockManagement: React.FC = () => {
         .eq('admin_id', adminId);
       if (recError) throw recError;
       setRecipes((recData || []) as RecipeRow[]);
+
+      // 4. Fetch Recent Sales (last 7 days) for AI predictions (including unlimited stock items)
+      try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const { data: salesData } = await supabase
+          .from('bill_items')
+          .select('item_id, quantity, bills!inner(admin_id)')
+          .eq('bills.admin_id', adminId)
+          .gte('created_at', sevenDaysAgo.toISOString());
+        setRecentSales(salesData || []);
+      } catch (salesErr) {
+        console.error('Error fetching recent sales for AI predictions:', salesErr);
+      }
     } catch (err: any) {
       console.error(err);
       toast({ title: 'Error loading inventory', description: err.message, variant: 'destructive' });
@@ -186,26 +204,56 @@ const StockManagement: React.FC = () => {
       }
     });
 
+    // Map recent sales by item_id
+    const salesByItem = new Map<string, number>();
+    recentSales.forEach(s => {
+      salesByItem.set(s.item_id, (salesByItem.get(s.item_id) || 0) + (Number(s.quantity) || 0));
+    });
+
     // Check items
     items.forEach(item => {
-      if ((branchFilter === 'all' || item.branch_id === branchFilter) && !item.unlimited_stock && (item.stock_quantity || 0) <= (item.minimum_stock_alert || 0)) {
-        const suggestedQty = Math.max(10, ((item.minimum_stock_alert || 5) * 3.5) - (item.stock_quantity || 0));
-        suggestions.push({
-          type: 'item',
-          name: item.name,
-          current: item.stock_quantity || 0,
-          min: item.minimum_stock_alert || 0,
-          unit: item.unit || 'pcs',
-          suggestedReorder: Math.round(suggestedQty),
-          estimatedCost: null,
-          branch_id: item.branch_id,
-          reason: 'Current level is below safe minimum. AI projects depletion in 2 days based on average recipe usage.'
-        });
+      if (branchFilter === 'all' || item.branch_id === branchFilter) {
+        if (!item.unlimited_stock) {
+          // Trackable stock
+          if ((item.stock_quantity || 0) <= (item.minimum_stock_alert || 0)) {
+            const suggestedQty = Math.max(10, ((item.minimum_stock_alert || 5) * 3.5) - (item.stock_quantity || 0));
+            suggestions.push({
+              type: 'item',
+              name: item.name,
+              current: item.stock_quantity || 0,
+              min: item.minimum_stock_alert || 0,
+              unit: item.inventory_unit || item.unit || 'pcs',
+              suggestedReorder: Math.round(suggestedQty),
+              estimatedCost: null,
+              branch_id: item.branch_id,
+              reason: 'Current level is below safe minimum. AI projects depletion in 2 days based on average recipe usage.'
+            });
+          }
+        } else {
+          // Unlimited stock item — suggest preparation based on recent sales activity
+          const salesQty = salesByItem.get(item.id) || 0;
+          if (salesQty > 0) {
+            const salesInInvUnit = convertToInventoryUnit(salesQty, item.unit || undefined, item.inventory_unit || undefined);
+            const suggestedQty = Math.max(10, Math.round(salesInInvUnit * 1.5));
+            suggestions.push({
+              type: 'item',
+              name: item.name,
+              current: 0,
+              min: 0,
+              isUnlimited: true,
+              unit: item.inventory_unit || item.unit || 'pcs',
+              suggestedReorder: Math.round(suggestedQty),
+              estimatedCost: null,
+              branch_id: item.branch_id,
+              reason: `Item has unlimited stock. Based on last 7 days of activity, total sales are equivalent to ${salesInInvUnit.toFixed(1)} ${item.inventory_unit || item.unit || ''}. Suggested prep size to meet demand: +${Math.round(suggestedQty)} ${item.inventory_unit || item.unit || ''}.`
+            });
+          }
+        }
       }
     });
 
     return suggestions;
-  }, [ingredients, items, branchFilter]);
+  }, [ingredients, items, recentSales, branchFilter]);
 
   const handleQuickRestock = async (suggestion: any) => {
     try {
@@ -569,7 +617,7 @@ const StockManagement: React.FC = () => {
                             ) : (
                               <div className="flex items-center gap-2">
                                 <span className={`text-sm font-bold ${low ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                  {stock} {i.unit || 'pcs'}
+                                  {stock} {i.inventory_unit || i.unit || 'pcs'}
                                 </span>
                                 {low && (
                                   <Badge variant="destructive" className="bg-red-500/10 text-red-600 border border-red-500/25 px-1.5 py-0.5 text-[10px]">
@@ -580,7 +628,7 @@ const StockManagement: React.FC = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-xs font-mono text-muted-foreground">
-                            {i.unlimited_stock ? '—' : (i.minimum_stock_alert ?? 0)} {i.unit || 'pcs'}
+                            {i.unlimited_stock ? '—' : (i.minimum_stock_alert ?? 0)} {i.inventory_unit || i.unit || 'pcs'}
                           </TableCell>
                           <TableCell className="text-right pr-4">
                             <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary transition-all duration-200" onClick={() => openAdj(i)}>
@@ -925,8 +973,12 @@ const StockManagement: React.FC = () => {
                           </TableCell>
                           <TableCell className="font-bold">{s.name}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{branchName(s.branch_id)}</TableCell>
-                          <TableCell className="text-xs text-rose-600 font-bold">
-                            {s.current} {s.unit} (Min: {s.min})
+                          <TableCell className={`text-xs font-bold ${s.isUnlimited ? 'text-slate-500' : 'text-rose-600'}`}>
+                            {s.isUnlimited ? (
+                              <span className="text-slate-500">Unlimited (∞)</span>
+                            ) : (
+                              `${s.current} ${s.unit} (Min: ${s.min})`
+                            )}
                           </TableCell>
                           <TableCell className="text-xs text-emerald-600 font-black">
                             + {s.suggestedReorder} {s.unit}
@@ -943,7 +995,7 @@ const StockManagement: React.FC = () => {
                               className="h-7 text-[10px] rounded bg-purple-600 hover:bg-purple-700 text-white font-bold"
                               onClick={() => handleQuickRestock(s)}
                             >
-                              Quick Restock
+                              {s.isUnlimited ? 'Log Prep' : 'Quick Restock'}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -963,7 +1015,7 @@ const StockManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Adjust stock: {target?.name}</DialogTitle>
             <DialogDescription>
-              Branch: {target && branchName(target.branch_id)} · Current: {target?.stock_quantity ?? 0} {target?.unit || 'pcs'}
+              Branch: {target && branchName(target.branch_id)} · Current: {target?.stock_quantity ?? 0} {target?.inventory_unit || target?.unit || 'pcs'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
