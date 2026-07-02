@@ -2425,7 +2425,13 @@ const Billing = () => {
       <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="flex-1 flex items-center relative">
           <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search items..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+          <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
+          <div className="absolute right-1 top-1/2 -translate-y-1/2">
+            <VoiceBillingButton
+              items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
+              onIntent={handleVoiceIntent}
+            />
+          </div>
         </div>
         <div className="flex gap-2 justify-end">
           <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
