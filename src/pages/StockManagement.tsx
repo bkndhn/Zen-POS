@@ -233,19 +233,20 @@ const StockManagement: React.FC = () => {
           // Unlimited stock item — suggest preparation based on recent sales activity
           const salesQty = salesByItem.get(item.id) || 0;
           if (salesQty > 0) {
-            const salesInInvUnit = convertToInventoryUnit(salesQty, item.unit || undefined, item.inventory_unit || undefined);
-            const suggestedQty = Math.max(10, Math.round(salesInInvUnit * 1.5));
+            const salesPortions = salesQty / (item.base_value || 1);
+            const suggestedPortions = Math.max(10, Math.round(salesPortions * 1.5));
+            const portionText = `portion(s) (per ${item.base_value || 1}${getShortUnit(item.unit || '')})`;
             suggestions.push({
               type: 'item',
               name: item.name,
               current: 0,
               min: 0,
               isUnlimited: true,
-              unit: item.inventory_unit || item.unit || 'pcs',
-              suggestedReorder: Math.round(suggestedQty),
+              unit: portionText,
+              suggestedReorder: suggestedPortions,
               estimatedCost: null,
               branch_id: item.branch_id,
-              reason: `Item has unlimited stock. Based on last 7 days of activity, total sales are equivalent to ${salesInInvUnit.toFixed(1)} ${item.inventory_unit || item.unit || ''}. Suggested prep size to meet demand: +${Math.round(suggestedQty)} ${item.inventory_unit || item.unit || ''}.`
+              reason: `Item has unlimited stock. Based on last 7 days of activity, total sales are ${salesPortions.toFixed(1)} portions. Suggested preparation to meet demand: +${suggestedPortions} portions.`
             });
           }
         }
