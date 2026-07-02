@@ -60,8 +60,8 @@ const T = {
         <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: -1, color: c.primary }}>{c.title}</div>
         <div style={{ fontSize: 18, marginTop: 8, opacity: 0.75 }}>{c.subtitle}</div>
       </div>
-      <div style={{ background: '#fff', padding: 22, borderRadius: 24, boxShadow: `0 20px 60px ${c.primary}25` }}>
-        <img src={qr} alt="QR" style={{ width: 260, height: 260, display: 'block' }} />
+      <div style={{ background: '#fff', padding: 22, borderRadius: 24, boxShadow: `0 20px 60px ${c.primary}25`, width: 304, height: 304, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 260, height: 260, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 600, color: c.accent }}>{c.footer}</div>
     </div>
@@ -74,8 +74,8 @@ const T = {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20,
     }}>
       <div style={{ color: '#fff', fontSize: 26, fontWeight: 700, textAlign: 'center' }}>{c.title}</div>
-      <div style={{ background: '#fff', padding: 18, borderRadius: 16 }}>
-        <img src={qr} alt="QR" style={{ width: 240, height: 240 }} />
+      <div style={{ background: '#fff', padding: 18, borderRadius: 16, width: 276, height: 276, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 240, height: 240, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ color: '#fff', fontSize: 16, textAlign: 'center', opacity: 0.95 }}>{c.subtitle}</div>
       <div style={{ color: '#fff', fontSize: 13, opacity: 0.8 }}>{c.footer}</div>
@@ -91,7 +91,7 @@ const T = {
     }}>
       <div style={{ fontSize: 40, fontWeight: 300, letterSpacing: 4, textTransform: 'uppercase' }}>{c.title}</div>
       <div style={{ width: 60, height: 2, background: c.primary }} />
-      <img src={qr} alt="QR" style={{ width: 280, height: 280 }} />
+      <img src={qr} alt="QR" style={{ width: 280, height: 280, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       <div style={{ fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', opacity: 0.6 }}>{c.footer}</div>
     </div>
   ),
@@ -103,8 +103,8 @@ const T = {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
     }}>
       <div style={{ fontSize: 46, fontWeight: 900, color: c.primary, textShadow: `0 0 20px ${c.primary}`, textAlign: 'center' }}>{c.title}</div>
-      <div style={{ background: '#000', padding: 20, borderRadius: 20, border: `2px solid ${c.primary}`, boxShadow: `0 0 40px ${c.primary}80` }}>
-        <img src={qr} alt="QR" style={{ width: 260, height: 260 }} />
+      <div style={{ background: '#000', padding: 20, borderRadius: 20, border: `2px solid ${c.primary}`, boxShadow: `0 0 40px ${c.primary}80`, width: 300, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 260, height: 260, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 18, color: c.accent, textShadow: `0 0 10px ${c.accent}` }}>{c.subtitle}</div>
       <div style={{ fontSize: 12, opacity: 0.6 }}>{c.footer}</div>
@@ -121,8 +121,8 @@ const T = {
       <div style={{ background: c.primary, color: '#fff', padding: '10px 24px', fontSize: 30, fontWeight: 900, transform: 'rotate(-2deg)', letterSpacing: 2 }}>
         {c.title}
       </div>
-      <div style={{ background: '#fff', padding: 16, boxShadow: `8px 8px 0 ${c.accent}` }}>
-        <img src={qr} alt="QR" style={{ width: 260, height: 260 }} />
+      <div style={{ background: '#fff', padding: 16, boxShadow: `8px 8px 0 ${c.accent}`, width: 292, height: 292, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 260, height: 260, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 16, fontWeight: 700, textAlign: 'center' }}>{c.subtitle}</div>
       <div style={{ fontSize: 12, opacity: 0.7 }}>{c.footer}</div>
@@ -137,8 +137,8 @@ const T = {
     }}>
       <div style={{ fontSize: 20, color: c.primary }}>✦ ✦ ✦</div>
       <div style={{ fontSize: 42, fontWeight: 800, color: c.primary, textAlign: 'center' }}>{c.title}</div>
-      <div style={{ background: '#fff', padding: 20, borderRadius: 20, border: `4px double ${c.primary}` }}>
-        <img src={qr} alt="QR" style={{ width: 250, height: 250 }} />
+      <div style={{ background: '#fff', padding: 20, borderRadius: 20, border: `4px double ${c.primary}`, width: 290, height: 290, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 250, height: 250, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 18, color: c.accent, fontWeight: 600 }}>{c.subtitle}</div>
       <div style={{ fontSize: 12, opacity: 0.7 }}>{c.footer}</div>
@@ -154,8 +154,8 @@ const T = {
     }}>
       <div style={{ fontSize: 20, letterSpacing: 6, textTransform: 'uppercase' }}>{c.subtitle}</div>
       <div style={{ fontSize: 44, fontWeight: 700, textAlign: 'center', letterSpacing: 3, color: '#d4af37' }}>{c.title}</div>
-      <div style={{ background: '#fff', padding: 18, borderRadius: 4, border: '2px solid #d4af37' }}>
-        <img src={qr} alt="QR" style={{ width: 250, height: 250 }} />
+      <div style={{ background: '#fff', padding: 18, borderRadius: 4, border: '2px solid #d4af37', width: 288, height: 288, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 250, height: 250, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 12, letterSpacing: 4, textTransform: 'uppercase' }}>{c.footer}</div>
     </div>
@@ -170,8 +170,8 @@ const T = {
       <div style={{ fontSize: 38, fontWeight: 900, color: c.primary, textAlign: 'center' }}>
         🎈 {c.title} 🎉
       </div>
-      <div style={{ background: '#fff', padding: 20, borderRadius: 30, border: `5px dashed ${c.accent}` }}>
-        <img src={qr} alt="QR" style={{ width: 250, height: 250 }} />
+      <div style={{ background: '#fff', padding: 20, borderRadius: 30, border: `5px dashed ${c.accent}`, width: 290, height: 290, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 250, height: 250, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 20, fontWeight: 700, color: c.accent, textAlign: 'center' }}>⭐ {c.subtitle} ⭐</div>
       <div style={{ fontSize: 13, opacity: 0.7 }}>{c.footer}</div>
@@ -187,8 +187,8 @@ const T = {
       <div style={{ fontSize: 36, textAlign: 'center' }}>☕</div>
       <div style={{ fontSize: 34, fontWeight: 700, color: c.primary, textAlign: 'center', fontStyle: 'italic' }}>{c.title}</div>
       <div style={{ height: 1, width: 120, background: c.text, opacity: 0.3 }} />
-      <div style={{ background: '#fff', padding: 18, borderRadius: 12, boxShadow: `0 6px 30px ${c.primary}30` }}>
-        <img src={qr} alt="QR" style={{ width: 260, height: 260 }} />
+      <div style={{ background: '#fff', padding: 18, borderRadius: 12, boxShadow: `0 6px 30px ${c.primary}30`, width: 296, height: 296, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 260, height: 260, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 16, opacity: 0.8, textAlign: 'center' }}>{c.subtitle}</div>
       <div style={{ fontSize: 12, opacity: 0.6 }}>{c.footer}</div>
@@ -203,8 +203,8 @@ const T = {
     }}>
       <div style={{ fontSize: 40, fontWeight: 700, color: c.primary, textAlign: 'center' }}>🥐 {c.title}</div>
       <div style={{ fontSize: 16, opacity: 0.8, textAlign: 'center', maxWidth: 320 }}>{c.subtitle}</div>
-      <div style={{ background: '#fff', padding: 16, borderRadius: 20, border: `3px solid ${c.accent}` }}>
-        <img src={qr} alt="QR" style={{ width: 250, height: 250 }} />
+      <div style={{ background: '#fff', padding: 16, borderRadius: 20, border: `3px solid ${c.accent}`, width: 282, height: 282, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 250, height: 250, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 12, opacity: 0.6 }}>{c.footer}</div>
     </div>
@@ -219,8 +219,8 @@ const T = {
     }}>
       {c.logoDataUrl && <img src={c.logoDataUrl} alt="" style={{ width: 70, height: 70, objectFit: 'contain' }} />}
       <div style={{ fontSize: 40, fontWeight: 800, color: c.primary, textAlign: 'center', textShadow: c.backgroundImage ? '0 2px 12px rgba(0,0,0,0.4)' : 'none' }}>{c.title}</div>
-      <div style={{ background: '#fff', padding: 18, borderRadius: 18 }}>
-        <img src={qr} alt="QR" style={{ width: 260, height: 260 }} />
+      <div style={{ background: '#fff', padding: 18, borderRadius: 18, width: 296, height: 296, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={qr} alt="QR" style={{ width: 260, height: 260, display: 'block', objectFit: 'contain', aspectRatio: '1/1' }} />
       </div>
       <div style={{ fontSize: 16, fontWeight: 600, color: c.accent }}>{c.subtitle}</div>
       <div style={{ fontSize: 12, opacity: 0.7 }}>{c.footer}</div>
@@ -323,7 +323,7 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
       }
       if (format === 'pdf') {
         // Simple print-based PDF path (no jspdf dep)
-        const canvas = await html2canvas(previewRef.current, { scale: 2, backgroundColor: null });
+        const canvas = await html2canvas(previewRef.current, { scale: 2, backgroundColor: null, width: 400, height: 566 });
         const dataUrl = canvas.toDataURL('image/png');
         const win = window.open('', '_blank');
         if (!win) return;
@@ -334,7 +334,7 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
         win.document.close();
         return;
       }
-      const canvas = await html2canvas(previewRef.current, { scale: 3, backgroundColor: null });
+      const canvas = await html2canvas(previewRef.current, { scale: 3, backgroundColor: null, width: 400, height: 566 });
       const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
       const url = canvas.toDataURL(mime, 0.95);
       triggerDownload(url, `qr-poster-${config.templateId}.${format}`);
