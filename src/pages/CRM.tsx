@@ -1118,7 +1118,7 @@ const CRM: React.FC = () => {
               <div className="space-y-4 font-sans">
                 {(() => {
                   const analytics = calculateCustomerAnalytics(historyBills);
-                  const averageSpent = historyCustomer ? (historyCustomer.total_spent / historyCustomer.visit_count) : 0;
+                  const averageSpent = historyCustomer && historyCustomer.visit_count > 0 ? (historyCustomer.total_spent / historyCustomer.visit_count) : 0;
                   
                   return (
                     <>
