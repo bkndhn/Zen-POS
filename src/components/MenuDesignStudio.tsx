@@ -46,6 +46,9 @@ export const MenuDesignStudio = () => {
     
     // AI Settings
     const [aiEnabled, setAiEnabled] = useState(false);
+    
+    // Store original shop settings to preserve them during save
+    const [shopDetails, setShopDetails] = useState<any>(null);
 
     // Color Settings & Preset
     const [colorPreset, setColorPreset] = useState('custom');
@@ -116,7 +119,7 @@ export const MenuDesignStudio = () => {
             // Fetch branch-specific settings or fallback to main
             let { data } = await supabase
                 .from('shop_settings')
-                .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row')
+                .select('*')
                 .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
@@ -124,7 +127,7 @@ export const MenuDesignStudio = () => {
             if (!data) {
                 const { data: fb } = await supabase
                     .from('shop_settings')
-                    .select('menu_layout_style, menu_font_family, menu_border_radius, menu_glassmorphism, menu_ai_features_enabled, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row')
+                    .select('*')
                     .eq('user_id', adminAuthUid)
                     .order('branch_id', { nullsFirst: false })
                     .limit(1)
@@ -133,6 +136,29 @@ export const MenuDesignStudio = () => {
             }
 
             if (data) {
+                // Keep a copy of non-design-studio settings
+                setShopDetails({
+                    shop_name: data.shop_name,
+                    address: data.address,
+                    contact_number: data.contact_number,
+                    logo_url: data.logo_url,
+                    printer_width: data.printer_width,
+                    facebook: data.facebook,
+                    show_facebook: data.show_facebook,
+                    instagram: data.instagram,
+                    show_instagram: data.show_instagram,
+                    whatsapp: data.whatsapp,
+                    show_whatsapp: data.show_whatsapp,
+                    upi_id: data.upi_id,
+                    upi_name: data.upi_name,
+                    qr_payment_enabled: data.qr_payment_enabled,
+                    gst_enabled: data.gst_enabled,
+                    gstin: data.gstin,
+                    is_composition_scheme: data.is_composition_scheme,
+                    composition_rate: data.composition_rate,
+                    visible_nav_pages: data.visible_nav_pages
+                });
+
                 if (data.menu_layout_style) {
                     const parts = data.menu_layout_style.split(':');
                     setLayoutStyle(parts[0]);
@@ -175,7 +201,7 @@ export const MenuDesignStudio = () => {
         if (!adminAuthUid) return;
         setSaving(true);
         try {
-            const payload = {
+            const payload: any = {
                 user_id: adminAuthUid,
                 branch_id: operatingBranchId,
                 menu_layout_style: `${layoutStyle}:${cardElevation}`,
@@ -189,6 +215,29 @@ export const MenuDesignStudio = () => {
                 menu_text_color: textColor,
                 menu_items_per_row: menuItemsPerRow
             };
+
+            // If we have loaded shop details, merge them to avoid wiping them out
+            if (shopDetails) {
+                payload.shop_name = shopDetails.shop_name;
+                payload.address = shopDetails.address;
+                payload.contact_number = shopDetails.contact_number;
+                payload.logo_url = shopDetails.logo_url;
+                payload.printer_width = shopDetails.printer_width;
+                payload.facebook = shopDetails.facebook;
+                payload.show_facebook = shopDetails.show_facebook;
+                payload.instagram = shopDetails.instagram;
+                payload.show_instagram = shopDetails.show_instagram;
+                payload.whatsapp = shopDetails.whatsapp;
+                payload.show_whatsapp = shopDetails.show_whatsapp;
+                payload.upi_id = shopDetails.upi_id;
+                payload.upi_name = shopDetails.upi_name;
+                payload.qr_payment_enabled = shopDetails.qr_payment_enabled;
+                payload.gst_enabled = shopDetails.gst_enabled;
+                payload.gstin = shopDetails.gstin;
+                payload.is_composition_scheme = shopDetails.is_composition_scheme;
+                payload.composition_rate = shopDetails.composition_rate;
+                payload.visible_nav_pages = shopDetails.visible_nav_pages;
+            }
 
             const { data: existing } = await supabase
                 .from('shop_settings')
