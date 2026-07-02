@@ -165,6 +165,63 @@ const CRM: React.FC = () => {
     }
   };
 
+  // View history
+  const openHistory = async (customer: Customer) => {
+    setHistoryCustomer(customer);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryBills([]);
+    try {
+      let q: any = supabase
+        .from('bills')
+        .select('id, bill_no, created_at, total, payment_mode, discount, customer_phone, bill_items(quantity, price, items(name))')
+        .eq('admin_id', adminId)
+        .eq('customer_phone', customer.phone)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+      const { data, error } = await q;
+      if (error) throw error;
+      setHistoryBills(data || []);
+    } catch (e) {
+      console.error('history load failed', e);
+      toast({ title: 'Error', description: 'Failed to load bill history', variant: 'destructive' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Reorder: fetch latest bill and navigate to /billing with state
+  const handleReorder = async (customer: Customer, billId?: string) => {
+    setReorderingId(customer.id);
+    try {
+      let targetBillId = billId;
+      if (!targetBillId) {
+        let q: any = supabase
+          .from('bills')
+          .select('id')
+          .eq('admin_id', adminId)
+          .eq('customer_phone', customer.phone)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          toast({ title: 'No bills', description: 'No previous bill found for this customer.' });
+          return;
+        }
+        targetBillId = data[0].id;
+      }
+      navigate('/billing', { state: { reorderBillId: targetBillId, customerPhone: customer.phone, customerName: customer.name } });
+    } catch (e) {
+      console.error('reorder failed', e);
+      toast({ title: 'Error', description: 'Failed to start reorder', variant: 'destructive' });
+    } finally {
+      setReorderingId(null);
+    }
+  };
+
   const exportToExcel = () => {
     try {
       const data = customers.map(c => ({
