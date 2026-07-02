@@ -1021,6 +1021,55 @@ const Billing = () => {
       });
     }
   }, [location.state, profile?.user_id]);
+
+  // Reorder: load latest bill items (skip unavailable) after items catalog is ready
+  const reorderConsumedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const reorderBillId = location.state?.reorderBillId;
+    if (!reorderBillId || items.length === 0 || reorderConsumedRef.current === reorderBillId) return;
+    reorderConsumedRef.current = reorderBillId;
+    (async () => {
+      try {
+        const { data: billItems, error } = await supabase
+          .from('bill_items')
+          .select('quantity, price, item_id, items(id, name, is_active, price, unit, base_value, quantity_step, stock_quantity)')
+          .eq('bill_id', reorderBillId);
+        if (error) throw error;
+        const catalogById = new Map(items.map(i => [i.id, i]));
+        const added: string[] = [];
+        const unavailable: string[] = [];
+        const newCart: CartItem[] = [];
+        for (const bi of (billItems || [])) {
+          const catalogItem = catalogById.get(bi.item_id) || (bi as any).items;
+          const name = (bi as any).items?.name || 'Item';
+          if (!catalogItem || !catalogItem.is_active) { unavailable.push(name); continue; }
+          if (catalogItem.stock_quantity !== null && catalogItem.stock_quantity !== undefined && Number(catalogItem.stock_quantity) <= 0) {
+            unavailable.push(name); continue;
+          }
+          newCart.push({ ...(catalogItem as any), price: catalogItem.price, quantity: Number(bi.quantity) || 1 });
+          added.push(name);
+        }
+        if (newCart.length > 0) {
+          setCart(newCart);
+          toast({ title: 'Reorder loaded', description: `Added ${added.length} item(s) to cart.` });
+        }
+        if (unavailable.length > 0) {
+          toast({
+            title: 'Some items unavailable',
+            description: `${unavailable.slice(0, 5).join(', ')}${unavailable.length > 5 ? '…' : ''}`,
+            variant: 'destructive',
+          });
+        }
+        if (location.state?.customerPhone) {
+          try { localStorage.setItem('pending_customer_phone', location.state.customerPhone); } catch {}
+        }
+      } catch (e) {
+        console.error('reorder load failed', e);
+        toast({ title: 'Reorder failed', description: 'Could not load previous bill items.', variant: 'destructive' });
+      }
+    })();
+  }, [location.state, items]);
+
   const loadBillData = async (billId: string) => {
     try {
       console.log('Loading bill data for:', billId);
