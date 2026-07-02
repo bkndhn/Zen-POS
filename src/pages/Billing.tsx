@@ -1368,6 +1368,65 @@ const Billing = () => {
       replace: true
     });
   };
+
+  // Voice command handler
+  const handleVoiceIntent = useCallback((intent: VoiceIntent) => {
+    switch (intent.intent) {
+      case 'add_item': {
+        if (intent.itemId) {
+          const item = items.find(i => i.id === intent.itemId);
+          if (!item) {
+            toast({ title: 'Item not found', description: intent.itemName || intent.raw, variant: 'destructive' });
+            return;
+          }
+          const qty = Math.max(1, Math.round(intent.qty || 1));
+          for (let n = 0; n < qty; n++) addToCart(item);
+          toast({ title: 'Added by voice', description: `${item.name} × ${qty}` });
+        } else if (intent.candidates?.length) {
+          setSearchQuery(intent.candidates[0].name);
+          toast({ title: 'Multiple matches', description: `Showing "${intent.candidates[0].name}" — tap to confirm.` });
+        }
+        break;
+      }
+      case 'clear_cart':
+        clearCart();
+        toast({ title: 'Cart cleared' });
+        break;
+      case 'open_pay':
+      case 'complete_payment':
+        if (cart.length === 0) {
+          toast({ title: 'Cart is empty', variant: 'destructive' });
+        } else {
+          setPaymentDialogOpen(true);
+        }
+        break;
+      case 'set_payment': {
+        const pm = intent.paymentMethod;
+        if (pm) {
+          const match = paymentTypes.find(pt => pt.payment_type?.toLowerCase() === pm);
+          if (match) setSelectedPayment(match.payment_type);
+          else setSelectedPayment(pm);
+          toast({ title: `Payment: ${pm.toUpperCase()}${intent.amount ? ` ₹${intent.amount}` : ''}` });
+        }
+        break;
+      }
+      case 'set_discount':
+        if (typeof intent.discount === 'number') {
+          setDiscount(intent.discount);
+          toast({ title: `Discount set: ₹${intent.discount}` });
+        }
+        break;
+      case 'set_customer':
+        if (intent.mobile) {
+          try { localStorage.setItem('pending_customer_phone', intent.mobile); } catch {}
+          toast({ title: `Customer: ${intent.mobile}` });
+        }
+        break;
+      default:
+        break;
+    }
+  }, [items, cart, paymentTypes]);
+
   const handleViewModeChange = (mode: 'grid' | 'list') => {
     setViewMode(mode);
     localStorage.setItem('billing-view-mode', mode);
