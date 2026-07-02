@@ -141,6 +141,13 @@ const PublicMenu = () => {
     const [error, setError] = useState<string | null>(null);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+    // Scrolled state for glassmorphic header
+    const [scrolled, setScrolled] = useState(false);
+    // AI Dish Pairing states
+    const [showPairingModal, setShowPairingModal] = useState(false);
+    const [lastPairedItem, setLastPairedItem] = useState<MenuItem | null>(null);
+    const [pairedSuggestions, setPairedSuggestions] = useState<MenuItem[]>([]);
+
     // Banner swipe state
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -199,6 +206,15 @@ const PublicMenu = () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
+    }, []);
+
+    // Scroll listener for glassmorphic header transition
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     // Dynamically load Google Font for the Public Menu
@@ -689,7 +705,7 @@ const PublicMenu = () => {
     const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity / (item.base_value || 1)), 0), [cart]);
 
     // Add item to cart
-    const addToCart = useCallback((item: MenuItem) => {
+    const addToCart = useCallback((item: MenuItem, e?: React.MouseEvent) => {
         const step = item.base_value || 1;
         setCart(prev => {
             const existing = prev.find(c => c.id === item.id);
@@ -708,7 +724,84 @@ const PublicMenu = () => {
                 is_tax_inclusive: item.is_tax_inclusive
             }];
         });
-    }, []);
+
+        // Trigger flying animation if click event was passed
+        if (e && e.clientX && e.clientY) {
+            const startX = e.clientX;
+            const startY = e.clientY;
+
+            // Target is centered at the bottom of the screen (default cart bar position)
+            const targetX = window.innerWidth / 2;
+            const targetY = window.innerHeight - 100;
+
+            const diffX = targetX - startX;
+            const diffY = targetY - startY;
+            const midX = diffX * 0.2;
+            const midY = diffY - 80; // Arc upwards
+
+            const particle = document.createElement('div');
+            particle.className = 'fly-cart-particle';
+            if (item.image_url) {
+                particle.style.backgroundImage = `url(${item.image_url})`;
+            } else {
+                particle.style.backgroundColor = shopSettings?.menu_primary_color || '#ea580c';
+                particle.style.display = 'flex';
+                particle.style.alignItems = 'center';
+                particle.style.justifyContent = 'center';
+                particle.style.color = 'white';
+                particle.style.fontWeight = 'bold';
+                particle.style.fontSize = '20px';
+                particle.innerHTML = '+';
+            }
+            particle.style.left = `${startX - 24}px`;
+            particle.style.top = `${startY - 24}px`;
+            particle.style.setProperty('--fly-mid-x', `${midX}px`);
+            particle.style.setProperty('--fly-mid-y', `${midY}px`);
+            particle.style.setProperty('--fly-target-x', `${diffX}px`);
+            particle.style.setProperty('--fly-target-y', `${diffY}px`);
+
+            document.body.appendChild(particle);
+            setTimeout(() => {
+                particle.remove();
+                // Trigger bounce animation on View Cart button
+                const cartBtn = document.querySelector('.floating-cart-bar-btn');
+                if (cartBtn) {
+                    cartBtn.classList.remove('animate-cart-pulse');
+                    void (cartBtn as HTMLElement).offsetWidth; // Trigger reflow
+                    cartBtn.classList.add('animate-cart-pulse');
+                }
+            }, 750);
+        }
+
+        // Trigger AI Dish Pairing recommendations
+        if (shopSettings?.menu_ai_features_enabled !== false) {
+            // Find complementary pairings from other categories
+            const currentItemCategory = item.category || '';
+            const otherCategoryItems = items.filter(
+                i => i.is_active && 
+                     i.id !== item.id && 
+                     i.category !== currentItemCategory &&
+                     (i.category?.toLowerCase().includes('beverage') || 
+                      i.category?.toLowerCase().includes('drink') || 
+                      i.category?.toLowerCase().includes('side') || 
+                      i.category?.toLowerCase().includes('dessert') || 
+                      i.category?.toLowerCase().includes('snack') ||
+                      ['Beverages', 'Drinks', 'Sides', 'Snacks', 'Desserts'].includes(i.category || ''))
+            );
+
+            if (otherCategoryItems.length > 0) {
+                // Shuffle and pick up to 2 items
+                const shuffled = [...otherCategoryItems].sort(() => 0.5 - Math.random());
+                const suggestions = shuffled.slice(0, 2);
+                setLastPairedItem(item);
+                setPairedSuggestions(suggestions);
+                // Delay slightly to allow the flying animation to finish before sliding up suggestions
+                setTimeout(() => {
+                    setShowPairingModal(true);
+                }, 850);
+            }
+        }
+    }, [items, shopSettings]);
 
     // Remove item from cart
     const removeFromCart = useCallback((itemId: string) => {
@@ -1366,16 +1459,58 @@ const PublicMenu = () => {
                     border-color: ${shopSettings?.menu_primary_color || '#ea580c'}40;
                     transform: translateY(-4px);
                 }
+
+                @keyframes fly-cart-animation {
+                    0% {
+                        transform: translate3d(0, 0, 0) scale(1);
+                        opacity: 1;
+                    }
+                    35% {
+                        transform: translate3d(var(--fly-mid-x), var(--fly-mid-y), 0) scale(1.2);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translate3d(var(--fly-target-x), var(--fly-target-y), 0) scale(0.2);
+                        opacity: 0;
+                    }
+                }
+                .fly-cart-particle {
+                    position: fixed;
+                    z-index: 9999;
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background-size: cover;
+                    background-position: center;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 8px var(--menu-primary);
+                    border: 2px solid white;
+                    pointer-events: none;
+                    animation: fly-cart-animation 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                }
+                @keyframes cart-bounce {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.08); }
+                }
+                .animate-cart-pulse {
+                    animation: cart-bounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1;
+                }
+                @keyframes slide-up {
+                    0% { transform: translateY(100%); }
+                    100% { transform: translateY(0); }
+                }
+                .animate-slide-up {
+                    animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
             `}</style>
             {/* Header with Shop Name */}
             <header
                 className={cn(
                     "sticky top-0 z-50 text-white shadow-xl transition-all duration-300",
-                    shopSettings?.menu_glassmorphism ? "backdrop-blur-xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : ""
+                    (scrolled || shopSettings?.menu_glassmorphism) ? "backdrop-blur-xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : ""
                 )}
                 style={{
                     background: shopSettings?.menu_primary_color
-                        ? (shopSettings.menu_glassmorphism 
+                        ? ((scrolled || shopSettings.menu_glassmorphism)
                             ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
                             : `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`)
                         : 'linear-gradient(135deg, #ea580c, #dc2626)'
@@ -1745,12 +1880,12 @@ const PublicMenu = () => {
                                                                             <Minus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                         <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                        <button onClick={() => addToCart(item)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             <Plus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                     </div>
                                                                 ) : (
-                                                                    <button onClick={() => addToCart(item)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                         ADD
                                                                     </button>
                                                                 )}
@@ -1818,17 +1953,17 @@ const PublicMenu = () => {
                                                                 </span>
                                                                 {isTableMode && (
                                                                     getCartQuantity(item.id) > 0 ? (
-                                                                        <div className="flex items-center gap-1.5">
+                                                                        <div className="flex items-center justify-center gap-1">
                                                                             <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={() => addToCart(item)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={() => addToCart(item)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             ADD
                                                                         </button>
                                                                     )
@@ -1904,12 +2039,12 @@ const PublicMenu = () => {
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={() => addToCart(item)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={() => addToCart(item)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             ADD
                                                                         </button>
                                                                     )}
@@ -2140,7 +2275,7 @@ const PublicMenu = () => {
                     <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
                         <button
                             onClick={() => setShowCart(true)}
-                            className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3.5 rounded-2xl shadow-xl text-white transition-transform active:scale-[0.98]"
+                            className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3.5 rounded-2xl shadow-xl text-white transition-transform active:scale-[0.98] floating-cart-bar-btn"
                             style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                         >
                             <div className="flex items-center gap-3">
@@ -2574,6 +2709,64 @@ const PublicMenu = () => {
                 >
                     <Sparkles className="w-6 h-6 text-amber-500" />
                 </button>
+            )}
+
+            {/* AI Dish Pairing Modal */}
+            {showPairingModal && lastPairedItem && pairedSuggestions.length > 0 && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end justify-center transition-all duration-300">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-t-[2rem] shadow-2xl p-6 border-t border-gray-100 dark:border-zinc-800 animate-slide-up pb-10">
+                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-zinc-700 rounded-full mx-auto mb-4 cursor-pointer" onClick={() => setShowPairingModal(false)} />
+                        
+                        <div className="flex items-center gap-2 mb-3">
+                            <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
+                            <h3 className="font-extrabold text-lg text-gray-900 dark:text-white">Chef's Smart Pairing</h3>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 dark:text-zinc-400 mb-5">
+                            Enjoyed <span className="font-extrabold text-gray-800 dark:text-zinc-200">{lastPairedItem.name}</span>? Complete your meal with these popular additions:
+                        </p>
+                        
+                        <div className="space-y-3 mb-6">
+                            {pairedSuggestions.map(suggested => (
+                                <div key={suggested.id} className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-800/40 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        {suggested.image_url ? (
+                                            <img src={suggested.image_url} alt={suggested.name} className="w-12 h-12 rounded-xl object-cover" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500"><Utensils className="w-5 h-5" /></div>
+                                        )}
+                                        <div>
+                                            <h4 className="font-bold text-sm text-gray-900 dark:text-white">{suggested.name}</h4>
+                                            <p className="text-xs text-gray-500 dark:text-zinc-400">₹{suggested.price.toFixed(0)}</p>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        size="sm" 
+                                        className="rounded-full h-8 px-4 font-bold text-xs shadow-sm hover:shadow active:scale-95 text-white" 
+                                        style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}
+                                        onClick={(e) => {
+                                            addToCart(suggested, e);
+                                            setPairedSuggestions(prev => prev.filter(p => p.id !== suggested.id));
+                                            if (pairedSuggestions.length <= 1) {
+                                                setShowPairingModal(false);
+                                            }
+                                        }}
+                                    >
+                                        Add +
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <Button 
+                            variant="ghost" 
+                            className="w-full font-bold text-sm text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl" 
+                            onClick={() => setShowPairingModal(false)}
+                        >
+                            No, thanks
+                        </Button>
+                    </div>
+                </div>
             )}
         </div>
     );
