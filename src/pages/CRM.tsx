@@ -28,6 +28,7 @@ interface Customer {
 
 const CRM: React.FC = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const { branchFilterId } = useBranchScopedQuery(() => fetchCustomers());
   const { isAllBranchesView } = useBranch();
@@ -45,6 +46,13 @@ const CRM: React.FC = () => {
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+
+  // History dialog state
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  const [historyBills, setHistoryBills] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (adminId) fetchCustomers();
