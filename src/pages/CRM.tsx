@@ -454,6 +454,27 @@ const CRM: React.FC = () => {
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 p-0"
+                      onClick={() => openHistory(customer)}
+                      title="View bill history"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0 text-primary"
+                      onClick={() => handleReorder(customer)}
+                      disabled={isAllBranchesView || reorderingId === customer.id}
+                      title="Reorder latest bill"
+                    >
+                      {reorderingId === customer.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <RotateCcw className="w-3 h-3" />}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0"
                       onClick={() => handleEditClick(customer)}
                       disabled={isAllBranchesView}
                     >
