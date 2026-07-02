@@ -26,6 +26,7 @@ import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
 import { cn } from '@/lib/utils';
+import VoiceBillingButton, { VoiceIntent } from '@/components/VoiceBillingButton';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -1021,6 +1022,55 @@ const Billing = () => {
       });
     }
   }, [location.state, profile?.user_id]);
+
+  // Reorder: load latest bill items (skip unavailable) after items catalog is ready
+  const reorderConsumedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const reorderBillId = location.state?.reorderBillId;
+    if (!reorderBillId || items.length === 0 || reorderConsumedRef.current === reorderBillId) return;
+    reorderConsumedRef.current = reorderBillId;
+    (async () => {
+      try {
+        const { data: billItems, error } = await supabase
+          .from('bill_items')
+          .select('quantity, price, item_id, items(id, name, is_active, price, unit, base_value, quantity_step, stock_quantity)')
+          .eq('bill_id', reorderBillId);
+        if (error) throw error;
+        const catalogById = new Map(items.map(i => [i.id, i]));
+        const added: string[] = [];
+        const unavailable: string[] = [];
+        const newCart: CartItem[] = [];
+        for (const bi of (billItems || [])) {
+          const catalogItem = catalogById.get(bi.item_id) || (bi as any).items;
+          const name = (bi as any).items?.name || 'Item';
+          if (!catalogItem || !catalogItem.is_active) { unavailable.push(name); continue; }
+          if (catalogItem.stock_quantity !== null && catalogItem.stock_quantity !== undefined && Number(catalogItem.stock_quantity) <= 0) {
+            unavailable.push(name); continue;
+          }
+          newCart.push({ ...(catalogItem as any), price: catalogItem.price, quantity: Number(bi.quantity) || 1 });
+          added.push(name);
+        }
+        if (newCart.length > 0) {
+          setCart(newCart);
+          toast({ title: 'Reorder loaded', description: `Added ${added.length} item(s) to cart.` });
+        }
+        if (unavailable.length > 0) {
+          toast({
+            title: 'Some items unavailable',
+            description: `${unavailable.slice(0, 5).join(', ')}${unavailable.length > 5 ? '…' : ''}`,
+            variant: 'destructive',
+          });
+        }
+        if (location.state?.customerPhone) {
+          try { localStorage.setItem('pending_customer_phone', location.state.customerPhone); } catch {}
+        }
+      } catch (e) {
+        console.error('reorder load failed', e);
+        toast({ title: 'Reorder failed', description: 'Could not load previous bill items.', variant: 'destructive' });
+      }
+    })();
+  }, [location.state, items]);
+
   const loadBillData = async (billId: string) => {
     try {
       console.log('Loading bill data for:', billId);
@@ -1318,6 +1368,65 @@ const Billing = () => {
       replace: true
     });
   };
+
+  // Voice command handler
+  const handleVoiceIntent = useCallback((intent: VoiceIntent) => {
+    switch (intent.intent) {
+      case 'add_item': {
+        if (intent.itemId) {
+          const item = items.find(i => i.id === intent.itemId);
+          if (!item) {
+            toast({ title: 'Item not found', description: intent.itemName || intent.raw, variant: 'destructive' });
+            return;
+          }
+          const qty = Math.max(1, Math.round(intent.qty || 1));
+          for (let n = 0; n < qty; n++) addToCart(item);
+          toast({ title: 'Added by voice', description: `${item.name} × ${qty}` });
+        } else if (intent.candidates?.length) {
+          setSearchQuery(intent.candidates[0].name);
+          toast({ title: 'Multiple matches', description: `Showing "${intent.candidates[0].name}" — tap to confirm.` });
+        }
+        break;
+      }
+      case 'clear_cart':
+        clearCart();
+        toast({ title: 'Cart cleared' });
+        break;
+      case 'open_pay':
+      case 'complete_payment':
+        if (cart.length === 0) {
+          toast({ title: 'Cart is empty', variant: 'destructive' });
+        } else {
+          setPaymentDialogOpen(true);
+        }
+        break;
+      case 'set_payment': {
+        const pm = intent.paymentMethod;
+        if (pm) {
+          const match = paymentTypes.find(pt => pt.payment_type?.toLowerCase() === pm);
+          if (match) setSelectedPayment(match.payment_type);
+          else setSelectedPayment(pm);
+          toast({ title: `Payment: ${pm.toUpperCase()}${intent.amount ? ` ₹${intent.amount}` : ''}` });
+        }
+        break;
+      }
+      case 'set_discount':
+        if (typeof intent.discount === 'number') {
+          setDiscount(intent.discount);
+          toast({ title: `Discount set: ₹${intent.discount}` });
+        }
+        break;
+      case 'set_customer':
+        if (intent.mobile) {
+          try { localStorage.setItem('pending_customer_phone', intent.mobile); } catch {}
+          toast({ title: `Customer: ${intent.mobile}` });
+        }
+        break;
+      default:
+        break;
+    }
+  }, [items, cart, paymentTypes]);
+
   const handleViewModeChange = (mode: 'grid' | 'list') => {
     setViewMode(mode);
     localStorage.setItem('billing-view-mode', mode);
@@ -2316,7 +2425,13 @@ const Billing = () => {
       <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="flex-1 flex items-center relative">
           <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search items..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+          <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
+          <div className="absolute right-1 top-1/2 -translate-y-1/2">
+            <VoiceBillingButton
+              items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
+              onIntent={handleVoiceIntent}
+            />
+          </div>
         </div>
         <div className="flex gap-2 justify-end">
           <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">

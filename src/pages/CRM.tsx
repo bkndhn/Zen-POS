@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2 } from 'lucide-react';
+import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2, Eye, RotateCcw, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 // xlsx removed for security; using CSV export instead
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
@@ -27,6 +28,7 @@ interface Customer {
 
 const CRM: React.FC = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const { branchFilterId } = useBranchScopedQuery(() => fetchCustomers());
   const { isAllBranchesView } = useBranch();
@@ -44,6 +46,13 @@ const CRM: React.FC = () => {
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+
+  // History dialog state
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  const [historyBills, setHistoryBills] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (adminId) fetchCustomers();
@@ -153,6 +162,63 @@ const CRM: React.FC = () => {
     } catch (error) {
       console.error('Error deleting customer:', error);
       toast({ title: "Error", description: "Failed to delete customer", variant: "destructive" });
+    }
+  };
+
+  // View history
+  const openHistory = async (customer: Customer) => {
+    setHistoryCustomer(customer);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryBills([]);
+    try {
+      let q: any = supabase
+        .from('bills')
+        .select('id, bill_no, created_at, total, payment_mode, discount, customer_phone, bill_items(quantity, price, items(name))')
+        .eq('admin_id', adminId)
+        .eq('customer_phone', customer.phone)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+      const { data, error } = await q;
+      if (error) throw error;
+      setHistoryBills(data || []);
+    } catch (e) {
+      console.error('history load failed', e);
+      toast({ title: 'Error', description: 'Failed to load bill history', variant: 'destructive' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Reorder: fetch latest bill and navigate to /billing with state
+  const handleReorder = async (customer: Customer, billId?: string) => {
+    setReorderingId(customer.id);
+    try {
+      let targetBillId = billId;
+      if (!targetBillId) {
+        let q: any = supabase
+          .from('bills')
+          .select('id')
+          .eq('admin_id', adminId)
+          .eq('customer_phone', customer.phone)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          toast({ title: 'No bills', description: 'No previous bill found for this customer.' });
+          return;
+        }
+        targetBillId = data[0].id;
+      }
+      navigate('/billing', { state: { reorderBillId: targetBillId, customerPhone: customer.phone, customerName: customer.name } });
+    } catch (e) {
+      console.error('reorder failed', e);
+      toast({ title: 'Error', description: 'Failed to start reorder', variant: 'destructive' });
+    } finally {
+      setReorderingId(null);
     }
   };
 
@@ -388,6 +454,27 @@ const CRM: React.FC = () => {
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 p-0"
+                      onClick={() => openHistory(customer)}
+                      title="View bill history"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0 text-primary"
+                      onClick={() => handleReorder(customer)}
+                      disabled={isAllBranchesView || reorderingId === customer.id}
+                      title="Reorder latest bill"
+                    >
+                      {reorderingId === customer.id
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <RotateCcw className="w-3 h-3" />}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0"
                       onClick={() => handleEditClick(customer)}
                       disabled={isAllBranchesView}
                     >
@@ -469,6 +556,58 @@ const CRM: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bill History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Bill History{historyCustomer ? ` — ${historyCustomer.name || historyCustomer.phone}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-2 pr-1">
+            {historyLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : historyBills.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">No bills found.</p>
+            ) : historyBills.map((b: any) => (
+              <div key={b.id} className="border rounded-lg p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-semibold">#{b.bill_no} <span className="text-xs text-muted-foreground font-normal">· {format(new Date(b.created_at), 'dd MMM yyyy hh:mm a')}</span></div>
+                    <div className="text-xs text-muted-foreground">{(b.bill_items || []).length} items · {b.payment_mode || '-'}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <div className="font-bold text-primary">₹{Number(b.total || 0).toFixed(2)}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7"
+                      onClick={() => historyCustomer && handleReorder(historyCustomer, b.id)}
+                      disabled={isAllBranchesView}
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" /> Reorder
+                    </Button>
+                  </div>
+                </div>
+                {b.bill_items?.length > 0 && (
+                  <ul className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                    {b.bill_items.slice(0, 8).map((bi: any, idx: number) => (
+                      <li key={idx}>• {bi.items?.name || 'Item'} × {bi.quantity} — ₹{Number(bi.price || 0).toFixed(2)}</li>
+                    ))}
+                    {b.bill_items.length > 8 && <li>… and {b.bill_items.length - 8} more</li>}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHistoryOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
