@@ -512,7 +512,8 @@ const TableOrderBilling: React.FC = () => {
         totalAmount: number,
         paymentMethod: string,
         discount: number,
-        additionalChargesData: { name: string; amount: number }[]
+        additionalChargesData: { name: string; amount: number }[],
+        customerName?: string
     ) => {
         try {
             const { formatBillMessage, shareViaWhatsApp, isValidPhoneNumber } = await import('@/utils/whatsappBillShare');
@@ -574,6 +575,7 @@ const TableOrderBilling: React.FC = () => {
                     total: totalAmount,
                     paymentMethod,
                     shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Hotel',
+                    customerName
                 } as any);
                 shareViaWhatsApp(customerMobile, message);
                 toast({ title: "WhatsApp", description: "Opening WhatsApp to share bill..." });
@@ -593,6 +595,7 @@ const TableOrderBilling: React.FC = () => {
         additionalCharges: { name: string; amount: number; enabled: boolean }[];
         finalItems?: CartItem[];
         customerMobile?: string;
+        customerName?: string;
         sendWhatsApp?: boolean;
         customerGstin?: string;
         orderType?: string;
@@ -953,7 +956,8 @@ const TableOrderBilling: React.FC = () => {
                     totalAmount,
                     paymentData.paymentMethod.toUpperCase(),
                     paymentData.discount,
-                    additionalChargesArray
+                    additionalChargesArray,
+                    paymentData.customerName
                 );
             }
 
@@ -1030,13 +1034,17 @@ const TableOrderBilling: React.FC = () => {
                     const { data: existingCustomer } = await lookup.maybeSingle();
 
                     if (existingCustomer) {
+                        const updatePayload: any = {
+                            visit_count: existingCustomer.visit_count + 1,
+                            total_spent: Number(existingCustomer.total_spent) + totalAmount,
+                            last_visit: new Date().toISOString()
+                        };
+                        if (paymentData.customerName) {
+                            updatePayload.name = paymentData.customerName;
+                        }
                         await supabase
                             .from('customers')
-                            .update({
-                                visit_count: existingCustomer.visit_count + 1,
-                                total_spent: Number(existingCustomer.total_spent) + totalAmount,
-                                last_visit: new Date().toISOString()
-                            })
+                            .update(updatePayload)
                             .eq('id', existingCustomer.id);
                     } else {
                         await supabase
@@ -1045,7 +1053,7 @@ const TableOrderBilling: React.FC = () => {
                                 admin_id: adminId,
                                 branch_id: operatingBranchId || null,
                                 phone: cleanPhone,
-                                name: `Customer (${cleanPhone.slice(-4)})`,
+                                name: paymentData.customerName || `Customer (${cleanPhone.slice(-4)})`,
                                 visit_count: 1,
                                 total_spent: totalAmount,
                                 last_visit: new Date().toISOString()

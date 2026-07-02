@@ -1803,7 +1803,7 @@ const Billing = () => {
     paymentMethod: string,
     adminId: string | null | undefined,
     paymentDetails?: Record<string, number>,
-    gstData?: { taxSummary?: string; totalTax?: number; isComposition?: boolean; roundOff?: number; gstin?: string; logoUrl?: string },
+    gstData?: { taxSummary?: string; totalTax?: number; isComposition?: boolean; roundOff?: number; gstin?: string; logoUrl?: string; customerName?: string },
     orderType?: 'dine_in' | 'parcel'
   ) => {
     try {
@@ -1894,7 +1894,8 @@ const Billing = () => {
           totalTax: gstData?.totalTax,
           isComposition: gstData?.isComposition,
           roundOff: gstData?.roundOff,
-          orderType: orderType
+          orderType: orderType,
+          customerName: gstData?.customerName
         });
 
         shareViaWhatsApp(customerMobile, message);
@@ -1917,6 +1918,7 @@ const Billing = () => {
     }[];
     finalItems?: CartItem[];
     customerMobile?: string;
+    customerName?: string;
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
@@ -2299,7 +2301,8 @@ const Billing = () => {
               isComposition: gstSettings.isComposition,
               roundOff: roundOff !== 0 ? roundOff : undefined,
               gstin: gstSettings.gstin,
-              logoUrl: settingsToUse?.logoUrl
+              logoUrl: settingsToUse?.logoUrl,
+              customerName: paymentData.customerName
             }, paymentData.orderType).catch(err => console.error('WhatsApp share failed:', err));
           }
 
@@ -2316,13 +2319,17 @@ const Billing = () => {
               const { data: existingCustomer } = await lookup.maybeSingle();
 
               if (existingCustomer) {
+                const updatePayload: any = {
+                  visit_count: existingCustomer.visit_count + 1,
+                  total_spent: Number(existingCustomer.total_spent) + totalAmount,
+                  last_visit: new Date().toISOString()
+                };
+                if (paymentData.customerName) {
+                  updatePayload.name = paymentData.customerName;
+                }
                 await supabase
                   .from('customers')
-                  .update({
-                    visit_count: existingCustomer.visit_count + 1,
-                    total_spent: Number(existingCustomer.total_spent) + totalAmount,
-                    last_visit: new Date().toISOString()
-                  })
+                  .update(updatePayload)
                   .eq('id', existingCustomer.id);
               } else {
                 await supabase
@@ -2331,7 +2338,7 @@ const Billing = () => {
                     admin_id: adminId,
                     branch_id: operatingBranchId || null,
                     phone: cleanPhone,
-                    name: `Customer (${cleanPhone.slice(-4)})`,
+                    name: paymentData.customerName || `Customer (${cleanPhone.slice(-4)})`,
                     visit_count: 1,
                     total_spent: totalAmount,
                     last_visit: new Date().toISOString()

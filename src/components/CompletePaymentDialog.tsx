@@ -64,6 +64,7 @@ interface CompletePaymentDialogProps {
     additionalCharges: { name: string; amount: number; enabled: boolean }[];
     finalItems?: CartItem[];
     customerMobile?: string;
+    customerName?: string;
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
@@ -74,6 +75,37 @@ interface CompletePaymentDialogProps {
   showOrderType?: boolean;
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
 }
+
+// Strong name validation logic (excludes dummy words, repetitive/sequential characters)
+export const isValidCustomerName = (name: string): boolean => {
+  const cleaned = name.trim().toLowerCase();
+  if (!cleaned) return false;
+  if (cleaned.length < 3) return false;
+  
+  // 1. Block repetitive characters (e.g. AAAA, XXXX, zzzz)
+  if (/([a-z])\1{2,}/i.test(cleaned)) return false; 
+  
+  // 2. Block sequential characters (e.g. abcd, xyz)
+  const sequences = [
+    'abcd', 'bcde', 'cdef', 'defg', 'efgh', 'fghi', 'ghij', 'hijk', 'ijkl', 'jklm', 
+    'klmn', 'lmno', 'mnop', 'nopq', 'opqr', 'pqrs', 'qrst', 'rstu', 'stuv', 'tuvw', 
+    'uvwx', 'vwxy', 'wxyz'
+  ];
+  if (sequences.some(seq => cleaned.includes(seq))) return false;
+
+  // 3. Block common fake/dummy names
+  const dummyNames = [
+    'test', 'name', 'customer', 'guest', 'admin', 'user', 'dummy', 'fake', 
+    'none', 'null', 'temp', 'restaurant', 'hotel', 'shop', 'staff', 'waiter', 
+    'cashier', 'owner', 'manager', 'asdf', 'qwer'
+  ];
+  if (dummyNames.some(dummy => cleaned === dummy || cleaned.includes(dummy))) return false;
+  
+  // 4. Require only letters, spaces, dots, dashes
+  if (!/^[a-zA-Z\s.-]+$/.test(name)) return false;
+
+  return true;
+};
 
 export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   open,
@@ -99,6 +131,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [itemQuantityOverrides, setItemQuantityOverrides] = useState<Record<string, number>>({});
   const [showDiscount, setShowDiscount] = useState(false);
   const [customerMobile, setCustomerMobile] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [customerGstin, setCustomerGstin] = useState('');
   const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>('dine_in');
@@ -297,6 +330,34 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     const primaryPaymentMethod = Object.entries(filteredPaymentAmounts)
       .sort(([, a], [, b]) => b - a)[0]?.[0] || paymentTypes[0]?.payment_type || 'cash';
 
+    // Strong validation for customer name and mobile
+    if (customerMobile.trim().length > 0) {
+      if (!customerName.trim()) {
+        toast({
+          title: "Name Required",
+          description: "Please enter the customer's name for WhatsApp/CRM billing.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!isValidCustomerName(customerName)) {
+        toast({
+          title: "Invalid Name",
+          description: "Please enter a valid real customer name (no repetitive/sequential patterns).",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!isValidPhoneNumber(customerMobile)) {
+        toast({
+          title: "Invalid Mobile",
+          description: "Please enter a valid 10-digit mobile number.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     onCompletePayment({
       paymentMethod: primaryPaymentMethod,
       paymentAmounts: filteredPaymentAmounts,
@@ -305,6 +366,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       additionalCharges: selectedAdditionalCharges,
       finalItems: finalItems,
       customerMobile: customerMobile.trim() || undefined,
+      customerName: customerName.trim() || undefined,
       sendWhatsApp: whatsappShareMode === 'image' ? whatsappEnabled : (sendWhatsApp && customerMobile.trim().length > 0),
       customerGstin: customerGstin.trim() || undefined,
       orderType: showOrderType ? orderType : undefined
@@ -327,6 +389,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       setItemQuantityOverrides({});
       setShowDiscount(false);
       setCustomerMobile('');
+      setCustomerName('');
       setSendWhatsApp(false);
       setOrderType('dine_in');
     }
@@ -624,21 +687,37 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   {whatsappShareMode === 'image' ? 'Share Bill Image via WhatsApp' : 'Send Bill via WhatsApp'}
                 </span>
               </div>
-              <div className="mt-1.5">
-                <Input
-                  type="tel"
-                  value={customerMobile}
-                  onChange={(e) => { setCustomerMobile(e.target.value); setSendWhatsApp(true); }}
-                  placeholder="Customer mobile (e.g. 9876543210)"
-                  className="h-8 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
-                />
-                {customerMobile && !isValidPhoneNumber(customerMobile) && (
-                  <p className="text-[10px] text-red-500 mt-0.5">Enter valid 10-digit number</p>
-                )}
+              <div className="mt-1.5 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Customer Name"
+                      className="h-8 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
+                    />
+                    {customerName && !isValidCustomerName(customerName) && (
+                      <p className="text-[9px] text-red-500 mt-0.5 leading-tight">Enter valid real name (no fake patterns)</p>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      type="tel"
+                      value={customerMobile}
+                      onChange={(e) => { setCustomerMobile(e.target.value); setSendWhatsApp(true); }}
+                      placeholder="Mobile (e.g. 9876543210)"
+                      className="h-8 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
+                    />
+                    {customerMobile && !isValidPhoneNumber(customerMobile) && (
+                      <p className="text-[9px] text-red-500 mt-0.5 leading-tight">Enter valid 10-digit number</p>
+                    )}
+                  </div>
+                </div>
                 {whatsappShareMode === 'text' ? (
-                  <p className="text-[10px] text-muted-foreground mt-1">Text bill will be sent after payment</p>
+                  <p className="text-[10px] text-muted-foreground">Text bill will be sent after payment</p>
                 ) : (
-                  <p className="text-[10px] text-muted-foreground mt-1">Bill image will open share dialog after payment</p>
+                  <p className="text-[10px] text-muted-foreground">Bill image will open share dialog after payment</p>
                 )}
               </div>
             </div>

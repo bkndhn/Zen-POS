@@ -22,13 +22,18 @@ interface BillShareData {
   isComposition?: boolean;
   roundOff?: number;
   orderType?: 'dine_in' | 'parcel';
+  customerName?: string;
 }
 
 /**
  * Format bill data into a clean text message for WhatsApp
  */
 export const formatBillMessage = (data: BillShareData): string => {
-  let message = `🧾 *${data.shopName}*\n`;
+  let message = '';
+  if (data.customerName) {
+    message += `Hi *${data.customerName}*,\n`;
+  }
+  message += `🧾 *${data.shopName}*\n`;
   message += `━━━━━━━━━━━━━━\n`;
   message += `📋 Bill #${data.billNo}\n`;
   message += `📅 ${data.date} | ${data.time}\n`;
@@ -117,7 +122,7 @@ export const formatBillMessage = (data: BillShareData): string => {
   message += `━━━━━━━━━━━━━━\n`;
   message += `*TOTAL: ₹${data.total.toFixed(0)}*\n`;
   message += `Paid via: ${data.paymentMethod}\n\n`;
-  message += `Thank you for your visit! 🙏`;
+  message += `Thank you for your visit, ${data.customerName || 'Customer'}! 🙏`;
 
   return message;
 };
