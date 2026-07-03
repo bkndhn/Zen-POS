@@ -185,6 +185,8 @@ export const VoiceBillingButton: React.FC<Props> = ({ items, onIntent, disabled,
     }
   }, [items, lang, onIntent]);
 
+  const shouldListenRef = useRef(false);
+
   const start = useCallback(() => {
     if (!SR) {
       toast({
@@ -199,29 +201,48 @@ export const VoiceBillingButton: React.FC<Props> = ({ items, onIntent, disabled,
       rec.lang = lang;
       rec.interimResults = false;
       rec.maxAlternatives = 1;
-      rec.continuous = false;
+      // Continuous mode: keep listening across multiple utterances until user taps stop.
+      rec.continuous = true;
       rec.onresult = (e: SpeechRecognitionEvent) => {
-        const transcript = e.results?.[0]?.[0]?.transcript || '';
-        handleTranscript(transcript);
+        // Iterate only over new final results in this event.
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r?.isFinal) {
+            const transcript = r[0]?.transcript || '';
+            if (transcript) handleTranscript(transcript);
+          }
+        }
       };
       rec.onerror = (e: any) => {
         console.warn('[voice] error', e.error);
-        setListening(false);
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          shouldListenRef.current = false;
+          setListening(false);
           toast({ title: 'Microphone blocked', description: 'Allow mic access to use voice.', variant: 'destructive' });
         }
+        // 'no-speech' / 'aborted' — let onend auto-restart if still enabled.
       };
-      rec.onend = () => setListening(false);
+      rec.onend = () => {
+        // Auto-restart to keep listening across items until user taps stop.
+        if (shouldListenRef.current) {
+          try { rec.start(); } catch { /* already started */ }
+        } else {
+          setListening(false);
+        }
+      };
       recRef.current = rec;
+      shouldListenRef.current = true;
       rec.start();
       setListening(true);
     } catch (err) {
       console.error('[voice] start failed', err);
+      shouldListenRef.current = false;
       setListening(false);
     }
   }, [SR, lang, handleTranscript]);
 
   const stop = useCallback(() => {
+    shouldListenRef.current = false;
     try { recRef.current?.stop(); } catch { /* noop */ }
     setListening(false);
   }, []);
