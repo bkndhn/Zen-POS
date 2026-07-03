@@ -48,7 +48,7 @@ export const WhatsAppSettings: React.FC = () => {
     if (adminAuthUid && operatingBranchId) {
       fetchSettings();
     }
-  }, [adminAuthUid, operatingBranchId]);
+  }, [adminAuthUid, operatingBranchId, mainBranchId]);
 
   const fetchSettings = async () => {
     try {
