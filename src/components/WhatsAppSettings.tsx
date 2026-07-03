@@ -87,7 +87,7 @@ export const WhatsAppSettings: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!adminId || !operatingBranchId) return;
+    if (!adminAuthUid || !operatingBranchId) return;
     setSaving(true);
 
     try {
@@ -101,10 +101,10 @@ export const WhatsAppSettings: React.FC = () => {
       };
       const { data: existing } = await (supabase as any)
         .from('shop_settings').select('id')
-        .eq('user_id', adminId).eq('branch_id', operatingBranchId).maybeSingle();
+        .eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle();
       const { error } = existing?.id
         ? await (supabase as any).from('shop_settings').update(payload).eq('id', existing.id)
-        : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminId, branch_id: operatingBranchId });
+        : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminAuthUid, branch_id: operatingBranchId });
 
       if (error) throw error;
 
