@@ -79,7 +79,7 @@ const CRM: React.FC = () => {
       }
       if (adminId) {
         try {
-          const { data } = await supabase
+          const { data } = await (supabase as any)
             .from('shop_settings')
             .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url')
             .eq('admin_id', adminId)
