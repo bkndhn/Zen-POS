@@ -13,7 +13,7 @@ import { Boxes, Sliders, Plus, Trash2, Edit2, AlertTriangle, ChefHat, Coins, Sca
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { convertToInventoryUnit } from '@/utils/timeUtils';
+import { convertToInventoryUnit, getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
