@@ -29,6 +29,7 @@ interface ItemRow {
   unit: string | null;
   inventory_unit?: string | null;
   selling_unit?: string | null;
+  base_value?: number | null;
 }
 
 interface Ingredient {
