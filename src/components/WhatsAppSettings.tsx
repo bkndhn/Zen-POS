@@ -56,7 +56,7 @@ export const WhatsAppSettings: React.FC = () => {
       let { data, error } = await (supabase as any)
         .from('shop_settings')
         .select(cols)
-        .eq('user_id', adminId)
+        .eq('user_id', adminAuthUid)
         .eq('branch_id', operatingBranchId)
         .maybeSingle();
 
@@ -64,7 +64,7 @@ export const WhatsAppSettings: React.FC = () => {
         const { data: mainRow } = await (supabase as any)
           .from('shop_settings')
           .select(cols)
-          .eq('user_id', adminId)
+          .eq('user_id', adminAuthUid)
           .eq('branch_id', mainBranchId)
           .maybeSingle();
         data = mainRow;
