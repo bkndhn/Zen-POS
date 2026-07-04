@@ -28,7 +28,8 @@ import {
     LayoutGrid,
     Navigation,
     X,
-    Loader2
+    Loader2,
+    Pencil
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
@@ -55,6 +56,7 @@ const QRCodeSettings = () => {
 
     // Custom URL State
     const [menuSlug, setMenuSlug] = useState('');
+    const [isEditingSlug, setIsEditingSlug] = useState(false);
     const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
     const slugTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -133,74 +135,87 @@ const QRCodeSettings = () => {
         : baseUrl;
 
     // Load settings from localStorage and Supabase
-    useEffect(() => {
-        const loadSettings = async () => {
-            // First load from localStorage for instant display
-            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
-            const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.menuSlug) setMenuSlug(parsed.menuSlug);
-                    if (parsed.menuShowShopName !== undefined) setMenuShowShopName(parsed.menuShowShopName);
-                    if (parsed.menuShowAddress !== undefined) setMenuShowAddress(parsed.menuShowAddress);
-                    if (parsed.menuShowPhone !== undefined) setMenuShowPhone(parsed.menuShowPhone);
-                } catch (e) { /* ignore */ }
-            }
+    const loadSettings = useCallback(async () => {
+        // First load from localStorage for instant display
+        const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+        const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.menuSlug) setMenuSlug(parsed.menuSlug);
+                if (parsed.menuShowShopName !== undefined) setMenuShowShopName(parsed.menuShowShopName);
+                if (parsed.menuShowAddress !== undefined) setMenuShowAddress(parsed.menuShowAddress);
+                if (parsed.menuShowPhone !== undefined) setMenuShowPhone(parsed.menuShowPhone);
+            } catch (e) { /* ignore */ }
+        }
 
-            // Then sync from Supabase (branch-scoped read with fallback to main branch)
-            if (adminAuthUid) {
-                let { data } = await (supabase as any)
+        // Then sync from Supabase (branch-scoped read with fallback to main branch)
+        if (adminAuthUid) {
+            let { data } = await (supabase as any)
+                .from('shop_settings')
+                .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
+                .eq('user_id', adminAuthUid)
+                .eq('branch_id', operatingBranchId)
+                .maybeSingle();
+
+            // Fallback: any row for this user (legacy / main-branch values)
+            if (!data) {
+                const { data: fb } = await (supabase as any)
                     .from('shop_settings')
                     .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
                     .eq('user_id', adminAuthUid)
-                    .eq('branch_id', operatingBranchId)
+                    .order('branch_id', { nullsFirst: false })
+                    .limit(1)
                     .maybeSingle();
+                data = fb;
+            }
 
-                // Fallback: any row for this user (legacy / main-branch values)
-                if (!data) {
-                    const { data: fb } = await (supabase as any)
-                        .from('shop_settings')
-                        .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
-                        .eq('user_id', adminAuthUid)
-                        .order('branch_id', { nullsFirst: false })
-                        .limit(1)
-                        .maybeSingle();
-                    data = fb;
-                }
+            if (data) {
+                if (data.menu_show_shop_name !== undefined) setMenuShowShopName(data.menu_show_shop_name);
+                if (data.menu_show_address !== undefined) setMenuShowAddress(data.menu_show_address);
+                if (data.menu_show_phone !== undefined) setMenuShowPhone(data.menu_show_phone);
+                if (data.menu_primary_color) setMenuPrimaryColor(data.menu_primary_color);
+                if (data.menu_secondary_color) setMenuSecondaryColor(data.menu_secondary_color);
+                if (data.menu_background_color) setMenuBackgroundColor(data.menu_background_color);
+                if (data.menu_text_color) setMenuTextColor(data.menu_text_color);
+                if (data.menu_items_per_row) setMenuItemsPerRow(data.menu_items_per_row);
+                if (data.shop_latitude) setShopLatitude(data.shop_latitude);
+                if (data.shop_longitude) setShopLongitude(data.shop_longitude);
+            }
 
-                if (data) {
-                    if (data.menu_show_shop_name !== undefined) setMenuShowShopName(data.menu_show_shop_name);
-                    if (data.menu_show_address !== undefined) setMenuShowAddress(data.menu_show_address);
-                    if (data.menu_show_phone !== undefined) setMenuShowPhone(data.menu_show_phone);
-                    if (data.menu_primary_color) setMenuPrimaryColor(data.menu_primary_color);
-                    if (data.menu_secondary_color) setMenuSecondaryColor(data.menu_secondary_color);
-                    if (data.menu_background_color) setMenuBackgroundColor(data.menu_background_color);
-                    if (data.menu_text_color) setMenuTextColor(data.menu_text_color);
-                    if (data.menu_items_per_row) setMenuItemsPerRow(data.menu_items_per_row);
-                    if (data.shop_latitude) setShopLatitude(data.shop_latitude);
-                    if (data.shop_longitude) setShopLongitude(data.shop_longitude);
-                }
-
-                // Slug source depends on branch:
-                // - Main branch → shop_settings.menu_slug (legacy admin-wide)
-                // - Sub-branch → branches.menu_slug (per-branch)
-                if (operatingBranchId) {
-                    if (isMainBranch) {
-                        if (data?.menu_slug) setMenuSlug(data.menu_slug);
-                    } else {
-                        const { data: br } = await (supabase as any)
-                            .from('branches')
-                            .select('menu_slug')
-                            .eq('id', operatingBranchId)
-                            .maybeSingle();
-                        setMenuSlug(br?.menu_slug || '');
+            // Slug source depends on branch:
+            // - Main branch → shop_settings.menu_slug (legacy admin-wide)
+            // - Sub-branch → branches.menu_slug (per-branch)
+            let loadedSlug = '';
+            if (operatingBranchId) {
+                if (isMainBranch) {
+                    if (data?.menu_slug) {
+                        setMenuSlug(data.menu_slug);
+                        loadedSlug = data.menu_slug;
                     }
+                } else {
+                    const { data: br } = await (supabase as any)
+                        .from('branches')
+                        .select('menu_slug')
+                        .eq('id', operatingBranchId)
+                        .maybeSingle();
+                    setMenuSlug(br?.menu_slug || '');
+                    loadedSlug = br?.menu_slug || '';
                 }
             }
-        };
-        loadSettings();
+
+            // Lock input (hide edit mode) if custom slug already exists
+            if (loadedSlug) {
+                setIsEditingSlug(false);
+            } else {
+                setIsEditingSlug(true);
+            }
+        }
     }, [adminAuthUid, operatingBranchId, isMainBranch]);
+
+    useEffect(() => {
+        loadSettings();
+    }, [loadSettings]);
 
     // Fetch tables from database (single source of truth = Table Management) — branch-scoped
     const fetchTables = useCallback(async () => {
@@ -375,12 +390,12 @@ const QRCodeSettings = () => {
 
         try {
             // Check shop_settings (admin-wide / main-branch slugs)
-            const { data: ssRow } = await (supabase as any)
+            let ssQ = (supabase as any)
                 .from('shop_settings')
                 .select('user_id')
-                .eq('menu_slug', slug)
-                .neq('user_id', adminId || profile?.user_id || '')
-                .maybeSingle();
+                .eq('menu_slug', slug);
+            if (operatingBranchId) ssQ = ssQ.neq('branch_id', operatingBranchId);
+            const { data: ssRow } = await ssQ.maybeSingle();
 
             // Check branches (per-branch slugs)
             let brQ: any = (supabase as any)
@@ -433,12 +448,7 @@ const QRCodeSettings = () => {
         setTimeout(() => saveSettings(), 100);
     };
 
-    // Save slug when it changes and is available
-    useEffect(() => {
-        if (slugStatus === 'available') {
-            saveSettings();
-        }
-    }, [slugStatus]);
+
 
 
 
@@ -965,41 +975,98 @@ const QRCodeSettings = () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 space-y-4">
-                    {/* Custom Slug Input */}
+                    {/* Custom Slug View/Edit Mode */}
                     <div className="space-y-3">
-                        <div className="flex gap-2">
-                            <div className="flex-1 relative">
-                                <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">/menu/</span>
-                                <Input
-                                    value={menuSlug}
-                                    onChange={(e) => handleSlugChange(e.target.value)}
-                                    placeholder="your-shop-name"
-                                    className="pl-16"
-                                    maxLength={50}
-                                />
-                                {slugStatus === 'checking' && (
-                                    <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">Checking...</span>
-                                )}
-                                {slugStatus === 'available' && (
-                                    <Check className="absolute right-3 top-2.5 w-4 h-4 text-green-500" />
-                                )}
-                                {slugStatus === 'taken' && (
-                                    <AlertCircle className="absolute right-3 top-2.5 w-4 h-4 text-red-500" />
-                                )}
+                        {!isEditingSlug && menuSlug ? (
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 gap-4">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Digital Menu URL</span>
+                                    <div className="flex items-center gap-2">
+                                        <code className="text-xs font-bold text-primary font-mono bg-white dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
+                                            /menu/{menuSlug}
+                                        </code>
+                                        <span className="text-[10px] text-muted-foreground">({isMainBranch ? 'Main Branch' : 'Sub-Branch'})</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Your menu is live at: <a href={baseUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold break-all">{baseUrl}</a>
+                                    </p>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setIsEditingSlug(true)}
+                                    className="rounded-xl font-bold h-8 text-xs gap-1.5 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:bg-slate-50 shadow-sm flex-shrink-0"
+                                >
+                                    <Pencil className="w-3 h-3 text-primary" /> Edit URL
+                                </Button>
                             </div>
-                            <Button variant="outline" size="sm" onClick={generateSlugFromName}>
-                                Auto
-                            </Button>
-                        </div>
-                        {slugStatus === 'taken' && (
-                            <p className="text-xs text-red-500">This URL is already taken. Please choose another.</p>
+                        ) : (
+                            <div className="space-y-3 p-4 rounded-xl border bg-slate-50/30 dark:bg-slate-900/10">
+                                <Label className="text-xs font-bold">Custom Menu Slug</Label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 relative">
+                                        <span className="absolute left-3 top-2 text-sm text-muted-foreground">/menu/</span>
+                                        <Input
+                                            value={menuSlug}
+                                            onChange={(e) => handleSlugChange(e.target.value)}
+                                            placeholder="your-shop-name"
+                                            className="pl-16 h-9 text-sm"
+                                            maxLength={50}
+                                        />
+                                        {slugStatus === 'checking' && (
+                                            <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">Checking...</span>
+                                        )}
+                                        {slugStatus === 'available' && (
+                                            <Check className="absolute right-3 top-2.5 w-4 h-4 text-green-500" />
+                                        )}
+                                        {slugStatus === 'taken' && (
+                                            <AlertCircle className="absolute right-3 top-2.5 w-4 h-4 text-red-500" />
+                                        )}
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={generateSlugFromName} className="h-9">
+                                        Auto
+                                    </Button>
+                                </div>
+                                {slugStatus === 'taken' && (
+                                    <p className="text-xs text-red-500 font-semibold">This URL is already taken. Please choose another.</p>
+                                )}
+                                {slugStatus === 'available' && menuSlug && (
+                                    <p className="text-xs text-green-600 font-semibold">✓ This URL is available!</p>
+                                )}
+                                <p className="text-[11px] text-muted-foreground">
+                                    Expected live link: <code className="bg-muted/80 px-1 py-0.5 rounded font-mono">{baseUrl}</code>
+                                </p>
+                                <div className="flex items-center gap-2 pt-2">
+                                    <Button 
+                                        size="sm"
+                                        onClick={async () => {
+                                            if (slugStatus === 'available' || slugStatus === 'idle') {
+                                                await saveSettings();
+                                                setIsEditingSlug(false);
+                                                toast({ title: 'URL Saved Successfully', description: 'Your custom menu slug has been updated.' });
+                                            }
+                                        }}
+                                        disabled={slugStatus === 'taken' || slugStatus === 'checking' || !menuSlug}
+                                        className="h-8 text-xs font-bold rounded-xl shadow-sm"
+                                    >
+                                        Save Custom URL
+                                    </Button>
+                                    {menuSlug && (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            onClick={() => {
+                                                loadSettings();
+                                                setIsEditingSlug(false);
+                                            }}
+                                            className="h-8 text-xs font-bold text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
                         )}
-                        {slugStatus === 'available' && menuSlug && (
-                            <p className="text-xs text-green-600">✓ This URL is available!</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                            Your menu will be accessible at: <code className="bg-muted px-1 py-0.5 rounded">{baseUrl}</code>
-                        </p>
                     </div>
 
                     {/* Menu Display Options */}
