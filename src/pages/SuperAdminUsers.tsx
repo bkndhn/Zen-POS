@@ -2,17 +2,18 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Users as UsersIcon, Settings } from 'lucide-react';
+import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Row {
   profile_id: string;
@@ -41,6 +42,191 @@ const SuperAdminUsers: React.FC = () => {
   // Modal / Permissions State
   const [selectedAdmin, setSelectedAdmin] = useState<Row | null>(null);
   const [permsDialogOpen, setPermsDialogOpen] = useState(false);
+
+  // Backup & Restore State
+  const [activeTab, setActiveTab] = useState('users');
+  const [backupSettings, setBackupSettings] = useState<any>(null);
+  const [backupLogs, setBackupLogs] = useState<any[]>([]);
+  const [loadingBackup, setLoadingBackup] = useState(false);
+  const [triggeringBackup, setTriggeringBackup] = useState(false);
+  const [restoringBackup, setRestoringBackup] = useState(false);
+  const [gdriveFolderId, setGdriveFolderId] = useState('');
+  const [gdriveCredentials, setGdriveCredentials] = useState('');
+  const [isBackupEnabled, setIsBackupEnabled] = useState(true);
+  const [retentionDays, setRetentionDays] = useState(10);
+
+  const fetchBackupData = async () => {
+    try {
+      setLoadingBackup(true);
+      const { data: settings, error: settingsErr } = await supabase
+        .from('backup_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (settingsErr) throw settingsErr;
+
+      if (settings) {
+        setBackupSettings(settings);
+        setGdriveFolderId(settings.gdrive_folder_id || '');
+        setGdriveCredentials(settings.gdrive_credentials ? JSON.stringify(settings.gdrive_credentials, null, 2) : '');
+        setIsBackupEnabled(settings.is_enabled);
+        setRetentionDays(settings.retention_days || 10);
+      }
+      
+      const { data: logs, error: logsErr } = await supabase
+        .from('backup_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (logsErr) throw logsErr;
+      if (logs) setBackupLogs(logs);
+    } catch (e: any) {
+      console.error("Failed to load backup data:", e);
+      toast({ title: "Failed to load backup logs", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingBackup(false);
+    }
+  };
+
+  const saveBackupSettings = async () => {
+    try {
+      let parsedCreds = null;
+      if (gdriveCredentials.trim()) {
+        try {
+          parsedCreds = JSON.parse(gdriveCredentials);
+        } catch (e) {
+          return toast({ title: "Invalid Credentials JSON", description: "Please enter valid Google Service Account JSON.", variant: "destructive" });
+        }
+      }
+      
+      const { error } = await supabase.from('backup_settings').upsert({
+        id: backupSettings?.id || undefined,
+        gdrive_folder_id: gdriveFolderId || null,
+        gdrive_credentials: parsedCreds,
+        is_enabled: isBackupEnabled,
+        retention_days: retentionDays,
+        updated_at: new Date().toISOString()
+      });
+      
+      if (error) throw error;
+      
+      toast({ title: "Settings Saved", description: "Backup configurations updated successfully." });
+      fetchBackupData();
+    } catch (e: any) {
+      toast({ title: "Failed to save settings", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const triggerBackupNow = async () => {
+    setTriggeringBackup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-backup', {
+        method: 'POST'
+      });
+      
+      if (error) throw error;
+      
+      toast({ title: "Backup Process Finished", description: data?.details || "Database backup ran successfully." });
+      fetchBackupData();
+    } catch (e: any) {
+      console.error("Backup trigger failed", e);
+      toast({ title: "Backup Execution Failed", description: e.message || "Ensure your Edge Function is deployed.", variant: "destructive" });
+      fetchBackupData();
+    } finally {
+      setTriggeringBackup(false);
+    }
+  };
+
+  const downloadBackupFile = async () => {
+    try {
+      toast({ title: "Generating local backup...", description: "Compiling database tables into JSON." });
+      const tablesToDump = [
+        'profiles', 'branches', 'user_branches', 'user_permissions',
+        'items', 'item_categories', 'bills', 'bill_items',
+        'purchases', 'purchase_items', 'purchase_distributions', 'purchase_payments',
+        'suppliers', 'expenses', 'expense_categories', 'tables', 'table_orders',
+        'shop_settings', 'tax_rates', 'additional_charges', 'payments', 'display_settings'
+      ];
+      
+      const databaseDump: Record<string, any[]> = {};
+      for (const table of tablesToDump) {
+        const { data, error } = await supabase.from(table).select('*');
+        if (error) console.error(`Error dumping table ${table}:`, error);
+        databaseDump[table] = data || [];
+      }
+      
+      const backupJsonString = JSON.stringify({
+        version: "1.0",
+        backup_timestamp: new Date().toISOString(),
+        data: databaseDump
+      }, null, 2);
+      
+      const blob = new Blob([backupJsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `zenpos_local_backup_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Backup Downloaded", description: "Database dump downloaded successfully." });
+    } catch (e: any) {
+      toast({ title: "Failed to generate backup", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const restoreDatabaseFromFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const confirmRestore = window.confirm("WARNING: This will overwrite existing database records with the backup file data. This action CANNOT be undone. Are you sure you want to proceed?");
+    if (!confirmRestore) {
+      e.target.value = '';
+      return;
+    }
+    
+    setRestoringBackup(true);
+    try {
+      const text = await file.text();
+      const backupObj = JSON.parse(text);
+      
+      if (!backupObj.version || !backupObj.data) {
+        throw new Error("Invalid backup file structure. Missing version or data.");
+      }
+      
+      const restoreData = backupObj.data;
+      
+      const tablesOrder = [
+        'profiles', 'branches', 'user_branches', 'user_permissions',
+        'suppliers', 'item_categories', 'items', 'bills', 'bill_items',
+        'purchases', 'purchase_items', 'purchase_distributions', 'purchase_payments',
+        'expenses', 'expense_categories', 'tables', 'table_orders',
+        'shop_settings', 'tax_rates', 'additional_charges', 'payments', 'display_settings'
+      ];
+      
+      for (const table of tablesOrder) {
+        const rows = restoreData[table];
+        if (rows && rows.length > 0) {
+          // Batch upsert in chunks of 100
+          for (let i = 0; i < rows.length; i += 100) {
+            const chunk = rows.slice(i, i + 100);
+            const { error } = await supabase.from(table).upsert(chunk);
+            if (error) throw new Error(`Table ${table} restore failed: ${error.message}`);
+          }
+        }
+      }
+      
+      toast({ title: "Database Restored", description: "All client and branch data restored successfully." });
+      fetchUsers();
+    } catch (e: any) {
+      console.error("Restore failed", e);
+      toast({ title: "Restore Failed", description: e.message, variant: "destructive" });
+    } finally {
+      setRestoringBackup(false);
+      e.target.value = '';
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -78,6 +264,12 @@ const SuperAdminUsers: React.FC = () => {
       fetchUsers();
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (profile?.role === 'super_admin' && activeTab === 'backups') {
+      fetchBackupData();
+    }
+  }, [activeTab, profile]);
 
   const handleTogglePermission = async (adminProfileId: string, toPath: string, enabled: boolean) => {
     const admin = rows.find(r => r.profile_id === adminProfileId);
@@ -139,106 +331,280 @@ const SuperAdminUsers: React.FC = () => {
   return (
     <div className="min-h-screen p-4 sm:p-6 pb-24">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          <h1 className="text-xl sm:text-2xl font-bold">Super Admin · All Users</h1>
+        <div className="flex items-center justify-between border-b pb-4">
+          <div className="flex items-center gap-2">
+            <Shield className="w-6 h-6 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">Super Admin Portal</h1>
+          </div>
+          <Badge className="px-3 py-1 font-bold text-xs uppercase tracking-wider bg-primary/10 border-primary/20 text-primary">System Overlord</Badge>
         </div>
 
-        <Input placeholder="Search by name, email, hotel or parent admin..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-md" />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-2 max-w-md bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
+            <TabsTrigger value="users" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+              <UsersIcon className="w-3.5 h-3.5 mr-2" /> Users & Permissions
+            </TabsTrigger>
+            <TabsTrigger value="backups" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+              <Database className="w-3.5 h-3.5 mr-2" /> Backup & Recovery
+            </TabsTrigger>
+          </TabsList>
 
-        {error && (
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-sm px-3 py-2">
-            {error}
-          </div>
-        )}
+          <TabsContent value="users" className="space-y-6 mt-6 focus-visible:outline-none">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+              <Input placeholder="Search by name, email, hotel or parent admin..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-md h-10 shadow-sm bg-white dark:bg-slate-800" />
+            </div>
 
-        {/* Admins Table */}
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><UsersIcon className="w-4 h-4" /> Admins ({admins.length})</CardTitle></CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Hotel</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Logins</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-                {!loading && admins.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">No admins</TableCell></TableRow>}
-                {admins.map(r => (
-                  <TableRow key={r.profile_id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {r.name}
-                        <Badge variant="default" className="text-[10px]">Admin</Badge>
+            {error && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm px-4 py-3 flex items-start gap-2 animate-pulse">
+                <span className="text-base shrink-0">⚠️</span>
+                <p className="font-semibold">{error}</p>
+              </div>
+            )}
+
+            {/* Admins Table */}
+            <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm">
+              <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                  <UsersIcon className="w-4 h-4 text-primary" /> Tenant Admins ({admins.length})
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Admins who manage separate hotel client instances.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50/30 dark:bg-slate-950/20">
+                    <TableRow>
+                      <TableHead className="font-bold text-xs">Name</TableHead>
+                      <TableHead className="font-bold text-xs">Email</TableHead>
+                      <TableHead className="font-bold text-xs">Hotel</TableHead>
+                      <TableHead className="font-bold text-xs">Status</TableHead>
+                      <TableHead className="font-bold text-xs">Logins</TableHead>
+                      <TableHead className="font-bold text-xs">Last Login</TableHead>
+                      <TableHead className="font-bold text-xs">Created</TableHead>
+                      <TableHead className="text-right font-bold text-xs">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
+                    {!loading && admins.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No admins found</TableCell></TableRow>}
+                    {admins.map(r => (
+                      <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
+                        <TableCell className="font-semibold">
+                          <div className="flex items-center gap-2">
+                            {r.name}
+                            <Badge variant="default" className="text-[9px] font-bold px-1.5 py-0.5">Admin</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
+                        <TableCell className="font-medium">{r.hotel_name || '—'}</TableCell>
+                        <TableCell>{statusBadge(r.status)}</TableCell>
+                        <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedAdmin(r);
+                              setPermsDialogOpen(true);
+                            }}
+                            className="h-8 text-xs px-3 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-150 gap-1.5 rounded-xl font-semibold"
+                          >
+                            <Shield className="w-3.5 h-3.5" />
+                            Permissions
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Sub-users Table */}
+            <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm">
+              <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                  <UsersIcon className="w-4 h-4 text-primary" /> Branch Staff & Sub-users ({subUsers.length})
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Sub-users assigned to individual hotel client branches.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50/30 dark:bg-slate-950/20">
+                    <TableRow>
+                      <TableHead className="font-bold text-xs">Name</TableHead>
+                      <TableHead className="font-bold text-xs">Email</TableHead>
+                      <TableHead className="font-bold text-xs">Parent Admin</TableHead>
+                      <TableHead className="font-bold text-xs">Status</TableHead>
+                      <TableHead className="font-bold text-xs">Logins</TableHead>
+                      <TableHead className="font-bold text-xs">Last Login</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading && <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
+                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
+                    {subUsers.map(r => (
+                      <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
+                        <TableCell className="font-semibold">{r.name}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
+                        <TableCell className="font-medium text-slate-700 dark:text-slate-300">{r.admin_name || '—'}</TableCell>
+                        <TableCell>{statusBadge(r.status)}</TableCell>
+                        <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="backups" className="space-y-6 mt-6 focus-visible:outline-none">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Backup Settings Configuration */}
+              <div className="lg:col-span-1 space-y-6">
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <Settings className="w-4 h-4 text-primary" /> Google Drive Settings
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Configure auto backup credentials and GDrive folders.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-950">
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-xs font-bold">Enable Auto Backup</Label>
+                        <span className="text-[10px] text-muted-foreground">Upload backups to Google Drive.</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-xs">{r.email || '—'}</TableCell>
-                    <TableCell>{r.hotel_name || '—'}</TableCell>
-                    <TableCell>{statusBadge(r.status)}</TableCell>
-                    <TableCell>{r.login_count ?? 0}</TableCell>
-                    <TableCell className="text-xs">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
-                    <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedAdmin(r);
-                          setPermsDialogOpen(true);
-                        }}
-                        className="h-7 text-xs px-2 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-colors gap-1.5"
-                      >
-                        <Shield className="w-3.5 h-3.5" />
-                        Permissions
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                      <Switch checked={isBackupEnabled} onCheckedChange={setIsBackupEnabled} />
+                    </div>
 
-        {/* Sub-users Table */}
-        <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><UsersIcon className="w-4 h-4" /> Sub-users ({subUsers.length})</CardTitle></CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Parent Admin</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Logins</TableHead>
-                  <TableHead>Last Login</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-                {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No sub-users</TableCell></TableRow>}
-                {subUsers.map(r => (
-                  <TableRow key={r.profile_id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="text-xs">{r.email || '—'}</TableCell>
-                    <TableCell>{r.admin_name || '—'}</TableCell>
-                    <TableCell>{statusBadge(r.status)}</TableCell>
-                    <TableCell>{r.login_count ?? 0}</TableCell>
-                    <TableCell className="text-xs">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold">Google Drive Folder ID</Label>
+                      <Input placeholder="Enter GDrive Folder ID..." value={gdriveFolderId} onChange={e => setGdriveFolderId(e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800 font-mono" />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs font-bold">Service Account JSON Credentials</Label>
+                        <Badge variant="outline" className="text-[9px] py-0 px-1 font-mono text-muted-foreground">OAuth2 JSON</Badge>
+                      </div>
+                      <textarea
+                        placeholder='Paste Google Service Account credentials JSON here...'
+                        value={gdriveCredentials}
+                        onChange={e => setGdriveCredentials(e.target.value)}
+                        className="w-full h-36 p-2 border rounded-lg text-[10px] font-mono bg-white dark:bg-slate-850 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary border-slate-200 dark:border-slate-800"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold">Retention Days</Label>
+                        <Input type="number" min={1} max={90} value={retentionDays} onChange={e => setRetentionDays(+e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800 font-semibold" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold">Backup Schedule</Label>
+                        <div className="h-9 border border-slate-200 dark:border-slate-800 rounded-lg px-2 flex items-center bg-slate-50 dark:bg-slate-950 text-[10px] font-bold text-muted-foreground font-mono">
+                          08:00, 14:00, 23:00
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button onClick={saveBackupSettings} disabled={loadingBackup} className="w-full h-9 font-bold mt-2 shadow-sm gap-1.5">
+                      <RefreshCw className={`w-3.5 h-3.5 ${loadingBackup ? 'animate-spin' : ''}`} /> Save Settings
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Manual Actions */}
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm bg-slate-50/50 dark:bg-slate-900/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-300">
+                      Disaster Recovery Controls
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button onClick={triggerBackupNow} disabled={triggeringBackup} className="w-full h-9 font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shadow-sm">
+                      <Play className={`w-3.5 h-3.5 ${triggeringBackup ? 'animate-pulse' : ''}`} /> Trigger Manual Backup
+                    </Button>
+
+                    <Button onClick={downloadBackupFile} variant="outline" className="w-full h-9 font-bold border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:bg-slate-100 text-slate-700 dark:text-slate-300 gap-1.5 shadow-sm">
+                      <Download className="w-3.5 h-3.5 text-primary" /> Download Local Backup (JSON)
+                    </Button>
+
+                    <div className="relative pt-1">
+                      <Label htmlFor="restore-file-input" className="w-full h-9 border border-dashed border-primary/30 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold text-primary hover:bg-primary/5 cursor-pointer shadow-sm transition-all">
+                        {restoringBackup ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        {restoringBackup ? 'Restoring Database...' : 'Restore Database from File'}
+                      </Label>
+                      <input
+                        id="restore-file-input"
+                        type="file"
+                        accept=".json"
+                        disabled={restoringBackup}
+                        onChange={restoreDatabaseFromFile}
+                        className="hidden"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Activity Logs history list */}
+              <div className="lg:col-span-2">
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm h-full flex flex-col">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <Database className="w-4 h-4 text-primary" /> Backup Activity Logs (Last 10 Days)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">List of all automated and manual database backup executions.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-y-auto flex-1 max-h-[500px] scroll-smooth">
+                    <Table>
+                      <TableHeader className="bg-slate-50/30 dark:bg-slate-950/20">
+                        <TableRow>
+                          <TableHead className="font-bold text-xs">Date/Time</TableHead>
+                          <TableHead className="font-bold text-xs">Status</TableHead>
+                          <TableHead className="font-bold text-xs">File Name</TableHead>
+                          <TableHead className="font-bold text-xs">File Size</TableHead>
+                          <TableHead className="font-bold text-xs">Activity Details</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loadingBackup && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading logs...</TableCell></TableRow>}
+                        {!loadingBackup && backupLogs.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No backup activities recorded yet.</TableCell></TableRow>}
+                        {backupLogs.map(log => (
+                          <TableRow key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 text-xs">
+                            <TableCell className="font-mono text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</TableCell>
+                            <TableCell>
+                              {log.status === 'success' ? (
+                                <Badge className="bg-emerald-500/10 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1 w-max font-bold py-0.5 px-2 text-[10px]">
+                                  <CheckCircle2 className="w-3 h-3" /> SUCCESS
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-rose-500/10 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center gap-1 w-max font-bold py-0.5 px-2 text-[10px]">
+                                  <XCircle className="w-3 h-3" /> FAILED
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-semibold max-w-[150px] truncate" title={log.file_name}>{log.file_name || '—'}</TableCell>
+                            <TableCell className="font-mono font-semibold">
+                              {log.file_size ? `${(log.file_size / 1024).toFixed(1)} KB` : '—'}
+                            </TableCell>
+                            <TableCell className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed max-w-[200px]" title={log.details}>
+                              {log.details || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Permissions Dialog */}
