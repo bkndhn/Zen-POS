@@ -308,6 +308,15 @@ const SuperAdminUsers: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {pwdTarget && (
+        <ResetPasswordDialog
+          open={!!pwdTarget}
+          onOpenChange={(v) => !v && setPwdTarget(null)}
+          targetProfileId={pwdTarget.id}
+          targetLabel={pwdTarget.label}
+        />
+      )}
     </div>
   );
 };
