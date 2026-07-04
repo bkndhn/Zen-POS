@@ -359,19 +359,47 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
     reader.readAsDataURL(file);
   };
 
+  /**
+   * Capture the poster off-screen at a fixed 400×566 layout so mobile
+   * browsers can't stretch/shrink the render. We clone the preview node into
+   * a fixed-size hidden container attached to <body>, then remove it after.
+   */
+  const captureCanvas = async (scale = 3): Promise<HTMLCanvasElement> => {
+    const src = previewRef.current!;
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;left:-10000px;top:0;width:400px;height:566px;overflow:hidden;pointer-events:none;z-index:-1;';
+    const clone = src.cloneNode(true) as HTMLElement;
+    clone.style.width = '400px';
+    clone.style.height = '566px';
+    clone.style.transform = 'none';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+    try {
+      return await html2canvas(clone, {
+        scale,
+        backgroundColor: null,
+        width: 400,
+        height: 566,
+        windowWidth: 400,
+        windowHeight: 566,
+        useCORS: true,
+      });
+    } finally {
+      wrapper.remove();
+    }
+  };
+
   const download = async (format: 'png' | 'jpg' | 'svg' | 'pdf') => {
     if (!previewRef.current) return;
     try {
       if (format === 'svg') {
-        // Render an SVG that embeds the QR + basic title (simple, portable)
         const svg = buildSvg(config, qrDataUrl);
         const blob = new Blob([svg], { type: 'image/svg+xml' });
         triggerDownload(URL.createObjectURL(blob), `qr-poster-${config.templateId}.svg`);
         return;
       }
       if (format === 'pdf') {
-        // Simple print-based PDF path (no jspdf dep)
-        const canvas = await html2canvas(previewRef.current, { scale: 2, backgroundColor: null, width: 400, height: 566 });
+        const canvas = await captureCanvas(2);
         const dataUrl = canvas.toDataURL('image/png');
         const win = window.open('', '_blank');
         if (!win) return;
@@ -382,7 +410,7 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
         win.document.close();
         return;
       }
-      const canvas = await html2canvas(previewRef.current, { scale: 3, backgroundColor: null, width: 400, height: 566 });
+      const canvas = await captureCanvas(3);
       const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
       const url = canvas.toDataURL(mime, 0.95);
       triggerDownload(url, `qr-poster-${config.templateId}.${format}`);
