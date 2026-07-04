@@ -79,6 +79,49 @@ const QRCodeSettings = () => {
     // Determine the admin ID to use for the menu URL
     const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
 
+    // Resolve the admin's Auth UID (user_id) for loading/saving shop_settings
+    const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
+    useEffect(() => {
+        const resolveAuthUid = async () => {
+            if (!profile) return;
+            if (profile.role === 'admin') {
+                setAdminAuthUid(profile.user_id);
+            } else if (profile.role === 'super_admin') {
+                setAdminAuthUid(profile.user_id);
+            } else if (profile.admin_id) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('user_id')
+                    .eq('id', profile.admin_id)
+                    .maybeSingle();
+                if (data?.user_id) setAdminAuthUid(data.user_id);
+            }
+        };
+        resolveAuthUid();
+    }, [profile]);
+
+    // Broadcast listener to sync appearance colors from MenuDesignStudio in real-time
+    useEffect(() => {
+        if (!adminId) return;
+        const channel = supabase.channel(`menu-settings-${adminId}`);
+        channel
+            .on('broadcast', { event: 'menu-settings-updated' }, (payload: any) => {
+                if (payload.payload) {
+                    const p = payload.payload;
+                    if (p.menu_primary_color) setMenuPrimaryColor(p.menu_primary_color);
+                    if (p.menu_secondary_color) setMenuSecondaryColor(p.menu_secondary_color);
+                    if (p.menu_background_color) setMenuBackgroundColor(p.menu_background_color);
+                    if (p.menu_text_color) setMenuTextColor(p.menu_text_color);
+                    if (p.menu_items_per_row) setMenuItemsPerRow(p.menu_items_per_row);
+                }
+            })
+            .subscribe();
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [adminId]);
+
     // Base menu URL (uses custom slug if available, otherwise admin ID)
     const baseUrl = typeof window !== 'undefined'
         ? `${window.location.origin}/menu/${menuSlug || adminId}`
@@ -106,11 +149,11 @@ const QRCodeSettings = () => {
             }
 
             // Then sync from Supabase (branch-scoped read with fallback to main branch)
-            if (adminId) {
+            if (adminAuthUid) {
                 let { data } = await (supabase as any)
                     .from('shop_settings')
                     .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
-                    .eq('user_id', adminId)
+                    .eq('user_id', adminAuthUid)
                     .eq('branch_id', operatingBranchId)
                     .maybeSingle();
 
@@ -119,7 +162,7 @@ const QRCodeSettings = () => {
                     const { data: fb } = await (supabase as any)
                         .from('shop_settings')
                         .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
-                        .eq('user_id', adminId)
+                        .eq('user_id', adminAuthUid)
                         .order('branch_id', { nullsFirst: false })
                         .limit(1)
                         .maybeSingle();
@@ -155,10 +198,9 @@ const QRCodeSettings = () => {
                     }
                 }
             }
-            setTimeout(() => { isAppearanceLoadedRef.current = true; }, 200);
         };
         loadSettings();
-    }, [profile?.user_id, operatingBranchId, isMainBranch]);
+    }, [adminAuthUid, operatingBranchId, isMainBranch]);
 
     // Fetch tables from database (single source of truth = Table Management) — branch-scoped
     const fetchTables = useCallback(async () => {
@@ -186,8 +228,7 @@ const QRCodeSettings = () => {
 
     // Save settings when changed (branch-scoped)
     const saveSettings = async () => {
-        if (!profile?.user_id) return;
-        const adminAuthUid = profile.user_id;
+        if (!adminAuthUid) return;
         // Save to localStorage immediately
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
         const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
@@ -198,21 +239,14 @@ const QRCodeSettings = () => {
         parsed.menuShowPhone = menuShowPhone;
         localStorage.setItem(headerKey, JSON.stringify(parsed));
 
-        if (!profile?.user_id) return;
-
-        // Persist appearance + display settings to shop_settings (per-branch row)
+        // Persist display settings to shop_settings (per-branch row)
         // Only the main branch keeps the slug in shop_settings (legacy admin-wide).
         const ssPayload: any = {
-            user_id: adminAuthUid || profile.user_id,
+            user_id: adminAuthUid,
             branch_id: operatingBranchId,
             menu_show_shop_name: menuShowShopName,
             menu_show_address: menuShowAddress,
             menu_show_phone: menuShowPhone,
-            menu_primary_color: menuPrimaryColor,
-            menu_secondary_color: menuSecondaryColor,
-            menu_background_color: menuBackgroundColor,
-            menu_text_color: menuTextColor,
-            menu_items_per_row: menuItemsPerRow,
             shop_latitude: shopLatitude,
             shop_longitude: shopLongitude,
         };
@@ -222,7 +256,7 @@ const QRCodeSettings = () => {
         const { data: existing } = await (supabase as any)
             .from('shop_settings')
             .select('id')
-            .eq('user_id', adminAuthUid || profile.user_id)
+            .eq('user_id', adminAuthUid)
             .eq('branch_id', operatingBranchId)
             .maybeSingle();
 
@@ -241,7 +275,7 @@ const QRCodeSettings = () => {
         }
 
         // Broadcast settings change to all PublicMenu listeners
-        const settingsChannel = supabase.channel(`menu-settings-${profile.id}`);
+        const settingsChannel = supabase.channel(`menu-settings-${adminId}`);
         await settingsChannel.send({
             type: 'broadcast',
             event: 'menu-settings-updated',
@@ -249,11 +283,6 @@ const QRCodeSettings = () => {
                 menu_show_shop_name: menuShowShopName,
                 menu_show_address: menuShowAddress,
                 menu_show_phone: menuShowPhone,
-                menu_primary_color: menuPrimaryColor,
-                menu_secondary_color: menuSecondaryColor,
-                menu_background_color: menuBackgroundColor,
-                menu_text_color: menuTextColor,
-                menu_items_per_row: menuItemsPerRow,
             }
         });
         supabase.removeChannel(settingsChannel);
@@ -411,14 +440,7 @@ const QRCodeSettings = () => {
         }
     }, [slugStatus]);
 
-    // Auto-save appearance settings when changed (after initial load)
-    const isAppearanceLoadedRef = useRef(false);
-    useEffect(() => {
-        // Skip saves until initial data has been loaded from DB
-        if (!isAppearanceLoadedRef.current) return;
-        // Save when any appearance setting changes
-        saveSettings();
-    }, [menuPrimaryColor, menuSecondaryColor, menuBackgroundColor, menuTextColor, menuItemsPerRow]);
+
 
     // Copy link to clipboard
     const handleCopyLink = async () => {
