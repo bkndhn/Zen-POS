@@ -63,7 +63,7 @@ export const GSTSettings: React.FC = () => {
                     .from('profiles')
                     .select('user_id')
                     .eq('id', profile.admin_id)
-                    .single();
+                    .maybeSingle();
                 if (data?.user_id) {
                     setAdminAuthId(data.user_id);
                 }

@@ -78,6 +78,11 @@ const QRCodeSettings = () => {
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationError, setLocationError] = useState<string | null>(null);
 
+    // UPI Payment Details (for QR code posters)
+    const [upiId, setUpiId] = useState('');
+    const [upiName, setUpiName] = useState('');
+    const [qrPaymentEnabled, setQrPaymentEnabled] = useState(false);
+
     // Determine the admin ID to use for the menu URL
     const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
 
@@ -153,7 +158,7 @@ const QRCodeSettings = () => {
         if (adminAuthUid) {
             let { data } = await (supabase as any)
                 .from('shop_settings')
-                .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
+                .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude, upi_id, upi_name, qr_payment_enabled')
                 .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
@@ -162,7 +167,7 @@ const QRCodeSettings = () => {
             if (!data) {
                 const { data: fb } = await (supabase as any)
                     .from('shop_settings')
-                    .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude')
+                    .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude, upi_id, upi_name, qr_payment_enabled')
                     .eq('user_id', adminAuthUid)
                     .order('branch_id', { nullsFirst: false })
                     .limit(1)
@@ -181,6 +186,9 @@ const QRCodeSettings = () => {
                 if (data.menu_items_per_row) setMenuItemsPerRow(data.menu_items_per_row);
                 if (data.shop_latitude) setShopLatitude(data.shop_latitude);
                 if (data.shop_longitude) setShopLongitude(data.shop_longitude);
+                setUpiId(data.upi_id || '');
+                setUpiName(data.upi_name || '');
+                setQrPaymentEnabled(data.qr_payment_enabled || false);
             }
 
             // Slug source depends on branch:
@@ -595,6 +603,50 @@ const QRCodeSettings = () => {
             // 5. Draw QR code
             ctx.drawImage(img, containerX + 50, containerY + 50, qrSize, qrSize);
 
+            // 5.5 Draw UPI Payment Info if enabled
+            if (qrPaymentEnabled && upiId) {
+                const upiBoxY = 1420;
+                const upiBoxW = 680;
+                const upiBoxH = 100;
+                const upiBoxX = (cardWidth - upiBoxW) / 2;
+                const upiRadius = 20;
+
+                // Draw semi-transparent background box for UPI info
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.beginPath();
+                ctx.moveTo(upiBoxX + upiRadius, upiBoxY);
+                ctx.lineTo(upiBoxX + upiBoxW - upiRadius, upiBoxY);
+                ctx.quadraticCurveTo(upiBoxX + upiBoxW, upiBoxY, upiBoxX + upiBoxW, upiBoxY + upiRadius);
+                ctx.lineTo(upiBoxX + upiBoxW, upiBoxY + upiBoxH - upiRadius);
+                ctx.quadraticCurveTo(upiBoxX + upiBoxW, upiBoxY + upiBoxH, upiBoxX + upiBoxW - upiRadius, upiBoxY + upiBoxH);
+                ctx.lineTo(upiBoxX + upiRadius, upiBoxY + upiBoxH);
+                ctx.quadraticCurveTo(upiBoxX, upiBoxY + upiBoxH, upiBoxX, upiBoxY + upiBoxH - upiRadius);
+                ctx.lineTo(upiBoxX, upiBoxY + upiRadius);
+                ctx.quadraticCurveTo(upiBoxX, upiBoxY, upiBoxX + upiRadius, upiBoxY);
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw border around UPI box
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw Text
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                
+                // "⚡ UPI Payments Accepted"
+                ctx.font = 'bold 28px Arial, sans-serif';
+                ctx.fillText('⚡ UPI PAYMENTS ACCEPTED', cardWidth / 2, upiBoxY + 42);
+
+                // "Payee: <upiName> | UPI ID: <upiId>"
+                ctx.font = '22px Arial, sans-serif';
+                const upiDetailStr = upiName 
+                    ? `UPI ID: ${upiId} | Name: ${upiName}`
+                    : `UPI ID: ${upiId}`;
+                ctx.fillText(upiDetailStr, cardWidth / 2, upiBoxY + 76);
+            }
+
             // 6. Draw Table and Seat Number
             if (selectedTable) {
                 ctx.fillStyle = '#ffffff';
@@ -809,6 +861,50 @@ const QRCodeSettings = () => {
 
                     // QR Image
                     ctx.drawImage(img, containerX + 50, containerY + 50, qrSize, qrSize);
+
+                    // 5.5 Draw UPI Payment Info if enabled
+                    if (qrPaymentEnabled && upiId) {
+                        const upiBoxY = 1420;
+                        const upiBoxW = 680;
+                        const upiBoxH = 100;
+                        const upiBoxX = (cardWidth - upiBoxW) / 2;
+                        const upiRadius = 20;
+
+                        // Draw semi-transparent background box for UPI info
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                        ctx.beginPath();
+                        ctx.moveTo(upiBoxX + upiRadius, upiBoxY);
+                        ctx.lineTo(upiBoxX + upiBoxW - upiRadius, upiBoxY);
+                        ctx.quadraticCurveTo(upiBoxX + upiBoxW, upiBoxY, upiBoxX + upiBoxW, upiBoxY + upiRadius);
+                        ctx.lineTo(upiBoxX + upiBoxW, upiBoxY + upiBoxH - upiRadius);
+                        ctx.quadraticCurveTo(upiBoxX + upiBoxW, upiBoxY + upiBoxH, upiBoxX + upiBoxW - upiRadius, upiBoxY + upiBoxH);
+                        ctx.lineTo(upiBoxX + upiRadius, upiBoxY + upiBoxH);
+                        ctx.quadraticCurveTo(upiBoxX, upiBoxY + upiBoxH, upiBoxX, upiBoxY + upiBoxH - upiRadius);
+                        ctx.lineTo(upiBoxX, upiBoxY + upiRadius);
+                        ctx.quadraticCurveTo(upiBoxX, upiBoxY, upiBoxX + upiRadius, upiBoxY);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        // Draw border around UPI box
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+
+                        // Draw Text
+                        ctx.fillStyle = '#ffffff';
+                        ctx.textAlign = 'center';
+                        
+                        // "⚡ UPI Payments Accepted"
+                        ctx.font = 'bold 28px Arial, sans-serif';
+                        ctx.fillText('⚡ UPI PAYMENTS ACCEPTED', cardWidth / 2, upiBoxY + 42);
+
+                        // "Payee: <upiName> | UPI ID: <upiId>"
+                        ctx.font = '22px Arial, sans-serif';
+                        const upiDetailStr = upiName 
+                            ? `UPI ID: ${upiId} | Name: ${upiName}`
+                            : `UPI ID: ${upiId}`;
+                        ctx.fillText(upiDetailStr, cardWidth / 2, upiBoxY + 76);
+                    }
 
                     // Table Label
                     ctx.fillStyle = '#ffffff';

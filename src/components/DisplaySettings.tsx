@@ -61,7 +61,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
       if (error && (error as any).code !== 'PGRST116') throw error;
 
       setSettings(data ? {
-        items_per_row: data.items_per_row,
+        items_per_row: data.items_per_row ?? 3,
         category_order: data.category_order || []
       } : { items_per_row: 3, category_order: [] });
     } catch (error) {
@@ -302,7 +302,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
           <div>
             <Label htmlFor="items_per_row">Items per Row in Billing Page</Label>
             <Select
-              value={settings.items_per_row.toString()}
+              value={(settings.items_per_row ?? 3).toString()}
               onValueChange={(value) => setSettings(prev => ({
                 ...prev,
                 items_per_row: parseInt(value)
