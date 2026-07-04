@@ -6,12 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2 } from 'lucide-react';
+import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 
 import { UserPermissions } from '@/components/UserPermissions';
 import { SubUserBranchAssignments } from '@/components/SubUserBranchAssignments';
+import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import type { UserProfile, UserStatus, UserRole } from '@/types/user';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -44,6 +45,7 @@ const Users: React.FC = () => {
   const [savingBranchLimit, setSavingBranchLimit] = useState<string | null>(null);
   const [editingSubUserLimits, setEditingSubUserLimits] = useState<Record<string, string>>({});
   const [savingSubUserLimit, setSavingSubUserLimit] = useState<string | null>(null);
+  const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
 
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
@@ -720,6 +722,15 @@ const Users: React.FC = () => {
                           >
                             {user.status === 'active' ? 'Pause' : 'Activate'}
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPwdTarget({ id: user.id, label: user.name || user.email || 'user' })}
+                            className="text-xs flex-1 sm:flex-none"
+                            title="Reset password"
+                          >
+                            <KeyRound className="w-3.5 h-3.5 mr-1" /> Reset password
+                          </Button>
                           {user.status !== 'deleted' && (
                             <Button
                               size="sm"
@@ -740,6 +751,14 @@ const Users: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      {pwdTarget && (
+        <ResetPasswordDialog
+          open={!!pwdTarget}
+          onOpenChange={(v) => !v && setPwdTarget(null)}
+          targetProfileId={pwdTarget.id}
+          targetLabel={pwdTarget.label}
+        />
+      )}
     </div>
   );
 };
