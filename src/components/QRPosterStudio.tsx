@@ -32,6 +32,10 @@ export interface PosterConfig {
   qrStyle: 'squares' | 'rounded';
   logoDataUrl?: string;
   backgroundImage?: string;
+  upiId?: string;
+  upiName?: string;
+  contactNumber?: string;
+  showPaymentStrip?: boolean;
 }
 
 interface Template {
@@ -255,12 +259,14 @@ interface Props { menuUrl: string; shopName?: string; }
 const STORAGE_KEY = 'qr_poster_config_v1';
 
 export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
+  const { profile } = useAuth();
+  const { operatingBranchId } = useBranch();
   const previewRef = useRef<HTMLDivElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [config, setConfig] = useState<PosterConfig>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) return { showPaymentStrip: true, ...JSON.parse(saved) };
     } catch { /* noop */ }
     return {
       templateId: 'scan',
@@ -273,8 +279,46 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
       text: '#1c1917',
       fontFamily: FONT_OPTIONS[0].value,
       qrStyle: 'squares',
+      showPaymentStrip: true,
     };
   });
+
+  // Pull UPI + phone from branch-scoped shop settings so the poster can show a
+  // pay-here strip below the QR — useful if a diner's phone camera won't scan.
+  useEffect(() => {
+    const adminAuthUid = profile?.user_id;
+    if (!adminAuthUid) return;
+    (async () => {
+      const load = async (branchId: string | null) => {
+        let q: any = (supabase as any)
+          .from('shop_settings')
+          .select('upi_id, upi_name, contact_number')
+          .eq('user_id', adminAuthUid);
+        q = branchId ? q.eq('branch_id', branchId) : q.is('branch_id', null);
+        const { data } = await q.maybeSingle();
+        return data;
+      };
+      let data = operatingBranchId ? await load(operatingBranchId) : null;
+      if (!data) {
+        const { data: fb } = await (supabase as any)
+          .from('shop_settings')
+          .select('upi_id, upi_name, contact_number')
+          .eq('user_id', adminAuthUid)
+          .order('branch_id', { nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        data = fb;
+      }
+      if (data) {
+        setConfig(prev => ({
+          ...prev,
+          upiId: prev.upiId ?? (data as any).upi_id ?? undefined,
+          upiName: prev.upiName ?? (data as any).upi_name ?? undefined,
+          contactNumber: prev.contactNumber ?? (data as any).contact_number ?? undefined,
+        }));
+      }
+    })();
+  }, [profile?.user_id, operatingBranchId]);
 
   const template = useMemo(() => TEMPLATES.find(t => t.id === config.templateId) || TEMPLATES[0], [config.templateId]);
 
