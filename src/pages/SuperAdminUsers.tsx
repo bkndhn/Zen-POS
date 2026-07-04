@@ -233,11 +233,12 @@ const SuperAdminUsers: React.FC = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Logins</TableHead>
                   <TableHead>Last Login</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
-                {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No sub-users</TableCell></TableRow>}
+                {loading && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading…</TableCell></TableRow>}
+                {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No sub-users</TableCell></TableRow>}
                 {subUsers.map(r => (
                   <TableRow key={r.profile_id}>
                     <TableCell className="font-medium">{r.name}</TableCell>
@@ -246,6 +247,17 @@ const SuperAdminUsers: React.FC = () => {
                     <TableCell>{statusBadge(r.status)}</TableCell>
                     <TableCell>{r.login_count ?? 0}</TableCell>
                     <TableCell className="text-xs">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
+                        className="h-7 text-xs px-2"
+                        title="Reset password"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
