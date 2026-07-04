@@ -508,16 +508,67 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
           )}
         </div>
 
+        {/* Payment fallback strip — shows UPI id / phone for diners whose
+            phone camera can't scan the QR. Isolated per client/branch. */}
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs font-semibold">Show UPI / phone on poster</Label>
+              <p className="text-[11px] text-muted-foreground">Fallback if the diner's camera can't scan the QR.</p>
+            </div>
+            <Switch checked={!!config.showPaymentStrip} onCheckedChange={(v) => update('showPaymentStrip', v)} />
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[11px]">UPI ID</Label>
+              <Input value={config.upiId || ''} onChange={e => update('upiId', e.target.value)} placeholder="name@bank" className="h-8 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[11px]">UPI name</Label>
+              <Input value={config.upiName || ''} onChange={e => update('upiName', e.target.value)} placeholder="Payee name" className="h-8 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[11px]">Phone</Label>
+              <Input value={config.contactNumber || ''} onChange={e => update('contactNumber', e.target.value)} placeholder="+91 …" className="h-8 text-xs" />
+            </div>
+          </div>
+        </div>
+
         {/* Live preview */}
         <div className="bg-muted/40 rounded-lg p-4 flex justify-center overflow-auto">
           <div
             ref={previewRef}
-            style={{ width: 400, height: 566 /* A4-ish ratio */ }}
+            style={{ width: 400, height: 566, position: 'relative' /* A4-ish ratio */ }}
             className="shadow-xl rounded-lg overflow-hidden"
           >
             {template.render(config, qrDataUrl)}
+            {config.showPaymentStrip && (config.upiId || config.contactNumber) && (
+              <div
+                style={{
+                  position: 'absolute', left: 0, right: 0, bottom: 0,
+                  background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(4px)',
+                  borderTop: `2px solid ${config.primary}`,
+                  padding: '8px 12px', textAlign: 'center',
+                  fontFamily: config.fontFamily, color: '#111',
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                }}
+              >
+                <div style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: config.primary, fontWeight: 700 }}>
+                  Can't scan? Pay directly
+                </div>
+                {config.upiId && (
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>
+                    UPI: {config.upiId}{config.upiName ? ` · ${config.upiName}` : ''}
+                  </div>
+                )}
+                {config.contactNumber && (
+                  <div style={{ fontSize: 12 }}>📞 {config.contactNumber}</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
