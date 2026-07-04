@@ -67,7 +67,7 @@ const LandingPage: React.FC = () => {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <ShoppingCart className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">Hotel Zen POS</span>
+            <span className="font-bold text-lg">Zen POS</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handleTryDemo}>
@@ -189,7 +189,7 @@ const LandingPage: React.FC = () => {
       {/* Footer */}
       <footer className="py-8 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Hotel Zen POS. Made with ❤️ for Tamil Nadu restaurants.</p>
+          <p>© {new Date().getFullYear()} Zen POS. Made with ❤️ for Tamil Nadu restaurants.</p>
         </div>
       </footer>
     </div>
