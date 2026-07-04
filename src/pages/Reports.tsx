@@ -90,6 +90,7 @@ const Reports: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [itemReports, setItemReports] = useState<ItemReport[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [purchasePayments, setPurchasePayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [billFilter, setBillFilter] = useState('processed');
@@ -687,6 +688,7 @@ const Reports: React.FC = () => {
 
           let expensesData = [];
           let purchasesData = [];
+          let paymentsData: any[] = [];
           const itemReportMap = new Map();
 
           // Only fetch expenses, purchases and item reports for processed bills
@@ -731,6 +733,17 @@ const Reports: React.FC = () => {
             if (purchasesError) throw purchasesError;
             purchasesData = purchasesResult || [];
 
+            // Fetch purchase payments — client-isolated
+            let paymentsQ: any = supabase
+              .from('purchase_payments')
+              .select('*')
+              .eq('admin_id', adminId)
+              .gte('payment_date', start)
+              .lte('payment_date', end);
+            const { data: paymentsResult, error: paymentsError } = await paymentsQ;
+            if (paymentsError) throw paymentsError;
+            paymentsData = paymentsResult || [];
+
             // Generate item reports
             filteredBillsData.forEach((bill: any) => {
               bill.bill_items?.forEach(item => {
@@ -766,6 +779,7 @@ const Reports: React.FC = () => {
             bills: filteredBillsData,
             expenses: expensesData,
             purchases: purchasesData,
+            purchasePayments: paymentsData,
             itemReports: Array.from(itemReportMap.values())
           };
         },
@@ -795,6 +809,7 @@ const Reports: React.FC = () => {
       }));
       setExpenses(reportData.expenses);
       setPurchases(reportData.purchases || []);
+      setPurchasePayments(reportData.purchasePayments || []);
       setItemReports(reportData.itemReports);
 
     } catch (error) {
@@ -805,6 +820,7 @@ const Reports: React.FC = () => {
         console.log('⚠️ Online fetch failed, trying offline cache...');
         setExpenses([]);
         setPurchases([]);
+        setPurchasePayments([]);
         const cachedBills = await offlineManager.getCachedBills();
         if (cachedBills.length > 0) {
           const { start, end } = getDateFilter();
@@ -1206,9 +1222,28 @@ const Reports: React.FC = () => {
       }, 0)
     : purchases.reduce((sum, p) => sum + (Number(p.total_amount) || 0), 0);
 
+  const totalPurchasePayments = purchasePayments.reduce((sum, pay) => {
+    const purchase = purchases.find(p => p.id === pay.purchase_id);
+    const amt = Number(pay.amount) || 0;
+    if (!purchase) {
+      return sum + amt;
+    }
+    if (branchFilterId) {
+      const branchAmt = purchase.purchase_items?.reduce((lSum: number, l: any) => {
+        const dist = l.purchase_distributions?.find((d: any) => d.branch_id === branchFilterId);
+        return lSum + (dist ? dist.quantity * (l.rate || 0) : 0);
+      }, 0) || 0;
+      const purchaseTotal = Number(purchase.total_amount) || 1;
+      const proportion = branchAmt / purchaseTotal;
+      return sum + (amt * proportion);
+    }
+    return sum + amt;
+  }, 0);
+
   const grossProfit = totalSales - totalCOGS;
   const netProfit = grossProfit - totalExpenses;
-  const netCashFlow = totalSales - totalPurchases - totalExpenses;
+  const supplierOutstanding = Math.max(0, totalPurchases - totalPurchasePayments);
+  const netCashFlow = totalSales - totalPurchasePayments - totalExpenses;
   const profit = netProfit;
 
   const handleExportAllExcel = () => {
@@ -1250,6 +1285,8 @@ const Reports: React.FC = () => {
         totalExpenses,
         netProfit,
         totalPurchases,
+        totalPurchasePayments,
+        supplierOutstanding,
         netCashFlow
       };
 
@@ -1319,6 +1356,8 @@ const Reports: React.FC = () => {
         totalExpenses,
         netProfit,
         totalPurchases,
+        totalPurchasePayments,
+        supplierOutstanding,
         netCashFlow
       };
 
@@ -1911,6 +1950,14 @@ const Reports: React.FC = () => {
                         <span className="text-muted-foreground">Operating Expenses</span>
                         <span className="font-semibold text-rose-500">-₹{totalExpenses.toFixed(2)}</span>
                       </div>
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Stock Purchases (Invoiced)</span>
+                        <span className="font-semibold text-slate-600 dark:text-slate-400">₹{totalPurchases.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Supplier Outstanding Balance</span>
+                        <span className={`font-semibold ${supplierOutstanding > 0 ? 'text-amber-500' : 'text-slate-600'}`}>₹{supplierOutstanding.toFixed(2)}</span>
+                      </div>
                       <div className="flex justify-between items-center pt-2 text-sm font-black">
                         <span className="text-foreground">Net Profit (COGS-based)</span>
                         <span className={netProfit >= 0 ? 'text-emerald-500 font-black' : 'text-rose-500 font-black'}>
@@ -1937,11 +1984,15 @@ const Reports: React.FC = () => {
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-muted">
                         <span className="text-muted-foreground">Stock Purchases (Cash spent)</span>
-                        <span className="font-semibold text-rose-500">-₹{totalPurchases.toFixed(2)}</span>
+                        <span className="font-semibold text-rose-500">-₹{totalPurchasePayments.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-muted">
                         <span className="text-muted-foreground">Operating Expenses</span>
                         <span className="font-semibold text-rose-500">-₹{totalExpenses.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-muted">
+                        <span className="text-muted-foreground">Supplier Outstanding Balance</span>
+                        <span className={`font-semibold ${supplierOutstanding > 0 ? 'text-amber-500' : 'text-slate-600'}`}>₹{supplierOutstanding.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center pt-5 text-sm font-black">
                         <span className="text-foreground">Net Cash Flow</span>

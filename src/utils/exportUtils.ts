@@ -124,6 +124,8 @@ interface ProfitLossForExport {
   totalExpenses: number;
   netProfit: number;
   totalPurchases: number;
+  totalPurchasePayments?: number;
+  supplierOutstanding?: number;
   netCashFlow: number;
 }
 
@@ -209,7 +211,9 @@ export const exportAllReportsToExcel = (data: {
       { 'Metric': 'Gross Profit', 'Amount': data.profitLoss.grossProfit },
       { 'Metric': 'Operating Expenses', 'Amount': data.profitLoss.totalExpenses },
       { 'Metric': 'Net Profit (COGS-based)', 'Amount': data.profitLoss.netProfit },
-      { 'Metric': 'Stock Purchases', 'Amount': data.profitLoss.totalPurchases },
+      { 'Metric': 'Stock Purchases (Invoiced)', 'Amount': data.profitLoss.totalPurchases },
+      { 'Metric': 'Stock Purchases (Paid Cash)', 'Amount': data.profitLoss.totalPurchasePayments || 0 },
+      { 'Metric': 'Supplier Outstanding Balance', 'Amount': data.profitLoss.supplierOutstanding || 0 },
       { 'Metric': 'Net Cash Flow', 'Amount': data.profitLoss.netCashFlow },
     ];
     sections.push('Profit & Loss Statement\r\n' + rowsToCsv(plData));
@@ -297,7 +301,9 @@ ${data.profitLoss ? `
     <tr class="b"><td>Gross Profit</td><td class="r">₹${data.profitLoss.grossProfit.toFixed(0)}</td></tr>
     <tr><td>Operating Expenses</td><td class="r">₹${data.profitLoss.totalExpenses.toFixed(0)}</td></tr>
     <tr class="b"><td>Net Profit (COGS-based)</td><td class="r" style="color:${data.profitLoss.netProfit >= 0 ? 'green' : 'red'}">₹${data.profitLoss.netProfit.toFixed(0)}</td></tr>
-    <tr><td>Stock Purchases (Cash Outflow)</td><td class="r">₹${data.profitLoss.totalPurchases.toFixed(0)}</td></tr>
+    <tr><td>Stock Purchases (Invoiced)</td><td class="r">₹${data.profitLoss.totalPurchases.toFixed(0)}</td></tr>
+    <tr><td>Stock Purchases (Paid Cash)</td><td class="r">₹${(data.profitLoss.totalPurchasePayments || 0).toFixed(0)}</td></tr>
+    <tr><td>Supplier Outstanding Balance</td><td class="r" style="color:orange">₹${(data.profitLoss.supplierOutstanding || 0).toFixed(0)}</td></tr>
     <tr class="b"><td>Net Cash Flow</td><td class="r" style="color:${data.profitLoss.netCashFlow >= 0 ? 'green' : 'red'}">₹${data.profitLoss.netCashFlow.toFixed(0)}</td></tr>
   </table>
 ` : ''}
