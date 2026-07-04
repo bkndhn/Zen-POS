@@ -252,7 +252,7 @@ const Purchases: React.FC = () => {
 
     // Record initial payment if specified
     if (purchaseData && (purchaseData as any).id && paidAmount > 0) {
-      const { error: payError } = await supabase.from('purchase_payments').insert({
+      const { error: payError } = await (supabase as any).from("purchase_payments").insert({
         admin_id: adminId,
         purchase_id: (purchaseData as any).id,
         payment_date: purchaseDate,
@@ -327,7 +327,7 @@ const Purchases: React.FC = () => {
 
     setPaySaving(true);
     try {
-      const { error } = await supabase.from('purchase_payments').insert({
+      const { error } = await (supabase as any).from("purchase_payments").insert({
         admin_id: adminId,
         purchase_id: selectedPurchase.id,
         payment_date: payDate,
