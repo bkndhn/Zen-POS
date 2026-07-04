@@ -262,7 +262,7 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
       templateId: 'scan',
       title: shopName || 'Scan to Order',
       subtitle: 'View our menu on your phone',
-      footer: 'Powered by HotelZen POS',
+      footer: 'Powered by Zen POS',
       primary: '#f97316',
       accent: '#ea580c',
       background: '#fffbeb',
