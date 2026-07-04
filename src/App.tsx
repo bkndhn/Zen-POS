@@ -173,6 +173,7 @@ const StockReports = lazy(() => import("./pages/StockReports"));
 const StockTransfers = lazy(() => import("./pages/StockTransfers"));
 const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const StockLedger = lazy(() => import("./pages/StockLedger"));
+const StockAdjustment = lazy(() => import("./pages/StockAdjustment"));
 const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuTV })));
 
 const queryClient = new QueryClient({
@@ -306,6 +307,7 @@ const App = () => {
                   <Route path="/stock-transfers" element={<Layout><ProtectedRoute requiredPermission="stock"><StockTransfers /></ProtectedRoute></Layout>} />
                   <Route path="/purchase-returns" element={<Layout><ProtectedRoute requiredPermission="purchases"><PurchaseReturns /></ProtectedRoute></Layout>} />
                   <Route path="/stock-ledger" element={<Layout><ProtectedRoute requiredPermission="stock"><StockLedger /></ProtectedRoute></Layout>} />
+                  <Route path="/stock-adjustment" element={<Layout><ProtectedRoute requiredPermission="stock"><StockAdjustment /></ProtectedRoute></Layout>} />
                   <Route path="/super-admin/users" element={<Layout><SuperAdminUsers /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />

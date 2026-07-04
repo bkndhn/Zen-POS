@@ -2267,6 +2267,33 @@ export type Database = {
           name: string
         }[]
       }
+      get_public_menu_categories: {
+        Args: { p_admin_id: string; p_branch_id?: string }
+        Returns: {
+          branch_id: string
+          id: string
+          name: string
+        }[]
+      }
+      get_public_menu_items: {
+        Args: { p_admin_id: string; p_branch_id?: string }
+        Returns: {
+          base_value: number
+          branch_id: string
+          category: string
+          id: string
+          image_url: string
+          is_active: boolean
+          is_saleable: boolean
+          is_tax_inclusive: boolean
+          media_type: string
+          name: string
+          price: number
+          tax_rate_id: string
+          unit: string
+          video_url: string
+        }[]
+      }
       get_public_promo_banners: {
         Args: { p_admin_id: string; p_branch_id?: string }
         Returns: {

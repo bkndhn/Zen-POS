@@ -107,7 +107,7 @@ const Purchases: React.FC = () => {
         .select('id, supplier_id, total_amount')
         .eq('admin_id', adminId);
 
-      const { data: allPayments } = await supabase
+      const { data: allPayments } = await (supabase as any)
         .from('purchase_payments')
         .select('amount, purchase_id')
         .eq('admin_id', adminId);
@@ -252,7 +252,7 @@ const Purchases: React.FC = () => {
 
     // Record initial payment if specified
     if (purchaseData && (purchaseData as any).id && paidAmount > 0) {
-      const { error: payError } = await supabase.from('purchase_payments').insert({
+      const { error: payError } = await (supabase as any).from("purchase_payments").insert({
         admin_id: adminId,
         purchase_id: (purchaseData as any).id,
         payment_date: purchaseDate,
@@ -282,7 +282,7 @@ const Purchases: React.FC = () => {
           .from('purchase_items')
           .select('*, purchase_distributions(*)')
           .eq('purchase_id', purchase.id),
-        supabase
+        (supabase as any)
           .from('purchase_payments')
           .select('*')
           .eq('purchase_id', purchase.id)
@@ -327,7 +327,7 @@ const Purchases: React.FC = () => {
 
     setPaySaving(true);
     try {
-      const { error } = await supabase.from('purchase_payments').insert({
+      const { error } = await (supabase as any).from("purchase_payments").insert({
         admin_id: adminId,
         purchase_id: selectedPurchase.id,
         payment_date: payDate,
@@ -366,7 +366,7 @@ const Purchases: React.FC = () => {
 
       const pIds = supPurchases.map(p => p.id);
 
-      const { data: supPayments } = await supabase
+      const { data: supPayments } = await (supabase as any)
         .from('purchase_payments')
         .select('payment_date, amount, payment_mode, reference_no, notes, purchase_id')
         .eq('admin_id', adminId)

@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload } from 'lucide-react';
+import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 
 interface Row {
   profile_id: string;
@@ -42,6 +43,7 @@ const SuperAdminUsers: React.FC = () => {
   // Modal / Permissions State
   const [selectedAdmin, setSelectedAdmin] = useState<Row | null>(null);
   const [permsDialogOpen, setPermsDialogOpen] = useState(false);
+  const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
 
   // Backup & Restore State
   const [activeTab, setActiveTab] = useState('users');
@@ -401,18 +403,29 @@ const SuperAdminUsers: React.FC = () => {
                         <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedAdmin(r);
-                              setPermsDialogOpen(true);
-                            }}
-                            className="h-8 text-xs px-3 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-150 gap-1.5 rounded-xl font-semibold"
-                          >
-                            <Shield className="w-3.5 h-3.5" />
-                            Permissions
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPwdTarget({ id: r.profile_id, label: r.hotel_name || r.name || r.email || 'user' })}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Reset password"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedAdmin(r);
+                                setPermsDialogOpen(true);
+                              }}
+                              className="h-8 text-xs px-3 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-150 gap-1.5 rounded-xl font-semibold"
+                            >
+                              <Shield className="w-3.5 h-3.5" />
+                              Permissions
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -439,11 +452,12 @@ const SuperAdminUsers: React.FC = () => {
                       <TableHead className="font-bold text-xs">Status</TableHead>
                       <TableHead className="font-bold text-xs">Logins</TableHead>
                       <TableHead className="font-bold text-xs">Last Login</TableHead>
+                      <TableHead className="text-right font-bold text-xs">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading && <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
-                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
+                    {loading && <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
+                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
                     {subUsers.map(r => (
                       <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
                         <TableCell className="font-semibold">{r.name}</TableCell>
@@ -452,6 +466,17 @@ const SuperAdminUsers: React.FC = () => {
                         <TableCell>{statusBadge(r.status)}</TableCell>
                         <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
+                            className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                            title="Reset password"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -649,6 +674,15 @@ const SuperAdminUsers: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {pwdTarget && (
+        <ResetPasswordDialog
+          open={!!pwdTarget}
+          onOpenChange={(v) => !v && setPwdTarget(null)}
+          targetProfileId={pwdTarget.id}
+          targetLabel={pwdTarget.label}
+        />
+      )}
     </div>
   );
 };

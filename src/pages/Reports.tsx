@@ -734,7 +734,7 @@ const Reports: React.FC = () => {
             purchasesData = purchasesResult || [];
 
             // Fetch purchase payments — client-isolated
-            let paymentsQ: any = supabase
+            let paymentsQ: any = (supabase as any)
               .from('purchase_payments')
               .select('*')
               .eq('admin_id', adminId)

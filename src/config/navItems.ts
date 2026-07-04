@@ -18,6 +18,7 @@ import {
   ArrowRightLeft,
   Undo2,
   History,
+  Sliders,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserPermissions } from '@/contexts/PermissionsContext';
@@ -57,6 +58,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/stock-transfers',  icon: ArrowRightLeft,  label: 'Stock Transfers',  shortLabel: 'Transfers', page: 'stock',     bottomNav: true },
   { to: '/purchase-returns', icon: Undo2,           label: 'Purchase Returns', shortLabel: 'Returns', page: 'purchases',   bottomNav: true },
   { to: '/stock-ledger',     icon: History,         label: 'Audit Trail',      page: 'stock',         bottomNav: true },
+  { to: '/stock-adjustment', icon: Sliders,         label: 'Stock Adjustment', shortLabel: 'Adjust',  page: 'stock',       bottomNav: true },
   { to: '/stock-reports',    icon: BarChart3,       label: 'Stock Reports',    shortLabel: 'Stock Rpt', page: 'stock',     bottomNav: true },
   { to: '/expenses',         icon: Receipt,         label: 'Expenses',         page: 'expenses',      bottomNav: true },
   { to: '/reports',          icon: BarChart3,       label: 'Reports',          page: 'reports',       bottomNav: true },

@@ -295,17 +295,9 @@ const PublicMenu = () => {
 
         const fetchMenuData = async () => {
             try {
-                // Fetch items for this admin/branch (including video/media fields)
-                let itemsQuery: any = supabase
-                    .from('items')
-                    .select('id, name, price, image_url, video_url, media_type, category, unit, base_value, is_active, branch_id, tax_rate_id, is_tax_inclusive, is_saleable')
-                    .eq('admin_id', adminId)
-                    .eq('is_active', true);
-                if (branchId) itemsQuery = itemsQuery.eq('branch_id', branchId);
-                itemsQuery = itemsQuery.order('category').order('name');
-                const { data: itemsDataRaw, error: itemsError } = await itemsQuery;
-                
-                // Filter saleable items client-side (default true if column is missing)
+                // Fetch items via anon-safe RPC (only exposes menu columns; no purchase_rate/stock)
+                const { data: itemsDataRaw, error: itemsError } = await (supabase as any)
+                    .rpc('get_public_menu_items', { p_admin_id: adminId, p_branch_id: branchId ?? null });
                 const itemsData = (itemsDataRaw || []).filter((item: any) => item.is_saleable !== false);
 
                 // Fetch promotional banners via scoped RPC (branch-aware)
@@ -328,16 +320,10 @@ const PublicMenu = () => {
                     console.error('Settings error:', settingsError);
                 }
 
-                // Fetch categories (branch-scoped if available, else admin-wide)
-                let catQuery: any = supabase
-                    .from('item_categories')
-                    .select('id, name, branch_id')
-                    .eq('admin_id', adminId)
-                    .eq('is_deleted', false);
-                const { data: allCats, error: categoriesError } = await catQuery.order('name');
-                const categoriesData = branchId
-                    ? (allCats || []).filter((c: any) => c.branch_id === branchId)
-                    : (allCats || []);
+                // Fetch categories via anon-safe RPC
+                const { data: catsRaw, error: categoriesError } = await (supabase as any)
+                    .rpc('get_public_menu_categories', { p_admin_id: adminId, p_branch_id: branchId ?? null });
+                const categoriesData = catsRaw || [];
 
                 if (categoriesError) {
                     console.error('Categories error:', categoriesError);

@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   Download, Palette, FileImage, FileText, Save, Sparkles, Star,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 
 /* -------------------------------------------------------------------------- */
 /*  Template catalog                                                           */
@@ -28,6 +32,10 @@ export interface PosterConfig {
   qrStyle: 'squares' | 'rounded';
   logoDataUrl?: string;
   backgroundImage?: string;
+  upiId?: string;
+  upiName?: string;
+  contactNumber?: string;
+  showPaymentStrip?: boolean;
 }
 
 interface Template {
@@ -251,26 +259,66 @@ interface Props { menuUrl: string; shopName?: string; }
 const STORAGE_KEY = 'qr_poster_config_v1';
 
 export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
+  const { profile } = useAuth();
+  const { operatingBranchId } = useBranch();
   const previewRef = useRef<HTMLDivElement>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [config, setConfig] = useState<PosterConfig>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) return { showPaymentStrip: true, ...JSON.parse(saved) };
     } catch { /* noop */ }
     return {
       templateId: 'scan',
       title: shopName || 'Scan to Order',
       subtitle: 'View our menu on your phone',
-      footer: 'Powered by HotelZen POS',
+      footer: 'Powered by Zen POS',
       primary: '#f97316',
       accent: '#ea580c',
       background: '#fffbeb',
       text: '#1c1917',
       fontFamily: FONT_OPTIONS[0].value,
       qrStyle: 'squares',
+      showPaymentStrip: true,
     };
   });
+
+  // Pull UPI + phone from branch-scoped shop settings so the poster can show a
+  // pay-here strip below the QR — useful if a diner's phone camera won't scan.
+  useEffect(() => {
+    const adminAuthUid = profile?.user_id;
+    if (!adminAuthUid) return;
+    (async () => {
+      const load = async (branchId: string | null) => {
+        let q: any = (supabase as any)
+          .from('shop_settings')
+          .select('upi_id, upi_name, contact_number')
+          .eq('user_id', adminAuthUid);
+        q = branchId ? q.eq('branch_id', branchId) : q.is('branch_id', null);
+        const { data } = await q.maybeSingle();
+        return data;
+      };
+      let data = operatingBranchId ? await load(operatingBranchId) : null;
+      if (!data) {
+        const { data: fb } = await (supabase as any)
+          .from('shop_settings')
+          .select('upi_id, upi_name, contact_number')
+          .eq('user_id', adminAuthUid)
+          .order('branch_id', { nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        data = fb;
+      }
+      if (data) {
+        setConfig(prev => ({
+          ...prev,
+          upiId: prev.upiId ?? (data as any).upi_id ?? undefined,
+          upiName: prev.upiName ?? (data as any).upi_name ?? undefined,
+          contactNumber: prev.contactNumber ?? (data as any).contact_number ?? undefined,
+        }));
+      }
+    })();
+  }, [profile?.user_id, operatingBranchId]);
 
   const template = useMemo(() => TEMPLATES.find(t => t.id === config.templateId) || TEMPLATES[0], [config.templateId]);
 
@@ -311,19 +359,47 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
     reader.readAsDataURL(file);
   };
 
+  /**
+   * Capture the poster off-screen at a fixed 400×566 layout so mobile
+   * browsers can't stretch/shrink the render. We clone the preview node into
+   * a fixed-size hidden container attached to <body>, then remove it after.
+   */
+  const captureCanvas = async (scale = 3): Promise<HTMLCanvasElement> => {
+    const src = previewRef.current!;
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;left:-10000px;top:0;width:400px;height:566px;overflow:hidden;pointer-events:none;z-index:-1;';
+    const clone = src.cloneNode(true) as HTMLElement;
+    clone.style.width = '400px';
+    clone.style.height = '566px';
+    clone.style.transform = 'none';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+    try {
+      return await html2canvas(clone, {
+        scale,
+        backgroundColor: null,
+        width: 400,
+        height: 566,
+        windowWidth: 400,
+        windowHeight: 566,
+        useCORS: true,
+      });
+    } finally {
+      wrapper.remove();
+    }
+  };
+
   const download = async (format: 'png' | 'jpg' | 'svg' | 'pdf') => {
     if (!previewRef.current) return;
     try {
       if (format === 'svg') {
-        // Render an SVG that embeds the QR + basic title (simple, portable)
         const svg = buildSvg(config, qrDataUrl);
         const blob = new Blob([svg], { type: 'image/svg+xml' });
         triggerDownload(URL.createObjectURL(blob), `qr-poster-${config.templateId}.svg`);
         return;
       }
       if (format === 'pdf') {
-        // Simple print-based PDF path (no jspdf dep)
-        const canvas = await html2canvas(previewRef.current, { scale: 2, backgroundColor: null, width: 400, height: 566 });
+        const canvas = await captureCanvas(2);
         const dataUrl = canvas.toDataURL('image/png');
         const win = window.open('', '_blank');
         if (!win) return;
@@ -334,7 +410,7 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
         win.document.close();
         return;
       }
-      const canvas = await html2canvas(previewRef.current, { scale: 3, backgroundColor: null, width: 400, height: 566 });
+      const canvas = await captureCanvas(3);
       const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
       const url = canvas.toDataURL(mime, 0.95);
       triggerDownload(url, `qr-poster-${config.templateId}.${format}`);
@@ -432,16 +508,67 @@ export const QRPosterStudio: React.FC<Props> = ({ menuUrl, shopName }) => {
           )}
         </div>
 
+        {/* Payment fallback strip — shows UPI id / phone for diners whose
+            phone camera can't scan the QR. Isolated per client/branch. */}
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs font-semibold">Show UPI / phone on poster</Label>
+              <p className="text-[11px] text-muted-foreground">Fallback if the diner's camera can't scan the QR.</p>
+            </div>
+            <Switch checked={!!config.showPaymentStrip} onCheckedChange={(v) => update('showPaymentStrip', v)} />
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[11px]">UPI ID</Label>
+              <Input value={config.upiId || ''} onChange={e => update('upiId', e.target.value)} placeholder="name@bank" className="h-8 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[11px]">UPI name</Label>
+              <Input value={config.upiName || ''} onChange={e => update('upiName', e.target.value)} placeholder="Payee name" className="h-8 text-xs" />
+            </div>
+            <div>
+              <Label className="text-[11px]">Phone</Label>
+              <Input value={config.contactNumber || ''} onChange={e => update('contactNumber', e.target.value)} placeholder="+91 …" className="h-8 text-xs" />
+            </div>
+          </div>
+        </div>
+
         {/* Live preview */}
         <div className="bg-muted/40 rounded-lg p-4 flex justify-center overflow-auto">
           <div
             ref={previewRef}
-            style={{ width: 400, height: 566 /* A4-ish ratio */ }}
+            style={{ width: 400, height: 566, position: 'relative' /* A4-ish ratio */ }}
             className="shadow-xl rounded-lg overflow-hidden"
           >
             {template.render(config, qrDataUrl)}
+            {config.showPaymentStrip && (config.upiId || config.contactNumber) && (
+              <div
+                style={{
+                  position: 'absolute', left: 0, right: 0, bottom: 0,
+                  background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(4px)',
+                  borderTop: `2px solid ${config.primary}`,
+                  padding: '8px 12px', textAlign: 'center',
+                  fontFamily: config.fontFamily, color: '#111',
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                }}
+              >
+                <div style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: config.primary, fontWeight: 700 }}>
+                  Can't scan? Pay directly
+                </div>
+                {config.upiId && (
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>
+                    UPI: {config.upiId}{config.upiName ? ` · ${config.upiName}` : ''}
+                  </div>
+                )}
+                {config.contactNumber && (
+                  <div style={{ fontSize: 12 }}>📞 {config.contactNumber}</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
