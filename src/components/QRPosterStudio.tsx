@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   Download, Palette, FileImage, FileText, Save, Sparkles, Star,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 
 /* -------------------------------------------------------------------------- */
 /*  Template catalog                                                           */
