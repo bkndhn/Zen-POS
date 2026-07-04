@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Users as UsersIcon, Settings } from 'lucide-react';
+import { Shield, Users as UsersIcon, Settings, KeyRound } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 
 interface Row {
   profile_id: string;
@@ -41,6 +42,7 @@ const SuperAdminUsers: React.FC = () => {
   // Modal / Permissions State
   const [selectedAdmin, setSelectedAdmin] = useState<Row | null>(null);
   const [permsDialogOpen, setPermsDialogOpen] = useState(false);
+  const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -187,18 +189,29 @@ const SuperAdminUsers: React.FC = () => {
                     <TableCell className="text-xs">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedAdmin(r);
-                          setPermsDialogOpen(true);
-                        }}
-                        className="h-7 text-xs px-2 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-colors gap-1.5"
-                      >
-                        <Shield className="w-3.5 h-3.5" />
-                        Permissions
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPwdTarget({ id: r.profile_id, label: r.hotel_name || r.name || r.email || 'user' })}
+                          className="h-7 text-xs px-2"
+                          title="Reset password"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAdmin(r);
+                            setPermsDialogOpen(true);
+                          }}
+                          className="h-7 text-xs px-2 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-colors gap-1.5"
+                        >
+                          <Shield className="w-3.5 h-3.5" />
+                          Permissions
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
