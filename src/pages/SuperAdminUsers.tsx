@@ -154,7 +154,7 @@ const SuperAdminUsers: React.FC = () => {
       
       const databaseDump: Record<string, any[]> = {};
       for (const table of tablesToDump) {
-        const { data, error } = await supabase.from(table).select('*');
+        const { data, error } = await (supabase as any).from(table).select('*');
         if (error) console.error(`Error dumping table ${table}:`, error);
         databaseDump[table] = data || [];
       }
