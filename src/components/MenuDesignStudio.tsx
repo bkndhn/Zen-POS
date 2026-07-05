@@ -727,23 +727,24 @@ export const MenuDesignStudio = () => {
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select Font" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Inter"><span style={{fontFamily: 'Inter, sans-serif'}}>Inter (Default, Clean)</span></SelectItem>
-                                        <SelectItem value="'Playfair Display', serif"><span style={{fontFamily: "'Playfair Display', serif"}}>Playfair Display (Elegant, Fine Dining)</span></SelectItem>
-                                        <SelectItem value="'Outfit', sans-serif"><span style={{fontFamily: "'Outfit', sans-serif"}}>Outfit (Modern, Geometric)</span></SelectItem>
-                                        <SelectItem value="'Caveat', cursive"><span style={{fontFamily: "'Caveat', cursive"}}>Caveat (Playful, Cafe style)</span></SelectItem>
-                                        <SelectItem value="'Poppins', sans-serif"><span style={{fontFamily: "'Poppins', sans-serif"}}>Poppins (Sleek, Geometric)</span></SelectItem>
-                                        <SelectItem value="'Montserrat', sans-serif"><span style={{fontFamily: "'Montserrat', sans-serif"}}>Montserrat (Modern, Strong)</span></SelectItem>
-                                        <SelectItem value="'Cinzel', serif"><span style={{fontFamily: "'Cinzel', serif"}}>Cinzel (Luxury Classic)</span></SelectItem>
-                                        <SelectItem value="'Cormorant Garamond', serif"><span style={{fontFamily: "'Cormorant Garamond', serif"}}>Cormorant Garamond (Prestige Serifs)</span></SelectItem>
-                                        <SelectItem value="'Dancing Script', cursive"><span style={{fontFamily: "'Dancing Script', cursive"}}>Dancing Script (Handwritten)</span></SelectItem>
-                                        <SelectItem value="'Pacifico', cursive"><span style={{fontFamily: "'Pacifico', cursive"}}>Pacifico (Fun, Bold Retro)</span></SelectItem>
-                                        <SelectItem value="'Josefin Sans', sans-serif"><span style={{fontFamily: "'Josefin Sans', sans-serif"}}>Josefin Sans (Art Deco, Elegant)</span></SelectItem>
-                                        <SelectItem value="'Quicksand', sans-serif"><span style={{fontFamily: "'Quicksand', sans-serif"}}>Quicksand (Friendly, Soft)</span></SelectItem>
-                                        <SelectItem value="'Abril Fatface', serif"><span style={{fontFamily: "'Abril Fatface', serif"}}>Abril Fatface (Bold Headline)</span></SelectItem>
-                                        <SelectItem value="'Lobster', cursive"><span style={{fontFamily: "'Lobster', cursive"}}>Lobster (Vintage Script)</span></SelectItem>
+                                    <SelectContent className="max-h-80">
+                                        {Array.from(new Set(FONT_OPTIONS.map(f => f.group))).map(group => (
+                                            <div key={group}>
+                                                <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-bold sticky top-0 bg-popover">
+                                                    {group}
+                                                </div>
+                                                {FONT_OPTIONS.filter(f => f.group === group).map(f => (
+                                                    <SelectItem key={f.value} value={f.value}>
+                                                        <span style={{ fontFamily: f.value.includes(',') ? f.value : `${f.value}, sans-serif` }}>
+                                                            {f.label}
+                                                        </span>
+                                                    </SelectItem>
+                                                ))}
+                                            </div>
+                                        ))}
                                     </SelectContent>
                                 </Select>
+                                <p className="text-[10px] text-muted-foreground">{FONT_OPTIONS.length} fonts available — auto-loaded from Google Fonts in the customer menu.</p>
                             </div>
                         </div>
 
