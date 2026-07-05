@@ -1166,7 +1166,7 @@ const CRM: React.FC = () => {
                                       {item.name}
                                     </span>
                                     <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
-                                      {item.qty} portions
+                                      {item.qty} {item.unit}
                                     </span>
                                   </div>
                                 ))}
