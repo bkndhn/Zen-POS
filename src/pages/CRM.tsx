@@ -213,19 +213,21 @@ const CRM: React.FC = () => {
 
   // Helper to process customer preference analytics from their past bills
   const calculateCustomerAnalytics = (billsList: any[]) => {
-    const itemFrequencies: Record<string, { name: string; qty: number; count: number }> = {};
+    const itemFrequencies: Record<string, { name: string; qty: number; count: number; unit: string }> = {};
     let totalItemsCount = 0;
     
     billsList.forEach(bill => {
       (bill.bill_items || []).forEach((bi: any) => {
         const name = bi.items?.name || bi.name || 'Unknown Item';
         const qty = bi.quantity || 0;
+        const unit = getShortUnit(bi.items?.unit || bi.unit);
         if (!itemFrequencies[name]) {
-          itemFrequencies[name] = { name, qty: 0, count: 0 };
+          itemFrequencies[name] = { name, qty: 0, count: 0, unit };
         }
         itemFrequencies[name].qty += qty;
         itemFrequencies[name].count += 1;
-        totalItemsCount += qty;
+        // Only count "pc" items toward a raw items counter; weight/volume don't add to line count
+        totalItemsCount += 1;
       });
     });
 
