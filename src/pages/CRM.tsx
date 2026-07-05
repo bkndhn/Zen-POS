@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
+import { getShortUnit } from '@/utils/timeUtils';
 
 interface Customer {
   id: string;
@@ -212,19 +213,21 @@ const CRM: React.FC = () => {
 
   // Helper to process customer preference analytics from their past bills
   const calculateCustomerAnalytics = (billsList: any[]) => {
-    const itemFrequencies: Record<string, { name: string; qty: number; count: number }> = {};
+    const itemFrequencies: Record<string, { name: string; qty: number; count: number; unit: string }> = {};
     let totalItemsCount = 0;
     
     billsList.forEach(bill => {
       (bill.bill_items || []).forEach((bi: any) => {
         const name = bi.items?.name || bi.name || 'Unknown Item';
         const qty = bi.quantity || 0;
+        const unit = getShortUnit(bi.items?.unit || bi.unit);
         if (!itemFrequencies[name]) {
-          itemFrequencies[name] = { name, qty: 0, count: 0 };
+          itemFrequencies[name] = { name, qty: 0, count: 0, unit };
         }
         itemFrequencies[name].qty += qty;
         itemFrequencies[name].count += 1;
-        totalItemsCount += qty;
+        // Only count "pc" items toward a raw items counter; weight/volume don't add to line count
+        totalItemsCount += 1;
       });
     });
 
@@ -910,7 +913,7 @@ const CRM: React.FC = () => {
                 {historyBills.map((b: any) => {
                   const isExpanded = expandedBillId === b.id;
                   const billDate = new Date(b.created_at);
-                  const itemsCount = b.bill_items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0;
+                  const itemsCount = b.bill_items?.length || 0;
                   const subtotal = b.bill_items?.reduce((sum: number, item: any) => sum + (item.total || (item.quantity * item.price)), 0) || 0;
 
                   return (
@@ -997,11 +1000,12 @@ const CRM: React.FC = () => {
                               </div>
                               {b.bill_items?.map((item: any, idx: number) => {
                                 const base = item.items?.base_value || 1;
+                                const shortU = getShortUnit(item.items?.unit || item.unit);
                                 return (
                                   <div key={idx} className="flex justify-between gap-2">
                                     <span className="truncate flex-1">{item.items?.name || item.name || 'Item'}</span>
                                     <div className="flex gap-4 flex-shrink-0">
-                                      <span>x{item.quantity}</span>
+                                      <span>{item.quantity} {shortU}</span>
                                       <span className="w-12 text-right">₹{(item.total || (item.quantity * item.price)).toFixed(0)}</span>
                                     </div>
                                   </div>
@@ -1162,7 +1166,7 @@ const CRM: React.FC = () => {
                                       {item.name}
                                     </span>
                                     <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
-                                      {item.qty} portions
+                                      {item.qty} {item.unit}
                                     </span>
                                   </div>
                                 ))}
@@ -1185,7 +1189,7 @@ const CRM: React.FC = () => {
                                       {item.name}
                                     </span>
                                     <span className="font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full">
-                                      {item.qty} portions
+                                      {item.qty} {item.unit}
                                     </span>
                                   </div>
                                 ))}
@@ -1208,7 +1212,7 @@ const CRM: React.FC = () => {
                                       {item.name}
                                     </span>
                                     <span className="font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full">
-                                      {item.qty} portion{item.qty > 1 ? 's' : ''}
+                                      {item.qty} {item.unit}
                                     </span>
                                   </div>
                                 ))}

@@ -154,7 +154,7 @@ const SuperAdminUsers: React.FC = () => {
       
       const databaseDump: Record<string, any[]> = {};
       for (const table of tablesToDump) {
-        const { data, error } = await supabase.from(table).select('*');
+        const { data, error } = await (supabase as any).from(table).select('*');
         if (error) console.error(`Error dumping table ${table}:`, error);
         databaseDump[table] = data || [];
       }
@@ -213,7 +213,7 @@ const SuperAdminUsers: React.FC = () => {
           // Batch upsert in chunks of 100
           for (let i = 0; i < rows.length; i += 100) {
             const chunk = rows.slice(i, i + 100);
-            const { error } = await supabase.from(table).upsert(chunk);
+            const { error } = await (supabase as any).from(table).upsert(chunk);
             if (error) throw new Error(`Table ${table} restore failed: ${error.message}`);
           }
         }
