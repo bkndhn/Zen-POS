@@ -913,7 +913,7 @@ const CRM: React.FC = () => {
                 {historyBills.map((b: any) => {
                   const isExpanded = expandedBillId === b.id;
                   const billDate = new Date(b.created_at);
-                  const itemsCount = b.bill_items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0;
+                  const itemsCount = b.bill_items?.length || 0;
                   const subtotal = b.bill_items?.reduce((sum: number, item: any) => sum + (item.total || (item.quantity * item.price)), 0) || 0;
 
                   return (
