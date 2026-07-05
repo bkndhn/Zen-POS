@@ -1189,7 +1189,7 @@ const CRM: React.FC = () => {
                                       {item.name}
                                     </span>
                                     <span className="font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full">
-                                      {item.qty} portions
+                                      {item.qty} {item.unit}
                                     </span>
                                   </div>
                                 ))}
