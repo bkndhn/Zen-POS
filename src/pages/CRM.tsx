@@ -1000,11 +1000,12 @@ const CRM: React.FC = () => {
                               </div>
                               {b.bill_items?.map((item: any, idx: number) => {
                                 const base = item.items?.base_value || 1;
+                                const shortU = getShortUnit(item.items?.unit || item.unit);
                                 return (
                                   <div key={idx} className="flex justify-between gap-2">
                                     <span className="truncate flex-1">{item.items?.name || item.name || 'Item'}</span>
                                     <div className="flex gap-4 flex-shrink-0">
-                                      <span>x{item.quantity}</span>
+                                      <span>{item.quantity} {shortU}</span>
                                       <span className="w-12 text-right">₹{(item.total || (item.quantity * item.price)).toFixed(0)}</span>
                                     </div>
                                   </div>
