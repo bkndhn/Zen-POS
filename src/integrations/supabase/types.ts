@@ -131,6 +131,66 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_logs: {
+        Row: {
+          backup_time: string
+          created_at: string
+          details: string | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          status: string
+        }
+        Insert: {
+          backup_time?: string
+          created_at?: string
+          details?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          status: string
+        }
+        Update: {
+          backup_time?: string
+          created_at?: string
+          details?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      backup_settings: {
+        Row: {
+          backup_times: string[]
+          gdrive_credentials: Json | null
+          gdrive_folder_id: string | null
+          id: string
+          is_enabled: boolean
+          retention_days: number
+          updated_at: string
+        }
+        Insert: {
+          backup_times?: string[]
+          gdrive_credentials?: Json | null
+          gdrive_folder_id?: string | null
+          id?: string
+          is_enabled?: boolean
+          retention_days?: number
+          updated_at?: string
+        }
+        Update: {
+          backup_times?: string[]
+          gdrive_credentials?: Json | null
+          gdrive_folder_id?: string | null
+          id?: string
+          is_enabled?: boolean
+          retention_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bill_items: {
         Row: {
           bill_id: string
@@ -1120,6 +1180,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_payments: {
+        Row: {
+          admin_id: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_mode: string
+          purchase_id: string
+          reference_no: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode: string
+          purchase_id: string
+          reference_no?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode?: string
+          purchase_id?: string
+          reference_no?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_payments_purchase_id_fkey"
             columns: ["purchase_id"]
             isOneToOne: false
             referencedRelation: "purchases"
