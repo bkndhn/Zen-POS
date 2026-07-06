@@ -146,8 +146,8 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
     }
   };
 
-  const startEdit = (c: ItemCategory) => { setEditingCategory(c); setNewCategoryName(c.name); };
-  const cancelEdit = () => { setEditingCategory(null); setNewCategoryName(''); };
+  const startEdit = (c: ItemCategory) => { setEditingCategory(c); setNewCategoryName(c.name); setNewStation(c.print_station || 'kitchen'); };
+  const cancelEdit = () => { setEditingCategory(null); setNewCategoryName(''); setNewStation('kitchen'); };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
