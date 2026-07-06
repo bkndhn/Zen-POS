@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Settings, Edit, Trash2 } from 'lucide-react';
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 interface ItemCategory {
   id: string;
   name: string;
@@ -16,7 +18,10 @@ interface ItemCategory {
   created_at: string;
   updated_at: string;
   branch_id: string | null;
+  print_station: string | null;
 }
+
+const STATION_PRESETS = ['kitchen', 'bar', 'dessert'];
 
 interface ItemCategoryManagementProps {
   onCategoriesUpdated?: () => void;
@@ -28,6 +33,7 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<ItemCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newStation, setNewStation] = useState<string>('kitchen');
   const [editingCategory, setEditingCategory] = useState<ItemCategory | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -72,12 +78,13 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('item_categories')
-        .insert([{ name: newCategoryName.trim(), admin_id: adminId, branch_id: operatingBranchId }]);
+        .insert([{ name: newCategoryName.trim(), admin_id: adminId, branch_id: operatingBranchId, print_station: (newStation || 'kitchen').trim().toLowerCase() }]);
       if (error) throw error;
       toast({ title: 'Success', description: 'Item category added' });
       setNewCategoryName('');
+      setNewStation('kitchen');
       fetchCategories();
       onCategoriesUpdated?.();
     } catch (error: any) {
@@ -100,14 +107,15 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
     }
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('item_categories')
-        .update({ name: newCategoryName.trim(), updated_at: new Date().toISOString() })
+        .update({ name: newCategoryName.trim(), print_station: (newStation || 'kitchen').trim().toLowerCase(), updated_at: new Date().toISOString() })
         .eq('id', editingCategory.id);
       if (error) throw error;
       toast({ title: 'Success', description: 'Item category updated' });
       setEditingCategory(null);
       setNewCategoryName('');
+      setNewStation('kitchen');
       fetchCategories();
       onCategoriesUpdated?.();
     } catch (error: any) {
@@ -138,8 +146,8 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
     }
   };
 
-  const startEdit = (c: ItemCategory) => { setEditingCategory(c); setNewCategoryName(c.name); };
-  const cancelEdit = () => { setEditingCategory(null); setNewCategoryName(''); };
+  const startEdit = (c: ItemCategory) => { setEditingCategory(c); setNewCategoryName(c.name); setNewStation(c.print_station || 'kitchen'); };
+  const cancelEdit = () => { setEditingCategory(null); setNewCategoryName(''); setNewStation('kitchen'); };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -168,16 +176,35 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
                 <CardTitle className="text-lg">{editingCategory ? 'Edit Category' : 'Add New Category'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={editingCategory ? updateCategory : addCategory} className="flex gap-2">
-                  <Input
-                    className="flex-1"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Enter category name"
-                    required
-                  />
-                  <Button type="submit" disabled={loading}>{editingCategory ? 'Update' : 'Add'}</Button>
-                  {editingCategory && <Button type="button" variant="outline" onClick={cancelEdit}>Cancel</Button>}
+                <form onSubmit={editingCategory ? updateCategory : addCategory} className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      className="flex-1"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Enter category name"
+                      required
+                    />
+                    <Select value={STATION_PRESETS.includes(newStation) ? newStation : 'custom'} onValueChange={(v) => setNewStation(v === 'custom' ? '' : v)}>
+                      <SelectTrigger className="w-32"><SelectValue placeholder="Station" /></SelectTrigger>
+                      <SelectContent>
+                        {STATION_PRESETS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                        <SelectItem value="custom">Custom…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button type="submit" disabled={loading}>{editingCategory ? 'Update' : 'Add'}</Button>
+                    {editingCategory && <Button type="button" variant="outline" onClick={cancelEdit}>Cancel</Button>}
+                  </div>
+                  {!STATION_PRESETS.includes(newStation) && (
+                    <Input
+                      value={newStation}
+                      onChange={(e) => setNewStation(e.target.value)}
+                      placeholder="Custom station name (e.g. tandoor, chinese-wok)"
+                    />
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Print Station routes this category's items to a specific KOT/BOT ticket at billing.
+                  </p>
                 </form>
               </CardContent>
             </Card>
@@ -196,6 +223,9 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
                         <div className="flex-1">
                           <h4 className="font-medium">{c.name}</h4>
                           <p className="text-sm text-muted-foreground">
+                            <span className="inline-block px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] uppercase tracking-wide mr-2">
+                              {c.print_station || 'kitchen'}
+                            </span>
                             Created: {new Date(c.created_at).toLocaleDateString()}
                           </p>
                         </div>
