@@ -103,6 +103,33 @@ const StockAdjustment: React.FC = () => {
   const selectedItem = items.find(i => i.id === itemId);
   const itemNameMap = useMemo(() => new Map(items.map(i => [i.id, i.name])), [items]);
 
+  // Compute unit options for entry (kg ↔ g, L ↔ ml)
+  const itemShortUnit = getShortUnit(selectedItem?.unit || '');
+  const entryUnitOptions = useMemo<string[]>(() => {
+    if (!selectedItem) return [];
+    if (itemShortUnit === 'kg' || itemShortUnit === 'g') return ['kg', 'g'];
+    if (itemShortUnit === 'L' || itemShortUnit === 'ml') return ['L', 'ml'];
+    return [itemShortUnit];
+  }, [selectedItem, itemShortUnit]);
+
+  // Reset entry unit whenever the selected item changes
+  useEffect(() => {
+    if (selectedItem) setEntryUnit(itemShortUnit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
+
+  // Convert the number the user typed (in entryUnit) into the item's stored unit
+  const convertQty = (n: number): number => {
+    if (!selectedItem) return n;
+    if (entryUnit === itemShortUnit) return n;
+    if (entryUnit === 'g' && itemShortUnit === 'kg') return n / 1000;
+    if (entryUnit === 'kg' && itemShortUnit === 'g') return n * 1000;
+    if (entryUnit === 'ml' && itemShortUnit === 'L') return n / 1000;
+    if (entryUnit === 'L' && itemShortUnit === 'ml') return n * 1000;
+    return n;
+  };
+
+
   const submit = async () => {
     if (readOnly) {
       toast({ title: 'All Branches view is read-only', description: 'Select a specific branch to make adjustments.', variant: 'destructive' });
