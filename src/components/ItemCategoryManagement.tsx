@@ -107,14 +107,15 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
     }
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('item_categories')
-        .update({ name: newCategoryName.trim(), updated_at: new Date().toISOString() })
+        .update({ name: newCategoryName.trim(), print_station: (newStation || 'kitchen').trim().toLowerCase(), updated_at: new Date().toISOString() })
         .eq('id', editingCategory.id);
       if (error) throw error;
       toast({ title: 'Success', description: 'Item category updated' });
       setEditingCategory(null);
       setNewCategoryName('');
+      setNewStation('kitchen');
       fetchCategories();
       onCategoriesUpdated?.();
     } catch (error: any) {
