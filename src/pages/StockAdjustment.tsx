@@ -236,8 +236,27 @@ const StockAdjustment: React.FC = () => {
               </div>
 
               <div>
-                <Label className="text-xs">Quantity{selectedItem?.unit ? ` (${selectedItem.unit})` : ''}</Label>
-                <Input inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} placeholder="0" />
+                <Label className="text-xs">Quantity {selectedItem ? `(stored as ${itemShortUnit})` : ''}</Label>
+                <div className="flex gap-2">
+                  <Input className="flex-1" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} placeholder="0" />
+                  {entryUnitOptions.length > 1 ? (
+                    <Select value={entryUnit} onValueChange={setEntryUnit}>
+                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {entryUnitOptions.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center px-3 border rounded-md text-sm text-muted-foreground min-w-[64px] justify-center">
+                      {entryUnit || itemShortUnit}
+                    </div>
+                  )}
+                </div>
+                {selectedItem && entryUnit && entryUnit !== itemShortUnit && qty && Number(qty) > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    = {trim2(convertQty(Number(qty)))} {itemShortUnit} in inventory
+                  </p>
+                )}
               </div>
             </div>
 
@@ -249,7 +268,7 @@ const StockAdjustment: React.FC = () => {
             <div className="flex items-center justify-between pt-2">
               <div className="text-xs text-muted-foreground">
                 {selectedItem && !selectedItem.unlimited_stock && qty && Number(qty) > 0
-                  ? <>New on-hand will be <strong>{(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? Number(qty) : -Number(qty))).toFixed(2)}</strong></>
+                  ? <>New on-hand will be <strong>{trim2(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? convertQty(Number(qty)) : -convertQty(Number(qty))))} {itemShortUnit}</strong></>
                   : 'Select an item and enter a quantity.'}
               </div>
               <Button onClick={submit} disabled={saving || readOnly}>{saving ? 'Saving…' : 'Save adjustment'}</Button>
