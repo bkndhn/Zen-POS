@@ -125,32 +125,32 @@ export const getShortUnit = (unit?: string): string => {
   return unit.substring(0, 3).toLowerCase();
 };
 
+/** Round to 2 decimals, trim trailing zeros (1.20 -> "1.2", 1.00 -> "1", 0.125 -> "0.13"). */
+export const trim2 = (n: number): string => {
+  if (!Number.isFinite(n)) return '0';
+  const r = Math.round(n * 100) / 100;
+  if (Number.isInteger(r)) return String(r);
+  return r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+};
+
 /**
- * Format quantity with smart unit conversion
- * Converts 1000g+ to kg, 1000ml+ to L
- * @param quantity - The quantity value
- * @param unit - The unit string (short form like "g", "ml", "pc")
- * @returns Formatted string like "1.2kg" or "5pc"
+ * Format quantity with smart unit conversion (max 2 decimals).
+ * - g >= 1000  → kg
+ * - ml >= 1000 → L
+ * - kg < 1     → g  (whole number)
+ * - L  < 1     → ml (whole number)
  */
 export const formatQuantityWithUnit = (quantity: number, unit?: string): string => {
   const shortUnit = getShortUnit(unit);
+  const q = Number(quantity);
+  if (!Number.isFinite(q)) return `0 ${shortUnit}`;
 
-  // Convert grams to kg if >= 1000
-  if (shortUnit === 'g' && quantity >= 1000) {
-    return `${(quantity / 1000).toFixed(1)} kg`;
-  }
+  if (shortUnit === 'g' && q >= 1000) return `${trim2(q / 1000)} kg`;
+  if (shortUnit === 'kg' && q > 0 && q < 1) return `${Math.round(q * 1000)} g`;
+  if (shortUnit === 'ml' && q >= 1000) return `${trim2(q / 1000)} L`;
+  if (shortUnit === 'L' && q > 0 && q < 1) return `${Math.round(q * 1000)} ml`;
 
-  // Convert ml to L if >= 1000
-  if (shortUnit === 'ml' && quantity >= 1000) {
-    return `${(quantity / 1000).toFixed(1)} L`;
-  }
-
-  // For whole numbers, don't show decimal
-  if (Number.isInteger(quantity)) {
-    return `${quantity} ${shortUnit}`;
-  }
-
-  return `${quantity.toFixed(1)} ${shortUnit}`;
+  return `${trim2(q)} ${shortUnit}`;
 };
 
 /**

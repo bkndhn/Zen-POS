@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Sliders, Plus, Minus, Search, History } from 'lucide-react';
+import { getShortUnit, trim2 } from '@/utils/timeUtils';
 
 interface ItemRow {
   id: string;
@@ -58,6 +59,7 @@ const StockAdjustment: React.FC = () => {
   const [itemId, setItemId] = useState<string>('');
   const [direction, setDirection] = useState<'increase' | 'decrease'>('increase');
   const [qty, setQty] = useState<string>('');
+  const [entryUnit, setEntryUnit] = useState<string>(''); // unit user is typing in (may differ from item's stored unit)
   const [reason, setReason] = useState<string>('recount');
   const [notes, setNotes] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -101,6 +103,33 @@ const StockAdjustment: React.FC = () => {
   const selectedItem = items.find(i => i.id === itemId);
   const itemNameMap = useMemo(() => new Map(items.map(i => [i.id, i.name])), [items]);
 
+  // Compute unit options for entry (kg ↔ g, L ↔ ml)
+  const itemShortUnit = getShortUnit(selectedItem?.unit || '');
+  const entryUnitOptions = useMemo<string[]>(() => {
+    if (!selectedItem) return [];
+    if (itemShortUnit === 'kg' || itemShortUnit === 'g') return ['kg', 'g'];
+    if (itemShortUnit === 'L' || itemShortUnit === 'ml') return ['L', 'ml'];
+    return [itemShortUnit];
+  }, [selectedItem, itemShortUnit]);
+
+  // Reset entry unit whenever the selected item changes
+  useEffect(() => {
+    if (selectedItem) setEntryUnit(itemShortUnit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
+
+  // Convert the number the user typed (in entryUnit) into the item's stored unit
+  const convertQty = (n: number): number => {
+    if (!selectedItem) return n;
+    if (entryUnit === itemShortUnit) return n;
+    if (entryUnit === 'g' && itemShortUnit === 'kg') return n / 1000;
+    if (entryUnit === 'kg' && itemShortUnit === 'g') return n * 1000;
+    if (entryUnit === 'ml' && itemShortUnit === 'L') return n / 1000;
+    if (entryUnit === 'L' && itemShortUnit === 'ml') return n * 1000;
+    return n;
+  };
+
+
   const submit = async () => {
     if (readOnly) {
       toast({ title: 'All Branches view is read-only', description: 'Select a specific branch to make adjustments.', variant: 'destructive' });
@@ -115,7 +144,8 @@ const StockAdjustment: React.FC = () => {
     }
     setSaving(true);
     try {
-      const change = direction === 'increase' ? n : -n;
+      const inInvUnit = convertQty(n);
+      const change = direction === 'increase' ? inInvUnit : -inInvUnit;
       const { data, error } = await (supabase as any).rpc('apply_stock_adjustment', {
         p_item_id: selectedItem.id,
         p_branch_id: selectedItem.branch_id,
@@ -127,7 +157,7 @@ const StockAdjustment: React.FC = () => {
       const newStock = (data as any)?.new_stock;
       toast({
         title: 'Stock adjusted',
-        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${n} ${selectedItem.unit || ''} → on-hand ${newStock ?? ''}`,
+        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${trim2(n)} ${entryUnit} → on-hand ${newStock != null ? trim2(Number(newStock)) : ''} ${itemShortUnit}`,
       });
       setQty(''); setNotes('');
       fetchAll();
@@ -175,7 +205,7 @@ const StockAdjustment: React.FC = () => {
                   <SelectContent className="max-h-72">
                     {filteredItems.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${i.stock_quantity ?? 0}${i.unit ? ' ' + i.unit : ''}`}
+                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${trim2(Number(i.stock_quantity ?? 0))} ${getShortUnit(i.unit || '')}`}
                       </SelectItem>
                     ))}
                     {filteredItems.length === 0 && <div className="p-3 text-xs text-muted-foreground">No items</div>}
@@ -206,8 +236,27 @@ const StockAdjustment: React.FC = () => {
               </div>
 
               <div>
-                <Label className="text-xs">Quantity{selectedItem?.unit ? ` (${selectedItem.unit})` : ''}</Label>
-                <Input inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} placeholder="0" />
+                <Label className="text-xs">Quantity {selectedItem ? `(stored as ${itemShortUnit})` : ''}</Label>
+                <div className="flex gap-2">
+                  <Input className="flex-1" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} placeholder="0" />
+                  {entryUnitOptions.length > 1 ? (
+                    <Select value={entryUnit} onValueChange={setEntryUnit}>
+                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {entryUnitOptions.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center px-3 border rounded-md text-sm text-muted-foreground min-w-[64px] justify-center">
+                      {entryUnit || itemShortUnit}
+                    </div>
+                  )}
+                </div>
+                {selectedItem && entryUnit && entryUnit !== itemShortUnit && qty && Number(qty) > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    = {trim2(convertQty(Number(qty)))} {itemShortUnit} in inventory
+                  </p>
+                )}
               </div>
             </div>
 
@@ -219,7 +268,7 @@ const StockAdjustment: React.FC = () => {
             <div className="flex items-center justify-between pt-2">
               <div className="text-xs text-muted-foreground">
                 {selectedItem && !selectedItem.unlimited_stock && qty && Number(qty) > 0
-                  ? <>New on-hand will be <strong>{(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? Number(qty) : -Number(qty))).toFixed(2)}</strong></>
+                  ? <>New on-hand will be <strong>{trim2(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? convertQty(Number(qty)) : -convertQty(Number(qty))))} {itemShortUnit}</strong></>
                   : 'Select an item and enter a quantity.'}
               </div>
               <Button onClick={submit} disabled={saving || readOnly}>{saving ? 'Saving…' : 'Save adjustment'}</Button>
@@ -248,9 +297,15 @@ const StockAdjustment: React.FC = () => {
                     <TableCell className="text-xs whitespace-nowrap">{new Date(h.created_at).toLocaleString()}</TableCell>
                     <TableCell className="text-sm">{itemNameMap.get(h.item_id) || '—'}</TableCell>
                     <TableCell>
-                      <Badge variant={h.change_qty >= 0 ? 'default' : 'destructive'} className="text-[11px]">
-                        {h.change_qty >= 0 ? '+' : ''}{h.change_qty}
-                      </Badge>
+                      {(() => {
+                        const it = items.find(x => x.id === h.item_id);
+                        const u = getShortUnit(it?.unit || '');
+                        return (
+                          <Badge variant={h.change_qty >= 0 ? 'default' : 'destructive'} className="text-[11px]">
+                            {h.change_qty >= 0 ? '+' : ''}{trim2(h.change_qty)} {u}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs capitalize">{(h.reason || '').replace('_', ' ')}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[220px] truncate">{h.notes || '—'}</TableCell>
