@@ -78,12 +78,13 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('item_categories')
-        .insert([{ name: newCategoryName.trim(), admin_id: adminId, branch_id: operatingBranchId }]);
+        .insert([{ name: newCategoryName.trim(), admin_id: adminId, branch_id: operatingBranchId, print_station: (newStation || 'kitchen').trim().toLowerCase() }]);
       if (error) throw error;
       toast({ title: 'Success', description: 'Item category added' });
       setNewCategoryName('');
+      setNewStation('kitchen');
       fetchCategories();
       onCategoriesUpdated?.();
     } catch (error: any) {
