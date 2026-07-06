@@ -223,6 +223,9 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
                         <div className="flex-1">
                           <h4 className="font-medium">{c.name}</h4>
                           <p className="text-sm text-muted-foreground">
+                            <span className="inline-block px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] uppercase tracking-wide mr-2">
+                              {c.print_station || 'kitchen'}
+                            </span>
                             Created: {new Date(c.created_at).toLocaleDateString()}
                           </p>
                         </div>
