@@ -205,7 +205,7 @@ const StockAdjustment: React.FC = () => {
                   <SelectContent className="max-h-72">
                     {filteredItems.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${i.stock_quantity ?? 0}${i.unit ? ' ' + i.unit : ''}`}
+                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${trim2(Number(i.stock_quantity ?? 0))} ${getShortUnit(i.unit || '')}`}
                       </SelectItem>
                     ))}
                     {filteredItems.length === 0 && <div className="p-3 text-xs text-muted-foreground">No items</div>}
