@@ -297,9 +297,15 @@ const StockAdjustment: React.FC = () => {
                     <TableCell className="text-xs whitespace-nowrap">{new Date(h.created_at).toLocaleString()}</TableCell>
                     <TableCell className="text-sm">{itemNameMap.get(h.item_id) || '—'}</TableCell>
                     <TableCell>
-                      <Badge variant={h.change_qty >= 0 ? 'default' : 'destructive'} className="text-[11px]">
-                        {h.change_qty >= 0 ? '+' : ''}{h.change_qty}
-                      </Badge>
+                      {(() => {
+                        const it = items.find(x => x.id === h.item_id);
+                        const u = getShortUnit(it?.unit || '');
+                        return (
+                          <Badge variant={h.change_qty >= 0 ? 'default' : 'destructive'} className="text-[11px]">
+                            {h.change_qty >= 0 ? '+' : ''}{trim2(h.change_qty)} {u}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs capitalize">{(h.reason || '').replace('_', ' ')}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[220px] truncate">{h.notes || '—'}</TableCell>
