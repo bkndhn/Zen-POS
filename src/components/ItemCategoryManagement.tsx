@@ -33,6 +33,7 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<ItemCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newStation, setNewStation] = useState<string>('kitchen');
   const [editingCategory, setEditingCategory] = useState<ItemCategory | null>(null);
   const [loading, setLoading] = useState(false);
 
