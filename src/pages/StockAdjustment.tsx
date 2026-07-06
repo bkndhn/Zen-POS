@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Sliders, Plus, Minus, Search, History } from 'lucide-react';
+import { getShortUnit, trim2 } from '@/utils/timeUtils';
 
 interface ItemRow {
   id: string;
