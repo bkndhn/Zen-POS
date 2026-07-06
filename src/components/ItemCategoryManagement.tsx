@@ -176,16 +176,35 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
                 <CardTitle className="text-lg">{editingCategory ? 'Edit Category' : 'Add New Category'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={editingCategory ? updateCategory : addCategory} className="flex gap-2">
-                  <Input
-                    className="flex-1"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Enter category name"
-                    required
-                  />
-                  <Button type="submit" disabled={loading}>{editingCategory ? 'Update' : 'Add'}</Button>
-                  {editingCategory && <Button type="button" variant="outline" onClick={cancelEdit}>Cancel</Button>}
+                <form onSubmit={editingCategory ? updateCategory : addCategory} className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      className="flex-1"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Enter category name"
+                      required
+                    />
+                    <Select value={STATION_PRESETS.includes(newStation) ? newStation : 'custom'} onValueChange={(v) => setNewStation(v === 'custom' ? '' : v)}>
+                      <SelectTrigger className="w-32"><SelectValue placeholder="Station" /></SelectTrigger>
+                      <SelectContent>
+                        {STATION_PRESETS.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                        <SelectItem value="custom">Custom…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button type="submit" disabled={loading}>{editingCategory ? 'Update' : 'Add'}</Button>
+                    {editingCategory && <Button type="button" variant="outline" onClick={cancelEdit}>Cancel</Button>}
+                  </div>
+                  {!STATION_PRESETS.includes(newStation) && (
+                    <Input
+                      value={newStation}
+                      onChange={(e) => setNewStation(e.target.value)}
+                      placeholder="Custom station name (e.g. tandoor, chinese-wok)"
+                    />
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Print Station routes this category's items to a specific KOT/BOT ticket at billing.
+                  </p>
                 </form>
               </CardContent>
             </Card>
