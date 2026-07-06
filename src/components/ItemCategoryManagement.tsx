@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Settings, Edit, Trash2 } from 'lucide-react';
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 interface ItemCategory {
   id: string;
   name: string;
@@ -16,7 +18,10 @@ interface ItemCategory {
   created_at: string;
   updated_at: string;
   branch_id: string | null;
+  print_station: string | null;
 }
+
+const STATION_PRESETS = ['kitchen', 'bar', 'dessert'];
 
 interface ItemCategoryManagementProps {
   onCategoriesUpdated?: () => void;
