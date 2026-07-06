@@ -59,6 +59,7 @@ const StockAdjustment: React.FC = () => {
   const [itemId, setItemId] = useState<string>('');
   const [direction, setDirection] = useState<'increase' | 'decrease'>('increase');
   const [qty, setQty] = useState<string>('');
+  const [entryUnit, setEntryUnit] = useState<string>(''); // unit user is typing in (may differ from item's stored unit)
   const [reason, setReason] = useState<string>('recount');
   const [notes, setNotes] = useState<string>('');
   const [saving, setSaving] = useState(false);
