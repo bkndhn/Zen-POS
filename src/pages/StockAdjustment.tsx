@@ -144,7 +144,8 @@ const StockAdjustment: React.FC = () => {
     }
     setSaving(true);
     try {
-      const change = direction === 'increase' ? n : -n;
+      const inInvUnit = convertQty(n);
+      const change = direction === 'increase' ? inInvUnit : -inInvUnit;
       const { data, error } = await (supabase as any).rpc('apply_stock_adjustment', {
         p_item_id: selectedItem.id,
         p_branch_id: selectedItem.branch_id,
@@ -156,7 +157,7 @@ const StockAdjustment: React.FC = () => {
       const newStock = (data as any)?.new_stock;
       toast({
         title: 'Stock adjusted',
-        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${n} ${selectedItem.unit || ''} → on-hand ${newStock ?? ''}`,
+        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${trim2(n)} ${entryUnit} → on-hand ${newStock != null ? trim2(Number(newStock)) : ''} ${itemShortUnit}`,
       });
       setQty(''); setNotes('');
       fetchAll();
