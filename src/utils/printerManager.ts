@@ -591,6 +591,79 @@ class PrinterManager {
     public clearQueue(): void {
         this.printQueue = [];
     }
+
+    /**
+     * Print raw ESC/POS bytes. If `targetDeviceName` is provided, tries to
+     * route to that Bluetooth device (must be pre-permitted via getDevices()).
+     * Falls back to the currently connected printer when routing fails.
+     * Chunked writes match the main print() flow to keep timing consistent.
+     */
+    public async printRawBytes(bytesData: Uint8Array, targetDeviceName?: string): Promise<boolean> {
+        // Try routed BT print first
+        if (targetDeviceName) {
+            const nav = navigator as any;
+            if (nav.bluetooth && typeof nav.bluetooth.getDevices === 'function') {
+                try {
+                    const devices = await nav.bluetooth.getDevices();
+                    const target = devices?.find((d: any) => d.name === targetDeviceName);
+                    if (target && target.gatt) {
+                        const server = target.gatt.connected ? target.gatt : await target.gatt.connect();
+                        const services = await server.getPrimaryServices();
+                        for (const svc of services) {
+                            const chars = await svc.getCharacteristics();
+                            for (const c of chars) {
+                                if (c.properties.write || c.properties.writeWithoutResponse) {
+                                    const chunk = 512;
+                                    for (let i = 0; i < bytesData.length; i += chunk) {
+                                        const slice = bytesData.slice(i, Math.min(i + chunk, bytesData.length));
+                                        if (c.properties.writeWithoutResponse) {
+                                            await c.writeValueWithoutResponse(slice);
+                                        } else {
+                                            await c.writeValue(slice);
+                                        }
+                                        await new Promise(r => setTimeout(r, 20));
+                                    }
+                                    // Keep persistent connection; don't disconnect if it was the active one
+                                    if (target !== this.device) {
+                                        try { server.disconnect(); } catch { /* ignore */ }
+                                    }
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[printRawBytes] routed print failed, falling back:', err);
+                }
+            }
+        }
+
+        // Fallback: active printer
+        if (!this.isConnected()) {
+            const connected = this._printerType === 'usb' ? await this.connectUSB() : await this.connect();
+            if (!connected) return false;
+        }
+        try {
+            if (this._printerType === 'usb') {
+                return await this.usbTransport.write(bytesData);
+            } else if (this.characteristic) {
+                const chunk = 512;
+                for (let i = 0; i < bytesData.length; i += chunk) {
+                    const slice = bytesData.slice(i, Math.min(i + chunk, bytesData.length));
+                    if (this.characteristic.properties.writeWithoutResponse) {
+                        await this.characteristic.writeValueWithoutResponse(slice);
+                    } else {
+                        await this.characteristic.writeValue(slice);
+                    }
+                    await new Promise(r => setTimeout(r, 20));
+                }
+                return true;
+            }
+        } catch (err) {
+            console.error('[printRawBytes] fallback print failed:', err);
+        }
+        return false;
+    }
 }
 
 // Export singleton instance

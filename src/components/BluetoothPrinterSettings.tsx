@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { Printer, Bluetooth, AlertCircle, CheckCircle2, RefreshCw, FileText, Zap, Upload, Image as ImageIcon, X, WifiOff, Loader2, Usb } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
+import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS } from '@/utils/stationPrinters';
 
 
 // Local storage key for device persistence
@@ -532,6 +533,9 @@ export const BluetoothPrinterSettings: React.FC = () => {
                   </Button>
                 </div>
               )}
+
+              {/* Station → Printer Routing */}
+              <StationPrinterMap />
             </div>
           </DialogContent>
         </Dialog>
@@ -539,3 +543,94 @@ export const BluetoothPrinterSettings: React.FC = () => {
     </Card>
   );
 };
+
+// -------- Station Printer Mapping Panel --------
+const StationPrinterMap: React.FC = () => {
+  const [map, setMap] = useState<Record<string, string>>(getStationMap());
+  const [customStation, setCustomStation] = useState('');
+  const stations = Array.from(new Set([...DEFAULT_STATIONS, ...Object.keys(map)]));
+
+  const refresh = () => setMap(getStationMap());
+
+  const assign = async (station: string) => {
+    const nav = navigator as any;
+    if (!nav.bluetooth) {
+      toast({ title: 'Bluetooth not supported', variant: 'destructive' });
+      return;
+    }
+    try {
+      const device = await nav.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb',
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          '18f0',
+          'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+        ]
+      });
+      if (device?.name) {
+        assignStationPrinter(station, device.name);
+        refresh();
+        toast({ title: 'Printer assigned', description: `${station} → ${device.name}` });
+      }
+    } catch (err: any) {
+      if (err?.name !== 'NotFoundError') {
+        toast({ title: 'Assignment failed', description: err.message, variant: 'destructive' });
+      }
+    }
+  };
+
+  const clear = (station: string) => {
+    removeStationPrinter(station);
+    refresh();
+  };
+
+  const addCustom = () => {
+    const s = customStation.trim().toLowerCase();
+    if (!s) return;
+    assignStationPrinter(s, ''); // placeholder, user assigns next
+    setCustomStation('');
+    refresh();
+  };
+
+  return (
+    <div className="space-y-3">
+      <h4 className="text-xs font-semibold uppercase text-slate-400 px-1 tracking-wider">Print Station → Printer</h4>
+      <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+        {stations.map(station => (
+          <div key={station} className="p-3 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-medium capitalize">{station}</p>
+              <p className="text-[11px] text-slate-500 truncate">
+                {map[station] ? map[station] : 'No printer assigned — falls back to active printer'}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => assign(station)}>
+                {map[station] ? 'Change' : 'Assign'}
+              </Button>
+              {map[station] !== undefined && (
+                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-red-500" onClick={() => clear(station)}>
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={customStation}
+          onChange={(e) => setCustomStation(e.target.value)}
+          placeholder="Add custom station (e.g. tandoor)"
+          className="h-9 text-sm"
+        />
+        <Button size="sm" onClick={addCustom} disabled={!customStation.trim()}>Add</Button>
+      </div>
+      <p className="text-[11px] text-slate-500 px-1">
+        Assign each station to a specific Bluetooth printer. Categories tagged with that station will KOT-print to the mapped device.
+      </p>
+    </div>
+  );
+};
+
