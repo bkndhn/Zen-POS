@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { Printer, Bluetooth, AlertCircle, CheckCircle2, RefreshCw, FileText, Zap, Upload, Image as ImageIcon, X, WifiOff, Loader2, Usb } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
+import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS } from '@/utils/stationPrinters';
 
 
 // Local storage key for device persistence
