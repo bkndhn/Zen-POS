@@ -19,6 +19,7 @@ import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerat
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
+import { printKOTs } from '@/utils/kotGenerator';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { format } from 'date-fns';
 import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
