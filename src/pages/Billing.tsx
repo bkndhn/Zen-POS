@@ -2267,14 +2267,32 @@ const Billing = () => {
 
         // Background tasks (non-blocking after save)
         const postSaveTasks = async () => {
-          // 1. Try printing
+          // 1. Try printing (receipt + station KOTs in parallel batches)
           if (autoPrintEnabled) {
-            try {
-              await printReceipt(printData);
-            } catch (printErr) {
-              console.error('Print failed:', printErr);
+            // Build categoryName -> station map (memoized batch)
+            const catStationMap: Record<string, string> = {};
+            for (const c of itemCategories) {
+              catStationMap[c.name.toLowerCase()] = (c.print_station || 'kitchen').toLowerCase();
             }
+            const kotItems = validCart.map((it: any) => ({
+              name: it.name,
+              quantity: it.quantity,
+              unit: it.unit,
+              selling_unit: it.selling_unit,
+              category: it.category,
+            }));
+            // Fire receipt + KOTs together; KOTs are queued per station sequentially internally
+            const receiptPromise = printReceipt(printData).catch(err => console.error('Print failed:', err));
+            const kotPromise = printKOTs(kotItems, catStationMap, {
+              billNo: billNumber,
+              tableNo: selectedTableNumber || undefined,
+              orderType: paymentData.orderType,
+              printerWidth: (settingsToUse?.printerWidth || '58mm') as '58mm' | '80mm',
+              shopName: settingsToUse?.shopName,
+            }).catch(err => console.error('KOT print failed:', err));
+            await Promise.allSettled([receiptPromise, kotPromise]);
           }
+
 
           // 2. Auto-free table if one was selected
           if (selectedTableNumber && adminId) {
