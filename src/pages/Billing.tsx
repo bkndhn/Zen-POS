@@ -76,6 +76,7 @@ interface ItemCategory {
   id: string;
   name: string;
   is_deleted: boolean;
+  print_station?: string | null;
 }
 
 const CategoryScrollBar: React.FC<{
