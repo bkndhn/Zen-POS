@@ -633,9 +633,4 @@ const StationPrinterMap: React.FC = () => {
     </div>
   );
 };
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
-  );
-};
+
