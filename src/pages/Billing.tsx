@@ -602,7 +602,7 @@ const Billing = () => {
     printData: PrintData;
     validCart: CartItem[];
   } | null>(null);
-  const retryKOTRef = useRef<(() => Promise<void>) | null>(null);
+  const retryKOTRef = useRef<(() => Promise<unknown>) | null>(null);
 
   // Enable real-time updates
   useRealTimeUpdates();
