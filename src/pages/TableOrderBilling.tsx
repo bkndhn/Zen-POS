@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
-import { formatQuantityWithUnit, calculateSmartQtyCount, getTimeElapsed } from '@/utils/timeUtils';
+import { calculateSmartQtyCount, getTimeElapsed } from '@/utils/timeUtils';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';

@@ -23,7 +23,7 @@ import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { toast as sonnerToast } from 'sonner';
 import { format } from 'date-fns';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, formatStoredQuantity, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
@@ -1152,7 +1152,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add more ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          description: `Cannot add more ${item.name}. Available stock: ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1180,7 +1180,7 @@ const Billing = () => {
       const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+        description: `${item.name}: only ${formatStoredQuantity(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     // Clear search after adding to cart for user friendliness
@@ -1207,7 +1207,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1234,7 +1234,7 @@ const Billing = () => {
       const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+        description: `${item.name}: only ${formatStoredQuantity(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     setSearchQuery('');
@@ -1256,7 +1256,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add ₹${amount} worth of ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          description: `Cannot add ₹${amount} worth of ${item.name}. Available stock: ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1282,7 +1282,7 @@ const Billing = () => {
       const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+        description: `${item.name}: only ${formatStoredQuantity(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     setSearchQuery('');
@@ -1303,7 +1303,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(cartItem.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot increase quantity. Available stock: ${formatQuantityWithUnit(cartItem.stock_quantity, invUnit || cartItem.unit)}.`,
+          description: `Cannot increase quantity. Available stock: ${formatStoredQuantity(cartItem.stock_quantity, invUnit || cartItem.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1338,7 +1338,7 @@ const Billing = () => {
         if (targetInInvUnit > Number(cartItem.stock_quantity)) {
           toast({
             title: '🚫 Stock Limit Exceeded',
-            description: `Only ${formatQuantityWithUnit(cartItem.stock_quantity, invUnit || cartItem.unit)} available in stock.`,
+            description: `Only ${formatStoredQuantity(cartItem.stock_quantity, invUnit || cartItem.unit)} available in stock.`,
             variant: 'destructive',
           });
           return;
@@ -2599,7 +2599,7 @@ const Billing = () => {
                 {/* Low stock badge - shown at top left */}
                 {lowStock && (
                   <div className="absolute top-1 left-1 bg-orange-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    Low: {formatQuantityWithUnit(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
+                    Low: {formatStoredQuantity(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
                   </div>
                 )}
 
