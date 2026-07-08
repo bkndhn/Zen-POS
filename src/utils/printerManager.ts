@@ -122,6 +122,25 @@ class PrinterManager {
         return USBPrinterTransport.isSupported();
     }
 
+    public async getPermittedBluetoothDeviceNames(): Promise<string[]> {
+        const nav = navigator as any;
+        if (!nav.bluetooth || typeof nav.bluetooth.getDevices !== 'function') return [];
+        try {
+            const devices = await nav.bluetooth.getDevices();
+            return (devices || []).map((d: any) => d.name).filter(Boolean);
+        } catch (err) {
+            console.warn('Unable to read permitted Bluetooth devices:', err);
+            return [];
+        }
+    }
+
+    public async isMappedDeviceAvailable(deviceName: string): Promise<boolean> {
+        if (!deviceName) return false;
+        if (this.deviceName === deviceName && this.isConnected()) return true;
+        const names = await this.getPermittedBluetoothDeviceNames();
+        return names.includes(deviceName);
+    }
+
     // =============== BLUETOOTH CONNECTION ===============
 
     // Find previously paired/permitted Web Bluetooth device

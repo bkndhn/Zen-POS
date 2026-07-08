@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { Printer, Bluetooth, AlertCircle, CheckCircle2, RefreshCw, FileText, Zap, Upload, Image as ImageIcon, X, WifiOff, Loader2, Usb } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
 import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS } from '@/utils/stationPrinters';
+import { printerManager } from '@/utils/printerManager';
 
 
 // Local storage key for device persistence
@@ -548,9 +549,30 @@ export const BluetoothPrinterSettings: React.FC = () => {
 const StationPrinterMap: React.FC = () => {
   const [map, setMap] = useState<Record<string, string>>(getStationMap());
   const [customStation, setCustomStation] = useState('');
+  const [availableNames, setAvailableNames] = useState<string[]>([]);
+  const [checking, setChecking] = useState(false);
   const stations = Array.from(new Set([...DEFAULT_STATIONS, ...Object.keys(map)]));
 
-  const refresh = () => setMap(getStationMap());
+  const refreshAvailability = async () => {
+    setChecking(true);
+    try {
+      setAvailableNames(await printerManager.getPermittedBluetoothDeviceNames());
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const refresh = () => {
+    setMap(getStationMap());
+    refreshAvailability();
+  };
+
+  useEffect(() => {
+    refreshAvailability();
+  }, []);
+
+  const unmappedDefaultStations = DEFAULT_STATIONS.filter(station => !map[station]);
+  const unavailableMappedStations = stations.filter(station => map[station] && !availableNames.includes(map[station]));
 
   const assign = async (station: string) => {
     const nav = navigator as any;
@@ -596,11 +618,35 @@ const StationPrinterMap: React.FC = () => {
   return (
     <div className="space-y-3">
       <h4 className="text-xs font-semibold uppercase text-slate-400 px-1 tracking-wider">Print Station → Printer</h4>
+      {(unmappedDefaultStations.length > 0 || unavailableMappedStations.length > 0) && (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold">
+            <AlertCircle className="w-3.5 h-3.5" /> Station printer warnings
+          </div>
+          {unmappedDefaultStations.length > 0 && (
+            <p>Missing mapping: {unmappedDefaultStations.map(s => s[0].toUpperCase() + s.slice(1)).join(', ')}.</p>
+          )}
+          {unavailableMappedStations.length > 0 && (
+            <p>Not available now: {unavailableMappedStations.map(s => `${s} → ${map[s]}`).join(', ')}. Pair again or turn on the printer.</p>
+          )}
+        </div>
+      )}
       <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
         {stations.map(station => (
           <div key={station} className="p-3 flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium capitalize">{station}</p>
+              <p className="text-sm font-medium capitalize flex items-center gap-1.5">
+                {station}
+                {map[station] ? (
+                  availableNames.includes(map[station]) ? (
+                    <Badge className="text-[9px] px-1 py-0 bg-green-500/10 text-green-600 border border-green-500/20">available</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-600 border-amber-500/30">offline</Badge>
+                  )
+                ) : DEFAULT_STATIONS.includes(station) ? (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-600 border-amber-500/30">missing</Badge>
+                ) : null}
+              </p>
               <p className="text-[11px] text-slate-500 truncate">
                 {map[station] ? map[station] : 'No printer assigned — falls back to active printer'}
               </p>
@@ -627,6 +673,10 @@ const StationPrinterMap: React.FC = () => {
         />
         <Button size="sm" onClick={addCustom} disabled={!customStation.trim()}>Add</Button>
       </div>
+      <Button size="sm" variant="outline" onClick={refreshAvailability} disabled={checking} className="w-full h-8 text-xs">
+        {checking ? <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+        Check printer availability
+      </Button>
       <p className="text-[11px] text-slate-500 px-1">
         Assign each station to a specific Bluetooth printer. Categories tagged with that station will KOT-print to the mapped device.
       </p>

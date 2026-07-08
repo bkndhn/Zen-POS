@@ -43,5 +43,10 @@ export const getStationDeviceName = (station: StationName): string | null => {
   return map[station.toLowerCase()] || null;
 };
 
+export const getUnmappedDefaultStations = (): StationName[] => {
+  const map = getStationMap();
+  return DEFAULT_STATIONS.filter(station => !map[station]);
+};
+
 /** Ordered list of well-known stations for UI defaults. */
 export const DEFAULT_STATIONS: StationName[] = ['kitchen', 'bar', 'dessert'];
