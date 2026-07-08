@@ -14,7 +14,7 @@ import { Edit } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
-import { getShortUnit, validateAndNormalizeQuickChips } from '@/utils/timeUtils';
+import { formatStoredQuantity, getShortUnit, validateAndNormalizeQuickChips } from '@/utils/timeUtils';
 
 interface TaxRateOption {
   id: string;
@@ -650,15 +650,14 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                   <p className="text-[11px] text-muted-foreground mt-1 px-1">
                     Current Stock: <span className="font-semibold text-foreground">{
                       item.stock_quantity !== undefined && item.stock_quantity !== null
-                        ? `${item.stock_quantity} ${getShortUnit(formData.inventory_unit)}`
+                        ? formatStoredQuantity(item.stock_quantity, formData.inventory_unit)
                         : `0 ${getShortUnit(formData.inventory_unit)}`
                     }</span>
                     {stockUpdateMode === 'add' && formData.stock_quantity ? (
                       <span>
                         {' '}→ New Stock will be:{' '}
                         <span className="font-semibold text-primary">
-                          {(item.stock_quantity || 0) + (parseFloat(formData.stock_quantity) || 0)}{' '}
-                          {getShortUnit(formData.inventory_unit)}
+                          {formatStoredQuantity((item.stock_quantity || 0) + (parseFloat(formData.stock_quantity) || 0), formData.inventory_unit)}
                         </span>
                       </span>
                     ) : null}

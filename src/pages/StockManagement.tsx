@@ -13,7 +13,8 @@ import { Boxes, Sliders, Plus, Trash2, Edit2, AlertTriangle, ChefHat, Coins, Sca
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { convertToInventoryUnit, getShortUnit } from '@/utils/timeUtils';
+import { convertToInventoryUnit, formatStoredQuantity, getShortUnit, toStoredQuantity2, trim2 } from '@/utils/timeUtils';
+import { formatMoney } from '@/utils/formatters';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -182,6 +183,7 @@ const StockManagement: React.FC = () => {
   ), [ingredients, branchFilter, q]);
 
   const branchName = (id: string) => branches.find(b => b.id === id)?.name || '—';
+  const itemInventoryUnit = (item?: Pick<ItemRow, 'inventory_unit' | 'unit'> | null) => item?.inventory_unit || item?.unit || 'pc';
 
   const aiReorderSuggestions = useMemo(() => {
     const suggestions: any[] = [];
@@ -197,7 +199,7 @@ const StockManagement: React.FC = () => {
           current: ing.stock_quantity,
           min: ing.minimum_stock_alert,
           unit: ing.unit,
-          suggestedReorder: Math.round(suggestedQty),
+          suggestedReorder: Math.trunc(suggestedQty * 100) / 100,
           estimatedCost,
           branch_id: ing.branch_id,
           reason: 'Depletion high risk. Volume sales trend shows increased weekend footfall demand.'
@@ -218,13 +220,14 @@ const StockManagement: React.FC = () => {
           // Trackable stock
           if ((item.stock_quantity || 0) <= (item.minimum_stock_alert || 0)) {
             const suggestedQty = Math.max(10, ((item.minimum_stock_alert || 5) * 3.5) - (item.stock_quantity || 0));
+            const inventoryUnit = itemInventoryUnit(item);
             suggestions.push({
               type: 'item',
               name: item.name,
               current: item.stock_quantity || 0,
               min: item.minimum_stock_alert || 0,
-              unit: item.inventory_unit || item.unit || 'pcs',
-              suggestedReorder: Math.round(suggestedQty),
+              unit: inventoryUnit,
+              suggestedReorder: Math.trunc(suggestedQty * 100) / 100,
               estimatedCost: null,
               branch_id: item.branch_id,
               reason: 'Current level is below safe minimum. AI projects depletion in 2 days based on average recipe usage.'
@@ -234,20 +237,24 @@ const StockManagement: React.FC = () => {
           // Unlimited stock item — suggest preparation based on recent sales activity
           const salesQty = salesByItem.get(item.id) || 0;
           if (salesQty > 0) {
-            const salesPortions = salesQty / (item.base_value || 1);
-            const suggestedPortions = Math.max(10, Math.round(salesPortions * 1.5));
-            const portionText = `portion(s) (per ${item.base_value || 1}${getShortUnit(item.unit || '')})`;
+            const inventoryUnit = itemInventoryUnit(item);
+            const soldInventoryQty = convertToInventoryUnit(
+              salesQty,
+              item.selling_unit || item.unit || inventoryUnit,
+              inventoryUnit
+            );
+            const suggestedQty = Math.max(10, Math.trunc(soldInventoryQty * 1.5 * 100) / 100);
             suggestions.push({
               type: 'item',
               name: item.name,
               current: 0,
               min: 0,
               isUnlimited: true,
-              unit: portionText,
-              suggestedReorder: suggestedPortions,
+              unit: inventoryUnit,
+              suggestedReorder: suggestedQty,
               estimatedCost: null,
               branch_id: item.branch_id,
-              reason: `Item has unlimited stock. Based on last 7 days of activity, total sales are ${salesPortions.toFixed(1)} portions. Suggested preparation to meet demand: +${suggestedPortions} portions.`
+              reason: `Item has unlimited stock. Based on last 7 days of activity, estimated usage is ${formatStoredQuantity(soldInventoryQty, inventoryUnit)}. Suggested preparation: +${formatStoredQuantity(suggestedQty, inventoryUnit)}.`
             });
           }
         }
@@ -262,13 +269,13 @@ const StockManagement: React.FC = () => {
       if (suggestion.type === 'ingredient') {
         const matched = ingredients.find(ing => ing.name === suggestion.name && ing.branch_id === suggestion.branch_id);
         if (!matched) return;
-        const newQty = Number(matched.stock_quantity) + Number(suggestion.suggestedReorder);
+        const newQty = toStoredQuantity2(Number(matched.stock_quantity) + Number(suggestion.suggestedReorder));
         const { error } = await supabase
           .from('ingredients')
           .update({ stock_quantity: newQty })
           .eq('id', matched.id);
         if (error) throw error;
-        toast({ title: 'AI Reorder Dispatched', description: `Restocked ${suggestion.suggestedReorder} ${suggestion.unit} of ${suggestion.name}.` });
+        toast({ title: 'AI Reorder Dispatched', description: `Restocked ${formatStoredQuantity(suggestion.suggestedReorder, suggestion.unit)} of ${suggestion.name}.` });
       } else {
         const matched = items.find(it => it.name === suggestion.name && it.branch_id === suggestion.branch_id);
         if (!matched) return;
@@ -280,7 +287,7 @@ const StockManagement: React.FC = () => {
           p_notes: 'AI Automated Quick Restock Order'
         });
         if (error) throw error;
-        toast({ title: 'AI Reorder Dispatched', description: `Restocked ${suggestion.suggestedReorder} ${suggestion.unit} of ${suggestion.name}.` });
+        toast({ title: 'AI Reorder Dispatched', description: `Restocked ${formatStoredQuantity(suggestion.suggestedReorder, suggestion.unit)} of ${suggestion.name}.` });
       }
       load();
       window.dispatchEvent(new CustomEvent('items-updated'));
@@ -327,7 +334,7 @@ const StockManagement: React.FC = () => {
     if (!ingAdjTarget || ingAdjChange === 0) {
       return toast({ title: 'Enter valid quantity change', variant: 'destructive' });
     }
-    const newQty = Math.max(0, Number(ingAdjTarget.stock_quantity) + Number(ingAdjChange));
+    const newQty = toStoredQuantity2(Math.max(0, Number(ingAdjTarget.stock_quantity) + Number(ingAdjChange)));
     try {
       const { error } = await supabase
         .from('ingredients')
@@ -506,12 +513,17 @@ const StockManagement: React.FC = () => {
 
   // Overall item stock summaries across all branches
   const overallItemStock = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { name: string; qty: number; unit: string }>();
     items.forEach(i => {
       if (i.unlimited_stock) return;
-      map.set(i.name, (map.get(i.name) || 0) + (Number(i.stock_quantity) || 0));
+      const prev = map.get(i.name);
+      map.set(i.name, {
+        name: i.name,
+        qty: (prev?.qty || 0) + (Number(i.stock_quantity) || 0),
+        unit: prev?.unit || itemInventoryUnit(i),
+      });
     });
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [items]);
 
   return (
@@ -619,7 +631,7 @@ const StockManagement: React.FC = () => {
                             ) : (
                               <div className="flex items-center gap-2">
                                 <span className={`text-sm font-bold ${low ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                  {stock} {i.inventory_unit || i.unit || 'pcs'}
+                                  {formatStoredQuantity(stock, itemInventoryUnit(i))}
                                 </span>
                                 {low && (
                                   <Badge variant="destructive" className="bg-red-500/10 text-red-600 border border-red-500/25 px-1.5 py-0.5 text-[10px]">
@@ -630,7 +642,7 @@ const StockManagement: React.FC = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-xs font-mono text-muted-foreground">
-                            {i.unlimited_stock ? '—' : (i.minimum_stock_alert ?? 0)} {i.inventory_unit || i.unit || 'pcs'}
+                            {i.unlimited_stock ? '—' : formatStoredQuantity(Number(i.minimum_stock_alert ?? 0), itemInventoryUnit(i))}
                           </TableCell>
                           <TableCell className="text-right pr-4">
                             <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary transition-all duration-200" onClick={() => openAdj(i)}>
@@ -660,10 +672,10 @@ const StockManagement: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {overallItemStock.map(([name, qty]) => (
+                    {overallItemStock.map(({ name, qty, unit }) => (
                       <TableRow key={name} className="hover:bg-gray-50/30 dark:hover:bg-gray-900/5">
                         <TableCell className="font-medium">{name}</TableCell>
-                        <TableCell className="font-bold">{qty}</TableCell>
+                        <TableCell className="font-bold">{formatStoredQuantity(qty, unit)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -724,7 +736,7 @@ const StockManagement: React.FC = () => {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <span className={`text-sm font-bold ${low ? 'text-destructive' : 'text-[#1f2937] dark:text-[#f3f4f6]'}`}>
-                                {ing.stock_quantity} {ing.unit}
+                                {formatStoredQuantity(ing.stock_quantity, ing.unit)}
                               </span>
                               {low && (
                                 <Badge variant="destructive" className="bg-red-500/10 text-red-600 border border-red-500/25 px-1.5 py-0.5 text-[10px]">
@@ -734,10 +746,10 @@ const StockManagement: React.FC = () => {
                             </div>
                           </TableCell>
                           <TableCell className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                            ₹{Number(ing.cost_per_unit).toFixed(2)} / {ing.unit}
+                            ₹{formatMoney(ing.cost_per_unit)} / {getShortUnit(ing.unit)}
                           </TableCell>
                           <TableCell className="text-xs font-mono text-muted-foreground">
-                            {ing.minimum_stock_alert} {ing.unit}
+                            {formatStoredQuantity(ing.minimum_stock_alert, ing.unit)}
                           </TableCell>
                           <TableCell className="text-right pr-4 space-x-1">
                             <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary transition-all duration-200" onClick={() => openIngAdj(ing)}>
@@ -791,7 +803,7 @@ const StockManagement: React.FC = () => {
                                 {stats.ingredientsCount} Ingr.
                               </Badge>
                               <span className={`text-xs font-bold font-mono ${stats.percentage > 50 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                FC: {stats.percentage.toFixed(1)}%
+                                FC: {trim2(stats.percentage)}%
                               </span>
                             </>
                           ) : (
@@ -847,7 +859,7 @@ const StockManagement: React.FC = () => {
                                   <span className="text-xs text-muted-foreground block font-medium">Food Cost %</span>
                                   <div className="flex flex-col">
                                     <span className={`text-xl font-extrabold font-mono ${isHighCost ? 'text-destructive' : 'text-primary'}`}>
-                                      {stats.percentage.toFixed(1)}%
+                                      {trim2(stats.percentage)}%
                                     </span>
                                   </div>
                                 </div>
@@ -874,7 +886,7 @@ const StockManagement: React.FC = () => {
                                         return (
                                           <TableRow key={r.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-900/5">
                                             <TableCell className="font-medium text-sm py-2.5">{r.ingredient?.name || '—'}</TableCell>
-                                            <TableCell className="font-semibold text-sm py-2.5">{r.quantity} {r.ingredient?.unit || ''}</TableCell>
+                                            <TableCell className="font-semibold text-sm py-2.5">{formatStoredQuantity(Number(r.quantity), r.ingredient?.unit || '')}</TableCell>
                                             <TableCell className="font-mono text-sm py-2.5">₹{totalCost.toFixed(2)}</TableCell>
                                           </TableRow>
                                         );
@@ -905,7 +917,7 @@ const StockManagement: React.FC = () => {
                               <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 rounded-xl text-xs flex items-start gap-2 animate-pulse">
                                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                                 <div>
-                                  <span className="font-bold block">Critically High Food Cost Percentage ({stats.percentage.toFixed(1)}%)</span>
+                                  <span className="font-bold block">Critically High Food Cost Percentage ({trim2(stats.percentage)}%)</span>
                                   <span className="block mt-0.5">The ingredient costs represent more than 50% of the menu price. It is highly recommended to increase the menu item price or optimize ingredient quantities to ensure profitability.</span>
                                 </div>
                               </div>
@@ -979,11 +991,11 @@ const StockManagement: React.FC = () => {
                             {s.isUnlimited ? (
                               <span className="text-slate-500">Unlimited (∞)</span>
                             ) : (
-                              `${s.current} ${s.unit} (Min: ${s.min})`
+                              `${formatStoredQuantity(s.current, s.unit)} (Min: ${formatStoredQuantity(s.min, s.unit)})`
                             )}
                           </TableCell>
                           <TableCell className="text-xs text-emerald-600 font-black">
-                            + {s.suggestedReorder} {s.unit}
+                            + {formatStoredQuantity(s.suggestedReorder, s.unit)}
                           </TableCell>
                           <TableCell className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
                             {s.estimatedCost !== null ? `₹${Math.round(s.estimatedCost)}` : '—'}
@@ -1017,7 +1029,7 @@ const StockManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Adjust stock: {target?.name}</DialogTitle>
             <DialogDescription>
-              Branch: {target && branchName(target.branch_id)} · Current: {target?.stock_quantity ?? 0} {target?.inventory_unit || target?.unit || 'pcs'}
+              Branch: {target && branchName(target.branch_id)} · Current: {target ? formatStoredQuantity(Number(target.stock_quantity ?? 0), itemInventoryUnit(target)) : '0 pc'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1112,7 +1124,7 @@ const StockManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Adjust Stock: {ingAdjTarget?.name}</DialogTitle>
             <DialogDescription>
-              Branch: {ingAdjTarget && branchName(ingAdjTarget.branch_id)} · Current: {ingAdjTarget?.stock_quantity ?? 0} {ingAdjTarget?.unit || ''}
+              Branch: {ingAdjTarget && branchName(ingAdjTarget.branch_id)} · Current: {ingAdjTarget ? formatStoredQuantity(ingAdjTarget.stock_quantity, ingAdjTarget.unit) : '0 pc'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1223,7 +1235,7 @@ const StockManagement: React.FC = () => {
                           className="border-0 focus-visible:ring-0 p-0 text-center font-semibold h-full w-full bg-transparent"
                         />
                         <span className="text-xs text-muted-foreground font-medium pr-1">
-                          {selectedIngInfo?.unit || ''}
+                          {getShortUnit(selectedIngInfo?.unit || '')}
                         </span>
                       </div>
 
@@ -1270,7 +1282,7 @@ const StockManagement: React.FC = () => {
                     <Sparkles className="w-3.5 h-3.5 text-primary" /> Estimated Food Cost %
                   </span>
                   <span className={`text-base font-extrabold font-mono ${editingRecipeStats.percentage > 50 ? 'text-destructive' : 'text-primary'}`}>
-                    {editingRecipeStats.percentage.toFixed(1)}%
+                    {trim2(editingRecipeStats.percentage)}%
                   </span>
                 </div>
 

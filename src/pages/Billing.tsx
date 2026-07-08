@@ -19,10 +19,11 @@ import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerat
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
-import { printKOTs } from '@/utils/kotGenerator';
+import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
+import { toast as sonnerToast } from 'sonner';
 import { format } from 'date-fns';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit, formatStoredQuantity, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
@@ -601,6 +602,7 @@ const Billing = () => {
     printData: PrintData;
     validCart: CartItem[];
   } | null>(null);
+  const retryKOTRef = useRef<(() => Promise<unknown>) | null>(null);
 
   // Enable real-time updates
   useRealTimeUpdates();
@@ -1150,7 +1152,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add more ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          description: `Cannot add more ${item.name}. Available stock: ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1178,7 +1180,7 @@ const Billing = () => {
       const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+        description: `${item.name}: only ${formatStoredQuantity(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     // Clear search after adding to cart for user friendliness
@@ -1205,7 +1207,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          description: `Cannot add ${chipText} of ${item.name}. Available stock: ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1232,7 +1234,7 @@ const Billing = () => {
       const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+        description: `${item.name}: only ${formatStoredQuantity(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     setSearchQuery('');
@@ -1254,7 +1256,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(item.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot add ₹${amount} worth of ${item.name}. Available stock: ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)}.`,
+          description: `Cannot add ₹${amount} worth of ${item.name}. Available stock: ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1280,7 +1282,7 @@ const Billing = () => {
       const invUnit = (item as any).inventory_unit;
       toast({
         title: '⚠️ Low Stock',
-        description: `${item.name}: only ${formatQuantityWithUnit(item.stock_quantity!, invUnit || item.unit)} left`,
+        description: `${item.name}: only ${formatStoredQuantity(item.stock_quantity!, invUnit || item.unit)} left`,
       });
     }
     setSearchQuery('');
@@ -1301,7 +1303,7 @@ const Billing = () => {
       if (targetInInvUnit > Number(cartItem.stock_quantity)) {
         toast({
           title: '🚫 Stock Limit Exceeded',
-          description: `Cannot increase quantity. Available stock: ${formatQuantityWithUnit(cartItem.stock_quantity, invUnit || cartItem.unit)}.`,
+          description: `Cannot increase quantity. Available stock: ${formatStoredQuantity(cartItem.stock_quantity, invUnit || cartItem.unit)}.`,
           variant: 'destructive',
         });
         return;
@@ -1336,7 +1338,7 @@ const Billing = () => {
         if (targetInInvUnit > Number(cartItem.stock_quantity)) {
           toast({
             title: '🚫 Stock Limit Exceeded',
-            description: `Only ${formatQuantityWithUnit(cartItem.stock_quantity, invUnit || cartItem.unit)} available in stock.`,
+            description: `Only ${formatStoredQuantity(cartItem.stock_quantity, invUnit || cartItem.unit)} available in stock.`,
             variant: 'destructive',
           });
           return;
@@ -1735,6 +1737,72 @@ const Billing = () => {
     });
 
     return billData;
+  };
+
+  const printSplitKOTsWithFeedback = async (
+    validCart: CartItem[],
+    billNumber: string,
+    orderType: 'dine_in' | 'parcel' | undefined,
+    settingsToUse: typeof billSettings,
+    retryStations?: string[]
+  ) => {
+    const catStationMap: Record<string, string> = {};
+    for (const c of itemCategories) {
+      catStationMap[c.name.toLowerCase()] = (c.print_station || 'kitchen').toLowerCase();
+    }
+    const kotItems = validCart.map((it: any) => ({
+      name: it.name,
+      quantity: it.quantity,
+      unit: it.unit,
+      selling_unit: it.selling_unit,
+      category: it.category,
+    }));
+    const toastId = `kot-${billNumber}-${retryStations?.join('-') || 'all'}`;
+    sonnerToast.loading('Printing station KOT/BOT…', {
+      id: toastId,
+      description: retryStations?.length ? `Retrying ${retryStations.join(', ')}` : 'Preparing Kitchen/Bar/Dessert tickets',
+    });
+
+    const result = await printKOTs(kotItems, catStationMap, {
+      billNo: billNumber,
+      tableNo: selectedTableNumber || undefined,
+      orderType,
+      printerWidth: (settingsToUse?.printerWidth || '58mm') as '58mm' | '80mm',
+      shopName: settingsToUse?.shopName,
+    }, {
+      stationFilter: retryStations,
+      onProgress: (event) => {
+        const station = event.station.charAt(0).toUpperCase() + event.station.slice(1);
+        if (event.status === 'printing') {
+          sonnerToast.loading('Printing station KOT/BOT…', {
+            id: toastId,
+            description: `${event.index}/${event.total}: ${station}${event.deviceName ? ` → ${event.deviceName}` : ' → active printer'}`,
+          });
+        }
+      }
+    });
+
+    const failedStations = result.results.filter((r: KOTPrintStationResult) => !r.ok).map(r => r.station);
+    if (result.failed > 0) {
+      retryKOTRef.current = () => printSplitKOTsWithFeedback(validCart, billNumber, orderType, settingsToUse, failedStations);
+      sonnerToast.error(`KOT failed for ${result.failed} station${result.failed > 1 ? 's' : ''}`, {
+        id: toastId,
+        description: failedStations.join(', '),
+        action: {
+          label: 'Retry failed',
+          onClick: () => retryKOTRef.current?.(),
+        },
+        duration: 10000,
+      });
+    } else if (result.ok > 0) {
+      sonnerToast.success('Station KOT/BOT printed', {
+        id: toastId,
+        description: `${result.ok} station${result.ok > 1 ? 's' : ''} printed successfully`,
+      });
+    } else {
+      sonnerToast.dismiss(toastId);
+    }
+    return result;
   };
 
   // Handler for retry print button in error dialog
@@ -2269,27 +2337,10 @@ const Billing = () => {
         const postSaveTasks = async () => {
           // 1. Try printing (receipt + station KOTs in parallel batches)
           if (autoPrintEnabled) {
-            // Build categoryName -> station map (memoized batch)
-            const catStationMap: Record<string, string> = {};
-            for (const c of itemCategories) {
-              catStationMap[c.name.toLowerCase()] = (c.print_station || 'kitchen').toLowerCase();
-            }
-            const kotItems = validCart.map((it: any) => ({
-              name: it.name,
-              quantity: it.quantity,
-              unit: it.unit,
-              selling_unit: it.selling_unit,
-              category: it.category,
-            }));
             // Fire receipt + KOTs together; KOTs are queued per station sequentially internally
             const receiptPromise = printReceipt(printData).catch(err => console.error('Print failed:', err));
-            const kotPromise = printKOTs(kotItems, catStationMap, {
-              billNo: billNumber,
-              tableNo: selectedTableNumber || undefined,
-              orderType: paymentData.orderType,
-              printerWidth: (settingsToUse?.printerWidth || '58mm') as '58mm' | '80mm',
-              shopName: settingsToUse?.shopName,
-            }).catch(err => console.error('KOT print failed:', err));
+            const kotPromise = printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, settingsToUse)
+              .catch(err => console.error('KOT print failed:', err));
             await Promise.allSettled([receiptPromise, kotPromise]);
           }
 
@@ -2548,7 +2599,7 @@ const Billing = () => {
                 {/* Low stock badge - shown at top left */}
                 {lowStock && (
                   <div className="absolute top-1 left-1 bg-orange-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    Low: {formatQuantityWithUnit(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
+                    Low: {formatStoredQuantity(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
                   </div>
                 )}
 

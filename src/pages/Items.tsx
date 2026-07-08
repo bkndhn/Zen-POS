@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { EditItemDialog } from '@/components/EditItemDialog';
 import { ItemCategoryManagement } from '@/components/ItemCategoryManagement';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
-import { getShortUnit, formatQuantityWithUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatStoredQuantity } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { CopyMenuToBranchDialog } from '@/components/CopyMenuToBranchDialog';
@@ -32,6 +32,8 @@ interface Item {
   description?: string;
   purchase_rate?: number;
   unit?: string;
+  inventory_unit?: string;
+  selling_unit?: string;
   base_value?: number;
   stock_quantity?: number;
   minimum_stock_alert?: number;
@@ -503,7 +505,7 @@ const Items: React.FC = () => {
               )}
               {item.stock_quantity !== null && item.stock_quantity !== undefined && (
                 <span className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>
-                  Stk: {formatQuantityWithUnit(item.stock_quantity, (item as any).inventory_unit || item.unit)}
+                  Stk: {formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}
                   {isAllBranchesView && item.__branchCount && item.__branchCount > 1 && (
                     <span className="ml-1 text-primary">({item.__branchCount} branches)</span>
                   )}

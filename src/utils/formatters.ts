@@ -26,7 +26,8 @@ export const formatINR = (n: number | string | null | undefined): string =>
 export const formatQty = (n: number | string | null | undefined): string => {
   const v = Number(n);
   if (!Number.isFinite(v)) return '0';
-  const r = Math.round(v * 100) / 100;
+  const sign = v < 0 ? -1 : 1;
+  const r = sign * (Math.trunc(Math.abs(v) * 100) / 100);
   if (Number.isInteger(r)) return String(r);
   return r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 };

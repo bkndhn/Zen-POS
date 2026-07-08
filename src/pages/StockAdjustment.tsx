@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Sliders, Plus, Minus, Search, History } from 'lucide-react';
-import { getShortUnit, trim2 } from '@/utils/timeUtils';
+import { formatStoredQuantity, getShortUnit, trim2 } from '@/utils/timeUtils';
 
 interface ItemRow {
   id: string;
@@ -21,6 +21,8 @@ interface ItemRow {
   branch_id: string;
   stock_quantity: number | null;
   unit: string | null;
+  inventory_unit?: string | null;
+  selling_unit?: string | null;
   unlimited_stock: boolean | null;
 }
 
@@ -69,7 +71,7 @@ const StockAdjustment: React.FC = () => {
     setLoading(true);
     try {
       let itemsQ: any = supabase.from('items')
-        .select('id, name, category, branch_id, stock_quantity, unit, unlimited_stock')
+        .select('id, name, category, branch_id, stock_quantity, unit, inventory_unit, selling_unit, unlimited_stock')
         .eq('admin_id', adminId)
         .eq('is_active', true);
       if (branchFilterId) itemsQ = itemsQ.eq('branch_id', branchFilterId);
@@ -104,7 +106,8 @@ const StockAdjustment: React.FC = () => {
   const itemNameMap = useMemo(() => new Map(items.map(i => [i.id, i.name])), [items]);
 
   // Compute unit options for entry (kg ↔ g, L ↔ ml)
-  const itemShortUnit = getShortUnit(selectedItem?.unit || '');
+  const getInventoryUnit = (item?: ItemRow | null) => item?.inventory_unit || item?.unit || 'pc';
+  const itemShortUnit = getShortUnit(getInventoryUnit(selectedItem));
   const entryUnitOptions = useMemo<string[]>(() => {
     if (!selectedItem) return [];
     if (itemShortUnit === 'kg' || itemShortUnit === 'g') return ['kg', 'g'];
@@ -157,7 +160,7 @@ const StockAdjustment: React.FC = () => {
       const newStock = (data as any)?.new_stock;
       toast({
         title: 'Stock adjusted',
-        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${trim2(n)} ${entryUnit} → on-hand ${newStock != null ? trim2(Number(newStock)) : ''} ${itemShortUnit}`,
+        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${trim2(n)} ${entryUnit} → on-hand ${newStock != null ? formatStoredQuantity(Number(newStock), getInventoryUnit(selectedItem)) : ''}`,
       });
       setQty(''); setNotes('');
       fetchAll();
@@ -205,7 +208,7 @@ const StockAdjustment: React.FC = () => {
                   <SelectContent className="max-h-72">
                     {filteredItems.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${trim2(Number(i.stock_quantity ?? 0))} ${getShortUnit(i.unit || '')}`}
+                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${formatStoredQuantity(Number(i.stock_quantity ?? 0), getInventoryUnit(i))}`}
                       </SelectItem>
                     ))}
                     {filteredItems.length === 0 && <div className="p-3 text-xs text-muted-foreground">No items</div>}
@@ -268,7 +271,7 @@ const StockAdjustment: React.FC = () => {
             <div className="flex items-center justify-between pt-2">
               <div className="text-xs text-muted-foreground">
                 {selectedItem && !selectedItem.unlimited_stock && qty && Number(qty) > 0
-                  ? <>New on-hand will be <strong>{trim2(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? convertQty(Number(qty)) : -convertQty(Number(qty))))} {itemShortUnit}</strong></>
+                  ? <>New on-hand will be <strong>{formatStoredQuantity(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? convertQty(Number(qty)) : -convertQty(Number(qty))), getInventoryUnit(selectedItem))}</strong></>
                   : 'Select an item and enter a quantity.'}
               </div>
               <Button onClick={submit} disabled={saving || readOnly}>{saving ? 'Saving…' : 'Save adjustment'}</Button>
@@ -299,10 +302,10 @@ const StockAdjustment: React.FC = () => {
                     <TableCell>
                       {(() => {
                         const it = items.find(x => x.id === h.item_id);
-                        const u = getShortUnit(it?.unit || '');
+                        const u = getInventoryUnit(it);
                         return (
                           <Badge variant={h.change_qty >= 0 ? 'default' : 'destructive'} className="text-[11px]">
-                            {h.change_qty >= 0 ? '+' : ''}{trim2(h.change_qty)} {u}
+                            {h.change_qty >= 0 ? '+' : '-'}{formatStoredQuantity(Math.abs(h.change_qty), u)}
                           </Badge>
                         );
                       })()}

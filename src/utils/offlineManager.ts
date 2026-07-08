@@ -6,7 +6,7 @@
 
 import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { convertToInventoryUnit } from '@/utils/timeUtils';
+import { convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
 
 // Database configuration
 const DB_NAME = 'HotelPOS_OfflineDB';
@@ -748,7 +748,7 @@ class OfflineManager {
                     const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
                     await supabase
                         .from('items')
-                        .update({ stock_quantity: Math.max(0, currentItem.stock_quantity - deductionInInvUnit) })
+                        .update({ stock_quantity: toStoredQuantity2(Math.max(0, currentItem.stock_quantity - deductionInInvUnit)) })
                         .eq('id', item.item_id);
                 }
             } catch (err) {

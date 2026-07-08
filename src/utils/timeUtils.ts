@@ -67,13 +67,13 @@ export const getTimeElapsed = (date: Date | string): string => {
   const diffMins = Math.floor(diffMs / (1000 * 60));
 
   if (diffMins < 1) {
-    return 'Just now';
+    return '0 min';
   } else if (diffMins < 60) {
     return `${diffMins} min`;
   } else {
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`;
+    return mins > 0 ? `${hours}hr ${mins} min` : `${hours}hr`;
   }
 };
 
@@ -125,12 +125,20 @@ export const getShortUnit = (unit?: string): string => {
   return unit.substring(0, 3).toLowerCase();
 };
 
-/** Round to 2 decimals, trim trailing zeros (1.20 -> "1.2", 1.00 -> "1", 0.125 -> "0.13"). */
+/** Keep max 2 decimals for quantities, trim trailing zeros (40.199999 -> "40.19"). */
 export const trim2 = (n: number): string => {
   if (!Number.isFinite(n)) return '0';
-  const r = Math.round(n * 100) / 100;
+  const sign = n < 0 ? -1 : 1;
+  const r = sign * (Math.trunc(Math.abs(n) * 100) / 100);
   if (Number.isInteger(r)) return String(r);
   return r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+};
+
+/** Numeric 2-decimal quantity normalization for persisted stock values. */
+export const toStoredQuantity2 = (n: number): number => {
+  if (!Number.isFinite(Number(n))) return 0;
+  const sign = n < 0 ? -1 : 1;
+  return sign * (Math.trunc(Math.abs(Number(n)) * 100) / 100);
 };
 
 /**
@@ -151,6 +159,12 @@ export const formatQuantityWithUnit = (quantity: number, unit?: string): string 
   if (shortUnit === 'L' && q > 0 && q < 1) return `${Math.round(q * 1000)} ml`;
 
   return `${trim2(q)} ${shortUnit}`;
+};
+
+/** Format stored inventory exactly in its stored unit; no kg↔g or L↔ml auto-switch. */
+export const formatStoredQuantity = (quantity: number | string | null | undefined, unit?: string | null): string => {
+  const q = Number(quantity);
+  return `${trim2(Number.isFinite(q) ? q : 0)} ${getShortUnit(unit || '')}`;
 };
 
 /**

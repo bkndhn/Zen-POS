@@ -43,6 +43,31 @@ export interface KOTMeta {
   shopName?: string;
 }
 
+export interface KOTPrintStationResult {
+  station: StationName;
+  deviceName: string | null;
+  ok: boolean;
+  error?: string;
+}
+
+export interface KOTPrintResult {
+  ok: number;
+  failed: number;
+  results: KOTPrintStationResult[];
+}
+
+export interface KOTPrintOptions {
+  stationFilter?: StationName[];
+  onProgress?: (event: {
+    station: StationName;
+    deviceName: string | null;
+    status: 'printing' | 'success' | 'failed';
+    index: number;
+    total: number;
+    error?: string;
+  }) => void;
+}
+
 /** Group items by station using categoryStationMap (categoryName → station). */
 export const groupItemsByStation = (
   items: KOTItem[],
@@ -158,12 +183,16 @@ export const buildKOTBytes = (
 export const printKOTs = async (
   items: KOTItem[],
   categoryStationMap: Record<string, string>,
-  meta: KOTMeta
-): Promise<{ ok: number; failed: number }> => {
+  meta: KOTMeta,
+  options: KOTPrintOptions = {}
+): Promise<KOTPrintResult> => {
   const { printerManager } = await import('./printerManager');
   const groups = groupItemsByStation(items, categoryStationMap);
-  const stations = Object.keys(groups).filter(s => groups[s].length > 0);
-  if (stations.length === 0) return { ok: 0, failed: 0 };
+  const stationFilter = options.stationFilter?.map(s => s.toLowerCase());
+  const stations = Object.keys(groups).filter(s =>
+    groups[s].length > 0 && (!stationFilter || stationFilter.includes(s.toLowerCase()))
+  );
+  if (stations.length === 0) return { ok: 0, failed: 0, results: [] };
 
   // Build all tickets up-front (sync bytes) then dispatch
   const tickets = stations.map(station => ({
@@ -173,17 +202,31 @@ export const printKOTs = async (
   }));
 
   let ok = 0, failed = 0;
+  const results: KOTPrintStationResult[] = [];
   // Route sequentially to avoid Web Bluetooth concurrent-connection issues
-  for (const t of tickets) {
+  for (let i = 0; i < tickets.length; i++) {
+    const t = tickets[i];
     try {
+      options.onProgress?.({ station: t.station, deviceName: t.deviceName, status: 'printing', index: i + 1, total: tickets.length });
       const success = await (printerManager as any).printRawBytes(t.bytes, t.deviceName || undefined);
-      if (success) ok++; else failed++;
+      if (success) {
+        ok++;
+        results.push({ station: t.station, deviceName: t.deviceName, ok: true });
+        options.onProgress?.({ station: t.station, deviceName: t.deviceName, status: 'success', index: i + 1, total: tickets.length });
+      } else {
+        failed++;
+        results.push({ station: t.station, deviceName: t.deviceName, ok: false, error: 'Printer did not respond' });
+        options.onProgress?.({ station: t.station, deviceName: t.deviceName, status: 'failed', index: i + 1, total: tickets.length, error: 'Printer did not respond' });
+      }
     } catch (e) {
       console.error('KOT print failed for station', t.station, e);
+      const message = e instanceof Error ? e.message : 'Print failed';
       failed++;
+      results.push({ station: t.station, deviceName: t.deviceName, ok: false, error: message });
+      options.onProgress?.({ station: t.station, deviceName: t.deviceName, status: 'failed', index: i + 1, total: tickets.length, error: message });
     }
   }
-  return { ok, failed };
+  return { ok, failed, results };
 };
 
 export { DEFAULT_STATIONS };
