@@ -67,7 +67,7 @@ export const getTimeElapsed = (date: Date | string): string => {
   const diffMins = Math.floor(diffMs / (1000 * 60));
 
   if (diffMins < 1) {
-    return 'Just now';
+    return '0 min';
   } else if (diffMins < 60) {
     return `${diffMins} min`;
   } else {
