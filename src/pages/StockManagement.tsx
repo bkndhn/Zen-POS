@@ -1282,7 +1282,7 @@ const StockManagement: React.FC = () => {
                     <Sparkles className="w-3.5 h-3.5 text-primary" /> Estimated Food Cost %
                   </span>
                   <span className={`text-base font-extrabold font-mono ${editingRecipeStats.percentage > 50 ? 'text-destructive' : 'text-primary'}`}>
-                    {editingRecipeStats.percentage.toFixed(1)}%
+                    {trim2(editingRecipeStats.percentage)}%
                   </span>
                 </div>
 
