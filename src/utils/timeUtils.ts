@@ -154,6 +154,12 @@ export const formatQuantityWithUnit = (quantity: number, unit?: string): string 
   return `${trim2(q)} ${shortUnit}`;
 };
 
+/** Format stored inventory exactly in its stored unit; no kg↔g or L↔ml auto-switch. */
+export const formatStoredQuantity = (quantity: number | string | null | undefined, unit?: string | null): string => {
+  const q = Number(quantity);
+  return `${trim2(Number.isFinite(q) ? q : 0)} ${getShortUnit(unit || '')}`;
+};
+
 /**
  * Checks if a unit represents a weight or volume measurement.
  */

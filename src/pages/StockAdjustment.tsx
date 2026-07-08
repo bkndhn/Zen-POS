@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Sliders, Plus, Minus, Search, History } from 'lucide-react';
-import { formatQuantityWithUnit, getShortUnit, trim2 } from '@/utils/timeUtils';
+import { formatStoredQuantity, getShortUnit, trim2 } from '@/utils/timeUtils';
 
 interface ItemRow {
   id: string;
@@ -160,7 +160,7 @@ const StockAdjustment: React.FC = () => {
       const newStock = (data as any)?.new_stock;
       toast({
         title: 'Stock adjusted',
-        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${trim2(n)} ${entryUnit} → on-hand ${newStock != null ? formatQuantityWithUnit(Number(newStock), getInventoryUnit(selectedItem)) : ''}`,
+        description: `${selectedItem.name}: ${direction === 'increase' ? '+' : '−'}${trim2(n)} ${entryUnit} → on-hand ${newStock != null ? formatStoredQuantity(Number(newStock), getInventoryUnit(selectedItem)) : ''}`,
       });
       setQty(''); setNotes('');
       fetchAll();
@@ -208,7 +208,7 @@ const StockAdjustment: React.FC = () => {
                   <SelectContent className="max-h-72">
                     {filteredItems.map(i => (
                       <SelectItem key={i.id} value={i.id}>
-                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${formatQuantityWithUnit(Number(i.stock_quantity ?? 0), getInventoryUnit(i))}`}
+                        {i.name} {i.unlimited_stock ? '(∞)' : `· on-hand ${formatStoredQuantity(Number(i.stock_quantity ?? 0), getInventoryUnit(i))}`}
                       </SelectItem>
                     ))}
                     {filteredItems.length === 0 && <div className="p-3 text-xs text-muted-foreground">No items</div>}
@@ -271,7 +271,7 @@ const StockAdjustment: React.FC = () => {
             <div className="flex items-center justify-between pt-2">
               <div className="text-xs text-muted-foreground">
                 {selectedItem && !selectedItem.unlimited_stock && qty && Number(qty) > 0
-                  ? <>New on-hand will be <strong>{formatQuantityWithUnit(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? convertQty(Number(qty)) : -convertQty(Number(qty))), getInventoryUnit(selectedItem))}</strong></>
+                  ? <>New on-hand will be <strong>{formatStoredQuantity(Number(selectedItem.stock_quantity || 0) + (direction === 'increase' ? convertQty(Number(qty)) : -convertQty(Number(qty))), getInventoryUnit(selectedItem))}</strong></>
                   : 'Select an item and enter a quantity.'}
               </div>
               <Button onClick={submit} disabled={saving || readOnly}>{saving ? 'Saving…' : 'Save adjustment'}</Button>
@@ -305,7 +305,7 @@ const StockAdjustment: React.FC = () => {
                         const u = getInventoryUnit(it);
                         return (
                           <Badge variant={h.change_qty >= 0 ? 'default' : 'destructive'} className="text-[11px]">
-                            {h.change_qty >= 0 ? '+' : ''}{formatQuantityWithUnit(Math.abs(h.change_qty), u)}
+                            {h.change_qty >= 0 ? '+' : '-'}{formatStoredQuantity(Math.abs(h.change_qty), u)}
                           </Badge>
                         );
                       })()}
