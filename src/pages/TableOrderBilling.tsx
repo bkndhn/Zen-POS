@@ -1090,7 +1090,11 @@ const TableOrderBilling: React.FC = () => {
             if (autoPrintEnabled) {
                 try {
                     const { printReceipt } = await import('@/utils/bluetoothPrinter');
-                    const printed = await printReceipt(printData as any);
+                    const [receiptResult] = await Promise.allSettled([
+                        printReceipt(printData as any),
+                        printSplitKOTsWithFeedback(validItems, billNumber, printData.tableNo, paymentData.orderType),
+                    ]);
+                    const printed = receiptResult.status === 'fulfilled' && receiptResult.value;
                     if (!printed) {
                         printBrowserReceipt(printData as any);
                     }
