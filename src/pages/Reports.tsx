@@ -20,7 +20,7 @@ import { cachedFetch, CACHE_KEYS, invalidateRelatedData } from '@/utils/cacheUti
 import { printReceipt } from '@/utils/bluetoothPrinter';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { offlineManager } from '@/utils/offlineManager';
-import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount, convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
 import { formatBillMessage, shareViaWhatsApp, isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { shareBillImageViaWhatsApp, type BillImageData } from '@/utils/billImageGenerator';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
@@ -898,7 +898,7 @@ const Reports: React.FC = () => {
                 const totalRestoration = Number(part.quantity) * Number(item.quantity);
                 await supabase
                   .from('ingredients')
-                  .update({ stock_quantity: (Number(currentIng.stock_quantity) || 0) + totalRestoration })
+                  .update({ stock_quantity: toStoredQuantity2((Number(currentIng.stock_quantity) || 0) + totalRestoration) })
                   .eq('id', part.ingredient_id);
               }
             }
@@ -916,7 +916,7 @@ const Reports: React.FC = () => {
               const adjustmentInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
               await supabase
                 .from('items')
-                .update({ stock_quantity: (currentItem.stock_quantity || 0) + adjustmentInInvUnit })
+                .update({ stock_quantity: toStoredQuantity2((currentItem.stock_quantity || 0) + adjustmentInInvUnit) })
                 .eq('id', item.item_id);
             }
           }
@@ -988,7 +988,7 @@ const Reports: React.FC = () => {
 
               if (currentIng) {
                 const totalDeduction = Number(part.quantity) * Number(item.quantity);
-                const newStock = Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction);
+                const newStock = toStoredQuantity2(Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction));
                 await supabase
                   .from('ingredients')
                   .update({ stock_quantity: newStock })
@@ -1009,7 +1009,7 @@ const Reports: React.FC = () => {
               const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
               await supabase
                 .from('items')
-                .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit) })
+                .update({ stock_quantity: toStoredQuantity2(Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit)) })
                 .eq('id', item.item_id);
             }
           }
