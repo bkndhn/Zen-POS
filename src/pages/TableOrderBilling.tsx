@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
+import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
+import { toast as sonnerToast } from 'sonner';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -72,6 +74,9 @@ interface CartItem {
     tax_rate_id?: string | null;
     is_tax_inclusive?: boolean;
     hsn_code?: string | null;
+    category?: string | null;
+    selling_unit?: string | null;
+    inventory_unit?: string | null;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
@@ -101,13 +106,15 @@ const TableOrderBilling: React.FC = () => {
     const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
     const [billSettings, setBillSettings] = useState<any>(null);
     const [showOrderType, setShowOrderType] = useState(false);
+    const [itemCategories, setItemCategories] = useState<any[]>([]);
+    const retryKOTRef = useRef<(() => Promise<unknown>) | null>(null);
 
     const fetchItems = useCallback(async () => {
         if (!adminId) return;
         try {
             let q = supabase
                 .from('items')
-                .select('id, tax_rate_id, is_tax_inclusive, hsn_code, is_saleable')
+                .select('id, tax_rate_id, is_tax_inclusive, hsn_code, is_saleable, category, unit, selling_unit, inventory_unit')
                 .eq('admin_id', adminId)
                 .eq('is_active', true);
             if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
@@ -161,7 +168,10 @@ const TableOrderBilling: React.FC = () => {
                         base_value: item.base_value,
                         tax_rate_id: dbItem?.tax_rate_id || null,
                         is_tax_inclusive: dbItem?.is_tax_inclusive !== false,
-                        hsn_code: dbItem?.hsn_code || null
+                        hsn_code: dbItem?.hsn_code || null,
+                        category: dbItem?.category || null,
+                        selling_unit: dbItem?.selling_unit || item.unit || null,
+                        inventory_unit: dbItem?.inventory_unit || dbItem?.unit || item.unit || null,
                     };
                 }
             });
@@ -189,6 +199,23 @@ const TableOrderBilling: React.FC = () => {
             setPaymentTypes(data || []);
         } catch (error) {
             console.error('Error fetching payment types:', error);
+        }
+    }, [adminId, operatingBranchId]);
+
+    const fetchItemCategories = useCallback(async () => {
+        if (!adminId) return;
+        try {
+            let q: any = supabase
+                .from('item_categories')
+                .select('id, name, print_station, is_deleted')
+                .eq('admin_id', adminId)
+                .eq('is_deleted', false);
+            if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+            const { data, error } = await q.order('name');
+            if (error) throw error;
+            setItemCategories(data || []);
+        } catch (e) {
+            console.warn('Error fetching item categories:', e);
         }
     }, [adminId, operatingBranchId]);
 
@@ -444,6 +471,7 @@ const TableOrderBilling: React.FC = () => {
         fetchTableOrders();
         fetchConfiguredTables();
         fetchItems();
+        fetchItemCategories();
         fetchPaymentTypes();
         fetchAdditionalCharges();
         loadShopSettingsFromCache();
@@ -484,7 +512,7 @@ const TableOrderBilling: React.FC = () => {
             supabase.removeChannel(pgChannel);
             supabase.removeChannel(syncChannel);
         };
-    }, [fetchTableOrders, fetchItems, fetchPaymentTypes, fetchAdditionalCharges, loadShopSettingsFromCache, fetchShopSettings, adminId]);
+    }, [fetchTableOrders, fetchItems, fetchItemCategories, fetchPaymentTypes, fetchAdditionalCharges, loadShopSettingsFromCache, fetchShopSettings, adminId]);
 
     // Map payment mode string to database enum
     const mapPaymentMode = (method: string): string => {
@@ -575,6 +603,68 @@ const TableOrderBilling: React.FC = () => {
             console.error('WhatsApp share error:', err);
             toast({ title: "WhatsApp Error", description: "Failed to share via WhatsApp", variant: "destructive" });
         }
+    };
+
+    const printSplitKOTsWithFeedback = async (
+        validItems: CartItem[],
+        billNumber: string,
+        tableNumber: string,
+        orderType?: string,
+        retryStations?: string[]
+    ) => {
+        const catStationMap: Record<string, string> = {};
+        itemCategories.forEach(c => {
+            catStationMap[String(c.name || '').toLowerCase()] = String(c.print_station || 'kitchen').toLowerCase();
+        });
+        const toastId = `table-kot-${billNumber}-${retryStations?.join('-') || 'all'}`;
+        sonnerToast.loading('Printing station KOT/BOT…', {
+            id: toastId,
+            description: retryStations?.length ? `Retrying ${retryStations.join(', ')}` : 'Preparing Kitchen/Bar/Dessert tickets',
+        });
+
+        const result = await printKOTs(validItems.map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            selling_unit: item.selling_unit,
+            category: item.category,
+        })), catStationMap, {
+            billNo: billNumber,
+            tableNo: tableNumber,
+            orderType: orderType === 'parcel' ? 'parcel' : 'dine_in',
+            printerWidth: billSettings?.printerWidth || '58mm',
+            shopName: billSettings?.shopName,
+        }, {
+            stationFilter: retryStations,
+            onProgress: (event) => {
+                const station = event.station.charAt(0).toUpperCase() + event.station.slice(1);
+                if (event.status === 'printing') {
+                    sonnerToast.loading('Printing station KOT/BOT…', {
+                        id: toastId,
+                        description: `${event.index}/${event.total}: ${station}${event.deviceName ? ` → ${event.deviceName}` : ' → active printer'}`,
+                    });
+                }
+            },
+        });
+
+        const failedStations = result.results.filter((r: KOTPrintStationResult) => !r.ok).map(r => r.station);
+        if (result.failed > 0) {
+            retryKOTRef.current = () => printSplitKOTsWithFeedback(validItems, billNumber, tableNumber, orderType, failedStations);
+            sonnerToast.error(`KOT failed for ${result.failed} station${result.failed > 1 ? 's' : ''}`, {
+                id: toastId,
+                description: failedStations.join(', '),
+                action: { label: 'Retry failed', onClick: () => retryKOTRef.current?.() },
+                duration: 10000,
+            });
+        } else if (result.ok > 0) {
+            sonnerToast.success('Station KOT/BOT printed', {
+                id: toastId,
+                description: `${result.ok} station${result.ok > 1 ? 's' : ''} printed successfully`,
+            });
+        } else {
+            sonnerToast.dismiss(toastId);
+        }
+        return result;
     };
 
     // Handle payment completion from CompletePaymentDialog
