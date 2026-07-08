@@ -134,10 +134,35 @@ class PrinterManager {
         }
     }
 
+    public async getAvailableBluetoothDeviceNames(): Promise<string[]> {
+        const nav = navigator as any;
+        if (!nav.bluetooth || typeof nav.bluetooth.getDevices !== 'function') return [];
+        try {
+            const devices = await nav.bluetooth.getDevices();
+            const available: string[] = [];
+            for (const device of devices || []) {
+                if (!device?.name || !device.gatt) continue;
+                try {
+                    const server = device.gatt.connected ? device.gatt : await device.gatt.connect();
+                    available.push(device.name);
+                    if (device !== this.device && server?.connected) {
+                        try { server.disconnect(); } catch { /* ignore */ }
+                    }
+                } catch {
+                    // Device is paired/permitted but not reachable right now.
+                }
+            }
+            return available;
+        } catch (err) {
+            console.warn('Unable to check Bluetooth device availability:', err);
+            return [];
+        }
+    }
+
     public async isMappedDeviceAvailable(deviceName: string): Promise<boolean> {
         if (!deviceName) return false;
         if (this.deviceName === deviceName && this.isConnected()) return true;
-        const names = await this.getPermittedBluetoothDeviceNames();
+        const names = await this.getAvailableBluetoothDeviceNames();
         return names.includes(deviceName);
     }
 

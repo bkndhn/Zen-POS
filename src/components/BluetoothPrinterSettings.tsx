@@ -556,7 +556,7 @@ const StationPrinterMap: React.FC = () => {
   const refreshAvailability = async () => {
     setChecking(true);
     try {
-      setAvailableNames(await printerManager.getPermittedBluetoothDeviceNames());
+      setAvailableNames(await printerManager.getAvailableBluetoothDeviceNames());
     } finally {
       setChecking(false);
     }
