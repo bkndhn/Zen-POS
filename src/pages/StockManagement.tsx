@@ -13,7 +13,7 @@ import { Boxes, Sliders, Plus, Trash2, Edit2, AlertTriangle, ChefHat, Coins, Sca
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { convertToInventoryUnit, formatStoredQuantity, getShortUnit, trim2 } from '@/utils/timeUtils';
+import { convertToInventoryUnit, formatStoredQuantity, getShortUnit, toStoredQuantity2, trim2 } from '@/utils/timeUtils';
 import { formatMoney } from '@/utils/formatters';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -269,7 +269,7 @@ const StockManagement: React.FC = () => {
       if (suggestion.type === 'ingredient') {
         const matched = ingredients.find(ing => ing.name === suggestion.name && ing.branch_id === suggestion.branch_id);
         if (!matched) return;
-        const newQty = Number(matched.stock_quantity) + Number(suggestion.suggestedReorder);
+        const newQty = toStoredQuantity2(Number(matched.stock_quantity) + Number(suggestion.suggestedReorder));
         const { error } = await supabase
           .from('ingredients')
           .update({ stock_quantity: newQty })
@@ -334,7 +334,7 @@ const StockManagement: React.FC = () => {
     if (!ingAdjTarget || ingAdjChange === 0) {
       return toast({ title: 'Enter valid quantity change', variant: 'destructive' });
     }
-    const newQty = Math.max(0, Number(ingAdjTarget.stock_quantity) + Number(ingAdjChange));
+    const newQty = toStoredQuantity2(Math.max(0, Number(ingAdjTarget.stock_quantity) + Number(ingAdjChange)));
     try {
       const { error } = await supabase
         .from('ingredients')

@@ -134,6 +134,13 @@ export const trim2 = (n: number): string => {
   return r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 };
 
+/** Numeric 2-decimal quantity normalization for persisted stock values. */
+export const toStoredQuantity2 = (n: number): number => {
+  if (!Number.isFinite(Number(n))) return 0;
+  const sign = n < 0 ? -1 : 1;
+  return sign * (Math.trunc(Math.abs(Number(n)) * 100) / 100);
+};
+
 /**
  * Format quantity with smart unit conversion (max 2 decimals).
  * - g >= 1000  → kg

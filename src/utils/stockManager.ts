@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { convertToInventoryUnit } from '@/utils/timeUtils';
+import { convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
 
 export interface StockDeductionItem {
   id: string;
@@ -36,7 +36,7 @@ export const deductStockForItems = async (items: StockDeductionItem[]) => {
 
             if (currentIng) {
               const totalDeduction = Number(part.quantity) * Number(item.quantity);
-              const newStock = Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction);
+              const newStock = toStoredQuantity2(Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction));
               await supabase
                 .from('ingredients')
                 .update({ stock_quantity: newStock })
@@ -60,7 +60,7 @@ export const deductStockForItems = async (items: StockDeductionItem[]) => {
           const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
           await supabase
             .from('items')
-            .update({ stock_quantity: Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit) })
+            .update({ stock_quantity: toStoredQuantity2(Math.max(0, (currentItem.stock_quantity || 0) - deductionInInvUnit)) })
             .eq('id', item.id);
         }
       }

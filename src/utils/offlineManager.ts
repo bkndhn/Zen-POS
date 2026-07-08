@@ -746,9 +746,10 @@ class OfflineManager {
                     const sellUnit = currentItem.selling_unit || currentItem.unit;
                     const invUnit = currentItem.inventory_unit;
                     const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
+                    const { toStoredQuantity2 } = await import('@/utils/timeUtils');
                     await supabase
                         .from('items')
-                        .update({ stock_quantity: Math.max(0, currentItem.stock_quantity - deductionInInvUnit) })
+                        .update({ stock_quantity: toStoredQuantity2(Math.max(0, currentItem.stock_quantity - deductionInInvUnit)) })
                         .eq('id', item.item_id);
                 }
             } catch (err) {
