@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Plus, Minus, Trash2, Percent, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
-import { getShortUnit, formatQuantityWithUnit, isWeightOrVolumeUnit, convertToInventoryUnit } from '@/utils/timeUtils';
+import { getShortUnit, formatStoredQuantity, isWeightOrVolumeUnit, convertToInventoryUnit } from '@/utils/timeUtils';
 import { isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { toast } from '@/hooks/use-toast';
 
@@ -174,7 +174,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
         if (targetInInvUnit > currentItem.stock_quantity) {
           toast({
             title: "🚫 Stock Limit Exceeded",
-            description: `Cannot add more of ${currentItem.name}. Only ${formatQuantityWithUnit(currentItem.stock_quantity, invUnit || currentItem.unit)} available in stock.`,
+            description: `Cannot add more of ${currentItem.name}. Only ${formatStoredQuantity(currentItem.stock_quantity, invUnit || currentItem.unit)} available in stock.`,
             variant: "destructive"
           });
           return prev;
@@ -541,7 +541,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                             if (targetInInvUnit > item.stock_quantity) {
                               toast({
                                 title: "🚫 Stock Limit Exceeded",
-                                description: `Cannot add more of ${item.name}. Only ${formatQuantityWithUnit(item.stock_quantity, invUnit || item.unit)} available in stock.`,
+                                description: `Cannot add more of ${item.name}. Only ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)} available in stock.`,
                                 variant: "destructive"
                               });
                               const conversionFactor = convertToInventoryUnit(1, sellUnit, invUnit);

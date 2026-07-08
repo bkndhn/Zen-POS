@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRightLeft, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { formatStoredQuantity, getShortUnit } from '@/utils/timeUtils';
 
 interface ItemRow { id: string; name: string; branch_id: string; stock_quantity: number | null; unit: string | null; inventory_unit?: string | null; }
 interface Line { from_item_id: string; to_item_id: string; item_name: string; quantity: number; }
@@ -149,7 +150,7 @@ const StockTransfers: React.FC = () => {
                       <Label className="text-xs">Source item</Label>
                       <Select value={l.from_item_id} onValueChange={v => pickItem(idx, v)}>
                         <SelectTrigger><SelectValue placeholder="Pick item" /></SelectTrigger>
-                        <SelectContent>{fromItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({i.stock_quantity ?? 0} {i.inventory_unit || i.unit || ''})</SelectItem>)}</SelectContent>
+                        <SelectContent>{fromItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name} ({formatStoredQuantity(i.stock_quantity ?? 0, i.inventory_unit || i.unit || '')})</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="col-span-4">
@@ -160,7 +161,7 @@ const StockTransfers: React.FC = () => {
                       </Select>
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Qty {src?.inventory_unit || src?.unit ? `(${src.inventory_unit || src.unit})` : ''}</Label>
+                      <Label className="text-xs">Qty {src?.inventory_unit || src?.unit ? `(${getShortUnit(src.inventory_unit || src.unit || '')})` : ''}</Label>
                       <Input type="number" value={l.quantity || ''} onChange={e => updateLine(idx, { quantity: +e.target.value })} />
                     </div>
                     <div className="col-span-1"><Button size="icon" variant="ghost" onClick={() => removeLine(idx)}><Trash2 className="w-4 h-4 text-destructive" /></Button></div>
