@@ -73,7 +73,7 @@ export const getTimeElapsed = (date: Date | string): string => {
   } else {
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`;
+    return mins > 0 ? `${hours}hr ${mins} min` : `${hours}hr`;
   }
 };
 
@@ -125,10 +125,11 @@ export const getShortUnit = (unit?: string): string => {
   return unit.substring(0, 3).toLowerCase();
 };
 
-/** Round to 2 decimals, trim trailing zeros (1.20 -> "1.2", 1.00 -> "1", 0.125 -> "0.13"). */
+/** Keep max 2 decimals for quantities, trim trailing zeros (40.199999 -> "40.19"). */
 export const trim2 = (n: number): string => {
   if (!Number.isFinite(n)) return '0';
-  const r = Math.round(n * 100) / 100;
+  const sign = n < 0 ? -1 : 1;
+  const r = sign * (Math.trunc(Math.abs(n) * 100) / 100);
   if (Number.isInteger(r)) return String(r);
   return r.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 };

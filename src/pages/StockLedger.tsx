@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { History, Download } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { formatQuantityWithUnit } from '@/utils/timeUtils';
 
 interface ItemRow { id: string; name: string; branch_id: string; unit: string | null; inventory_unit?: string | null; }
 
@@ -84,7 +85,8 @@ const StockLedger: React.FC = () => {
       date: new Date(r.created_at).toLocaleString(),
       item: itemName(r.item_id), branch: branchName(r.branch_id),
       type: SOURCE_LABEL[r.source_type]?.label || r.source_type,
-      change: r.change_qty, balance: r.balance_after ?? '',
+      change: `${Number(r.change_qty) >= 0 ? '+' : '-'}${formatQuantityWithUnit(Math.abs(Number(r.change_qty) || 0), itemUnit(r.item_id))}`,
+      balance: r.balance_after != null ? formatQuantityWithUnit(Number(r.balance_after), itemUnit(r.item_id)) : '',
       reason: r.reason || '', notes: r.notes || '', user: userName(r.created_by)
     })));
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -159,8 +161,8 @@ const StockLedger: React.FC = () => {
                       <TableCell className="font-medium">{itemName(r.item_id)}</TableCell>
                       <TableCell className="text-xs">{branchName(r.branch_id)}</TableCell>
                       <TableCell><Badge variant={meta.variant}>{meta.label}</Badge></TableCell>
-                      <TableCell className={`text-right font-semibold ${negative ? 'text-destructive' : 'text-success'}`}>{negative ? '' : '+'}{r.change_qty} {itemUnit(r.item_id)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{r.balance_after != null ? `${r.balance_after} ${itemUnit(r.item_id)}` : '—'}</TableCell>
+                      <TableCell className={`text-right font-semibold ${negative ? 'text-destructive' : 'text-success'}`}>{negative ? '-' : '+'}{formatQuantityWithUnit(Math.abs(Number(r.change_qty) || 0), itemUnit(r.item_id))}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{r.balance_after != null ? formatQuantityWithUnit(Number(r.balance_after), itemUnit(r.item_id)) : '—'}</TableCell>
                       <TableCell className="text-xs">{r.reason || '—'}{r.notes ? ` · ${r.notes}` : ''}</TableCell>
                       <TableCell className="text-xs">{userName(r.created_by)}</TableCell>
                     </TableRow>

@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
-import { formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, calculateSmartQtyCount, getTimeElapsed } from '@/utils/timeUtils';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
@@ -73,15 +73,6 @@ interface CartItem {
     is_tax_inclusive?: boolean;
     hsn_code?: string | null;
 }
-
-const getTimeElapsed = (created: string) => {
-    const diff = Date.now() - new Date(created).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m`;
-    const hrs = Math.floor(mins / 60);
-    return `${hrs}h ${mins % 60}m`;
-};
 
 const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
     pending: { label: 'Pending', color: 'bg-yellow-500', icon: '⏳' },
