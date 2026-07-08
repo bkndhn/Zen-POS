@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Undo2, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { formatStoredQuantity, getShortUnit } from '@/utils/timeUtils';
 
 interface Line { item_id: string; branch_id: string; item_name: string; unit: string; quantity: number; rate: number; }
 
@@ -42,7 +43,7 @@ const PurchaseReturns: React.FC = () => {
     const [sup, pur, it, ret] = await Promise.all([
       (supabase as any).from('suppliers').select('id,name').eq('admin_id', adminId).order('name'),
       (supabase as any).from('purchases').select('id,purchase_no,purchase_date,supplier_id').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(200),
-      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,purchase_rate').eq('admin_id', adminId).eq('is_active', true).order('name'),
+      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,inventory_unit,purchase_rate').eq('admin_id', adminId).eq('is_active', true).order('name'),
       (supabase as any).from('purchase_returns').select('id,return_no,return_date,supplier_id,total_amount,reason,suppliers(name),purchase_return_items(item_name,quantity,branch_id)').eq('admin_id', adminId).order('created_at', { ascending: false }).limit(100)
     ]);
     setSuppliers(sup.data || []); setPurchases(pur.data || []); setItems(it.data || []); setReturns(ret.data || []);
@@ -59,7 +60,7 @@ const PurchaseReturns: React.FC = () => {
   const pickItem = (idx: number, itemId: string) => {
     const it = items.find(i => i.id === itemId);
     if (!it) return;
-    updateLine(idx, { item_id: itemId, branch_id: it.branch_id, item_name: it.name, unit: it.unit || '', rate: Number(it.purchase_rate) || 0 });
+    updateLine(idx, { item_id: itemId, branch_id: it.branch_id, item_name: it.name, unit: it.inventory_unit || it.unit || '', rate: Number(it.purchase_rate) || 0 });
   };
 
   const reset = () => { setSupplierId(''); setPurchaseId(''); setReason('damaged'); setNotes(''); setLines([]); setDate(format(new Date(), 'yyyy-MM-dd')); };
@@ -163,11 +164,11 @@ const PurchaseReturns: React.FC = () => {
                     <Label className="text-xs">Item (branch)</Label>
                     <Select value={l.item_id} onValueChange={v => pickItem(idx, v)}>
                       <SelectTrigger><SelectValue placeholder="Pick item" /></SelectTrigger>
-                      <SelectContent>{items.map(i => <SelectItem key={i.id} value={i.id}>{i.name} · {branchName(i.branch_id)} ({i.stock_quantity ?? 0})</SelectItem>)}</SelectContent>
+                      <SelectContent>{items.map(i => <SelectItem key={i.id} value={i.id}>{i.name} · {branchName(i.branch_id)} ({formatStoredQuantity(i.stock_quantity ?? 0, i.inventory_unit || i.unit || '')})</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-3">
-                    <Label className="text-xs">Qty {l.unit ? `(${l.unit})` : ''}</Label>
+                    <Label className="text-xs">Qty {l.unit ? `(${getShortUnit(l.unit)})` : ''}</Label>
                     <Input type="number" value={l.quantity || ''} onChange={e => updateLine(idx, { quantity: +e.target.value })} />
                   </div>
                   <div className="col-span-3">
