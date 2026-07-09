@@ -334,28 +334,18 @@ const PublicMenu = () => {
                 setGstEnabled(enabled);
 
                 if (enabled) {
-                    // tax_rates.admin_id stores Auth UID; resolve it from Profile UUID
-                    const { data: profileRow } = await supabase
-                        .from('profiles')
-                        .select('user_id')
-                        .eq('id', adminId)
-                        .maybeSingle();
-                    const authUid = profileRow?.user_id;
-                    if (authUid) {
-                        let ratesQuery = supabase
-                            .from('tax_rates')
-                            .select('id, name, rate, cess_rate')
-                            .eq('admin_id', authUid)
-                            .eq('is_active', true);
-                        if (branchId) {
-                            ratesQuery = ratesQuery.or(`branch_id.eq.${branchId},branch_id.is.null`);
-                        }
-                        const { data: rates } = await ratesQuery;
+                    const { data: rates, error: ratesError } = await (supabase as any).rpc('get_public_tax_rates', {
+                        p_admin_id: adminId,
+                        p_branch_id: branchId || null
+                    });
+                    if (!ratesError && rates) {
                         const ratesMap: Record<string, any> = {};
                         (rates || []).forEach((r: any) => {
                             ratesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0 };
                         });
                         setTaxRatesMap(ratesMap);
+                    } else {
+                        console.error('Tax rates fetch error:', ratesError);
                     }
                 }
 
