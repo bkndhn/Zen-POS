@@ -337,15 +337,15 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(BOLD_OFF);
   }
 
-  // Address
-  if (data.address) {
+  // Address (skip in paper saving mode)
+  if (data.address && !paperSaving) {
     commands.push(ALIGN_CENTER);
     commands.push(textToBytes(data.address));
     commands.push(FEED_LINE);
   }
 
-  // Phone and GSTIN
-  if (data.contactNumber) {
+  // Phone and GSTIN (compact in paper saving mode)
+  if (data.contactNumber && !paperSaving) {
     commands.push(ALIGN_CENTER);
     if (data.gstin && LINE_WIDTH >= 48) {
       commands.push(textToBytes(`Ph: ${data.contactNumber} | GSTIN: ${data.gstin}`));
@@ -355,31 +355,40 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(FEED_LINE);
   }
   
-  if (data.gstin && (LINE_WIDTH < 48 || !data.contactNumber)) {
+  if (data.gstin && !paperSaving && (LINE_WIDTH < 48 || !data.contactNumber)) {
     commands.push(ALIGN_CENTER);
     commands.push(textToBytes(`GSTIN: ${data.gstin}`));
     commands.push(FEED_LINE);
   }
 
-  // Bill info - compact single line with time
-  commands.push(textToBytes(SEP));
-  commands.push(FEED_LINE);
-  commands.push(ALIGN_LEFT);
-  commands.push(textToBytes(fmtLine(`#${data.billNo}`, data.date)));
-  commands.push(FEED_LINE);
-  commands.push(textToBytes(fmtLine('Time:', data.time)));
-  commands.push(FEED_LINE);
-
-  // Order type line
-  if (data.orderType) {
-    commands.push(BOLD_ON);
-    commands.push(textToBytes(fmtLine('Type:', data.orderType === 'parcel' ? 'PARCEL' : 'DINE IN')));
+  // Bill info & metadata
+  if (paperSaving) {
+    // Ultra compact single line info: e.g. #001 09/07 3:54 PM DINE
+    commands.push(ALIGN_LEFT);
+    const typeAbbr = data.orderType === 'parcel' ? 'PARCEL' : 'DINE';
+    const shortBillNo = data.billNo.replace('BILL-', '');
+    const compactInfo = `#${shortBillNo} | ${data.date.substring(0, 5)} | ${data.time} | ${typeAbbr}`;
+    commands.push(textToBytes(compactInfo.substring(0, LINE_WIDTH)));
     commands.push(FEED_LINE);
-    commands.push(BOLD_OFF);
-  }
+  } else {
+    // Standard format with separators
+    commands.push(textToBytes(SEP));
+    commands.push(FEED_LINE);
+    commands.push(ALIGN_LEFT);
+    commands.push(textToBytes(fmtLine(`#${data.billNo}`, data.date)));
+    commands.push(FEED_LINE);
+    commands.push(textToBytes(fmtLine('Time:', data.time)));
+    commands.push(FEED_LINE);
 
-  commands.push(textToBytes(SEP));
-  commands.push(FEED_LINE);
+    if (data.orderType) {
+      commands.push(BOLD_ON);
+      commands.push(textToBytes(fmtLine('Type:', data.orderType === 'parcel' ? 'PARCEL' : 'DINE IN')));
+      commands.push(FEED_LINE);
+      commands.push(BOLD_OFF);
+    }
+    commands.push(textToBytes(SEP));
+    commands.push(FEED_LINE);
+  }
 
   // ITEMS
   data.items.forEach(item => {
@@ -387,8 +396,10 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(FEED_LINE);
   });
 
-  commands.push(textToBytes(SEP));
-  commands.push(FEED_LINE);
+  if (!paperSaving) {
+    commands.push(textToBytes(SEP));
+    commands.push(FEED_LINE);
+  }
 
 
   // Totals Area
@@ -510,15 +521,15 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Check if autoCut is enabled in localStorage
   const autoCut = localStorage.getItem('hotel_pos_auto_cut') !== 'false';
+  const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
   
   if (autoCut) {
-    // Feed 2 lines to clear cutter, then cut
-    commands.push(FEED_LINES(2));
-    commands.push(CUT_FULL);
-    commands.push(CUT_ALT);
+    // Feed to clear cutter, then cut (1 line for paper saving, 2 lines otherwise)
+    commands.push(FEED_LINES(paperSaving ? 1 : 2));
+    commands.push(CUT_FULL); // Standard ESC/POS cut (GS V 0)
   } else {
-    // Feed 4 lines so it reaches tear-bar, but DO NOT cut
-    commands.push(FEED_LINES(4));
+    // Feed so it reaches tear-bar, but DO NOT cut
+    commands.push(FEED_LINES(paperSaving ? 2 : 4));
   }
 
   // Combine all commands

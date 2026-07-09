@@ -102,14 +102,18 @@ export const buildKOTBytes = (
   chunks.push(NORMAL_SIZE);
   chunks.push(BOLD_OFF);
 
-  if (meta.shopName) {
+  const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
+
+  if (meta.shopName && !paperSaving) {
     chunks.push(bytes(meta.shopName));
     chunks.push(FEED_LINE);
   }
 
   chunks.push(ALIGN_LEFT);
-  chunks.push(bytes(SEP));
-  chunks.push(FEED_LINE);
+  if (!paperSaving) {
+    chunks.push(bytes(SEP));
+    chunks.push(FEED_LINE);
+  }
   chunks.push(BOLD_ON);
   chunks.push(bytes(`KOT #${meta.billNo}`));
   chunks.push(FEED_LINE);
@@ -117,29 +121,41 @@ export const buildKOTBytes = (
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-  chunks.push(bytes(`Time: ${timeStr}`));
-  chunks.push(FEED_LINE);
 
-  if (meta.tableNo) {
-    chunks.push(BOLD_ON);
-    chunks.push(bytes(`Table: ${meta.tableNo}`));
-    chunks.push(BOLD_OFF);
+  if (paperSaving) {
+    // Ultra compact single line info: Table | Type | Time
+    const tablePart = meta.tableNo ? `${meta.tableNo} | ` : '';
+    const typePart = meta.orderType ? `${meta.orderType === 'parcel' ? 'PARCEL' : 'DINE'} | ` : '';
+    const compactInfo = `${tablePart}${typePart}${timeStr}`;
+    chunks.push(bytes(compactInfo.substring(0, LINE)));
+    chunks.push(FEED_LINE);
+  } else {
+    chunks.push(bytes(`Time: ${timeStr}`));
+    chunks.push(FEED_LINE);
+
+    if (meta.tableNo) {
+      chunks.push(BOLD_ON);
+      chunks.push(bytes(`Table: ${meta.tableNo}`));
+      chunks.push(BOLD_OFF);
+      chunks.push(FEED_LINE);
+    }
+    if (meta.orderType) {
+      chunks.push(bytes(`Type: ${meta.orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}`));
+      chunks.push(FEED_LINE);
+    }
+    chunks.push(bytes(SEP));
     chunks.push(FEED_LINE);
   }
-  if (meta.orderType) {
-    chunks.push(bytes(`Type: ${meta.orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}`));
-    chunks.push(FEED_LINE);
-  }
-
-  chunks.push(bytes(SEP));
-  chunks.push(FEED_LINE);
 
   chunks.push(BOLD_ON);
   chunks.push(bytes(pad('ITEM', LINE - 8) + pad('QTY', 8)));
   chunks.push(FEED_LINE);
   chunks.push(BOLD_OFF);
-  chunks.push(bytes(SEP));
-  chunks.push(FEED_LINE);
+  
+  if (!paperSaving) {
+    chunks.push(bytes(SEP));
+    chunks.push(FEED_LINE);
+  }
 
   for (const it of items) {
     const qty = formatQuantityWithUnit(it.quantity, it.selling_unit || it.unit);
@@ -160,9 +176,11 @@ export const buildKOTBytes = (
     }
   }
 
-  chunks.push(bytes(SEP));
-  chunks.push(FEED_LINE);
-  chunks.push(FEED_N(3));
+  if (!paperSaving) {
+    chunks.push(bytes(SEP));
+    chunks.push(FEED_LINE);
+  }
+  chunks.push(FEED_N(paperSaving ? 1 : 3));
 
   const autoCut = localStorage.getItem('hotel_pos_auto_cut') !== 'false';
   if (autoCut) chunks.push(CUT_FULL);
