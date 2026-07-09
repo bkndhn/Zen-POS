@@ -49,6 +49,7 @@ const SuperAdminUsers: React.FC = () => {
   const [selectedAdmin, setSelectedAdmin] = useState<Row | null>(null);
   const [permsDialogOpen, setPermsDialogOpen] = useState(false);
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
+  const [contactTarget, setContactTarget] = useState<Row | null>(null);
 
   // Backup & Restore State
   const [activeTab, setActiveTab] = useState('users');
