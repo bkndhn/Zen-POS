@@ -739,6 +739,15 @@ const Users: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => setContactTarget(user)}
+                            className="text-xs flex-1 sm:flex-none"
+                            title="Edit contact"
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-1" /> Edit contact
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => setPwdTarget({ id: user.id, label: user.name || user.email || 'user' })}
                             className="text-xs flex-1 sm:flex-none"
                             title="Reset password"
