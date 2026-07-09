@@ -13,6 +13,8 @@ import { Switch } from '@/components/ui/switch';
 import { UserPermissions } from '@/components/UserPermissions';
 import { SubUserBranchAssignments } from '@/components/SubUserBranchAssignments';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
+import { EditContactDialog } from '@/components/EditContactDialog';
+import { Pencil } from 'lucide-react';
 import type { UserProfile, UserStatus, UserRole } from '@/types/user';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
