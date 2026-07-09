@@ -967,6 +967,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           admin_id: string | null
           client_permissions: Json | null
           created_at: string
@@ -978,14 +979,17 @@ export type Database = {
           login_count: number | null
           max_branches: number
           max_sub_users: number
+          mobile_number: string | null
           multi_branch_enabled: boolean | null
           name: string
           role: Database["public"]["Enums"]["app_role"]
+          shop_name: string | null
           status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
           admin_id?: string | null
           client_permissions?: Json | null
           created_at?: string
@@ -997,14 +1001,17 @@ export type Database = {
           login_count?: number | null
           max_branches?: number
           max_sub_users?: number
+          mobile_number?: string | null
           multi_branch_enabled?: boolean | null
           name: string
           role?: Database["public"]["Enums"]["app_role"]
+          shop_name?: string | null
           status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
           admin_id?: string | null
           client_permissions?: Json | null
           created_at?: string
@@ -1016,9 +1023,11 @@ export type Database = {
           login_count?: number | null
           max_branches?: number
           max_sub_users?: number
+          mobile_number?: string | null
           multi_branch_enabled?: boolean | null
           name?: string
           role?: Database["public"]["Enums"]["app_role"]
+          shop_name?: string | null
           status?: string | null
           updated_at?: string
           user_id?: string
@@ -2290,6 +2299,7 @@ export type Database = {
       get_all_users_for_super_admin: {
         Args: never
         Returns: {
+          address: string
           admin_id: string
           admin_name: string
           created_at: string
@@ -2297,9 +2307,11 @@ export type Database = {
           hotel_name: string
           last_login: string
           login_count: number
+          mobile_number: string
           name: string
           profile_id: string
           role: string
+          shop_name: string
           status: string
           user_id: string
         }[]
