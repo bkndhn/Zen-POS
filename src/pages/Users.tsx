@@ -782,6 +782,22 @@ const Users: React.FC = () => {
           targetLabel={pwdTarget.label}
         />
       )}
+      {contactTarget && (
+        <EditContactDialog
+          open={!!contactTarget}
+          onOpenChange={(v) => !v && setContactTarget(null)}
+          profileId={contactTarget.id}
+          role={contactTarget.role}
+          label={contactTarget.name || contactTarget.email || 'user'}
+          initial={{
+            mobile_number: contactTarget.mobile_number,
+            shop_name: contactTarget.shop_name,
+            address: contactTarget.address,
+            hotel_name: contactTarget.hotel_name,
+          }}
+          onSaved={fetchUsers}
+        />
+      )}
     </div>
   );
 };
