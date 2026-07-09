@@ -457,6 +457,7 @@ const SuperAdminUsers: React.FC = () => {
                     <TableRow>
                       <TableHead className="font-bold text-xs">Name</TableHead>
                       <TableHead className="font-bold text-xs">Email</TableHead>
+                      <TableHead className="font-bold text-xs">Mobile</TableHead>
                       <TableHead className="font-bold text-xs">Parent Admin</TableHead>
                       <TableHead className="font-bold text-xs">Status</TableHead>
                       <TableHead className="font-bold text-xs">Logins</TableHead>
@@ -465,12 +466,13 @@ const SuperAdminUsers: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading && <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
-                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
+                    {loading && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
+                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
                     {subUsers.map(r => (
                       <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
                         <TableCell className="font-semibold">{r.name}</TableCell>
                         <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.mobile_number || '—'}</TableCell>
                         <TableCell className="font-medium text-slate-700 dark:text-slate-300">{r.admin_name || '—'}</TableCell>
                         <TableCell>{statusBadge(r.status)}</TableCell>
                         <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
