@@ -32,6 +32,9 @@ interface ExtendedUserProfile extends UserProfile {
   itemCount?: number;
   subUserCount?: number;
   email?: string | null;
+  mobile_number?: string | null;
+  shop_name?: string | null;
+  address?: string | null;
 }
 
 const Users: React.FC = () => {
