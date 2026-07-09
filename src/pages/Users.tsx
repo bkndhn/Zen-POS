@@ -684,6 +684,9 @@ const Users: React.FC = () => {
                         {user.hotel_name && (
                           <p className="text-sm text-muted-foreground">{user.hotel_name}</p>
                         )}
+                        {user.mobile_number && (
+                          <p className="text-xs text-muted-foreground">📱 {user.mobile_number}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         {getRoleIcon(user.role)}
@@ -704,6 +707,8 @@ const Users: React.FC = () => {
                     </Badge>
 
                     <div className="text-xs text-muted-foreground">
+                      {user.shop_name && <div>Shop: {user.shop_name}</div>}
+                      {user.address && <div className="line-clamp-2">Address: {user.address}</div>}
                       <div>Created: {new Date(user.created_at).toLocaleDateString()}</div>
                       {user.last_login && (
                         <div>Last login: {format(new Date(user.last_login), 'dd MMM yyyy, hh:mm a')}</div>
