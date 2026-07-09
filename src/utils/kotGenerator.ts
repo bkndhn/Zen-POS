@@ -208,7 +208,7 @@ export const printKOTs = async (
     const t = tickets[i];
     try {
       options.onProgress?.({ station: t.station, deviceName: t.deviceName, status: 'printing', index: i + 1, total: tickets.length });
-      const success = await (printerManager as any).printRawBytes(t.bytes, t.deviceName || undefined);
+      const success = await printerManager.printRawBytes(t.bytes, t.deviceName || undefined);
       if (success) {
         ok++;
         results.push({ station: t.station, deviceName: t.deviceName, ok: true });

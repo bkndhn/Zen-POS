@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
+import { EditContactDialog } from '@/components/EditContactDialog';
+import { Pencil } from 'lucide-react';
 
 interface Row {
   profile_id: string;
@@ -23,6 +25,9 @@ interface Row {
   name: string;
   role: string;
   hotel_name: string | null;
+  shop_name: string | null;
+  mobile_number: string | null;
+  address: string | null;
   status: string;
   admin_id: string | null;
   admin_name: string | null;
@@ -44,6 +49,7 @@ const SuperAdminUsers: React.FC = () => {
   const [selectedAdmin, setSelectedAdmin] = useState<Row | null>(null);
   const [permsDialogOpen, setPermsDialogOpen] = useState(false);
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
+  const [contactTarget, setContactTarget] = useState<Row | null>(null);
 
   // Backup & Restore State
   const [activeTab, setActiveTab] = useState('users');
@@ -377,7 +383,10 @@ const SuperAdminUsers: React.FC = () => {
                     <TableRow>
                       <TableHead className="font-bold text-xs">Name</TableHead>
                       <TableHead className="font-bold text-xs">Email</TableHead>
+                      <TableHead className="font-bold text-xs">Mobile</TableHead>
                       <TableHead className="font-bold text-xs">Hotel</TableHead>
+                      <TableHead className="font-bold text-xs">Shop</TableHead>
+                      <TableHead className="font-bold text-xs">Address</TableHead>
                       <TableHead className="font-bold text-xs">Status</TableHead>
                       <TableHead className="font-bold text-xs">Logins</TableHead>
                       <TableHead className="font-bold text-xs">Last Login</TableHead>
@@ -386,8 +395,8 @@ const SuperAdminUsers: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
-                    {!loading && admins.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No admins found</TableCell></TableRow>}
+                    {loading && <TableRow><TableCell colSpan={11} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
+                    {!loading && admins.length === 0 && <TableRow><TableCell colSpan={11} className="text-center py-6 text-muted-foreground">No admins found</TableCell></TableRow>}
                     {admins.map(r => (
                       <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
                         <TableCell className="font-semibold">
@@ -397,13 +406,25 @@ const SuperAdminUsers: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.mobile_number || '—'}</TableCell>
                         <TableCell className="font-medium">{r.hotel_name || '—'}</TableCell>
+                        <TableCell className="font-medium">{r.shop_name || '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={r.address || ''}>{r.address || '—'}</TableCell>
                         <TableCell>{statusBadge(r.status)}</TableCell>
                         <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setContactTarget(r)}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Edit contact"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -448,6 +469,7 @@ const SuperAdminUsers: React.FC = () => {
                     <TableRow>
                       <TableHead className="font-bold text-xs">Name</TableHead>
                       <TableHead className="font-bold text-xs">Email</TableHead>
+                      <TableHead className="font-bold text-xs">Mobile</TableHead>
                       <TableHead className="font-bold text-xs">Parent Admin</TableHead>
                       <TableHead className="font-bold text-xs">Status</TableHead>
                       <TableHead className="font-bold text-xs">Logins</TableHead>
@@ -456,26 +478,38 @@ const SuperAdminUsers: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading && <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
-                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
+                    {loading && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
+                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
                     {subUsers.map(r => (
                       <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
                         <TableCell className="font-semibold">{r.name}</TableCell>
                         <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.mobile_number || '—'}</TableCell>
                         <TableCell className="font-medium text-slate-700 dark:text-slate-300">{r.admin_name || '—'}</TableCell>
                         <TableCell>{statusBadge(r.status)}</TableCell>
                         <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
-                            className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                            title="Reset password"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setContactTarget(r)}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Edit contact"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Reset password"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -681,6 +715,23 @@ const SuperAdminUsers: React.FC = () => {
           onOpenChange={(v) => !v && setPwdTarget(null)}
           targetProfileId={pwdTarget.id}
           targetLabel={pwdTarget.label}
+        />
+      )}
+
+      {contactTarget && (
+        <EditContactDialog
+          open={!!contactTarget}
+          onOpenChange={(v) => !v && setContactTarget(null)}
+          profileId={contactTarget.profile_id}
+          role={contactTarget.role}
+          label={contactTarget.name || contactTarget.email || 'user'}
+          initial={{
+            mobile_number: contactTarget.mobile_number,
+            shop_name: contactTarget.shop_name,
+            address: contactTarget.address,
+            hotel_name: contactTarget.hotel_name,
+          }}
+          onSaved={fetchUsers}
         />
       )}
     </div>

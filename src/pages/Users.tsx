@@ -13,6 +13,8 @@ import { Switch } from '@/components/ui/switch';
 import { UserPermissions } from '@/components/UserPermissions';
 import { SubUserBranchAssignments } from '@/components/SubUserBranchAssignments';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
+import { EditContactDialog } from '@/components/EditContactDialog';
+import { Pencil } from 'lucide-react';
 import type { UserProfile, UserStatus, UserRole } from '@/types/user';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -30,6 +32,9 @@ interface ExtendedUserProfile extends UserProfile {
   itemCount?: number;
   subUserCount?: number;
   email?: string | null;
+  mobile_number?: string | null;
+  shop_name?: string | null;
+  address?: string | null;
 }
 
 const Users: React.FC = () => {
@@ -46,6 +51,7 @@ const Users: React.FC = () => {
   const [editingSubUserLimits, setEditingSubUserLimits] = useState<Record<string, string>>({});
   const [savingSubUserLimit, setSavingSubUserLimit] = useState<string | null>(null);
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
+  const [contactTarget, setContactTarget] = useState<ExtendedUserProfile | null>(null);
 
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
@@ -116,7 +122,10 @@ const Users: React.FC = () => {
         item_limit: (user as any).item_limit ?? null,
         max_branches: (user as any).max_branches ?? 1,
         max_sub_users: (user as any).max_sub_users ?? 5,
-        email: (user as any).email ?? null
+        email: (user as any).email ?? null,
+        mobile_number: (user as any).mobile_number ?? null,
+        shop_name: (user as any).shop_name ?? null,
+        address: (user as any).address ?? null,
       })) as ExtendedUserProfile[];
 
       if (isSuperAdmin) {
@@ -675,6 +684,9 @@ const Users: React.FC = () => {
                         {user.hotel_name && (
                           <p className="text-sm text-muted-foreground">{user.hotel_name}</p>
                         )}
+                        {user.mobile_number && (
+                          <p className="text-xs text-muted-foreground">📱 {user.mobile_number}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         {getRoleIcon(user.role)}
@@ -695,6 +707,8 @@ const Users: React.FC = () => {
                     </Badge>
 
                     <div className="text-xs text-muted-foreground">
+                      {user.shop_name && <div>Shop: {user.shop_name}</div>}
+                      {user.address && <div className="line-clamp-2">Address: {user.address}</div>}
                       <div>Created: {new Date(user.created_at).toLocaleDateString()}</div>
                       {user.last_login && (
                         <div>Last login: {format(new Date(user.last_login), 'dd MMM yyyy, hh:mm a')}</div>
@@ -721,6 +735,15 @@ const Users: React.FC = () => {
                             className="text-xs flex-1 sm:flex-none"
                           >
                             {user.status === 'active' ? 'Pause' : 'Activate'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setContactTarget(user)}
+                            className="text-xs flex-1 sm:flex-none"
+                            title="Edit contact"
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-1" /> Edit contact
                           </Button>
                           <Button
                             size="sm"
@@ -757,6 +780,22 @@ const Users: React.FC = () => {
           onOpenChange={(v) => !v && setPwdTarget(null)}
           targetProfileId={pwdTarget.id}
           targetLabel={pwdTarget.label}
+        />
+      )}
+      {contactTarget && (
+        <EditContactDialog
+          open={!!contactTarget}
+          onOpenChange={(v) => !v && setContactTarget(null)}
+          profileId={contactTarget.id}
+          role={contactTarget.role}
+          label={contactTarget.name || contactTarget.email || 'user'}
+          initial={{
+            mobile_number: contactTarget.mobile_number,
+            shop_name: contactTarget.shop_name,
+            address: contactTarget.address,
+            hotel_name: contactTarget.hotel_name,
+          }}
+          onSaved={fetchUsers}
         />
       )}
     </div>
