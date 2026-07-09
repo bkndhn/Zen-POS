@@ -23,6 +23,9 @@ interface Row {
   name: string;
   role: string;
   hotel_name: string | null;
+  shop_name: string | null;
+  mobile_number: string | null;
+  address: string | null;
   status: string;
   admin_id: string | null;
   admin_name: string | null;
