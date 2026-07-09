@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
+import { EditContactDialog } from '@/components/EditContactDialog';
+import { Pencil } from 'lucide-react';
 
 interface Row {
   profile_id: string;
