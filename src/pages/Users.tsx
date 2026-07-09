@@ -51,6 +51,7 @@ const Users: React.FC = () => {
   const [editingSubUserLimits, setEditingSubUserLimits] = useState<Record<string, string>>({});
   const [savingSubUserLimit, setSavingSubUserLimit] = useState<string | null>(null);
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
+  const [contactTarget, setContactTarget] = useState<ExtendedUserProfile | null>(null);
 
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
