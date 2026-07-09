@@ -9,7 +9,15 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string, role?: string, hotelName?: string, adminId?: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+    role?: string,
+    hotelName?: string,
+    adminId?: string,
+    extras?: { mobileNumber?: string; shopName?: string; address?: string }
+  ) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
