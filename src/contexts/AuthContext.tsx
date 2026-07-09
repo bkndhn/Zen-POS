@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile, UserStatus, UserRole } from '@/types/user';
 import { seedAdminDefaults } from '@/utils/seedAdminDefaults';
 
+const isDev = import.meta.env.DEV;
+const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
+
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -39,11 +43,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const createBasicProfile = (user: User): Profile => {
+    // SECURITY: Never trust user_metadata for role — always default to 'user'
+    // The actual role is fetched from the database (profiles table)
     return {
       id: user.id,
       user_id: user.id,
       name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-      role: (user.user_metadata?.role || 'user') as UserRole,
+      role: 'user' as UserRole,
       hotel_name: user.user_metadata?.hotel_name,
       status: 'active' as UserStatus,
       admin_id: user.user_metadata?.admin_id
@@ -52,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchOrCreateProfile = async (user: User): Promise<Profile> => {
     try {
-      console.log('Fetching profile for user:', user.id);
+      devLog('Fetching profile for user:', user.id);
 
       // 1. Try to get from localStorage first (fastest & works offline)
       const cachedProfileStr = localStorage.getItem(`profile_${user.id}`);
@@ -64,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // If we have a cached profile, we can return it immediately if we're offline
           // or we can use it as a fallback if the network request fails
           if (!navigator.onLine && cachedProfile) {
-            console.log('Using cached profile (offline):', cachedProfile);
+            devLog('Using cached profile (offline)');
             return cachedProfile;
           }
         } catch (e) {
@@ -94,16 +100,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         existingProfile = result.data;
         fetchError = result.error;
       } catch (e) {
-        console.warn('Network request failed or timed out:', e);
+        devLog('Network request failed or timed out');
         // If network fails and we have cache, RETURN CACHE
         if (cachedProfile) {
-          console.log('Network failed, using cached profile:', cachedProfile);
+          devLog('Network failed, using cached profile');
           return cachedProfile;
         }
       }
 
       if (!fetchError && existingProfile) {
-        console.log('Found existing profile:', existingProfile);
+        devLog('Found existing profile');
 
         // For sub-users, fetch parent admin's hotel name if not set
         let hotelName = existingProfile.hotel_name;
@@ -116,10 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .single();
             if (adminData?.hotel_name) {
               hotelName = adminData.hotel_name;
-              console.log('Inherited hotel name from admin:', hotelName);
+              devLog('Inherited hotel name from admin');
             }
           } catch (e) {
-            console.warn('Could not fetch admin hotel name:', e);
+            devLog('Could not fetch admin hotel name');
           }
         }
 
@@ -136,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               clientPermissions = (adminData as any).client_permissions || undefined;
             }
           } catch (e) {
-            console.warn('Could not fetch admin client permissions:', e);
+            devLog('Could not fetch admin client permissions');
           }
         } else {
           clientPermissions = (existingProfile as any).client_permissions || undefined;
@@ -165,12 +171,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 3. If no profile exists in DB, try to create one
       // (Only if we are online/connected, otherwise we might just return basic profile)
-      console.log('No profile found, attempting to create...');
+      devLog('No profile found, attempting to create...');
       try {
         const profileData = {
           user_id: user.id,
           name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-          role: (user.user_metadata?.role || 'user') as UserRole,
+          role: 'user', // Hardcoded to 'user' for safety
           hotel_name: user.user_metadata?.hotel_name || null,
           status: 'active' as UserStatus,
           admin_id: user.user_metadata?.admin_id || null
@@ -192,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ]) as any;
 
         if (!error && data) {
-          console.log('Profile created successfully:', data);
+          devLog('Profile created successfully');
           const newProfile: Profile = {
             id: data.id,
             user_id: data.user_id,
@@ -206,38 +212,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return newProfile;
         }
       } catch (createError) {
-        console.log('Profile creation failed, using basic profile:', createError);
+        devLog('Profile creation failed, using basic profile');
       }
 
       // 4. Fallback: If everything failed (no cache, no DB, no creation), use basic metadata
-      console.log('Returning basic profile from metadata');
+      devLog('Returning basic profile from metadata');
       const basicProfile = createBasicProfile(user);
       // Even cache this basic profile so next time we load faster
       localStorage.setItem(`profile_${user.id}`, JSON.stringify(basicProfile));
       return basicProfile;
 
     } catch (error) {
-      console.error('Error in fetchOrCreateProfile:', error);
+      devLog('Error in fetchOrCreateProfile');
       // Last resort
       return createBasicProfile(user);
     }
   };
 
   useEffect(() => {
-    console.log('AuthProvider initializing...');
+    devLog('AuthProvider initializing...');
 
     let mounted = true;
 
     // Ensure loading never gets stuck for more than 3 seconds (faster failsafe)
     const failsafeTimeout = setTimeout(() => {
       if (mounted && loading) {
-        console.log('Failsafe timeout - setting loading to false');
+        devLog('Failsafe timeout - setting loading to false');
         setLoading(false);
       }
     }, 3000);
 
     const handleAuthStateChange = async (event: string, newSession: Session | null) => {
-      console.log('Auth state changed:', event, !!newSession?.user);
+      devLog('Auth state changed:', event);
 
       if (!mounted) return;
 
@@ -246,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(newSession?.user || null);
 
         if (newSession?.user) {
-          console.log('User found, fetching/creating profile...');
+          devLog('User found, fetching/creating profile...');
 
           // Use setTimeout to avoid blocking the auth state change
           setTimeout(async () => {
@@ -257,10 +263,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
               if (mounted) {
                 setProfile(userProfile);
-                console.log('Profile set:', userProfile?.status);
+                devLog('Profile set');
               }
             } catch (profileError) {
-              console.error('Profile handling error:', profileError);
+              devLog('Profile handling error');
               if (mounted) {
                 // Set a basic profile if all else fails
                 setProfile(createBasicProfile(newSession.user));
@@ -280,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (error) {
-        console.error('Error in auth state change handler:', error);
+        devLog('Error in auth state change handler');
         if (mounted) {
           setProfile(null);
           setLoading(false);
@@ -295,7 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize auth state with faster timeout
     const initAuth = async () => {
       try {
-        console.log('Getting initial session...');
+        devLog('Getting initial session...');
 
         // Faster timeout for session fetch
         const sessionPromise = supabase.auth.getSession();
@@ -308,13 +314,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           timeoutPromise
         ]) as any;
 
-        console.log('Initial session:', !!initialSession?.user);
+        devLog('Initial session retrieved');
 
         if (mounted) {
           await handleAuthStateChange('INITIAL', initialSession);
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        devLog('Auth initialization error');
         if (mounted) {
           setLoading(false);
           clearTimeout(failsafeTimeout);
@@ -325,7 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Faster initialization timeout
     const initializationTimeout = setTimeout(() => {
       if (mounted && loading) {
-        console.log('Initialization timeout, proceeding without session');
+        devLog('Initialization timeout, proceeding without session');
         setLoading(false);
         clearTimeout(failsafeTimeout);
       }
@@ -345,11 +351,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user || !profile) return;
 
-    console.log('[AuthContext] Setting up realtime subscription for force logout...', {
-      userId: user.id,
-      profileId: profile.id,
-      adminId: profile.admin_id
-    });
+    devLog('[AuthContext] Setting up realtime subscription for force logout...');
 
     // Subscribe to profile changes with a unique channel name
     const channel = supabase
@@ -365,27 +367,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const updatedProfile = payload.new as any;
           const oldProfile = payload.old as any;
 
-          console.log('[AuthContext] Profile update received:', {
-            id: updatedProfile.id,
-            user_id: updatedProfile.user_id,
-            newStatus: updatedProfile.status,
-            oldStatus: oldProfile?.status
-          });
+          devLog('[AuthContext] Profile update received');
 
           // Check if this update affects the current user
           const isCurrentUser = updatedProfile.user_id === user.id;
           const isCurrentUserAdmin = profile.admin_id && updatedProfile.id === profile.admin_id;
 
           if (isCurrentUser || isCurrentUserAdmin) {
-            console.log('[AuthContext] Relevant update detected:', {
-              isCurrentUser,
-              isCurrentUserAdmin,
-              newStatus: updatedProfile.status
-            });
+            devLog('[AuthContext] Relevant update detected');
 
             // If current user was paused/deleted, force logout
             if (isCurrentUser && (updatedProfile.status === 'paused' || updatedProfile.status === 'deleted')) {
-              console.log('[AuthContext] Current user paused/deleted - forcing logout');
+              devLog('[AuthContext] Current user paused/deleted - forcing logout');
 
               // Clear cached profile
               localStorage.removeItem(`profile_${user.id}`);
@@ -408,7 +401,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // If parent admin was paused/deleted, force logout sub-user
             if (isCurrentUserAdmin && (updatedProfile.status === 'paused' || updatedProfile.status === 'deleted')) {
-              console.log('[AuthContext] Parent admin paused/deleted - forcing sub-user logout');
+              devLog('[AuthContext] Parent admin paused/deleted - forcing sub-user logout');
 
               // Clear cached profile
               localStorage.removeItem(`profile_${user.id}`);
@@ -431,18 +424,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // If user status changed to active (e.g., re-activated), update profile
             if (isCurrentUser && updatedProfile.status !== profile.status) {
-              console.log('[AuthContext] User status changed, updating local profile');
+              devLog('[AuthContext] User status changed, updating local profile');
               setProfile(prev => prev ? { ...prev, status: updatedProfile.status as UserStatus } : null);
             }
           }
         }
       )
       .subscribe((status) => {
-        console.log('[AuthContext] Force logout subscription status:', status);
+        devLog('[AuthContext] Force logout subscription status:', status);
       });
 
     return () => {
-      console.log('[AuthContext] Cleaning up force-logout realtime subscription');
+      devLog('[AuthContext] Cleaning up force-logout realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [user?.id, profile?.id, profile?.admin_id, profile?.status]);
@@ -456,7 +449,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     adminId?: string,
     extras?: { mobileNumber?: string; shopName?: string; address?: string }
   ) => {
-    console.log('Sign up attempt for:', email, 'with role:', role);
+    devLog('Sign up attempt');
 
     const userData: any = { name, role };
     if (hotelName && role === 'admin') userData.hotel_name = hotelName;
@@ -477,7 +470,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If signup was successful and we have a user, create the profile immediately
     // This ensures the user appears in the Users list right away
     if (!error && data?.user) {
-      console.log('Auth user created, now creating profile record...');
+      devLog('Auth user created, now creating profile record...');
       try {
         const profileData: any = {
           user_id: data.user.id,
@@ -500,25 +493,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (profileError) {
           // If profile already exists (unique constraint), that's okay
           if (!profileError.message?.includes('duplicate') && !profileError.message?.includes('unique')) {
-            console.error('Failed to create profile:', profileError);
+            devLog('Failed to create profile');
           } else {
-            console.log('Profile already exists for this user');
+            devLog('Profile already exists for this user');
           }
         } else {
-          console.log('Profile created successfully for new user');
+          devLog('Profile created successfully for new user');
         }
       } catch (profileCreateError) {
-        console.error('Error creating profile:', profileCreateError);
+        devLog('Error creating profile');
         // Don't fail the signup because of profile creation failure
       }
     }
 
-    console.log('Sign up result:', error ? 'Error' : 'Success');
+    devLog('Sign up result:', error ? 'Error' : 'Success');
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    console.log('Sign in attempt for:', email);
+    devLog('Sign in attempt');
 
     // Clear any cached permissions before login to ensure fresh permissions
     // This helps when admin has changed permissions for this user
@@ -582,14 +575,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    console.log('Sign in result: Success');
+    devLog('Sign in result: Success');
     return { error: null };
   };
 
   const signOut = async () => {
-    console.log('Signing out...');
+    devLog('Signing out...');
 
     setLoading(true);
+
+    // SECURITY: Clear all cached profile data from localStorage on signOut
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('profile_') || key.startsWith('hotel_pos_permissions_')) {
+        localStorage.removeItem(key);
+      }
+    });
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
@@ -607,7 +608,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
   };
 
-  console.log('AuthProvider render - loading:', loading, 'user:', !!user, 'profile:', !!profile, 'profile status:', profile?.status);
+  devLog('AuthProvider render - loading:', loading, 'user:', !!user, 'profile:', !!profile);
 
   return (
     <AuthContext.Provider value={contextValue}>

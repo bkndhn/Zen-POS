@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Switch } from '@/components/ui/switch';
 import { getShortUnit, validateAndNormalizeQuickChips } from '@/utils/timeUtils';
+import { sanitizeString } from '@/utils/sanitization';
 
 interface TaxRateOption {
   id: string;
@@ -288,8 +289,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
       }
 
       const insertPayload: any = {
-        name: formData.name.trim(),
-        description: formData.description.trim() || null,
+        name: sanitizeString(formData.name.trim(), 200),
+        description: sanitizeString(formData.description.trim(), 500) || null,
         price: parseFloat(formData.price),
         price_zomato: formData.price_zomato ? parseFloat(formData.price_zomato) : null,
         price_swiggy: formData.price_swiggy ? parseFloat(formData.price_swiggy) : null,

@@ -15,6 +15,7 @@ import { MediaUpload } from '@/components/MediaUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { formatStoredQuantity, getShortUnit, validateAndNormalizeQuickChips } from '@/utils/timeUtils';
+import { sanitizeString } from '@/utils/sanitization';
 
 interface TaxRateOption {
   id: string;
@@ -311,8 +312,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
       }
 
       const updatePayload: any = {
-        name: formData.name,
-        description: formData.description || null,
+        name: sanitizeString(formData.name, 200),
+        description: sanitizeString(formData.description || '', 500) || null,
         price: parseFloat(formData.price),
         price_zomato: formData.price_zomato ? parseFloat(formData.price_zomato) : null,
         price_swiggy: formData.price_swiggy ? parseFloat(formData.price_swiggy) : null,

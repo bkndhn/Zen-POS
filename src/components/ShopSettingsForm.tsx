@@ -13,6 +13,7 @@ import { Store, Upload, X, Facebook, Instagram, Phone, Navigation, Link2, Eye, E
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BOTTOM_NAV_OPTIONS, ALL_NAV_ITEMS } from '@/config/navItems';
+import { sanitizeString } from '@/utils/sanitization';
 
 
 export const ShopSettingsForm = () => {
@@ -389,9 +390,9 @@ export const ShopSettingsForm = () => {
         try {
             const isMainBranch = operatingBranchId === mainBranchId;
             const settingsData: any = {
-                shop_name: shopName || null,
-                address: address || null,
-                contact_number: contactNumber || null,
+                shop_name: sanitizeString(shopName || '', 200) || null,
+                address: sanitizeString(address || '', 500) || null,
+                contact_number: sanitizeString(contactNumber || '', 20) || null,
                 logo_url: logoUrl || null,
                 printer_width: printerWidth,
                 facebook: cleanUrl(facebook),
@@ -405,8 +406,8 @@ export const ShopSettingsForm = () => {
                 menu_show_shop_name: menuShowShopName,
                 menu_show_address: menuShowAddress,
                 menu_show_phone: menuShowPhone,
-                upi_id: upiId || null,
-                upi_name: upiName || null,
+                upi_id: sanitizeString(upiId || '', 100) || null,
+                upi_name: sanitizeString(upiName || '', 100) || null,
                 qr_payment_enabled: qrPaymentEnabled,
                 updated_at: new Date().toISOString()
             };

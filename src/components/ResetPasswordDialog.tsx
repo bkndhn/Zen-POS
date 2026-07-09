@@ -15,10 +15,10 @@ interface Props {
 }
 
 const generatePwd = () => {
-  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let out = '';
-  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+  const arr = new Uint32Array(12);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (v) => chars[v % chars.length]).join('');
 };
 
 export const ResetPasswordDialog: React.FC<Props> = ({ open, onOpenChange, targetProfileId, targetLabel }) => {
@@ -27,8 +27,12 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onOpenChange, targe
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!pwd || pwd.length < 6) {
-      toast({ title: 'Too short', description: 'Password must be at least 6 characters.', variant: 'destructive' });
+    if (!pwd || pwd.length < 8) {
+      toast({ title: 'Too short', description: 'Password must be at least 8 characters.', variant: 'destructive' });
+      return;
+    }
+    if (!/[A-Z]/.test(pwd) || !/[a-z]/.test(pwd) || !/[0-9]/.test(pwd)) {
+      toast({ title: 'Weak password', description: 'Password must contain uppercase, lowercase, and a number.', variant: 'destructive' });
       return;
     }
     setSaving(true);
