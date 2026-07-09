@@ -419,6 +419,15 @@ const SuperAdminUsers: React.FC = () => {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => setContactTarget(r)}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Edit contact"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => setPwdTarget({ id: r.profile_id, label: r.hotel_name || r.name || r.email || 'user' })}
                               className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
                               title="Reset password"
