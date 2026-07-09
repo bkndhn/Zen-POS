@@ -490,15 +490,26 @@ const SuperAdminUsers: React.FC = () => {
                         <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
-                            className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                            title="Reset password"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setContactTarget(r)}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Edit contact"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="Reset password"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
