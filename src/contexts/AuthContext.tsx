@@ -447,12 +447,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.id, profile?.id, profile?.admin_id, profile?.status]);
 
-  const signUp = async (email: string, password: string, name: string, role: string = 'user', hotelName?: string, adminId?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    name: string,
+    role: string = 'user',
+    hotelName?: string,
+    adminId?: string,
+    extras?: { mobileNumber?: string; shopName?: string; address?: string }
+  ) => {
     console.log('Sign up attempt for:', email, 'with role:', role);
 
     const userData: any = { name, role };
     if (hotelName && role === 'admin') userData.hotel_name = hotelName;
     if (adminId) userData.admin_id = adminId;
+    if (extras?.mobileNumber) userData.mobile_number = extras.mobileNumber;
+    if (extras?.shopName && role === 'admin') userData.shop_name = extras.shopName;
+    if (extras?.address && role === 'admin') userData.address = extras.address;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -468,7 +479,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!error && data?.user) {
       console.log('Auth user created, now creating profile record...');
       try {
-        const profileData = {
+        const profileData: any = {
           user_id: data.user.id,
           name: name,
           role: role as UserRole,
@@ -476,7 +487,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // New admins start as 'paused' - need Super Admin approval
           // Sub-users created by admins start as 'active'
           status: (role === 'admin' && !adminId ? 'paused' : 'active') as UserStatus,
-          admin_id: adminId || null
+          admin_id: adminId || null,
+          mobile_number: extras?.mobileNumber || null,
+          shop_name: role === 'admin' ? (extras?.shopName || null) : null,
+          address: role === 'admin' ? (extras?.address || null) : null,
         };
 
         const { error: profileError } = await supabase
