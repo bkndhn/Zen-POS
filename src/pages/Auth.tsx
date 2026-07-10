@@ -199,11 +199,16 @@ const Auth = () => {
       }
     }
 
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await signIn(formData.email, formData.password);
+        const { error } = await signIn(formData.email, formData.password, captchaToken || undefined);
         if (error) {
           logSecurityEvent('LOGIN_FAILED', { email: formData.email, reason: error.message });
           if (error.message?.includes('Invalid login credentials')) {
@@ -228,7 +233,9 @@ const Auth = () => {
           formData.password,
           formData.name,
           formData.role,
-          formData.hotelName
+          formData.hotelName,
+          undefined,
+          { captchaToken: captchaToken || undefined }
         );
 
         if (error) {
@@ -258,6 +265,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   };
