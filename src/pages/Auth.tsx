@@ -122,14 +122,24 @@ const Auth = () => {
     );
   }
 
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    try { captchaRef.current?.resetCaptcha(); } catch { /* noop */ }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
         redirectTo: `${window.location.origin}/auth`,
+        captchaToken: captchaToken || undefined,
       });
 
       if (error) throw error;
@@ -147,6 +157,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   };
