@@ -447,7 +447,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: string = 'user',
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
   ) => {
     devLog('Sign up attempt');
 
