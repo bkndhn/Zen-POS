@@ -2443,6 +2443,15 @@ export type Database = {
         Args: { p_admin_id: string; p_branch_id: string }
         Returns: Json
       }
+      get_public_tax_rates: {
+        Args: { p_admin_id: string; p_branch_id?: string }
+        Returns: {
+          cess_rate: number
+          id: string
+          name: string
+          rate: number
+        }[]
+      }
       get_signup_enabled: { Args: never; Returns: boolean }
       get_user_admin_id: { Args: never; Returns: string }
       has_branch_read_access: {
