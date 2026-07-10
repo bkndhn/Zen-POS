@@ -20,9 +20,9 @@ interface AuthContextType {
     role?: string,
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
   ) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
