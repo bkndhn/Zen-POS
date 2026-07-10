@@ -463,7 +463,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: userData
+        data: userData,
+        captchaToken: extras?.captchaToken,
       }
     });
 
