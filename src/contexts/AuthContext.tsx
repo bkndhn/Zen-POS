@@ -176,7 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profileData = {
           user_id: user.id,
           name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-          role: 'user', // Hardcoded to 'user' for safety
+          role: 'user' as const, // Hardcoded to 'user' for safety
           hotel_name: user.user_metadata?.hotel_name || null,
           status: 'active' as UserStatus,
           admin_id: user.user_metadata?.admin_id || null
