@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Store, Clock, Loader2 } from 'lucide-react';
 import { checkRateLimit, clearRateLimit, isValidEmail, isStrongPassword, logSecurityEvent } from '@/utils/securityUtils';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
 
 const Auth = () => {
   const { user, profile, signIn, signUp, signOut, loading: authLoading } = useAuth();
@@ -16,6 +19,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [signupEnabled, setSignupEnabled] = useState(true);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
