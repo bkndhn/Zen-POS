@@ -324,8 +324,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     }
   };
 
+  // Paper saving mode flag (used throughout)
+  const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
+
   // Initialize
   commands.push(INIT);
+
 
   // COMPACT HEADER - Shop name only (no logo for thermal to save paper)
   const headerName = data.shopName || data.hotelName;
@@ -521,7 +525,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Check if autoCut is enabled in localStorage
   const autoCut = localStorage.getItem('hotel_pos_auto_cut') !== 'false';
-  const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
+
+
   
   if (autoCut) {
     // Feed to clear cutter, then cut (1 line for paper saving, 2 lines otherwise)
