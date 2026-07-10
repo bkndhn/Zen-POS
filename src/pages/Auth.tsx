@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Store, Clock, Loader2 } from 'lucide-react';
 import { checkRateLimit, clearRateLimit, isValidEmail, isStrongPassword, logSecurityEvent } from '@/utils/securityUtils';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
 
 const Auth = () => {
   const { user, profile, signIn, signUp, signOut, loading: authLoading } = useAuth();
@@ -16,6 +19,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [signupEnabled, setSignupEnabled] = useState(true);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -117,14 +122,24 @@ const Auth = () => {
     );
   }
 
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    try { captchaRef.current?.resetCaptcha(); } catch { /* noop */ }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
         redirectTo: `${window.location.origin}/auth`,
+        captchaToken: captchaToken || undefined,
       });
 
       if (error) throw error;
@@ -142,6 +157,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   };
@@ -183,11 +199,16 @@ const Auth = () => {
       }
     }
 
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await signIn(formData.email, formData.password);
+        const { error } = await signIn(formData.email, formData.password, captchaToken || undefined);
         if (error) {
           logSecurityEvent('LOGIN_FAILED', { email: formData.email, reason: error.message });
           if (error.message?.includes('Invalid login credentials')) {
@@ -212,7 +233,9 @@ const Auth = () => {
           formData.password,
           formData.name,
           formData.role,
-          formData.hotelName
+          formData.hotelName,
+          undefined,
+          { captchaToken: captchaToken || undefined }
         );
 
         if (error) {
@@ -242,6 +265,7 @@ const Auth = () => {
         variant: "destructive",
       });
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   };
@@ -358,6 +382,20 @@ const Auth = () => {
                 </div>
               </div>
             )}
+
+            {/* hCaptcha */}
+            {HCAPTCHA_SITE_KEY ? (
+              <div className="flex justify-center">
+                <HCaptcha
+                  ref={captchaRef}
+                  sitekey={HCAPTCHA_SITE_KEY}
+                  onVerify={(token) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                  onError={() => setCaptchaToken(null)}
+                  theme="light"
+                />
+              </div>
+            ) : null}
 
             {/* Submit Button */}
             <button

@@ -20,9 +20,9 @@ interface AuthContextType {
     role?: string,
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
   ) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -447,7 +447,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: string = 'user',
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
   ) => {
     devLog('Sign up attempt');
 
@@ -463,7 +463,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: userData
+        data: userData,
+        captchaToken: extras?.captchaToken,
       }
     });
 
@@ -510,7 +511,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
     devLog('Sign in attempt');
 
     // Clear any cached permissions before login to ensure fresh permissions
@@ -521,7 +522,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken } as any,
+    });
 
     if (error) {
       console.log('Sign in error:', error.message);
