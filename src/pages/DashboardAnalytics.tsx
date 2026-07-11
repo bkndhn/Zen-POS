@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { TrendingUp, DollarSign, ShoppingBag, Package, ArrowUpRight, ArrowDownRight, Minus, Calendar, Brain } from 'lucide-react';
 import { formatQuantityWithUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
@@ -86,6 +86,19 @@ const DashboardAnalytics = () => {
   const [plRows, setPlRows] = useState<Array<{ branch_id: string | null; name: string; sales: number; expenses: number; profit: number; bills: number }>>([]);
   const [plLoading, setPlLoading] = useState(false);
   const [hourlyData, setHourlyData] = useState<any[]>([]);
+
+  // Deep Insights state
+  const [insightsFrom, setInsightsFrom] = useState<string>((() => { const d = new Date(); d.setDate(d.getDate() - 29); return d.toISOString().split('T')[0]; })());
+  const [insightsTo, setInsightsTo] = useState<string>(today);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [paymentMix, setPaymentMix] = useState<Array<{ name: string; value: number; count: number }>>([]);
+  const [categorySales, setCategorySales] = useState<Array<{ category: string; revenue: number; qty: number }>>([]);
+  const [dowStats, setDowStats] = useState<Array<{ day: string; revenue: number; bills: number; avg: number }>>([]);
+  const [avgBillTrend, setAvgBillTrend] = useState<Array<{ date: string; avg: number; bills: number }>>([]);
+  const [discountSummary, setDiscountSummary] = useState({ totalDiscount: 0, billsWithDiscount: 0, avgDiscount: 0, discountRate: 0 });
+  const [marginItems, setMarginItems] = useState<Array<{ name: string; revenue: number; cost: number; margin: number; marginPct: number }>>([]);
+  const [insightsRevenue, setInsightsRevenue] = useState(0);
+  const [insightsBills, setInsightsBills] = useState(0);
 
   const { branchFilterId, isAllBranchesView, activeBranch } = useBranchScopedQuery(() => {
     if (adminId) { fetchAnalyticsData(); fetchComparisonData(); }
@@ -512,6 +525,87 @@ const DashboardAnalytics = () => {
 
   useEffect(() => { fetchBranchPL(); }, [adminId, plFromDate, plToDate]);
 
+  // Deep Insights fetch
+  const fetchDeepInsights = async () => {
+    if (!adminId) return;
+    try {
+      setInsightsLoading(true);
+      let billsQ = supabase.from('bills').select('id,total_amount,discount,payment_mode,date,created_at,is_deleted').eq('admin_id', adminId).gte('date', insightsFrom).lte('date', insightsTo).or('is_deleted.is.null,is_deleted.eq.false');
+      let itemsQ = supabase.from('bill_items').select('quantity,total,price,items(name,category,purchase_rate),bills!inner(admin_id,branch_id,date,is_deleted)').eq('bills.admin_id', adminId).gte('bills.date', insightsFrom).lte('bills.date', insightsTo);
+      if (branchFilterId) { billsQ = billsQ.eq('branch_id', branchFilterId); itemsQ = itemsQ.eq('bills.branch_id', branchFilterId); }
+      const [{ data: bills }, { data: bItems }] = await Promise.all([billsQ, itemsQ]);
+
+      // Payment mix
+      const payMap = new Map<string, { value: number; count: number }>();
+      let totalRev = 0, totalDiscount = 0, billsWithDisc = 0;
+      const avgMap = new Map<string, { total: number; bills: number }>();
+      const dowMap = new Map<number, { total: number; bills: number }>();
+      (bills || []).forEach((b: any) => {
+        const amt = Number(b.total_amount || 0);
+        totalRev += amt;
+        const disc = Number(b.discount || 0);
+        if (disc > 0) { totalDiscount += disc; billsWithDisc += 1; }
+        const pm = (b.payment_mode || 'other').toString();
+        const cur = payMap.get(pm) || { value: 0, count: 0 };
+        payMap.set(pm, { value: cur.value + amt, count: cur.count + 1 });
+        // avg bill trend
+        const d = b.date;
+        const av = avgMap.get(d) || { total: 0, bills: 0 };
+        avgMap.set(d, { total: av.total + amt, bills: av.bills + 1 });
+        // day-of-week
+        const dow = new Date(b.date).getDay();
+        const dw = dowMap.get(dow) || { total: 0, bills: 0 };
+        dowMap.set(dow, { total: dw.total + amt, bills: dw.bills + 1 });
+      });
+      setPaymentMix(Array.from(payMap.entries()).map(([name, v]) => ({ name, value: v.value, count: v.count })).sort((a, b) => b.value - a.value));
+      setInsightsRevenue(totalRev);
+      setInsightsBills((bills || []).length);
+      setDiscountSummary({
+        totalDiscount,
+        billsWithDiscount: billsWithDisc,
+        avgDiscount: billsWithDisc ? totalDiscount / billsWithDisc : 0,
+        discountRate: totalRev > 0 ? (totalDiscount / (totalRev + totalDiscount)) * 100 : 0,
+      });
+      setAvgBillTrend(Array.from(avgMap.entries()).map(([date, v]) => ({
+        date: new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        avg: v.bills ? v.total / v.bills : 0,
+        bills: v.bills,
+      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      setDowStats(dayNames.map((day, i) => {
+        const v = dowMap.get(i) || { total: 0, bills: 0 };
+        return { day, revenue: v.total, bills: v.bills, avg: v.bills ? v.total / v.bills : 0 };
+      }));
+
+      // Category sales + margins
+      const catMap = new Map<string, { revenue: number; qty: number }>();
+      const marginMap = new Map<string, { revenue: number; cost: number; qty: number }>();
+      (bItems || []).forEach((it: any) => {
+        if (it.bills?.is_deleted) return;
+        const cat = it.items?.category || 'Uncategorized';
+        const name = it.items?.name || 'Unknown';
+        const qty = Number(it.quantity || 0);
+        const tot = Number(it.total || 0);
+        const cost = Number(it.items?.purchase_rate || 0) * qty;
+        const cur = catMap.get(cat) || { revenue: 0, qty: 0 };
+        catMap.set(cat, { revenue: cur.revenue + tot, qty: cur.qty + qty });
+        const m = marginMap.get(name) || { revenue: 0, cost: 0, qty: 0 };
+        marginMap.set(name, { revenue: m.revenue + tot, cost: m.cost + cost, qty: m.qty + qty });
+      });
+      setCategorySales(Array.from(catMap.entries()).map(([category, v]) => ({ category, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 12));
+      setMarginItems(Array.from(marginMap.entries())
+        .map(([name, v]) => {
+          const margin = v.revenue - v.cost;
+          const marginPct = v.revenue > 0 ? (margin / v.revenue) * 100 : 0;
+          return { name, revenue: v.revenue, cost: v.cost, margin, marginPct };
+        })
+        .filter(m => m.revenue > 0)
+        .sort((a, b) => b.margin - a.margin)
+        .slice(0, 10));
+    } finally { setInsightsLoading(false); }
+  };
+  useEffect(() => { fetchDeepInsights(); }, [adminId, insightsFrom, insightsTo, branchFilterId]);
+
   // Permission check is now handled by ProtectedRoute
   if (loading && !compData) return <div className="p-12 text-center">Loading Analytics...</div>;
 
@@ -894,6 +988,203 @@ const DashboardAnalytics = () => {
               </div>
             </div>
           ) : (<div className="p-6 text-center text-muted-foreground">Select dates to compare</div>)}
+        </CardContent>
+      </Card>
+
+      {/* ===== Deep Insights ===== */}
+      <Card className="border-2 border-primary/20 shadow-lg">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                <Brain className="w-5 h-5 text-primary" /> Deep Business Insights
+              </CardTitle>
+              <CardDescription>Payment mix, category performance, day-of-week trends, margins & discount analytics</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input type="date" value={insightsFrom} max={insightsTo} onChange={(e) => setInsightsFrom(e.target.value)} className="h-9 w-[140px] text-xs" />
+              <span className="text-muted-foreground text-xs">→</span>
+              <Input type="date" value={insightsTo} min={insightsFrom} max={new Date().toISOString().split('T')[0]} onChange={(e) => setInsightsTo(e.target.value)} className="h-9 w-[140px] text-xs" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 sm:p-5 space-y-5">
+          {insightsLoading ? (
+            <div className="p-12 text-center text-muted-foreground animate-pulse">Crunching numbers…</div>
+          ) : (
+            <>
+              {/* KPI strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Revenue</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(insightsRevenue)}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400">Bills</p>
+                  <p className="text-lg sm:text-xl font-bold">{insightsBills}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                  <p className="text-[10px] uppercase font-bold text-violet-700 dark:text-violet-400">Avg Bill</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(insightsBills ? insightsRevenue / insightsBills : 0)}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <p className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-400">Discount Given</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(discountSummary.totalDiscount)}</p>
+                </div>
+              </div>
+
+              {/* Payment mix + Category sales */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">💳 Payment Mix</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    {paymentMix.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No payments</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={paymentMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e: any) => `${e.name}: ${((e.value / insightsRevenue) * 100).toFixed(0)}%`}>
+                            {paymentMix.map((_, i) => (
+                              <Cell key={i} fill={['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#06b6d4', '#84cc16'][i % 7]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">🍽️ Category-wise Sales</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    {categorySales.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No sales</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={categorySales} layout="vertical" margin={{ left: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis type="number" tick={{ fontSize: 10 }} />
+                          <YAxis type="category" dataKey="category" tick={{ fontSize: 10 }} width={90} />
+                          <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                          <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Day-of-week + Avg bill trend */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">📅 Day-of-Week Performance</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dowStats}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v: any, n: any) => n === 'bills' ? v : formatCurrency(Number(v))} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Bar dataKey="revenue" name="Revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="avg" name="Avg Bill" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">📈 Avg Bill Value Trend</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    {avgBillTrend.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No data</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={avgBillTrend}>
+                          <defs>
+                            <linearGradient id="avgGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.5} />
+                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                          <Area type="monotone" dataKey="avg" stroke="#8b5cf6" strokeWidth={2} fill="url(#avgGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Discount summary + Margin items */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">🏷️ Discount Analysis</CardTitle></CardHeader>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Total Discount</p>
+                        <p className="text-lg font-bold text-rose-600">{formatCurrency(discountSummary.totalDiscount)}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Bills w/ Discount</p>
+                        <p className="text-lg font-bold">{discountSummary.billsWithDiscount} <span className="text-xs text-muted-foreground">/ {insightsBills}</span></p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Avg Discount</p>
+                        <p className="text-lg font-bold">{formatCurrency(discountSummary.avgDiscount)}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Discount Rate</p>
+                        <p className="text-lg font-bold text-amber-600">{discountSummary.discountRate.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Discount rate = total discount ÷ (revenue + discount). Aim to keep this under 5% unless running a promo.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">💰 Top Margin Items</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    {marginItems.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-muted-foreground">Set purchase rates on items to compute margins</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/40 text-[10px] uppercase">
+                            <tr>
+                              <th className="text-left p-2">Item</th>
+                              <th className="text-right p-2">Revenue</th>
+                              <th className="text-right p-2">Cost</th>
+                              <th className="text-right p-2">Margin</th>
+                              <th className="text-right p-2">%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {marginItems.map((m) => (
+                              <tr key={m.name} className="border-t border-border/40 hover:bg-muted/20">
+                                <td className="p-2 font-medium truncate max-w-[140px]">{m.name}</td>
+                                <td className="p-2 text-right">{formatCurrency(m.revenue)}</td>
+                                <td className="p-2 text-right text-muted-foreground">{formatCurrency(m.cost)}</td>
+                                <td className={`p-2 text-right font-semibold ${m.margin >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(m.margin)}</td>
+                                <td className={`p-2 text-right font-bold ${m.marginPct >= 30 ? 'text-emerald-600' : m.marginPct >= 15 ? 'text-amber-600' : 'text-rose-600'}`}>{m.marginPct.toFixed(1)}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
