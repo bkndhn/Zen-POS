@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tv, Play, Pause, ChevronLeft, ChevronRight, Clock, ChefHat, CheckCircle } from 'lucide-react';
+import { getCDNUrl } from '@/utils/imageUtils';
 
 interface MenuItem {
   id: string;
@@ -66,7 +67,11 @@ export const MenuTV: React.FC = () => {
         .eq('is_active', true);
       
       if (!error && data) {
-        setItems(data as unknown as MenuItem[]);
+        const mappedData = data.map((item: any) => ({
+          ...item,
+          image_url: item.image_url ? getCDNUrl(item.image_url) : item.image_url
+        }));
+        setItems(mappedData as unknown as MenuItem[]);
       }
     } catch (e) {
       console.warn('Error loading TV menu:', e);

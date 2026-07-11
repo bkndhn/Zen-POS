@@ -17,6 +17,7 @@ import { getShortUnit, formatStoredQuantity } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { CopyMenuToBranchDialog } from '@/components/CopyMenuToBranchDialog';
+import { getCDNUrl } from '@/utils/imageUtils';
 
 interface Item {
   id: string;
@@ -133,7 +134,12 @@ const Items: React.FC = () => {
         return (a.name || '').localeCompare(b.name || '');
       });
 
-      setItems(sortedData as Item[]);
+      const mappedItems = (sortedData || []).map((i: any) => ({
+        ...i,
+        image_url: i.image_url ? getCDNUrl(i.image_url) : i.image_url
+      }));
+
+      setItems(mappedItems as Item[]);
     } catch (error) {
       console.error('Error fetching items:', error);
       toast({

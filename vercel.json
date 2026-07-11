@@ -1,7 +1,13 @@
 {
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "rewrites": [
     {
-      "source": "/((?!assets/|brand/|sw\\.js|favicon\\.ico|manifest\\.webmanifest|workbox-|registerSW\\.js)[^.]*)",
+      "source": "/((?!api/|assets/|brand/|sw\\.js|favicon\\.ico|manifest\\.webmanifest|workbox-|registerSW\\.js)[^.]*)",
       "destination": "/index.html"
     }
   ],

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Image cache for performance
 const imageCache = new Map<string, string>();
 
-export const compressImage = (file: File, maxSizeKB: number = 200): Promise<Blob> => {
+export const compressImage = (file: File, maxSizeKB: number = 400): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
@@ -39,12 +39,27 @@ export const compressImage = (file: File, maxSizeKB: number = 200): Promise<Blob
 
         let quality = 0.85;
         const compress = () => {
+          // Attempt WebP compression first
           canvas.toBlob((blob) => {
             if (!blob) {
-              cleanup();
-              reject(new Error('Image encoding failed'));
+              // Fallback to JPEG if encoding failed
+              canvas.toBlob((jpegBlob) => {
+                if (!jpegBlob) {
+                  cleanup();
+                  reject(new Error('Image encoding failed'));
+                  return;
+                }
+                if (jpegBlob.size <= maxSizeKB * 1024 || quality <= 0.2) {
+                  cleanup();
+                  resolve(jpegBlob);
+                } else {
+                  quality -= 0.1;
+                  compress();
+                }
+              }, 'image/jpeg', quality);
               return;
             }
+
             if (blob.size <= maxSizeKB * 1024 || quality <= 0.2) {
               cleanup();
               resolve(blob);
@@ -52,7 +67,7 @@ export const compressImage = (file: File, maxSizeKB: number = 200): Promise<Blob
               quality -= 0.1;
               compress();
             }
-          }, 'image/jpeg', quality);
+          }, 'image/webp', quality);
         };
         compress();
       } catch (err) {
@@ -79,7 +94,7 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
   // Compress the image (best-effort — fall back to original blob if compression fails)
   let uploadBlob: Blob;
   try {
-    uploadBlob = await compressImage(file);
+    uploadBlob = await compressImage(file, 400);
   } catch (err) {
     console.warn('[uploadItemImage] compression failed, uploading original:', err);
     uploadBlob = file;
@@ -99,7 +114,7 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
 
   const timestamp = Date.now();
   const rand = Math.random().toString(36).slice(2, 8);
-  const fileName = `${itemId}_${timestamp}_${rand}.jpg`;
+  const fileName = `${itemId}_${timestamp}_${rand}.webp`;
   const filePath = `${adminId}/items/${fileName}`;
 
   // Retry up to 3 times on transient network/storage errors
@@ -112,18 +127,20 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
       const { error } = await supabase.storage
         .from('item-images')
         .upload(filePath, uploadBlob, {
-          cacheControl: '3600',
+          cacheControl: '31536000, public', // Cache for a year since it's immutable (has timestamp + rand)
           upsert: true,
-          contentType: 'image/jpeg',
+          contentType: 'image/webp',
         });
 
       if (!error) {
         const { data: { publicUrl } } = supabase.storage
           .from('item-images')
           .getPublicUrl(filePath);
-        imageCache.set(itemId, publicUrl);
+        // Serve through CDN
+        const cdnUrl = getCDNUrl(publicUrl);
+        imageCache.set(itemId, cdnUrl);
         console.log(`[uploadItemImage] success on attempt ${attempt}:`, filePath);
-        return publicUrl;
+        return cdnUrl;
       }
       lastError = error;
       const msg = (error as any)?.message || '';
@@ -144,7 +161,7 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
     throw new Error('Permission denied while uploading. Please sign in again or contact support.');
   }
   if (/payload too large|exceeded/i.test(msg)) {
-    throw new Error('File is too large for upload. Try a smaller image (max 2MB).');
+    throw new Error('File is too large for upload. Try a smaller image (max 400KB).');
   }
   if (/network|fetch|timeout|failed to fetch/i.test(msg)) {
     throw new Error('Network error during upload. Check your connection and try again.');
@@ -153,12 +170,32 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
 };
 
 
+export const getCDNUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  // Only process Supabase storage URLs
+  if (!url.includes('supabase.co/storage/v1/object/public/')) {
+    return url;
+  }
+
+  const cdnUrl = import.meta.env.VITE_CDN_URL;
+  if (cdnUrl) {
+    if (cdnUrl.includes('?url=')) {
+      return `${cdnUrl}${encodeURIComponent(url)}&output=webp`;
+    }
+    return url.replace('https://ivleyttlqlqawghvfyjz.supabase.co', cdnUrl);
+  }
+
+  // Fallback: Use free Cloudflare-backed image proxy (images.weserv.nl)
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=webp`;
+};
+
 export const getCachedImageUrl = (itemId: string): string | null => {
-  return imageCache.get(itemId) || null;
+  const cached = imageCache.get(itemId) || null;
+  return cached ? getCDNUrl(cached) : null;
 };
 
 export const cacheImageUrl = (itemId: string, url: string) => {
-  imageCache.set(itemId, url);
+  imageCache.set(itemId, getCDNUrl(url));
 };
 
 export const deleteItemImage = async (imageUrl: string): Promise<void> => {
@@ -184,7 +221,7 @@ export const deleteItemImage = async (imageUrl: string): Promise<void> => {
  * For true GIF compression, a backend solution would be needed.
  * This reduces file size significantly while maintaining visual quality.
  */
-export const compressGifToImage = async (file: File, maxSizeKB: number = 500): Promise<Blob> => {
+export const compressGifToImage = async (file: File, maxSizeKB: number = 400): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
@@ -192,7 +229,7 @@ export const compressGifToImage = async (file: File, maxSizeKB: number = 500): P
 
     img.onload = () => {
       // Calculate dimensions - scale down if needed
-      const maxDimension = maxSizeKB <= 500 ? 800 : 1000;
+      const maxDimension = maxSizeKB <= 400 ? 800 : 1000;
       let { width, height } = img;
 
       if (width > maxDimension || height > maxDimension) {
@@ -225,9 +262,9 @@ export const compressGifToImage = async (file: File, maxSizeKB: number = 500): P
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             canvas.toBlob((finalBlob) => {
               resolve(finalBlob || blob!);
-            }, 'image/jpeg', 0.8);
+            }, 'image/webp', 0.8);
           }
-        }, 'image/jpeg', quality);
+        }, 'image/webp', quality);
       };
 
       compress();
@@ -326,14 +363,14 @@ export const compressVideo = async (
  * Simple GIF compression by reducing dimensions
  * Keeps it as GIF format but makes it smaller
  */
-export const compressGifSimple = async (file: File, maxSizeKB: number = 1024): Promise<File> => {
+export const compressGifSimple = async (file: File, maxSizeKB: number = 400): Promise<File> => {
   // If already small enough, return as-is
   if (file.size <= maxSizeKB * 1024) {
     return file;
   }
 
   // For GIFs, we can't truly compress in browser without losing animation
-  // Best option: Convert to static high-quality JPEG
+  // Best option: Convert to static high-quality WebP
   const compressedBlob = await compressGifToImage(file, maxSizeKB);
-  return new File([compressedBlob], file.name.replace('.gif', '.jpg'), { type: 'image/jpeg' });
+  return new File([compressedBlob], file.name.replace('.gif', '.webp'), { type: 'image/webp' });
 };

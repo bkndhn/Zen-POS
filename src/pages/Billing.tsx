@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Bell, Clipboard } from 'lucide-react';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { TableSelector } from '@/components/TableSelector';
-import { getCachedImageUrl, cacheImageUrl } from '@/utils/imageUtils';
+import { getCachedImageUrl, cacheImageUrl, getCDNUrl } from '@/utils/imageUtils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
@@ -160,6 +160,263 @@ interface BillItem {
   };
 }
 type PaymentMode = "cash" | "upi" | "card" | "other";
+
+const getChannelPrice = (item: any, channel: 'store' | 'zomato' | 'swiggy') => {
+  if (channel === 'zomato') return item.price_zomato !== null && item.price_zomato !== undefined && item.price_zomato !== '' ? Number(item.price_zomato) : item.store_price !== undefined ? item.store_price : item.price;
+  if (channel === 'swiggy') return item.price_swiggy !== null && item.price_swiggy !== undefined && item.price_swiggy !== '' ? Number(item.price_swiggy) : item.store_price !== undefined ? item.store_price : item.price;
+  return item.store_price !== undefined ? item.store_price : item.price;
+};
+
+interface BillingGridItemCardProps {
+  item: Item;
+  cartQuantity: number;
+  orderChannel: 'store' | 'zomato' | 'swiggy';
+  onAddToCart: (item: Item) => void;
+  onAddToCartWithChip: (item: Item, chip: string) => void;
+  onAddToCartWithAmount: (item: Item, amount: number) => void;
+  onUpdateQuantity: (id: string, change: number) => void;
+}
+
+const BillingGridItemCard = React.memo(({
+  item,
+  cartQuantity,
+  orderChannel,
+  onAddToCart,
+  onAddToCartWithChip,
+  onAddToCartWithAmount,
+  onUpdateQuantity
+}: BillingGridItemCardProps) => {
+  const cachedImageUrl = getCachedImageUrl(item.id);
+  const imageUrl = item.image_url || cachedImageUrl;
+
+  // Cache the image URL if it exists
+  if (item.image_url && !cachedImageUrl) {
+    cacheImageUrl(item.id, item.image_url);
+  }
+  const isInCart = cartQuantity > 0;
+  const unitLabel = getShortUnit(item.unit);
+  const lowStock = isLowStock(item);
+
+  return (
+    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border-2 p-4 flex flex-col shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-primary shadow-primary/25 shadow-lg' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-zinc-200/80 dark:border-zinc-800/80 hover:border-primary/40'}`}>
+      {/* Image container with quantity badge */}
+      <div className="relative aspect-[4/3] mb-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden flex-shrink-0">
+        {/* Media rendering - supports images, GIFs, and videos */}
+        {item.media_type === 'video' ? (
+          <video
+            src={item.video_url || item.image_url}
+            className="w-full h-full object-cover"
+            muted
+            loop
+            autoPlay
+            playsInline
+          />
+        ) : (item.image_url || item.video_url) ? (
+          <img
+            src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (getCachedImageUrl(item.id) || item.image_url)}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            onError={e => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+        ) : null}
+        <div className={`${(item.image_url || item.video_url) ? 'hidden' : ''} w-full h-full flex items-center justify-center text-muted-foreground`}>
+          <Package className="w-8 h-8" />
+        </div>
+
+        {/* Low stock badge - shown at top left */}
+        {lowStock && (
+          <div className="absolute top-1 left-1 bg-orange-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+            Low: {formatStoredQuantity(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
+          </div>
+        )}
+
+        {/* Small rectangle quantity badge - shown when item is in cart */}
+        {isInCart && (
+          <div className="absolute bottom-1 right-1 bg-[hsl(var(--qty-badge))] text-white text-[13px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-0.5">
+            <span>{formatQuantityWithUnit(cartQuantity, item.unit)}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 flex flex-col min-h-0 px-0.5">
+        <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0">{item.name}</h3>
+        <p className="text-primary mb-1 flex-shrink-0 font-bold text-sm">
+          ₹{getChannelPrice(item, orderChannel).toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
+        </p>
+
+        {isInCart ? (
+          <div className="flex items-center justify-center gap-1.5 mt-auto">
+            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-decrement))] text-white border-0 hover:opacity-80">
+              <Minus className="h-3 w-3" />
+            </Button>
+            <span className="font-bold min-w-[1.5rem] text-center text-base">{cartQuantity}</span>
+            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-increment))] text-white border-0 hover:opacity-80">
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-auto space-y-1.5 flex flex-col justify-end">
+            {item.quick_chips && item.quick_chips.length > 0 && (
+              <div className="flex flex-wrap gap-1 justify-center mb-1">
+                {item.quick_chips.map((chip, idx) => {
+                  const isAmt = chip.startsWith('₹');
+                  return (
+                    <button
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAmt) {
+                          onAddToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
+                        } else {
+                          onAddToCartWithChip(item, chip);
+                        }
+                      }}
+                      className="px-2 py-0.5 text-[10px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
+                    >
+                      {chip}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <Button onClick={() => onAddToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm">
+              Add
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.cartQuantity === nextProps.cartQuantity &&
+         prevProps.orderChannel === nextProps.orderChannel &&
+         prevProps.item.price === nextProps.item.price &&
+         prevProps.item.name === nextProps.item.name &&
+         prevProps.item.image_url === nextProps.item.image_url &&
+         prevProps.item.video_url === nextProps.item.video_url &&
+         prevProps.item.stock_quantity === nextProps.item.stock_quantity;
+});
+
+interface BillingListItemCardProps {
+  item: Item;
+  cartQuantity: number;
+  orderChannel: 'store' | 'zomato' | 'swiggy';
+  onAddToCart: (item: Item) => void;
+  onAddToCartWithChip: (item: Item, chip: string) => void;
+  onAddToCartWithAmount: (item: Item, amount: number) => void;
+  onUpdateQuantity: (id: string, change: number) => void;
+}
+
+const BillingListItemCard = React.memo(({
+  item,
+  cartQuantity,
+  orderChannel,
+  onAddToCart,
+  onAddToCartWithChip,
+  onAddToCartWithAmount,
+  onUpdateQuantity
+}: BillingListItemCardProps) => {
+  const cachedImageUrl = getCachedImageUrl(item.id);
+  const imageUrl = item.image_url || cachedImageUrl;
+  if (item.image_url && !cachedImageUrl) {
+    cacheImageUrl(item.id, item.image_url);
+  }
+  const isInCart = cartQuantity > 0;
+  return (
+    <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {/* Image */}
+            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+              {item.media_type === 'video' ? (
+                <video
+                  src={item.video_url || item.image_url}
+                  className="w-full h-full object-cover"
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                />
+              ) : (item.image_url || item.video_url) ? (
+                <img
+                  src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (imageUrl || item.image_url)}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <Package className="w-6 h-6" />
+                </div>
+              )}
+            </div>
+
+            {/* Name and Price */}
+            <div>
+              <h3 className="font-semibold text-sm">{item.name}</h3>
+              <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            {isInCart ? (
+              <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
+                <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
+                  <Minus className="w-3 h-3" />
+                </Button>
+                <span className="font-semibold min-w-[20px] text-center">
+                  {cartQuantity}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full">
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
+                  const isAmt = chip.startsWith('₹');
+                  return (
+                    <button
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAmt) {
+                          onAddToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
+                        } else {
+                          onAddToCartWithChip(item, chip);
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
+                    >
+                      {chip}
+                    </button>
+                  );
+                })}
+                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white">
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.cartQuantity === nextProps.cartQuantity &&
+         prevProps.orderChannel === nextProps.orderChannel &&
+         prevProps.item.price === nextProps.item.price &&
+         prevProps.item.name === nextProps.item.name &&
+         prevProps.item.image_url === nextProps.item.image_url &&
+         prevProps.item.video_url === nextProps.item.video_url &&
+         prevProps.item.stock_quantity === nextProps.item.stock_quantity;
+});
+
 const Billing = () => {
   const {
     profile
@@ -227,11 +484,7 @@ const Billing = () => {
     }
   ]);
 
-  const getChannelPrice = (item: any, channel: 'store' | 'zomato' | 'swiggy') => {
-    if (channel === 'zomato') return item.price_zomato !== null && item.price_zomato !== undefined && item.price_zomato !== '' ? Number(item.price_zomato) : item.store_price !== undefined ? item.store_price : item.price;
-    if (channel === 'swiggy') return item.price_swiggy !== null && item.price_swiggy !== undefined && item.price_swiggy !== '' ? Number(item.price_swiggy) : item.store_price !== undefined ? item.store_price : item.price;
-    return item.store_price !== undefined ? item.store_price : item.price;
-  };
+
 
   const handleChannelChange = (channel: 'store' | 'zomato' | 'swiggy') => {
     setOrderChannel(channel);
@@ -676,11 +929,16 @@ const Billing = () => {
           return (a.name || '').localeCompare(b.name || '');
         });
 
-        setItems(sortedData as Item[]);
+        const mappedData = sortedData.map((item: any) => ({
+          ...item,
+          image_url: item.image_url ? getCDNUrl(item.image_url) : item.image_url
+        }));
+
+        setItems(mappedData as Item[]);
 
         // Cache items for offline use
         const { offlineManager } = await import('@/utils/offlineManager');
-        await offlineManager.cacheItems(sortedData);
+        await offlineManager.cacheItems(mappedData);
       } else {
         // Offline: Use cached items
         const { offlineManager } = await import('@/utils/offlineManager');
@@ -2557,194 +2815,38 @@ const Billing = () => {
         {viewMode === 'grid' ? <div className={`grid gap-2 ${displaySettings.items_per_row === 1 ? 'grid-cols-1' : displaySettings.items_per_row === 2 ? 'grid-cols-2' : displaySettings.items_per_row === 3 ? 'grid-cols-3' : displaySettings.items_per_row === 4 ? 'grid-cols-4' : displaySettings.items_per_row === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
           {filteredItems.map(item => {
             const cartItem = cart.find(c => c.id === item.id);
-            const cachedImageUrl = getCachedImageUrl(item.id);
-            const imageUrl = item.image_url || cachedImageUrl;
-
-            // Cache the image URL if it exists
-            if (item.image_url && !cachedImageUrl) {
-              cacheImageUrl(item.id, item.image_url);
-            }
-            const isInCart = cartItem && cartItem.quantity > 0;
-            const unitLabel = getShortUnit(item.unit);
-            const lowStock = isLowStock(item);
-            return <div key={item.id} className={`relative bg-white dark:bg-zinc-900 rounded-2xl border-2 p-4 flex flex-col shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-primary shadow-primary/25 shadow-lg' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-zinc-200/80 dark:border-zinc-800/80 hover:border-primary/40'}`}>
-              {/* Image container with quantity badge */}
-              <div className="relative aspect-[4/3] mb-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden flex-shrink-0">
-                {/* Media rendering - supports images, GIFs, and videos */}
-                {item.media_type === 'video' ? (
-                  <video
-                    src={item.video_url || item.image_url}
-                    className="w-full h-full object-cover"
-                    muted
-                    loop
-                    autoPlay
-                    playsInline
-                  />
-                ) : (item.image_url || item.video_url) ? (
-                  <img
-                    src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (getCachedImageUrl(item.id) || item.image_url)}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                    onError={e => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                ) : null}
-                <div className={`${(item.image_url || item.video_url) ? 'hidden' : ''} w-full h-full flex items-center justify-center text-muted-foreground`}>
-                  <Package className="w-8 h-8" />
-                </div>
-
-                {/* Low stock badge - shown at top left */}
-                {lowStock && (
-                  <div className="absolute top-1 left-1 bg-orange-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                    Low: {formatStoredQuantity(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
-                  </div>
-                )}
-
-                {/* Small rectangle quantity badge - shown when item is in cart */}
-                {isInCart && (
-                  <div className="absolute bottom-1 right-1 bg-[hsl(var(--qty-badge))] text-white text-[13px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-0.5">
-                    <span>{formatQuantityWithUnit(cartItem.quantity, item.unit)}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1 flex flex-col min-h-0 px-0.5">
-                <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0">{item.name}</h3>
-                <p className="text-primary mb-1 flex-shrink-0 font-bold text-sm">
-                  ₹{getChannelPrice(item, orderChannel).toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
-                </p>
-
-                {isInCart ? (
-                  <div className="flex items-center justify-center gap-1.5 mt-auto">
-                    <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-decrement))] text-white border-0 hover:opacity-80">
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="font-bold min-w-[1.5rem] text-center text-base">{cartItem.quantity}</span>
-                    <Button size="sm" variant="outline" onClick={() => updateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-increment))] text-white border-0 hover:opacity-80">
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="mt-auto space-y-1.5 flex flex-col justify-end">
-                    {item.quick_chips && item.quick_chips.length > 0 && (
-                      <div className="flex flex-wrap gap-1 justify-center mb-1">
-                        {item.quick_chips.map((chip, idx) => {
-                          const isAmt = chip.startsWith('₹');
-                          return (
-                            <button
-                              key={idx}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isAmt) {
-                                  addToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
-                                } else {
-                                  addToCartWithChip(item, chip);
-                                }
-                              }}
-                              className="px-2 py-0.5 text-[10px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
-                            >
-                              {chip}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <Button onClick={() => addToCart(item)} className="w-full h-9 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground text-xs font-semibold rounded-lg shadow-sm">
-                      Add
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>;
+            const cartQuantity = cartItem?.quantity || 0;
+            return (
+              <BillingGridItemCard
+                key={item.id}
+                item={item}
+                cartQuantity={cartQuantity}
+                orderChannel={orderChannel}
+                onAddToCart={addToCart}
+                onAddToCartWithChip={addToCartWithChip}
+                onAddToCartWithAmount={addToCartWithAmount}
+                onUpdateQuantity={updateQuantity}
+              />
+            );
           })}
         </div> :
           // List View
           <div className="space-y-2">
             {filteredItems.map(item => {
               const cartItem = cart.find(c => c.id === item.id);
-              const cachedImageUrl = getCachedImageUrl(item.id);
-              const imageUrl = item.image_url || cachedImageUrl;
-              if (item.image_url && !cachedImageUrl) {
-                cacheImageUrl(item.id, item.image_url);
-              }
-              return <Card key={item.id} className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {/* Image */}
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                        {item.media_type === 'video' ? (
-                          <video
-                            src={item.video_url || item.image_url}
-                            className="w-full h-full object-cover"
-                            muted
-                            loop
-                            autoPlay
-                            playsInline
-                          />
-                        ) : (item.image_url || item.video_url) ? (
-                          <img
-                            src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (imageUrl || item.image_url)}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <Package className="w-6 h-6" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Name and Price */}
-                      <div>
-                        <h3 className="font-semibold text-sm">{item.name}</h3>
-                        <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
-                      </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      {cartItem ? <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
-                        <Button variant="ghost" size="sm" onClick={() => updateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="font-semibold min-w-[20px] text-center">
-                          {cartItem.quantity}
-                        </span>
-                        <Button variant="ghost" size="sm" onClick={() => updateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full">
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      </div> : <div className="flex items-center gap-1.5">
-                        {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
-                          const isAmt = chip.startsWith('₹');
-                          return (
-                            <button
-                              key={idx}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isAmt) {
-                                  addToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
-                                } else {
-                                  addToCartWithChip(item, chip);
-                                }
-                              }}
-                              className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
-                            >
-                              {chip}
-                            </button>
-                          );
-                        })}
-                        <Button onClick={() => addToCart(item)} className="bg-primary hover:bg-primary/90 text-white">
-                          Add
-                        </Button>
-                      </div>}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>;
+              const cartQuantity = cartItem?.quantity || 0;
+              return (
+                <BillingListItemCard
+                  key={item.id}
+                  item={item}
+                  cartQuantity={cartQuantity}
+                  orderChannel={orderChannel}
+                  onAddToCart={addToCart}
+                  onAddToCartWithChip={addToCartWithChip}
+                  onAddToCartWithAmount={addToCartWithAmount}
+                  onUpdateQuantity={updateQuantity}
+                />
+              );
             })}
           </div>}
       </div>

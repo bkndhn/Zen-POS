@@ -53,6 +53,17 @@ export default defineConfig(({ mode }) => ({
               },
               networkTimeoutSeconds: 10
             }
+          },
+          {
+            urlPattern: /^https:\/\/(images\.weserv\.nl|.*\.cloudfront\.net|.*\.imgix\.net|.*\.cloudflare\.com)\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cdn-images-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              }
+            }
           }
         ]
       }

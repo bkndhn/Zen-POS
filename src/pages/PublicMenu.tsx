@@ -5,10 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles } from 'lucide-react';
+import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
+import { getCDNUrl } from '@/utils/imageUtils';
+import { useTranslation } from 'react-i18next';
 
 // Types
 interface MenuItem {
@@ -121,6 +123,7 @@ interface ItemCategory {
  * - Custom URL slug support
  */
 const PublicMenu = () => {
+    const { t, i18n } = useTranslation();
     const { adminId: urlParam } = useParams<{ adminId: string }>();
     const [searchParams] = useSearchParams();
     const tableNo = searchParams.get('table');
@@ -349,7 +352,11 @@ const PublicMenu = () => {
                     }
                 }
 
-                setItems((itemsData || []) as any);
+                const mappedItems = (itemsData || []).map((i: any) => ({
+                    ...i,
+                    image_url: i.image_url ? getCDNUrl(i.image_url) : i.image_url
+                }));
+                setItems(mappedItems as any);
                 setShopSettings(settingsData as ShopSettings | null);
                 setCategories(categoriesData || []);
                 setBanners(bannersData || []);
@@ -389,18 +396,26 @@ const PublicMenu = () => {
 
                     if (payload.eventType === 'UPDATE') {
                         const updatedItem = payload.new as MenuItem;
+                        const mappedUpdate = {
+                            ...updatedItem,
+                            image_url: updatedItem.image_url ? getCDNUrl(updatedItem.image_url) : updatedItem.image_url
+                        };
 
                         if (!updatedItem.is_active) {
                             setItems(prev => prev.filter(item => item.id !== updatedItem.id));
                         } else {
                             setItems(prev => prev.map(item =>
-                                item.id === updatedItem.id ? updatedItem : item
+                                item.id === updatedItem.id ? mappedUpdate : item
                             ));
                         }
                     } else if (payload.eventType === 'INSERT') {
                         const newItem = payload.new as MenuItem;
+                        const mappedNew = {
+                            ...newItem,
+                            image_url: newItem.image_url ? getCDNUrl(newItem.image_url) : newItem.image_url
+                        };
                         if (newItem.is_active) {
-                            setItems(prev => [...prev, newItem].sort((a, b) =>
+                            setItems(prev => [...prev, mappedNew].sort((a, b) =>
                                 (a.category || '').localeCompare(b.category || '') ||
                                 a.name.localeCompare(b.name)
                             ));
@@ -784,6 +799,13 @@ const PublicMenu = () => {
         setCart(prev => prev.filter(c => c.id !== itemId));
     }, []);
 
+    // Clear whole cart
+    const clearCart = useCallback(() => {
+        if (window.confirm(t('menu.confirmClearCart') || "Are you sure you want to clear all items from your cart?")) {
+            setCart([]);
+        }
+    }, [t]);
+
     // Update quantity
     const updateQuantity = useCallback((itemId: string, delta: number) => {
         setCart(prev => {
@@ -1085,11 +1107,11 @@ const PublicMenu = () => {
     };
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'pending': return 'Waiting';
-            case 'preparing': return 'Being Prepared 👨‍🍳';
-            case 'ready': return 'Ready! 🔔';
-            case 'served': return 'Served ✅';
-            case 'cancelled': return 'Cancelled';
+            case 'pending': return t('menu.statusWaiting') || 'Waiting';
+            case 'preparing': return t('menu.statusPreparing') || 'Being Prepared 👨‍🍳';
+            case 'ready': return t('menu.statusReady') || 'Ready! 🔔';
+            case 'served': return t('menu.statusServed') || 'Served ✅';
+            case 'cancelled': return t('menu.statusCancelled') || 'Cancelled';
             default: return status;
         }
     };
@@ -1518,6 +1540,17 @@ const PublicMenu = () => {
                                     T{tableNo}{seatId ? ` - Seat ${seatId}` : ''}
                                 </Badge>
                             )}
+                            <button
+                                onClick={() => {
+                                    const nextLang = i18n.language?.startsWith('ta') ? 'en' : 'ta';
+                                    i18n.changeLanguage(nextLang);
+                                    localStorage.setItem('i18nextLng', nextLang);
+                                }}
+                                className="text-xs font-bold bg-white/20 hover:bg-white/30 text-white border border-white/30 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all h-8"
+                            >
+                                <Languages className="w-3.5 h-3.5" />
+                                {i18n.language?.startsWith('ta') ? 'EN' : 'தமிழ்'}
+                            </button>
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -1541,7 +1574,7 @@ const PublicMenu = () => {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
                                 <Input
                                     type="text"
-                                    placeholder="Search items..."
+                                    placeholder={t('menu.searchPlaceholder') || "Search menu items..."}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-9 pr-9 bg-white/95 border-0 text-gray-800 placeholder:text-gray-400"
@@ -1562,7 +1595,7 @@ const PublicMenu = () => {
                                 className="text-white hover:bg-white/20"
                                 onClick={clearSearch}
                             >
-                                Cancel
+                                {t('common.cancel') || 'Cancel'}
                             </Button>
                         </div>
                     )}
@@ -1593,7 +1626,7 @@ const PublicMenu = () => {
                                         : 'linear-gradient(135deg, #ea580c, #dc2626)'
                                 } : {}}
                             >
-                                All ({items.length})
+                                {t('menu.all') || 'All'} ({items.length})
                             </button>
                             {itemCategories.map(cat => {
                                 const count = items.filter(i => i.category === cat).length;
@@ -1862,7 +1895,7 @@ const PublicMenu = () => {
                                                                     </div>
                                                                 ) : (
                                                                     <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                        ADD
+                                                                        {t('common.add') || 'ADD'}
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -1940,7 +1973,7 @@ const PublicMenu = () => {
                                                                         </div>
                                                                     ) : (
                                                                         <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                            ADD
+                                                                            {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )
                                                                 )}
@@ -2021,7 +2054,7 @@ const PublicMenu = () => {
                                                                         </div>
                                                                     ) : (
                                                                         <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                            ADD
+                                                                            {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -2053,7 +2086,9 @@ const PublicMenu = () => {
                             >
                                 <div className="flex items-center gap-2">
                                     <ChefHat className="w-5 h-5 text-blue-600" />
-                                    <span className="font-bold text-blue-900">Your Orders — Table {tableNo}{seatId ? ` (Seat ${seatId})` : ''}</span>
+                                    <span className="font-bold text-blue-900">
+                                        {t('menu.yourOrders') || 'Your Orders'} — Table {tableNo}{seatId ? ` (Seat ${seatId})` : ''}
+                                    </span>
                                     <Badge className="bg-blue-100 text-blue-700 text-xs">{sessionOrders.length}</Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -2100,7 +2135,7 @@ const PublicMenu = () => {
                             {shopSettings?.qr_payment_enabled && (
                                 <div className="p-4 bg-slate-50 border-t border-gray-100 flex flex-col gap-2">
                                     <div className="flex justify-between items-center text-sm font-semibold text-gray-700 mb-1">
-                                        <span>Total Outstanding Bill:</span>
+                                        <span>{t('menu.outstandingBill') || 'Total Outstanding Bill'}:</span>
                                         <span className="text-base text-gray-900 font-bold">₹{sessionTotal.toFixed(0)}</span>
                                     </div>
                                     <Button
@@ -2113,7 +2148,7 @@ const PublicMenu = () => {
                                         }}
                                     >
                                         <QrCode className="w-5 h-5" />
-                                        <span>Pay Bill via UPI (₹{sessionTotal.toFixed(0)})</span>
+                                        <span>{t('menu.payViaUPI') || 'Pay Bill via UPI'} (₹{sessionTotal.toFixed(0)})</span>
                                     </Button>
                                 </div>
                             )}
@@ -2130,11 +2165,20 @@ const PublicMenu = () => {
                             <div className="flex items-center justify-between p-4 border-b">
                                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     <ShoppingCart className="w-5 h-5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
-                                    Your Cart
+                                    {t('menu.yourCart') || 'Your Cart'}
                                 </h2>
-                                <button onClick={() => setShowCart(false)} className="p-1 rounded-full hover:bg-gray-100">
-                                    <X className="w-5 h-5 text-gray-500" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={clearCart} 
+                                        className="text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        {t('menu.clearCart') || 'Clear Cart'}
+                                    </button>
+                                    <button onClick={() => setShowCart(false)} className="p-1 rounded-full hover:bg-gray-100">
+                                        <X className="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -2170,7 +2214,7 @@ const PublicMenu = () => {
                                                         autoFocus
                                                     />
                                                     <button onClick={() => setInstructionItemId(null)} className="px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">
-                                                        Done
+                                                        {t('menu.done') || 'Done'}
                                                     </button>
                                                 </div>
                                             ) : (
@@ -2179,7 +2223,7 @@ const PublicMenu = () => {
                                                     className="text-xs text-amber-600 flex items-center gap-1 hover:text-amber-700"
                                                 >
                                                     <MessageSquare className="w-3 h-3" />
-                                                    {item.instructions || 'Add instructions'}
+                                                    {item.instructions || t('menu.addInstructions')}
                                                 </button>
                                             )}
                                         </div>
@@ -2190,12 +2234,12 @@ const PublicMenu = () => {
                                         </div>
                                     </div>
                                 ))}
-
+ 
                                 {/* General order note */}
                                 <div className="pt-2">
-                                    <label className="text-xs font-medium text-gray-500 mb-1 block">Note for kitchen (optional)</label>
+                                    <label className="text-xs font-medium text-gray-500 mb-1 block">{t('menu.kitchenNote') || 'Note for kitchen (optional)'}</label>
                                     <Input
-                                        placeholder="Any general instructions..."
+                                        placeholder={t('menu.generalInstructionsPlaceholder') || "Any general instructions..."}
                                         value={orderNote}
                                         onChange={e => setOrderNote(e.target.value)}
                                         className="h-9 text-sm"
@@ -2207,12 +2251,12 @@ const PublicMenu = () => {
                             <div className="p-4 border-t bg-white space-y-2">
                                 <div className="space-y-1 text-xs text-gray-500">
                                     <div className="flex justify-between">
-                                        <span>Subtotal:</span>
+                                        <span>{t('menu.subtotal') || 'Subtotal'}:</span>
                                         <span>₹{cartSubtotal.toFixed(2)}</span>
                                     </div>
                                     {cartExclusiveTax > 0 && (
                                         <div className="flex justify-between text-amber-600 font-medium">
-                                            <span>Tax (Exclusive):</span>
+                                            <span>{t('menu.tax') || 'Tax (Exclusive)'}:</span>
                                             <span>+₹{cartExclusiveTax.toFixed(2)}</span>
                                         </div>
                                     )}
@@ -2224,7 +2268,9 @@ const PublicMenu = () => {
                                     ))}
                                 </div>
                                 <div className="flex justify-between items-center mb-1.5 pt-1.5 border-t">
-                                    <span className="text-sm text-gray-600 font-semibold">{cartItemCount} item{cartItemCount !== 1 ? 's' : ''}</span>
+                                    <span className="text-sm text-gray-600 font-semibold">
+                                        {cartItemCount} {cartItemCount !== 1 ? (t('menu.items') || 'items') : (t('menu.item') || 'item')}
+                                    </span>
                                     <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{cartTotal.toFixed(2)}</span>
                                 </div>
                                 <Button
@@ -2234,9 +2280,9 @@ const PublicMenu = () => {
                                     style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                                 >
                                     {isPlacingOrder ? (
-                                        <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Placing Order...</>
+                                        <><Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('menu.placingOrder') || 'Placing Order...'}</>
                                     ) : (
-                                        <><Send className="w-5 h-5 mr-2" /> Place Order ₹{cartTotal.toFixed(2)}</>
+                                        <><Send className="w-5 h-5 mr-2" /> {t('menu.placeOrder') || 'Place Order'} ₹{cartTotal.toFixed(2)}</>
                                     )}
                                 </Button>
                             </div>
