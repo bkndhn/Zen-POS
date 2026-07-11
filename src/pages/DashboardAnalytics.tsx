@@ -525,6 +525,87 @@ const DashboardAnalytics = () => {
 
   useEffect(() => { fetchBranchPL(); }, [adminId, plFromDate, plToDate]);
 
+  // Deep Insights fetch
+  const fetchDeepInsights = async () => {
+    if (!adminId) return;
+    try {
+      setInsightsLoading(true);
+      let billsQ = supabase.from('bills').select('id,total_amount,discount,payment_mode,date,created_at,is_deleted').eq('admin_id', adminId).gte('date', insightsFrom).lte('date', insightsTo).or('is_deleted.is.null,is_deleted.eq.false');
+      let itemsQ = supabase.from('bill_items').select('quantity,total,price,items(name,category,purchase_rate),bills!inner(admin_id,branch_id,date,is_deleted)').eq('bills.admin_id', adminId).gte('bills.date', insightsFrom).lte('bills.date', insightsTo);
+      if (branchFilterId) { billsQ = billsQ.eq('branch_id', branchFilterId); itemsQ = itemsQ.eq('bills.branch_id', branchFilterId); }
+      const [{ data: bills }, { data: bItems }] = await Promise.all([billsQ, itemsQ]);
+
+      // Payment mix
+      const payMap = new Map<string, { value: number; count: number }>();
+      let totalRev = 0, totalDiscount = 0, billsWithDisc = 0;
+      const avgMap = new Map<string, { total: number; bills: number }>();
+      const dowMap = new Map<number, { total: number; bills: number }>();
+      (bills || []).forEach((b: any) => {
+        const amt = Number(b.total_amount || 0);
+        totalRev += amt;
+        const disc = Number(b.discount || 0);
+        if (disc > 0) { totalDiscount += disc; billsWithDisc += 1; }
+        const pm = (b.payment_mode || 'other').toString();
+        const cur = payMap.get(pm) || { value: 0, count: 0 };
+        payMap.set(pm, { value: cur.value + amt, count: cur.count + 1 });
+        // avg bill trend
+        const d = b.date;
+        const av = avgMap.get(d) || { total: 0, bills: 0 };
+        avgMap.set(d, { total: av.total + amt, bills: av.bills + 1 });
+        // day-of-week
+        const dow = new Date(b.date).getDay();
+        const dw = dowMap.get(dow) || { total: 0, bills: 0 };
+        dowMap.set(dow, { total: dw.total + amt, bills: dw.bills + 1 });
+      });
+      setPaymentMix(Array.from(payMap.entries()).map(([name, v]) => ({ name, value: v.value, count: v.count })).sort((a, b) => b.value - a.value));
+      setInsightsRevenue(totalRev);
+      setInsightsBills((bills || []).length);
+      setDiscountSummary({
+        totalDiscount,
+        billsWithDiscount: billsWithDisc,
+        avgDiscount: billsWithDisc ? totalDiscount / billsWithDisc : 0,
+        discountRate: totalRev > 0 ? (totalDiscount / (totalRev + totalDiscount)) * 100 : 0,
+      });
+      setAvgBillTrend(Array.from(avgMap.entries()).map(([date, v]) => ({
+        date: new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        avg: v.bills ? v.total / v.bills : 0,
+        bills: v.bills,
+      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      setDowStats(dayNames.map((day, i) => {
+        const v = dowMap.get(i) || { total: 0, bills: 0 };
+        return { day, revenue: v.total, bills: v.bills, avg: v.bills ? v.total / v.bills : 0 };
+      }));
+
+      // Category sales + margins
+      const catMap = new Map<string, { revenue: number; qty: number }>();
+      const marginMap = new Map<string, { revenue: number; cost: number; qty: number }>();
+      (bItems || []).forEach((it: any) => {
+        if (it.bills?.is_deleted) return;
+        const cat = it.items?.category || 'Uncategorized';
+        const name = it.items?.name || 'Unknown';
+        const qty = Number(it.quantity || 0);
+        const tot = Number(it.total || 0);
+        const cost = Number(it.items?.purchase_rate || 0) * qty;
+        const cur = catMap.get(cat) || { revenue: 0, qty: 0 };
+        catMap.set(cat, { revenue: cur.revenue + tot, qty: cur.qty + qty });
+        const m = marginMap.get(name) || { revenue: 0, cost: 0, qty: 0 };
+        marginMap.set(name, { revenue: m.revenue + tot, cost: m.cost + cost, qty: m.qty + qty });
+      });
+      setCategorySales(Array.from(catMap.entries()).map(([category, v]) => ({ category, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 12));
+      setMarginItems(Array.from(marginMap.entries())
+        .map(([name, v]) => {
+          const margin = v.revenue - v.cost;
+          const marginPct = v.revenue > 0 ? (margin / v.revenue) * 100 : 0;
+          return { name, revenue: v.revenue, cost: v.cost, margin, marginPct };
+        })
+        .filter(m => m.revenue > 0)
+        .sort((a, b) => b.margin - a.margin)
+        .slice(0, 10));
+    } finally { setInsightsLoading(false); }
+  };
+  useEffect(() => { fetchDeepInsights(); }, [adminId, insightsFrom, insightsTo, branchFilterId]);
+
   // Permission check is now handled by ProtectedRoute
   if (loading && !compData) return <div className="p-12 text-center">Loading Analytics...</div>;
 
