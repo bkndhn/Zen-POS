@@ -87,6 +87,19 @@ const DashboardAnalytics = () => {
   const [plLoading, setPlLoading] = useState(false);
   const [hourlyData, setHourlyData] = useState<any[]>([]);
 
+  // Deep Insights state
+  const [insightsFrom, setInsightsFrom] = useState<string>((() => { const d = new Date(); d.setDate(d.getDate() - 29); return d.toISOString().split('T')[0]; })());
+  const [insightsTo, setInsightsTo] = useState<string>(today);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [paymentMix, setPaymentMix] = useState<Array<{ name: string; value: number; count: number }>>([]);
+  const [categorySales, setCategorySales] = useState<Array<{ category: string; revenue: number; qty: number }>>([]);
+  const [dowStats, setDowStats] = useState<Array<{ day: string; revenue: number; bills: number; avg: number }>>([]);
+  const [avgBillTrend, setAvgBillTrend] = useState<Array<{ date: string; avg: number; bills: number }>>([]);
+  const [discountSummary, setDiscountSummary] = useState({ totalDiscount: 0, billsWithDiscount: 0, avgDiscount: 0, discountRate: 0 });
+  const [marginItems, setMarginItems] = useState<Array<{ name: string; revenue: number; cost: number; margin: number; marginPct: number }>>([]);
+  const [insightsRevenue, setInsightsRevenue] = useState(0);
+  const [insightsBills, setInsightsBills] = useState(0);
+
   const { branchFilterId, isAllBranchesView, activeBranch } = useBranchScopedQuery(() => {
     if (adminId) { fetchAnalyticsData(); fetchComparisonData(); }
   });
