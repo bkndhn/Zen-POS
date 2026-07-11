@@ -991,6 +991,203 @@ const DashboardAnalytics = () => {
         </CardContent>
       </Card>
 
+      {/* ===== Deep Insights ===== */}
+      <Card className="border-2 border-primary/20 shadow-lg">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                <Brain className="w-5 h-5 text-primary" /> Deep Business Insights
+              </CardTitle>
+              <CardDescription>Payment mix, category performance, day-of-week trends, margins & discount analytics</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input type="date" value={insightsFrom} max={insightsTo} onChange={(e) => setInsightsFrom(e.target.value)} className="h-9 w-[140px] text-xs" />
+              <span className="text-muted-foreground text-xs">→</span>
+              <Input type="date" value={insightsTo} min={insightsFrom} max={new Date().toISOString().split('T')[0]} onChange={(e) => setInsightsTo(e.target.value)} className="h-9 w-[140px] text-xs" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 sm:p-5 space-y-5">
+          {insightsLoading ? (
+            <div className="p-12 text-center text-muted-foreground animate-pulse">Crunching numbers…</div>
+          ) : (
+            <>
+              {/* KPI strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Revenue</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(insightsRevenue)}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400">Bills</p>
+                  <p className="text-lg sm:text-xl font-bold">{insightsBills}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                  <p className="text-[10px] uppercase font-bold text-violet-700 dark:text-violet-400">Avg Bill</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(insightsBills ? insightsRevenue / insightsBills : 0)}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                  <p className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-400">Discount Given</p>
+                  <p className="text-lg sm:text-xl font-bold">{formatCurrency(discountSummary.totalDiscount)}</p>
+                </div>
+              </div>
+
+              {/* Payment mix + Category sales */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">💳 Payment Mix</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    {paymentMix.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No payments</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={paymentMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e: any) => `${e.name}: ${((e.value / insightsRevenue) * 100).toFixed(0)}%`}>
+                            {paymentMix.map((_, i) => (
+                              <Cell key={i} fill={['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#06b6d4', '#84cc16'][i % 7]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">🍽️ Category-wise Sales</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    {categorySales.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No sales</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={categorySales} layout="vertical" margin={{ left: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis type="number" tick={{ fontSize: 10 }} />
+                          <YAxis type="category" dataKey="category" tick={{ fontSize: 10 }} width={90} />
+                          <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                          <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Day-of-week + Avg bill trend */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">📅 Day-of-Week Performance</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dowStats}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(v: any, n: any) => n === 'bills' ? v : formatCurrency(Number(v))} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Bar dataKey="revenue" name="Revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="avg" name="Avg Bill" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">📈 Avg Bill Value Trend</CardTitle></CardHeader>
+                  <CardContent className="p-2 h-[280px]">
+                    {avgBillTrend.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No data</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={avgBillTrend}>
+                          <defs>
+                            <linearGradient id="avgGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.5} />
+                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+                          <Area type="monotone" dataKey="avg" stroke="#8b5cf6" strokeWidth={2} fill="url(#avgGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Discount summary + Margin items */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">🏷️ Discount Analysis</CardTitle></CardHeader>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Total Discount</p>
+                        <p className="text-lg font-bold text-rose-600">{formatCurrency(discountSummary.totalDiscount)}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Bills w/ Discount</p>
+                        <p className="text-lg font-bold">{discountSummary.billsWithDiscount} <span className="text-xs text-muted-foreground">/ {insightsBills}</span></p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Avg Discount</p>
+                        <p className="text-lg font-bold">{formatCurrency(discountSummary.avgDiscount)}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/40">
+                        <p className="text-[10px] uppercase text-muted-foreground font-bold">Discount Rate</p>
+                        <p className="text-lg font-bold text-amber-600">{discountSummary.discountRate.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Discount rate = total discount ÷ (revenue + discount). Aim to keep this under 5% unless running a promo.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-4"><CardTitle className="text-base">💰 Top Margin Items</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    {marginItems.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-muted-foreground">Set purchase rates on items to compute margins</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/40 text-[10px] uppercase">
+                            <tr>
+                              <th className="text-left p-2">Item</th>
+                              <th className="text-right p-2">Revenue</th>
+                              <th className="text-right p-2">Cost</th>
+                              <th className="text-right p-2">Margin</th>
+                              <th className="text-right p-2">%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {marginItems.map((m) => (
+                              <tr key={m.name} className="border-t border-border/40 hover:bg-muted/20">
+                                <td className="p-2 font-medium truncate max-w-[140px]">{m.name}</td>
+                                <td className="p-2 text-right">{formatCurrency(m.revenue)}</td>
+                                <td className="p-2 text-right text-muted-foreground">{formatCurrency(m.cost)}</td>
+                                <td className={`p-2 text-right font-semibold ${m.margin >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(m.margin)}</td>
+                                <td className={`p-2 text-right font-bold ${m.marginPct >= 30 ? 'text-emerald-600' : m.marginPct >= 15 ? 'text-amber-600' : 'text-rose-600'}`}>{m.marginPct.toFixed(1)}%</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Per-branch P&L */}
       <Card className="border-2 border-primary/20 shadow-lg">
         <CardHeader className="p-4 sm:p-6">
