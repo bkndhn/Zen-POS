@@ -137,12 +137,15 @@ export const PrinterStatusPanel: React.FC = () => {
                                 <PlayCircle className="w-4 h-4 mr-2" /> Test Print
                             </Button>
                             <Button variant="secondary" onClick={doDiag} disabled={running !== null} className="h-11">
-                                <Bug className="w-4 h-4 mr-2" /> Diagnostics
+                                <RefreshCw className={cn('w-4 h-4 mr-2', running === 'diag' && 'animate-spin')} /> Run Diagnostics
+                            </Button>
+                            <Button variant="outline" onClick={doRetry} disabled={running !== null} className="h-11">
+                                <Repeat className="w-4 h-4 mr-2" /> Retry Last Bill
                             </Button>
                             <Button variant="outline" onClick={doConnect} disabled={running !== null} className="h-11">
                                 <RefreshCw className={cn('w-4 h-4 mr-2', running === 'connect' && 'animate-spin')} /> {isConnected ? 'Reconnect' : 'Connect'}
                             </Button>
-                            <Button variant="ghost" onClick={disconnect} disabled={!isConnected} className="h-11 text-destructive">
+                            <Button variant="ghost" onClick={disconnect} disabled={!isConnected} className="h-11 text-destructive col-span-2">
                                 <WifiOff className="w-4 h-4 mr-2" /> Disconnect
                             </Button>
                         </div>
