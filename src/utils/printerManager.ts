@@ -31,7 +31,9 @@ const BLUETOOTH_OPTIONAL_SERVICES = [
     '49535343-fe7d-4ae5-8fa9-9fafd205e455',
     'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
 ];
-const BLUETOOTH_CHUNK_SIZE = 100;
+const BLUETOOTH_CHUNK_SIZE = 180;
+const BLUETOOTH_CHUNK_DELAY_MS = 0;
+const QUEUE_INTER_JOB_DELAY_MS = 0;
 
 // Printer Manager Singleton
 class PrinterManager {
