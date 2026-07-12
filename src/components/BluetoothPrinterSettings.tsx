@@ -186,14 +186,21 @@ export const BluetoothPrinterSettings: React.FC = () => {
       const success = await connect(true); // Force new device selection
 
       if (success) {
+        const printerName = printerManager.getDeviceName() || 'Bluetooth Printer';
         await updateSettings({
-          printer_name: connectedDeviceName || 'Bluetooth Printer',
+          printer_name: printerName,
           is_enabled: true
         });
 
         toast({
           title: "Connected!",
-          description: `Successfully connected to ${connectedDeviceName || 'Bluetooth Printer'}. Connection will persist across prints.`,
+          description: `Successfully connected to ${printerName}. Connection will persist across prints.`,
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: "Could not open the selected printer. Turn it on, keep it nearby, and pair again.",
+          variant: "destructive",
         });
       }
     } catch (error: any) {
@@ -535,8 +542,8 @@ export const BluetoothPrinterSettings: React.FC = () => {
                 </div>
               )}
 
-              {/* Station → Printer Routing */}
-              <StationPrinterMap />
+              {/* Advanced routing is only relevant after a station mapping exists. */}
+              {Object.keys(getStationMap()).length > 0 && <StationPrinterMap />}
             </div>
           </DialogContent>
         </Dialog>
@@ -586,7 +593,6 @@ const StationPrinterMap: React.FC = () => {
         optionalServices: [
           '000018f0-0000-1000-8000-00805f9b34fb',
           '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-          '18f0',
           'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
         ]
       });

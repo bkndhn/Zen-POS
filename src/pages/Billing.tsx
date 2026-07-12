@@ -29,6 +29,7 @@ import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanne
 import { useBranch } from '@/contexts/BranchContext';
 import { cn } from '@/lib/utils';
 import VoiceBillingButton, { VoiceIntent } from '@/components/VoiceBillingButton';
+import { getStationMap } from '@/utils/stationPrinters';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -2598,13 +2599,22 @@ const Billing = () => {
 
         // Background tasks (non-blocking after save)
         const postSaveTasks = async () => {
-          // 1. Try printing (receipt + station KOTs in parallel batches)
+          // 1. Always prioritize the customer bill on the active printer.
+          // Station KOTs are only needed when the owner explicitly mapped stations.
           if (autoPrintEnabled) {
-            // Fire receipt + KOTs together; KOTs are queued per station sequentially internally
-            const receiptPromise = printReceipt(printData).catch(err => console.error('Print failed:', err));
-            const kotPromise = printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, settingsToUse)
-              .catch(err => console.error('KOT print failed:', err));
-            await Promise.allSettled([receiptPromise, kotPromise]);
+            const receiptPrinted = await printReceipt(printData).catch(err => {
+              console.error('Receipt print failed:', err);
+              return false;
+            });
+
+            if (!receiptPrinted) {
+              sonnerToast.error('Bill print failed', {
+                description: 'Reconnect the printer and use Test Print before the next bill.',
+              });
+            } else if (Object.keys(getStationMap()).length > 0) {
+              await printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, settingsToUse)
+                .catch(err => console.error('KOT print failed:', err));
+            }
           }
 
 
