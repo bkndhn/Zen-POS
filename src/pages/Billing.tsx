@@ -806,6 +806,7 @@ const Billing = () => {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
   const [showOrderType, setShowOrderType] = useState(false);
+  const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
