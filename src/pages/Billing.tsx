@@ -1106,6 +1106,9 @@ const Billing = () => {
         setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
         setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
         setShowOrderType(parsed.showOrderType || false);
+        if (parsed.defaultOrderType === 'dine_in' || parsed.defaultOrderType === 'parcel') {
+          setDefaultOrderType(parsed.defaultOrderType);
+        }
       } catch (e) { /* ignore */ }
     }
   };
