@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { UtensilsCrossed } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
+
 
 export const OrderTypeSettings: React.FC = () => {
   const { profile } = useAuth();
@@ -31,6 +33,7 @@ export const OrderTypeSettings: React.FC = () => {
   const { operatingBranchId, branches } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [showOrderType, setShowOrderType] = useState(false);
+  const [defaultOrderType, setDefaultOrderTypeState] = useState<'' | 'dine_in' | 'parcel'>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export const OrderTypeSettings: React.FC = () => {
       try {
         let { data } = await (supabase as any)
           .from('shop_settings')
-          .select('show_order_type')
+          .select('show_order_type, default_order_type')
           .eq('user_id', adminAuthUid)
           .eq('branch_id', operatingBranchId)
           .maybeSingle();
@@ -47,14 +50,17 @@ export const OrderTypeSettings: React.FC = () => {
         if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
           const { data: mainRow } = await (supabase as any)
             .from('shop_settings')
-            .select('show_order_type')
+            .select('show_order_type, default_order_type')
             .eq('user_id', adminAuthUid)
             .eq('branch_id', mainBranchId)
             .maybeSingle();
           data = mainRow;
         }
 
-        if (data) setShowOrderType(data.show_order_type || false);
+        if (data) {
+          setShowOrderType(data.show_order_type || false);
+          setDefaultOrderTypeState((data.default_order_type as 'dine_in' | 'parcel') || '');
+        }
       } catch (e) {
         console.warn('Failed to fetch order type setting:', e);
       } finally {
@@ -63,6 +69,7 @@ export const OrderTypeSettings: React.FC = () => {
     };
     fetchSetting();
   }, [adminAuthUid, operatingBranchId, mainBranchId]);
+
 
   const handleToggle = async (enabled: boolean) => {
     setShowOrderType(enabled);
@@ -107,6 +114,37 @@ export const OrderTypeSettings: React.FC = () => {
     }
   };
 
+  const handleDefaultChange = async (value: 'dine_in' | 'parcel') => {
+    const prev = defaultOrderType;
+    setDefaultOrderTypeState(value);
+    try {
+      if (!adminAuthUid || !operatingBranchId) return;
+      const { data: existing } = await (supabase as any)
+        .from('shop_settings').select('id')
+        .eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle();
+
+      const { error } = existing?.id
+        ? await (supabase as any).from('shop_settings').update({ default_order_type: value }).eq('id', existing.id)
+        : await (supabase as any).from('shop_settings').insert({ user_id: adminAuthUid, branch_id: operatingBranchId, default_order_type: value });
+      if (error) throw error;
+
+      const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+      const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+      const parsed = existingCache ? JSON.parse(existingCache) : {};
+      parsed.defaultOrderType = value;
+      localStorage.setItem(headerKey, JSON.stringify(parsed));
+
+      toast({
+        title: 'Default Order Type Updated',
+        description: value === 'dine_in' ? 'New bills will default to Dine In.' : 'New bills will default to Parcel.',
+      });
+    } catch (e) {
+      console.error('Failed to update default order type:', e);
+      setDefaultOrderTypeState(prev);
+      toast({ title: 'Error', description: 'Failed to update default', variant: 'destructive' });
+    }
+  };
+
   if (loading) return null;
 
   return (
@@ -117,7 +155,7 @@ export const OrderTypeSettings: React.FC = () => {
           <span className="text-base sm:text-lg">Order Type</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 sm:p-6">
+      <CardContent className="p-3 sm:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="order-type-toggle" className="text-sm font-medium">
@@ -135,6 +173,32 @@ export const OrderTypeSettings: React.FC = () => {
             onCheckedChange={handleToggle}
           />
         </div>
+
+        {showOrderType && (
+          <div className="pt-3 border-t space-y-2">
+            <Label className="text-sm font-medium">Default Order Type for New Bills</Label>
+            <p className="text-xs text-muted-foreground">
+              Select the option new bills should start with. Saved separately per branch. Leave unset to keep current behavior.
+            </p>
+            <RadioGroup
+              value={defaultOrderType || ''}
+              onValueChange={(v) => handleDefaultChange(v as 'dine_in' | 'parcel')}
+              className="flex flex-col sm:flex-row gap-3 pt-1"
+            >
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <RadioGroupItem value="dine_in" id="default-dine-in" />
+                <span>🍽️ Dine In</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <RadioGroupItem value="parcel" id="default-parcel" />
+                <span>📦 Parcel</span>
+              </label>
+            </RadioGroup>
+            {!defaultOrderType && (
+              <p className="text-[11px] text-muted-foreground italic">No default selected yet — existing behavior preserved.</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

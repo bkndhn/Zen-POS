@@ -73,6 +73,7 @@ interface CompletePaymentDialogProps {
   whatsappShareMode?: 'text' | 'image';
   gstEnabled?: boolean;
   showOrderType?: boolean;
+  defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
 }
 
@@ -120,6 +121,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   whatsappShareMode = 'text',
   gstEnabled = false,
   showOrderType = false,
+  defaultOrderType,
   taxRatesMap = {}
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
@@ -134,7 +136,14 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [customerGstin, setCustomerGstin] = useState('');
-  const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>('dine_in');
+  const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>(defaultOrderType || 'dine_in');
+
+  // When dialog opens, sync orderType to configured default (per branch)
+  useEffect(() => {
+    if (open) {
+      setOrderType(defaultOrderType || 'dine_in');
+    }
+  }, [open, defaultOrderType]);
 
   const hasInitialized = React.useRef(false);
 

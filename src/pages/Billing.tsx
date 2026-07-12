@@ -806,6 +806,7 @@ const Billing = () => {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
   const [showOrderType, setShowOrderType] = useState(false);
+  const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
@@ -1105,6 +1106,9 @@ const Billing = () => {
         setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
         setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
         setShowOrderType(parsed.showOrderType || false);
+        if (parsed.defaultOrderType === 'dine_in' || parsed.defaultOrderType === 'parcel') {
+          setDefaultOrderType(parsed.defaultOrderType);
+        }
       } catch (e) { /* ignore */ }
     }
   };
@@ -1187,12 +1191,15 @@ const Billing = () => {
           printerWidth: data.printer_width as '58mm' | '80mm' || '58mm',
           whatsappEnabled: data.whatsapp_bill_share_enabled || false,
           whatsappShareMode: (data as any).whatsapp_share_mode || 'text',
-          showOrderType: (data as any).show_order_type || false
+          showOrderType: (data as any).show_order_type || false,
+          defaultOrderType: (data as any).default_order_type || undefined
         };
         setBillSettings(settings);
         setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
         setWhatsappShareMode((data as any).whatsapp_share_mode === 'image' ? 'image' : 'text');
         setShowOrderType((data as any).show_order_type || false);
+        const dot = (data as any).default_order_type;
+        if (dot === 'dine_in' || dot === 'parcel') setDefaultOrderType(dot); else setDefaultOrderType(undefined);
         // Update cache
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
         localStorage.setItem(headerKey, JSON.stringify(settings));
@@ -2995,7 +3002,7 @@ const Billing = () => {
     </div>}
 
     {/* Payment Dialog */}
-    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} />
+    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} defaultOrderType={defaultOrderType} />
 
     {/* Printer Error Dialog */}
     <PrinterErrorDialog

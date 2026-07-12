@@ -1,0 +1,2 @@
+ALTER TABLE public.shop_settings ADD COLUMN IF NOT EXISTS default_order_type text NULL;
+ALTER TABLE public.shop_settings ADD CONSTRAINT shop_settings_default_order_type_check CHECK (default_order_type IS NULL OR default_order_type IN ('dine_in','parcel'));

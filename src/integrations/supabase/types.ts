@@ -1467,6 +1467,7 @@ export type Database = {
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
+          default_order_type: string | null
           facebook: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -1516,6 +1517,7 @@ export type Database = {
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
+          default_order_type?: string | null
           facebook?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -1565,6 +1567,7 @@ export type Database = {
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
+          default_order_type?: string | null
           facebook?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -2324,6 +2327,7 @@ export type Database = {
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
+          default_order_type: string | null
           facebook: string | null
           gst_enabled: boolean | null
           gstin: string | null
