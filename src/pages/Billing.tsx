@@ -3023,6 +3023,10 @@ const Billing = () => {
       isRetrying={isRetryingPrint}
     />
 
+    {/* Floating Printer Status / Test / Diagnostics Panel */}
+    <PrinterStatusPanel />
+
+
     {/* Food Aggregator Modal */}
     <Dialog open={aggregatorDialogOpen} onOpenChange={setAggregatorDialogOpen}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border shadow-2xl rounded-2xl p-0">
