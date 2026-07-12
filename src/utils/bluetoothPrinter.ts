@@ -569,7 +569,16 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
     // Request device
     const device = await nav.bluetooth.requestDevice({
       acceptAllDevices: true,
-      optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+      optionalServices: [
+        '000018f0-0000-1000-8000-00805f9b34fb',
+        '0000ffe0-0000-1000-8000-00805f9b34fb',
+        '0000ffe5-0000-1000-8000-00805f9b34fb',
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '0000ffb0-0000-1000-8000-00805f9b34fb',
+        '0000ae30-0000-1000-8000-00805f9b34fb',
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+        'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+      ]
     });
 
     if (!device.gatt) {
@@ -594,12 +603,18 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
         if (char.properties.write || char.properties.writeWithoutResponse) {
           const receiptBytes = await generateReceiptBytes(data);
 
-          // Send in chunks (max 512 bytes per write)
-          const chunkSize = 512;
+          // Conservative BLE packets work across inexpensive 58/80mm printers.
+          const chunkSize = 100;
           for (let i = 0; i < receiptBytes.length; i += chunkSize) {
             const chunk = receiptBytes.slice(i, Math.min(i + chunkSize, receiptBytes.length));
-            await char.writeValueWithoutResponse(chunk);
-            await new Promise(resolve => setTimeout(resolve, 50));
+            if (char.properties.writeWithoutResponse && typeof char.writeValueWithoutResponse === 'function') {
+              await char.writeValueWithoutResponse(chunk);
+            } else if (typeof char.writeValueWithResponse === 'function') {
+              await char.writeValueWithResponse(chunk);
+            } else {
+              await char.writeValue(chunk);
+            }
+            await new Promise(resolve => setTimeout(resolve, 20));
           }
 
           server.disconnect();

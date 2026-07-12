@@ -21,6 +21,17 @@ export type PrinterType = 'bluetooth' | 'usb' | 'none';
 type ConnectionListener = (state: PrinterConnectionState, deviceName?: string) => void;
 
 const PRINTER_TYPE_KEY = 'hotel_pos_printer_type';
+const BLUETOOTH_OPTIONAL_SERVICES = [
+    '000018f0-0000-1000-8000-00805f9b34fb',
+    '0000ffe0-0000-1000-8000-00805f9b34fb',
+    '0000ffe5-0000-1000-8000-00805f9b34fb',
+    '0000ff00-0000-1000-8000-00805f9b34fb',
+    '0000ffb0-0000-1000-8000-00805f9b34fb',
+    '0000ae30-0000-1000-8000-00805f9b34fb',
+    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+    'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+];
+const BLUETOOTH_CHUNK_SIZE = 100;
 
 // Printer Manager Singleton
 class PrinterManager {
@@ -50,6 +61,7 @@ class PrinterManager {
     // Print queue for offline/disconnected scenarios
     private printQueue: PrintData[] = [];
     private isProcessingQueue: boolean = false;
+    private writeChain: Promise<void> = Promise.resolve();
 
     private constructor() {
         // Restore saved printer type
@@ -268,12 +280,7 @@ class PrinterManager {
             console.log('Requesting new Bluetooth device...');
             this.device = await nav.bluetooth.requestDevice({
                 acceptAllDevices: true,
-                optionalServices: [
-                    '000018f0-0000-1000-8000-00805f9b34fb',
-                    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-                    '18f0',
-                    'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
-                ]
+                optionalServices: BLUETOOTH_OPTIONAL_SERVICES
             });
 
             if (!this.device) {
@@ -522,6 +529,34 @@ class PrinterManager {
 
     // =============== SHARED OPERATIONS ===============
 
+    /** Serialize BLE writes and use conservative packets supported by low-cost printers. */
+    private async writeBluetoothBytes(bytesData: Uint8Array): Promise<void> {
+        const operation = this.writeChain.then(async () => {
+            if (!this.characteristic || !this.isConnected()) {
+                throw new Error('Bluetooth printer is not connected');
+            }
+
+            for (let i = 0; i < bytesData.length; i += BLUETOOTH_CHUNK_SIZE) {
+                const chunk = bytesData.slice(i, Math.min(i + BLUETOOTH_CHUNK_SIZE, bytesData.length));
+                if (this.characteristic.properties.writeWithoutResponse) {
+                    if (typeof this.characteristic.writeValueWithoutResponse === 'function') {
+                        await this.characteristic.writeValueWithoutResponse(chunk);
+                    } else {
+                        await this.characteristic.writeValue(chunk);
+                    }
+                } else if (typeof this.characteristic.writeValueWithResponse === 'function') {
+                    await this.characteristic.writeValueWithResponse(chunk);
+                } else {
+                    await this.characteristic.writeValue(chunk);
+                }
+                await new Promise(resolve => setTimeout(resolve, 20));
+            }
+        });
+
+        this.writeChain = operation.catch(() => undefined);
+        return operation;
+    }
+
     // Disconnect from printer
     public disconnect(): void {
         if (this._printerType === 'usb') {
@@ -575,18 +610,7 @@ class PrinterManager {
                     return false;
                 }
 
-                const chunkSize = 512;
-                for (let i = 0; i < receiptBytes.length; i += chunkSize) {
-                    const chunk = receiptBytes.slice(i, Math.min(i + chunkSize, receiptBytes.length));
-
-                    if (this.characteristic.properties.writeWithoutResponse) {
-                        await this.characteristic.writeValueWithoutResponse(chunk);
-                    } else {
-                        await this.characteristic.writeValue(chunk);
-                    }
-
-                    await new Promise(resolve => setTimeout(resolve, 30));
-                }
+                await this.writeBluetoothBytes(receiptBytes);
             }
 
             console.log('Print successful!');
@@ -691,16 +715,7 @@ class PrinterManager {
             if (this._printerType === 'usb') {
                 return await this.usbTransport.write(bytesData);
             } else if (this.characteristic) {
-                const chunk = 512;
-                for (let i = 0; i < bytesData.length; i += chunk) {
-                    const slice = bytesData.slice(i, Math.min(i + chunk, bytesData.length));
-                    if (this.characteristic.properties.writeWithoutResponse) {
-                        await this.characteristic.writeValueWithoutResponse(slice);
-                    } else {
-                        await this.characteristic.writeValue(slice);
-                    }
-                    await new Promise(r => setTimeout(r, 20));
-                }
+                await this.writeBluetoothBytes(bytesData);
                 return true;
             }
         } catch (err) {
