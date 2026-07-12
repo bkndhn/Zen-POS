@@ -17,8 +17,17 @@ import { USBPrinterTransport } from './usbPrinterTransport';
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PrinterType = 'bluetooth' | 'usb' | 'none';
 
+export interface PrintLogEntry {
+    ts: number;
+    action: 'print' | 'test' | 'self-test' | 'connect' | 'reconnect' | 'disconnect' | 'error';
+    status: 'ok' | 'fail' | 'info';
+    ms?: number;
+    detail?: string;
+}
+
 // Event types
 type ConnectionListener = (state: PrinterConnectionState, deviceName?: string) => void;
+type LogListener = (log: PrintLogEntry[]) => void;
 
 const PRINTER_TYPE_KEY = 'hotel_pos_printer_type';
 const BLUETOOTH_OPTIONAL_SERVICES = [
@@ -34,6 +43,7 @@ const BLUETOOTH_OPTIONAL_SERVICES = [
 const BLUETOOTH_CHUNK_SIZE = 180;
 const BLUETOOTH_CHUNK_DELAY_MS = 0;
 const QUEUE_INTER_JOB_DELAY_MS = 0;
+const MAX_LOG_ENTRIES = 50;
 
 // Printer Manager Singleton
 class PrinterManager {
