@@ -216,11 +216,7 @@ const BillingGridItemCard = React.memo(({
             src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (getCachedImageUrl(item.id) || item.image_url)}
             alt={item.name}
             className="w-full h-full object-cover"
-            onError={e => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.nextElementSibling?.classList.remove('hidden');
-            }}
+            onError={e => handleImageError(e, item.image_url)}
           />
         ) : null}
         <div className={`${(item.image_url || item.video_url) ? 'hidden' : ''} w-full h-full flex items-center justify-center text-muted-foreground`}>
