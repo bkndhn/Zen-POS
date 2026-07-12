@@ -1,4 +1,5 @@
 // Image compression and upload utilities
+import type React from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Image cache for performance
