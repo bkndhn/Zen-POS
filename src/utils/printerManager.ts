@@ -675,6 +675,7 @@ class PrinterManager {
 
     // Print receipt — works with both BT and USB
     public async print(data: PrintData): Promise<boolean> {
+        this.lastPrintData = data;
         // If not connected, try to connect first
         if (!this.isConnected()) {
             console.log('Not connected, attempting to connect...');
@@ -688,6 +689,7 @@ class PrinterManager {
             if (!connected) {
                 console.log('Connection failed, queueing print job');
                 this.printQueue.push(data);
+                this.recordLog('print', 'fail', 0, 'queued — no connection', data.billNo);
                 return false;
             }
         }
@@ -701,7 +703,7 @@ class PrinterManager {
                 if (!ok) throw new Error('USB write failed');
             } else {
                 if (!this.characteristic) {
-                    this.recordLog('print', 'fail', undefined, 'No characteristic');
+                    this.recordLog('print', 'fail', undefined, 'No characteristic', data.billNo);
                     this.printQueue.push(data);
                     return false;
                 }
@@ -709,13 +711,13 @@ class PrinterManager {
             }
 
             const ms = Math.round(performance.now() - t0);
-            this.recordLog('print', 'ok', ms, `${receiptBytes.length}B → ${this.deviceName}`);
+            this.recordLog('print', 'ok', ms, `${receiptBytes.length}B → ${this.deviceName}`, data.billNo);
             return true;
 
         } catch (error: any) {
             const ms = Math.round(performance.now() - t0);
             const msg = String(error?.message || error);
-            this.recordLog('print', 'fail', ms, msg);
+            this.recordLog('print', 'fail', ms, msg, data.billNo);
             console.error('Print error:', error);
 
             if (msg.includes('GATT') || error.name === 'NetworkError' || msg.includes('USB')) {
@@ -726,6 +728,22 @@ class PrinterManager {
 
             return false;
         }
+    }
+
+    /** Retry the last bill (from lastPrintData or oldest queued). Used by POS "Retry" button. */
+    public async retryLastPrint(): Promise<{ ok: boolean; billNo?: string; error?: string }> {
+        const job = this.lastPrintData || this.printQueue[0] || null;
+        if (!job) {
+            this.recordLog('retry', 'fail', 0, 'no previous bill to retry');
+            return { ok: false, error: 'No previous bill to retry' };
+        }
+        this.recordLog('retry', 'info', undefined, 'reprinting last bill', job.billNo);
+        const ok = await this.print(job);
+        return ok ? { ok: true, billNo: job.billNo } : { ok: false, billNo: job.billNo, error: this.lastError };
+    }
+
+    public getLastPrintData(): PrintData | null {
+        return this.lastPrintData;
     }
 
     // Process queued print jobs
