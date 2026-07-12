@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { printerManager, PrintLogEntry, PrinterConnectionState } from '@/utils/printerManager';
 import { usePrinter } from '@/hooks/usePrinter';
