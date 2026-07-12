@@ -569,45 +569,54 @@ class PrinterManager {
         this.server = null;
         this.characteristic = null;
         this.setState('disconnected');
+        this.recordLog('disconnect', 'info', undefined, this.deviceName);
 
-        if (this.printQueue.length > 0 && this.reconnectAttempts < this.maxReconnectAttempts) {
+        // Always try to auto-reconnect to keep printer sticky across route/screen locks.
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.attemptAutoReconnect();
         }
     }
 
-    // Auto-reconnect with exponential backoff
+    // Auto-reconnect with exponential backoff (capped, guarded by timer)
     private async attemptAutoReconnect(): Promise<void> {
+        if (this.reconnectTimer) return; // Already scheduled
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.log('Max reconnect attempts reached');
+            this.recordLog('reconnect', 'fail', undefined, 'max attempts reached');
             return;
         }
 
         this.reconnectAttempts++;
-        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+        const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30_000);
+        this.recordLog('reconnect', 'info', delay, `attempt ${this.reconnectAttempts}`);
 
-        console.log(`Auto-reconnect attempt ${this.reconnectAttempts} in ${delay}ms...`);
+        this.reconnectTimer = setTimeout(async () => {
+            this.reconnectTimer = null;
+            if (this.connectionState === 'connected') return;
 
-        await new Promise(resolve => setTimeout(resolve, delay));
-
-        if (this.connectionState !== 'connected') {
             let success = false;
-            if (this._printerType === 'usb') {
-                success = await this.usbTransport.reconnect();
-                if (success) {
-                    this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
+            const t0 = performance.now();
+            try {
+                if (this._printerType === 'usb') {
+                    success = await this.usbTransport.reconnect();
+                    if (success) this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
+                } else if (this.device) {
+                    success = await this.reconnectToDevice();
+                } else {
+                    success = await this.autoReconnect();
                 }
-            } else if (this.device) {
-                success = await this.reconnectToDevice();
+            } catch (err: any) {
+                this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
             }
 
             if (success) {
                 this.setState('connected');
                 this.reconnectAttempts = 0;
+                this.recordLog('reconnect', 'ok', Math.round(performance.now() - t0));
                 this.processQueue();
             } else if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.attemptAutoReconnect();
             }
-        }
+        }, delay);
     }
 
     // =============== SHARED OPERATIONS ===============
