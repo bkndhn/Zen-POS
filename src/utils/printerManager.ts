@@ -151,9 +151,10 @@ class PrinterManager {
         action: PrintLogEntry['action'],
         status: PrintLogEntry['status'],
         ms?: number,
-        detail?: string
+        detail?: string,
+        billNo?: string
     ): void {
-        const entry: PrintLogEntry = { ts: Date.now(), action, status, ms, detail };
+        const entry: PrintLogEntry = { ts: Date.now(), action, status, ms, detail, billNo };
         this.printLog.unshift(entry);
         if (this.printLog.length > MAX_LOG_ENTRIES) this.printLog.length = MAX_LOG_ENTRIES;
         if (status === 'fail' && detail) this.lastError = detail;
