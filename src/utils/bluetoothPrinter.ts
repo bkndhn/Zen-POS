@@ -514,9 +514,21 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(FEED_LINE);
   commands.push(BOLD_OFF);
 
-  // Payment - compact
-  commands.push(textToBytes(fmtLine('Paid', data.paymentMethod.toUpperCase())));
-  commands.push(FEED_LINE);
+  // Payment - if multiple methods, show breakdown; otherwise single line
+  const pdEntries = data.paymentDetails
+    ? Object.entries(data.paymentDetails).filter(([, amt]) => (amt as number) > 0)
+    : [];
+  if (pdEntries.length > 1) {
+    commands.push(textToBytes(fmtLine('Paid', 'MULTIPLE')));
+    commands.push(FEED_LINE);
+    pdEntries.forEach(([method, amt]) => {
+      commands.push(textToBytes(fmtLine(`  ${method.toUpperCase()}`, `Rs.${(amt as number).toFixed(2)}`)));
+      commands.push(FEED_LINE);
+    });
+  } else {
+    commands.push(textToBytes(fmtLine('Paid', data.paymentMethod.toUpperCase())));
+    commands.push(FEED_LINE);
+  }
 
   // Footer - minimal
   commands.push(ALIGN_CENTER);
