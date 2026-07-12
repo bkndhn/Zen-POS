@@ -33,6 +33,7 @@ export const OrderTypeSettings: React.FC = () => {
   const { operatingBranchId, branches } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [showOrderType, setShowOrderType] = useState(false);
+  const [defaultOrderType, setDefaultOrderTypeState] = useState<'' | 'dine_in' | 'parcel'>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export const OrderTypeSettings: React.FC = () => {
       try {
         let { data } = await (supabase as any)
           .from('shop_settings')
-          .select('show_order_type')
+          .select('show_order_type, default_order_type')
           .eq('user_id', adminAuthUid)
           .eq('branch_id', operatingBranchId)
           .maybeSingle();
@@ -49,14 +50,17 @@ export const OrderTypeSettings: React.FC = () => {
         if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
           const { data: mainRow } = await (supabase as any)
             .from('shop_settings')
-            .select('show_order_type')
+            .select('show_order_type, default_order_type')
             .eq('user_id', adminAuthUid)
             .eq('branch_id', mainBranchId)
             .maybeSingle();
           data = mainRow;
         }
 
-        if (data) setShowOrderType(data.show_order_type || false);
+        if (data) {
+          setShowOrderType(data.show_order_type || false);
+          setDefaultOrderTypeState((data.default_order_type as 'dine_in' | 'parcel') || '');
+        }
       } catch (e) {
         console.warn('Failed to fetch order type setting:', e);
       } finally {
@@ -65,6 +69,7 @@ export const OrderTypeSettings: React.FC = () => {
     };
     fetchSetting();
   }, [adminAuthUid, operatingBranchId, mainBranchId]);
+
 
   const handleToggle = async (enabled: boolean) => {
     setShowOrderType(enabled);
