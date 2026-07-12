@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Bell, Clipboard } from 'lucide-react';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { TableSelector } from '@/components/TableSelector';
-import { getCachedImageUrl, cacheImageUrl, getCDNUrl } from '@/utils/imageUtils';
+import { getCachedImageUrl, cacheImageUrl, getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
