@@ -472,9 +472,8 @@ const Items: React.FC = () => {
                 src={item.media_type === 'gif' ? (item.video_url || item.image_url) : item.image_url}
                 alt={item.name}
                 className="w-full h-full object-cover pointer-events-none"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                loading="lazy"
+                onError={(e) => handleImageError(e, item.image_url)}
               />
             )}
             {isLowStock(item) && !isInactive && (
