@@ -175,6 +175,7 @@ const PurchaseReturns = lazy(() => import("./pages/PurchaseReturns"));
 const StockLedger = lazy(() => import("./pages/StockLedger"));
 const StockAdjustment = lazy(() => import("./pages/StockAdjustment"));
 const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuTV })));
+const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
