@@ -170,23 +170,83 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
 };
 
 
+/**
+ * Returns the URL to load an image from.
+ *
+ * Priority:
+ *  1. If VITE_CDN_URL is configured (e.g. Cloudflare/Bunny in front of Supabase),
+ *     rewrite the host so the CDN handles caching + transforms.
+ *  2. Otherwise return the RAW Supabase public URL. The `item-images` bucket is
+ *     public with 1-year Cache-Control, so Supabase's edge cache serves it fast
+ *     and reliably.
+ *
+ * We intentionally NO LONGER route through the free images.weserv.nl proxy by
+ * default — it rate-limits Vercel edge IPs, causing broken images in production
+ * while working fine on Lovable preview. It also doubled our egress
+ * (Supabase → weserv → client). Direct Supabase = single hop, single egress.
+ *
+ * Callers should still pair this with `getFallbackImageUrl()` in an <img onError>
+ * handler so a failed CDN URL degrades gracefully to the raw Supabase URL.
+ */
 export const getCDNUrl = (url: string | null | undefined): string => {
   if (!url) return '';
-  // Only process Supabase storage URLs
   if (!url.includes('supabase.co/storage/v1/object/public/')) {
     return url;
   }
 
   const cdnUrl = import.meta.env.VITE_CDN_URL;
-  if (cdnUrl) {
+  if (cdnUrl && !cdnUrl.includes('weserv.nl')) {
     if (cdnUrl.includes('?url=')) {
       return `${cdnUrl}${encodeURIComponent(url)}&output=webp`;
     }
     return url.replace('https://ivleyttlqlqawghvfyjz.supabase.co', cdnUrl);
   }
 
-  // Fallback: Use free Cloudflare-backed image proxy (images.weserv.nl)
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=webp`;
+  // Direct Supabase public URL — most reliable in production.
+  return url;
+};
+
+/**
+ * Given any CDN/proxy URL we produced, recover the underlying raw Supabase
+ * public URL. Use this inside <img onError> to retry with the direct upstream
+ * before hiding the tag.
+ */
+export const getFallbackImageUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  // weserv.nl style: https://images.weserv.nl/?url=<encoded>&...
+  try {
+    const u = new URL(url);
+    const proxied = u.searchParams.get('url');
+    if (proxied) return decodeURIComponent(proxied);
+  } catch { /* not a URL – fall through */ }
+  // Custom CDN host rewrite → put the Supabase host back
+  const cdnUrl = import.meta.env.VITE_CDN_URL;
+  if (cdnUrl && url.startsWith(cdnUrl.replace(/\/$/, ''))) {
+    return url.replace(cdnUrl.replace(/\/$/, ''), 'https://ivleyttlqlqawghvfyjz.supabase.co');
+  }
+  return url;
+};
+
+/**
+ * <img onError> handler: retry once with the raw Supabase URL, then hide.
+ * Logs a warning in production so the failure is visible in the console.
+ */
+export const handleImageError = (
+  e: React.SyntheticEvent<HTMLImageElement>,
+  originalUrl?: string | null,
+): void => {
+  const el = e.currentTarget;
+  const already = el.dataset.fallbackTried === '1';
+  const fallback = getFallbackImageUrl(originalUrl || el.src);
+  if (!already && fallback && fallback !== el.src) {
+    console.warn('[image] primary URL failed, falling back to raw Supabase URL:', el.src);
+    el.dataset.fallbackTried = '1';
+    el.src = fallback;
+    return;
+  }
+  console.warn('[image] fallback also failed, hiding:', el.src);
+  el.style.display = 'none';
+  el.nextElementSibling?.classList.remove('hidden');
 };
 
 export const getCachedImageUrl = (itemId: string): string | null => {
