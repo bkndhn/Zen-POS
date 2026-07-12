@@ -343,7 +343,9 @@ const BillingListItemCard = React.memo(({
                   src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (imageUrl || item.image_url)}
                   alt={item.name}
                   className="w-full h-full object-cover"
+                  onError={e => handleImageError(e, item.image_url)}
                 />
+
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
                   <Package className="w-6 h-6" />
