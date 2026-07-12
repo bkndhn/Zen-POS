@@ -207,6 +207,9 @@ export const PrinterStatusPanel: React.FC = () => {
                                             )} />
                                             <span className="text-muted-foreground">{formatTime(e.ts)}</span>
                                             <span className="uppercase font-semibold">{e.action}</span>
+                                            {e.billNo && (
+                                                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">#{e.billNo}</span>
+                                            )}
                                             {typeof e.ms === 'number' && <span className="text-muted-foreground">{e.ms}ms</span>}
                                             <span className="truncate flex-1">{e.detail}</span>
                                         </li>
