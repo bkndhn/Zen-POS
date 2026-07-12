@@ -371,14 +371,14 @@ export const BluetoothPrinterSettings: React.FC = () => {
               {/* Connection Status Section */}
               <div className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
                 <h4 className="text-xs font-semibold uppercase text-slate-400 mb-3 tracking-wider">Connection Status</h4>
-                {settings.printer_name ? (
+                {isConnected ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-full">
                         <CheckCircle2 className="w-6 h-6 text-green-600" />
                       </div>
                       <div>
-                        <div className="font-medium text-sm text-slate-900 dark:text-slate-100">{settings.printer_name}</div>
+                          <div className="font-medium text-sm text-slate-900 dark:text-slate-100">{connectedDeviceName || settings.printer_name}</div>
                         <div className="text-xs text-green-600 font-medium">Connected</div>
                       </div>
                     </div>
