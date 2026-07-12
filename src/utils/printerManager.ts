@@ -711,7 +711,7 @@ class PrinterManager {
                                         } else {
                                             await c.writeValue(slice);
                                         }
-                                        await new Promise(r => setTimeout(r, 20));
+                                        // no artificial delay — rely on BLE flow-control for speed
                                     }
                                     // Keep persistent connection; don't disconnect if it was the active one
                                     if (target !== this.device) {
