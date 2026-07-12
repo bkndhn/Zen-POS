@@ -820,6 +820,80 @@ class PrinterManager {
         }
         return false;
     }
+
+    // =============== TEST PRINT / SELF-TEST / DIAGNOSTICS ===============
+
+    /** Sends a small sample receipt and reports success/failure. */
+    public async sendTestPrint(): Promise<{ ok: boolean; ms: number; error?: string }> {
+        const t0 = performance.now();
+        if (!this.isConnected()) {
+            const connected = this._printerType === 'usb' ? await this.connectUSB() : await this.connect();
+            if (!connected) {
+                const err = 'Printer not connected';
+                this.recordLog('test', 'fail', 0, err);
+                return { ok: false, ms: 0, error: err };
+            }
+        }
+        try {
+            const enc = new TextEncoder();
+            const bytes = new Uint8Array([
+                0x1B, 0x40, // INIT
+                0x1B, 0x61, 0x01, // center
+                ...enc.encode('*** TEST PRINT ***\n'),
+                ...enc.encode(new Date().toLocaleString() + '\n'),
+                ...enc.encode(`Printer: ${this.deviceName || 'Unknown'}\n`),
+                ...enc.encode('Bluetooth write OK\n\n\n'),
+                0x1D, 0x56, 0x00 // full cut
+            ]);
+            if (this._printerType === 'usb') {
+                const ok = await this.usbTransport.write(bytes);
+                if (!ok) throw new Error('USB write failed');
+            } else {
+                await this.writeBluetoothBytes(bytes);
+            }
+            const ms = Math.round(performance.now() - t0);
+            this.recordLog('test', 'ok', ms, `${bytes.length}B → ${this.deviceName}`);
+            return { ok: true, ms };
+        } catch (err: any) {
+            const ms = Math.round(performance.now() - t0);
+            const msg = String(err?.message || err);
+            this.recordLog('test', 'fail', ms, msg);
+            return { ok: false, ms, error: msg };
+        }
+    }
+
+    /** Runs a full diagnostics sweep and returns a step-by-step report. */
+    public async runDiagnostics(): Promise<Array<{ step: string; ok: boolean; detail?: string }>> {
+        const report: Array<{ step: string; ok: boolean; detail?: string }> = [];
+        const nav = navigator as any;
+
+        report.push({ step: 'Web Bluetooth API', ok: !!nav.bluetooth, detail: nav.bluetooth ? 'supported' : 'not supported by browser' });
+        report.push({ step: 'HTTPS / Secure Context', ok: typeof window !== 'undefined' ? window.isSecureContext : false, detail: window.isSecureContext ? 'ok' : 'must be HTTPS' });
+
+        const permitted = await this.getPermittedBluetoothDeviceNames();
+        report.push({ step: 'Paired Devices', ok: permitted.length > 0, detail: permitted.length ? permitted.join(', ') : 'none paired — tap Connect first' });
+
+        report.push({ step: 'Active Printer', ok: !!this.deviceName, detail: this.deviceName || 'not selected' });
+        report.push({ step: 'GATT Connected', ok: this.isConnected(), detail: this.isConnected() ? 'live link' : 'no live link' });
+
+        if (this.serviceUUID) {
+            report.push({ step: 'Service UUID', ok: true, detail: this.serviceUUID });
+        }
+        if (this.characteristicUUID) {
+            report.push({ step: 'Characteristic UUID', ok: true, detail: this.characteristicUUID });
+        }
+
+        if (this.isConnected()) {
+            const test = await this.sendTestPrint();
+            report.push({ step: 'Test Write', ok: test.ok, detail: test.ok ? `${test.ms}ms` : test.error });
+        } else {
+            report.push({ step: 'Test Write', ok: false, detail: 'skipped — not connected' });
+        }
+        if (this.lastError) {
+            report.push({ step: 'Last Error', ok: false, detail: this.lastError });
+        }
+        return report;
+    }
 }
 
 // Export singleton instance
