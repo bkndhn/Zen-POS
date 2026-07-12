@@ -75,19 +75,28 @@ export const PrinterStatusPanel: React.FC = () => {
         else toast.error(`${failed} check(s) failed`, { id: t });
     };
 
+    const doRetry = async () => {
+        setRunning('test');
+        const t = toast.loading('Reprinting last bill…');
+        const res = await printerManager.retryLastPrint();
+        setRunning(null);
+        if (res.ok) toast.success(`Reprinted ${res.billNo ? '#' + res.billNo : 'last bill'}`, { id: t });
+        else toast.error(res.error || 'Retry failed', { id: t });
+    };
+
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <button
                     className={cn(
-                        'fixed z-40 bottom-24 right-3 h-12 px-3 rounded-full shadow-lg border flex items-center gap-2 backdrop-blur',
-                        'bg-card/90 hover:bg-card active:scale-95 transition-all'
+                        'fixed z-40 top-16 right-2 h-9 px-2.5 rounded-full shadow-md border flex items-center gap-1.5 backdrop-blur',
+                        'bg-card/90 hover:bg-card active:scale-95 transition-all sm:top-20 sm:right-3 sm:h-10 sm:px-3'
                     )}
                     aria-label="Printer status"
                 >
-                    <span className={cn('w-2.5 h-2.5 rounded-full', isConnected ? 'bg-success animate-pulse' : 'bg-destructive')} />
-                    <Printer className="w-4 h-4" />
-                    <span className="text-xs font-medium max-w-[7rem] truncate">
+                    <span className={cn('w-2 h-2 rounded-full', isConnected ? 'bg-success animate-pulse' : 'bg-destructive')} />
+                    <Printer className="w-3.5 h-3.5" />
+                    <span className="text-[11px] font-medium max-w-[6rem] truncate hidden xs:inline sm:inline">
                         {isConnected ? (deviceName || 'Printer') : 'No printer'}
                     </span>
                 </button>
