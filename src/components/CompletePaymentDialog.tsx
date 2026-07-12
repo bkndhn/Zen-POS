@@ -73,6 +73,7 @@ interface CompletePaymentDialogProps {
   whatsappShareMode?: 'text' | 'image';
   gstEnabled?: boolean;
   showOrderType?: boolean;
+  defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
 }
 
