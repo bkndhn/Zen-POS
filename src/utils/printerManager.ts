@@ -64,11 +64,19 @@ class PrinterManager {
 
     // Listeners for React components
     private listeners: Set<ConnectionListener> = new Set();
+    private logListeners: Set<LogListener> = new Set();
 
-    // Reconnection settings — keep trying so printer stays live across app open/close/route changes
+    // Telemetry
+    private serviceUUID: string = '';
+    private characteristicUUID: string = '';
+    private lastError: string = '';
+    private printLog: PrintLogEntry[] = [];
+
+    // Reconnection settings — exponential backoff, capped
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 10;
     private reconnectDelay: number = 800;
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Print queue for offline/disconnected scenarios
     private printQueue: PrintData[] = [];
@@ -83,7 +91,7 @@ class PrinterManager {
             // Attempt background reconnection
             setTimeout(() => {
                 this.autoReconnect().catch(err => {
-                    console.log('Background auto-reconnect failed:', err);
+                    this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
                 });
             }, 500);
         }
