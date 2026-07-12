@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { printerManager, PrintLogEntry, PrinterConnectionState } from '@/utils/printerManager';
 import { usePrinter } from '@/hooks/usePrinter';
@@ -75,19 +75,28 @@ export const PrinterStatusPanel: React.FC = () => {
         else toast.error(`${failed} check(s) failed`, { id: t });
     };
 
+    const doRetry = async () => {
+        setRunning('test');
+        const t = toast.loading('Reprinting last bill…');
+        const res = await printerManager.retryLastPrint();
+        setRunning(null);
+        if (res.ok) toast.success(`Reprinted ${res.billNo ? '#' + res.billNo : 'last bill'}`, { id: t });
+        else toast.error(res.error || 'Retry failed', { id: t });
+    };
+
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <button
                     className={cn(
-                        'fixed z-40 bottom-24 right-3 h-12 px-3 rounded-full shadow-lg border flex items-center gap-2 backdrop-blur',
-                        'bg-card/90 hover:bg-card active:scale-95 transition-all'
+                        'fixed z-40 top-16 right-2 h-9 px-2.5 rounded-full shadow-md border flex items-center gap-1.5 backdrop-blur',
+                        'bg-card/90 hover:bg-card active:scale-95 transition-all sm:top-20 sm:right-3 sm:h-10 sm:px-3'
                     )}
                     aria-label="Printer status"
                 >
-                    <span className={cn('w-2.5 h-2.5 rounded-full', isConnected ? 'bg-success animate-pulse' : 'bg-destructive')} />
-                    <Printer className="w-4 h-4" />
-                    <span className="text-xs font-medium max-w-[7rem] truncate">
+                    <span className={cn('w-2 h-2 rounded-full', isConnected ? 'bg-success animate-pulse' : 'bg-destructive')} />
+                    <Printer className="w-3.5 h-3.5" />
+                    <span className="text-[11px] font-medium max-w-[6rem] truncate hidden xs:inline sm:inline">
                         {isConnected ? (deviceName || 'Printer') : 'No printer'}
                     </span>
                 </button>
@@ -128,12 +137,15 @@ export const PrinterStatusPanel: React.FC = () => {
                                 <PlayCircle className="w-4 h-4 mr-2" /> Test Print
                             </Button>
                             <Button variant="secondary" onClick={doDiag} disabled={running !== null} className="h-11">
-                                <Bug className="w-4 h-4 mr-2" /> Diagnostics
+                                <RefreshCw className={cn('w-4 h-4 mr-2', running === 'diag' && 'animate-spin')} /> Run Diagnostics
+                            </Button>
+                            <Button variant="outline" onClick={doRetry} disabled={running !== null} className="h-11">
+                                <Repeat className="w-4 h-4 mr-2" /> Retry Last Bill
                             </Button>
                             <Button variant="outline" onClick={doConnect} disabled={running !== null} className="h-11">
                                 <RefreshCw className={cn('w-4 h-4 mr-2', running === 'connect' && 'animate-spin')} /> {isConnected ? 'Reconnect' : 'Connect'}
                             </Button>
-                            <Button variant="ghost" onClick={disconnect} disabled={!isConnected} className="h-11 text-destructive">
+                            <Button variant="ghost" onClick={disconnect} disabled={!isConnected} className="h-11 text-destructive col-span-2">
                                 <WifiOff className="w-4 h-4 mr-2" /> Disconnect
                             </Button>
                         </div>
@@ -195,6 +207,9 @@ export const PrinterStatusPanel: React.FC = () => {
                                             )} />
                                             <span className="text-muted-foreground">{formatTime(e.ts)}</span>
                                             <span className="uppercase font-semibold">{e.action}</span>
+                                            {e.billNo && (
+                                                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">#{e.billNo}</span>
+                                            )}
                                             {typeof e.ms === 'number' && <span className="text-muted-foreground">{e.ms}ms</span>}
                                             <span className="truncate flex-1">{e.detail}</span>
                                         </li>
