@@ -689,32 +689,33 @@ class PrinterManager {
             }
         }
 
+        const t0 = performance.now();
         try {
             const receiptBytes = await generateReceiptBytes(data);
 
             if (this._printerType === 'usb') {
-                // USB: use transport
                 const ok = await this.usbTransport.write(receiptBytes);
                 if (!ok) throw new Error('USB write failed');
             } else {
-                // Bluetooth: use characteristic
                 if (!this.characteristic) {
-                    console.error('No characteristic available');
+                    this.recordLog('print', 'fail', undefined, 'No characteristic');
                     this.printQueue.push(data);
                     return false;
                 }
-
                 await this.writeBluetoothBytes(receiptBytes);
             }
 
-            console.log('Print successful!');
+            const ms = Math.round(performance.now() - t0);
+            this.recordLog('print', 'ok', ms, `${receiptBytes.length}B → ${this.deviceName}`);
             return true;
 
         } catch (error: any) {
+            const ms = Math.round(performance.now() - t0);
+            const msg = String(error?.message || error);
+            this.recordLog('print', 'fail', ms, msg);
             console.error('Print error:', error);
 
-            if (error.message?.includes('GATT') || error.name === 'NetworkError' || error.message?.includes('USB')) {
-                console.log('Connection lost during print, attempting reconnect...');
+            if (msg.includes('GATT') || error.name === 'NetworkError' || msg.includes('USB')) {
                 this.handleDisconnect();
                 this.printQueue.push(data);
                 this.attemptAutoReconnect();
