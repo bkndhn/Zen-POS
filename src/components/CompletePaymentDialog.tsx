@@ -136,7 +136,14 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [customerGstin, setCustomerGstin] = useState('');
-  const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>('dine_in');
+  const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>(defaultOrderType || 'dine_in');
+
+  // When dialog opens, sync orderType to configured default (per branch)
+  useEffect(() => {
+    if (open) {
+      setOrderType(defaultOrderType || 'dine_in');
+    }
+  }, [open, defaultOrderType]);
 
   const hasInitialized = React.useRef(false);
 
