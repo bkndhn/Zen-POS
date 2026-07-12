@@ -663,7 +663,9 @@ class PrinterManager {
             const job = this.printQueue.shift();
             if (job) {
                 await this.print(job);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                if (QUEUE_INTER_JOB_DELAY_MS > 0) {
+                    await new Promise(resolve => setTimeout(resolve, QUEUE_INTER_JOB_DELAY_MS));
+                }
             }
         }
 
