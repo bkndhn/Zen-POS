@@ -603,12 +603,18 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
         if (char.properties.write || char.properties.writeWithoutResponse) {
           const receiptBytes = await generateReceiptBytes(data);
 
-          // Send in chunks (max 512 bytes per write)
-          const chunkSize = 512;
+          // Conservative BLE packets work across inexpensive 58/80mm printers.
+          const chunkSize = 100;
           for (let i = 0; i < receiptBytes.length; i += chunkSize) {
             const chunk = receiptBytes.slice(i, Math.min(i + chunkSize, receiptBytes.length));
-            await char.writeValueWithoutResponse(chunk);
-            await new Promise(resolve => setTimeout(resolve, 50));
+            if (char.properties.writeWithoutResponse && typeof char.writeValueWithoutResponse === 'function') {
+              await char.writeValueWithoutResponse(chunk);
+            } else if (typeof char.writeValueWithResponse === 'function') {
+              await char.writeValueWithResponse(chunk);
+            } else {
+              await char.writeValue(chunk);
+            }
+            await new Promise(resolve => setTimeout(resolve, 20));
           }
 
           server.disconnect();
