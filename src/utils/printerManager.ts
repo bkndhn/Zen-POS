@@ -546,7 +546,10 @@ class PrinterManager {
                 for (const char of characteristics) {
                     if (char.properties.write || char.properties.writeWithoutResponse) {
                         this.characteristic = char;
-                        console.log('Found writable characteristic');
+                        this.serviceUUID = service.uuid || '';
+                        this.characteristicUUID = char.uuid || '';
+                        this.recordLog('connect', 'ok', undefined, `svc=${this.serviceUUID}`);
+                        console.log('Found writable characteristic on service', this.serviceUUID);
                         return true;
                     }
                 }
@@ -554,7 +557,8 @@ class PrinterManager {
 
             throw new Error('No writable characteristic found');
 
-        } catch (error) {
+        } catch (error: any) {
+            this.recordLog('connect', 'fail', undefined, String(error?.message || error));
             console.error('GATT connection error:', error);
             return false;
         }
