@@ -83,6 +83,7 @@ class PrinterManager {
     private printQueue: PrintData[] = [];
     private isProcessingQueue: boolean = false;
     private writeChain: Promise<void> = Promise.resolve();
+    private lastPrintData: PrintData | null = null;
 
     private constructor() {
         // Restore saved printer type
