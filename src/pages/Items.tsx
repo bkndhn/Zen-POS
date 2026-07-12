@@ -17,7 +17,7 @@ import { getShortUnit, formatStoredQuantity } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { CopyMenuToBranchDialog } from '@/components/CopyMenuToBranchDialog';
-import { getCDNUrl } from '@/utils/imageUtils';
+import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 
 interface Item {
   id: string;
@@ -472,9 +472,8 @@ const Items: React.FC = () => {
                 src={item.media_type === 'gif' ? (item.video_url || item.image_url) : item.image_url}
                 alt={item.name}
                 className="w-full h-full object-cover pointer-events-none"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                loading="lazy"
+                onError={(e) => handleImageError(e, item.image_url)}
               />
             )}
             {isLowStock(item) && !isInactive && (

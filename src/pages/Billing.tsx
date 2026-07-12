@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Bell, Clipboard } from 'lucide-react';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { TableSelector } from '@/components/TableSelector';
-import { getCachedImageUrl, cacheImageUrl, getCDNUrl } from '@/utils/imageUtils';
+import { getCachedImageUrl, cacheImageUrl, getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
@@ -216,11 +216,7 @@ const BillingGridItemCard = React.memo(({
             src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (getCachedImageUrl(item.id) || item.image_url)}
             alt={item.name}
             className="w-full h-full object-cover"
-            onError={e => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.nextElementSibling?.classList.remove('hidden');
-            }}
+            onError={e => handleImageError(e, item.image_url)}
           />
         ) : null}
         <div className={`${(item.image_url || item.video_url) ? 'hidden' : ''} w-full h-full flex items-center justify-center text-muted-foreground`}>
@@ -347,7 +343,9 @@ const BillingListItemCard = React.memo(({
                   src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (imageUrl || item.image_url)}
                   alt={item.name}
                   className="w-full h-full object-cover"
+                  onError={e => handleImageError(e, item.image_url)}
                 />
+
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
                   <Package className="w-6 h-6" />
