@@ -335,9 +335,13 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       }
     });
 
-    // Determine primary payment method (the one with highest amount)
-    const primaryPaymentMethod = Object.entries(filteredPaymentAmounts)
-      .sort(([, a], [, b]) => b - a)[0]?.[0] || paymentTypes[0]?.payment_type || 'cash';
+    // Determine payment method label:
+    // - If more than one non-zero method selected -> "MULTIPLE" (breakdown printed separately)
+    // - Otherwise use the single selected method
+    const paidEntries = Object.entries(filteredPaymentAmounts);
+    const primaryPaymentMethod = paidEntries.length > 1
+      ? 'MULTIPLE'
+      : (paidEntries[0]?.[0] || paymentTypes[0]?.payment_type || 'cash');
 
     // Strong validation for customer name and mobile
     if (customerMobile.trim().length > 0) {

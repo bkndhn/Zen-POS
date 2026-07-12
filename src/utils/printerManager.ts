@@ -31,7 +31,9 @@ const BLUETOOTH_OPTIONAL_SERVICES = [
     '49535343-fe7d-4ae5-8fa9-9fafd205e455',
     'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
 ];
-const BLUETOOTH_CHUNK_SIZE = 100;
+const BLUETOOTH_CHUNK_SIZE = 180;
+const BLUETOOTH_CHUNK_DELAY_MS = 0;
+const QUEUE_INTER_JOB_DELAY_MS = 0;
 
 // Printer Manager Singleton
 class PrinterManager {
@@ -53,10 +55,10 @@ class PrinterManager {
     // Listeners for React components
     private listeners: Set<ConnectionListener> = new Set();
 
-    // Reconnection settings
+    // Reconnection settings — keep trying so printer stays live across app open/close/route changes
     private reconnectAttempts: number = 0;
-    private maxReconnectAttempts: number = 3;
-    private reconnectDelay: number = 1000;
+    private maxReconnectAttempts: number = 10;
+    private reconnectDelay: number = 800;
 
     // Print queue for offline/disconnected scenarios
     private printQueue: PrintData[] = [];
@@ -73,7 +75,23 @@ class PrinterManager {
                 this.autoReconnect().catch(err => {
                     console.log('Background auto-reconnect failed:', err);
                 });
-            }, 1000); // delay slightly to ensure browser APIs are fully loaded
+            }, 500);
+        }
+
+        // Re-establish printer whenever the tab becomes visible or window regains focus.
+        // Keeps the printer "always connected" across app close/reopen, route changes,
+        // screen locks, and background/foreground transitions on mobile.
+        if (typeof window !== 'undefined') {
+            const tryReconnect = () => {
+                if (this._printerType !== 'none' && !this.isConnected() && this.connectionState !== 'connecting') {
+                    this.autoReconnect().catch(() => undefined);
+                }
+            };
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') tryReconnect();
+            });
+            window.addEventListener('focus', tryReconnect);
+            window.addEventListener('online', tryReconnect);
         }
     }
 
@@ -549,7 +567,9 @@ class PrinterManager {
                 } else {
                     await this.characteristic.writeValue(chunk);
                 }
-                await new Promise(resolve => setTimeout(resolve, 20));
+                if (BLUETOOTH_CHUNK_DELAY_MS > 0) {
+                    await new Promise(resolve => setTimeout(resolve, BLUETOOTH_CHUNK_DELAY_MS));
+                }
             }
         });
 
@@ -643,7 +663,9 @@ class PrinterManager {
             const job = this.printQueue.shift();
             if (job) {
                 await this.print(job);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                if (QUEUE_INTER_JOB_DELAY_MS > 0) {
+                    await new Promise(resolve => setTimeout(resolve, QUEUE_INTER_JOB_DELAY_MS));
+                }
             }
         }
 
@@ -689,7 +711,7 @@ class PrinterManager {
                                         } else {
                                             await c.writeValue(slice);
                                         }
-                                        await new Promise(r => setTimeout(r, 20));
+                                        // no artificial delay — rely on BLE flow-control for speed
                                     }
                                     // Keep persistent connection; don't disconnect if it was the active one
                                     if (target !== this.device) {
