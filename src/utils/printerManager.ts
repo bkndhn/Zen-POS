@@ -567,7 +567,9 @@ class PrinterManager {
                 } else {
                     await this.characteristic.writeValue(chunk);
                 }
-                await new Promise(resolve => setTimeout(resolve, 20));
+                if (BLUETOOTH_CHUNK_DELAY_MS > 0) {
+                    await new Promise(resolve => setTimeout(resolve, BLUETOOTH_CHUNK_DELAY_MS));
+                }
             }
         });
 
