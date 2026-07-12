@@ -121,6 +121,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   whatsappShareMode = 'text',
   gstEnabled = false,
   showOrderType = false,
+  defaultOrderType,
   taxRatesMap = {}
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
