@@ -133,6 +133,49 @@ class PrinterManager {
         this.listeners.forEach(listener => listener(this.connectionState, this.deviceName));
     }
 
+    // ============ Telemetry / logging ============
+    public subscribeLog(listener: LogListener): () => void {
+        this.logListeners.add(listener);
+        listener([...this.printLog]);
+        return () => this.logListeners.delete(listener);
+    }
+
+    private notifyLogListeners(): void {
+        const snapshot = [...this.printLog];
+        this.logListeners.forEach(l => l(snapshot));
+    }
+
+    private recordLog(
+        action: PrintLogEntry['action'],
+        status: PrintLogEntry['status'],
+        ms?: number,
+        detail?: string
+    ): void {
+        const entry: PrintLogEntry = { ts: Date.now(), action, status, ms, detail };
+        this.printLog.unshift(entry);
+        if (this.printLog.length > MAX_LOG_ENTRIES) this.printLog.length = MAX_LOG_ENTRIES;
+        if (status === 'fail' && detail) this.lastError = detail;
+        this.notifyLogListeners();
+    }
+
+    public getPrintLog(): PrintLogEntry[] {
+        return [...this.printLog];
+    }
+
+    public clearPrintLog(): void {
+        this.printLog = [];
+        this.notifyLogListeners();
+    }
+
+    public getLastError(): string {
+        return this.lastError;
+    }
+
+    public getServiceInfo(): { serviceUUID: string; characteristicUUID: string } {
+        return { serviceUUID: this.serviceUUID, characteristicUUID: this.characteristicUUID };
+    }
+
+
     private setState(state: PrinterConnectionState): void {
         this.connectionState = state;
         this.notifyListeners();
