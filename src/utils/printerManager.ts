@@ -17,8 +17,17 @@ import { USBPrinterTransport } from './usbPrinterTransport';
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PrinterType = 'bluetooth' | 'usb' | 'none';
 
+export interface PrintLogEntry {
+    ts: number;
+    action: 'print' | 'test' | 'self-test' | 'connect' | 'reconnect' | 'disconnect' | 'error';
+    status: 'ok' | 'fail' | 'info';
+    ms?: number;
+    detail?: string;
+}
+
 // Event types
 type ConnectionListener = (state: PrinterConnectionState, deviceName?: string) => void;
+type LogListener = (log: PrintLogEntry[]) => void;
 
 const PRINTER_TYPE_KEY = 'hotel_pos_printer_type';
 const BLUETOOTH_OPTIONAL_SERVICES = [
@@ -34,6 +43,7 @@ const BLUETOOTH_OPTIONAL_SERVICES = [
 const BLUETOOTH_CHUNK_SIZE = 180;
 const BLUETOOTH_CHUNK_DELAY_MS = 0;
 const QUEUE_INTER_JOB_DELAY_MS = 0;
+const MAX_LOG_ENTRIES = 50;
 
 // Printer Manager Singleton
 class PrinterManager {
@@ -54,11 +64,19 @@ class PrinterManager {
 
     // Listeners for React components
     private listeners: Set<ConnectionListener> = new Set();
+    private logListeners: Set<LogListener> = new Set();
 
-    // Reconnection settings — keep trying so printer stays live across app open/close/route changes
+    // Telemetry
+    private serviceUUID: string = '';
+    private characteristicUUID: string = '';
+    private lastError: string = '';
+    private printLog: PrintLogEntry[] = [];
+
+    // Reconnection settings — exponential backoff, capped
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 10;
     private reconnectDelay: number = 800;
+    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Print queue for offline/disconnected scenarios
     private printQueue: PrintData[] = [];
@@ -73,7 +91,7 @@ class PrinterManager {
             // Attempt background reconnection
             setTimeout(() => {
                 this.autoReconnect().catch(err => {
-                    console.log('Background auto-reconnect failed:', err);
+                    this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
                 });
             }, 500);
         }
@@ -114,6 +132,49 @@ class PrinterManager {
     private notifyListeners(): void {
         this.listeners.forEach(listener => listener(this.connectionState, this.deviceName));
     }
+
+    // ============ Telemetry / logging ============
+    public subscribeLog(listener: LogListener): () => void {
+        this.logListeners.add(listener);
+        listener([...this.printLog]);
+        return () => this.logListeners.delete(listener);
+    }
+
+    private notifyLogListeners(): void {
+        const snapshot = [...this.printLog];
+        this.logListeners.forEach(l => l(snapshot));
+    }
+
+    private recordLog(
+        action: PrintLogEntry['action'],
+        status: PrintLogEntry['status'],
+        ms?: number,
+        detail?: string
+    ): void {
+        const entry: PrintLogEntry = { ts: Date.now(), action, status, ms, detail };
+        this.printLog.unshift(entry);
+        if (this.printLog.length > MAX_LOG_ENTRIES) this.printLog.length = MAX_LOG_ENTRIES;
+        if (status === 'fail' && detail) this.lastError = detail;
+        this.notifyLogListeners();
+    }
+
+    public getPrintLog(): PrintLogEntry[] {
+        return [...this.printLog];
+    }
+
+    public clearPrintLog(): void {
+        this.printLog = [];
+        this.notifyLogListeners();
+    }
+
+    public getLastError(): string {
+        return this.lastError;
+    }
+
+    public getServiceInfo(): { serviceUUID: string; characteristicUUID: string } {
+        return { serviceUUID: this.serviceUUID, characteristicUUID: this.characteristicUUID };
+    }
+
 
     private setState(state: PrinterConnectionState): void {
         this.connectionState = state;
@@ -485,7 +546,10 @@ class PrinterManager {
                 for (const char of characteristics) {
                     if (char.properties.write || char.properties.writeWithoutResponse) {
                         this.characteristic = char;
-                        console.log('Found writable characteristic');
+                        this.serviceUUID = service.uuid || '';
+                        this.characteristicUUID = char.uuid || '';
+                        this.recordLog('connect', 'ok', undefined, `svc=${this.serviceUUID}`);
+                        console.log('Found writable characteristic on service', this.serviceUUID);
                         return true;
                     }
                 }
@@ -493,7 +557,8 @@ class PrinterManager {
 
             throw new Error('No writable characteristic found');
 
-        } catch (error) {
+        } catch (error: any) {
+            this.recordLog('connect', 'fail', undefined, String(error?.message || error));
             console.error('GATT connection error:', error);
             return false;
         }
@@ -504,45 +569,54 @@ class PrinterManager {
         this.server = null;
         this.characteristic = null;
         this.setState('disconnected');
+        this.recordLog('disconnect', 'info', undefined, this.deviceName);
 
-        if (this.printQueue.length > 0 && this.reconnectAttempts < this.maxReconnectAttempts) {
+        // Always try to auto-reconnect to keep printer sticky across route/screen locks.
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.attemptAutoReconnect();
         }
     }
 
-    // Auto-reconnect with exponential backoff
+    // Auto-reconnect with exponential backoff (capped, guarded by timer)
     private async attemptAutoReconnect(): Promise<void> {
+        if (this.reconnectTimer) return; // Already scheduled
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.log('Max reconnect attempts reached');
+            this.recordLog('reconnect', 'fail', undefined, 'max attempts reached');
             return;
         }
 
         this.reconnectAttempts++;
-        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+        const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30_000);
+        this.recordLog('reconnect', 'info', delay, `attempt ${this.reconnectAttempts}`);
 
-        console.log(`Auto-reconnect attempt ${this.reconnectAttempts} in ${delay}ms...`);
+        this.reconnectTimer = setTimeout(async () => {
+            this.reconnectTimer = null;
+            if (this.connectionState === 'connected') return;
 
-        await new Promise(resolve => setTimeout(resolve, delay));
-
-        if (this.connectionState !== 'connected') {
             let success = false;
-            if (this._printerType === 'usb') {
-                success = await this.usbTransport.reconnect();
-                if (success) {
-                    this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
+            const t0 = performance.now();
+            try {
+                if (this._printerType === 'usb') {
+                    success = await this.usbTransport.reconnect();
+                    if (success) this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
+                } else if (this.device) {
+                    success = await this.reconnectToDevice();
+                } else {
+                    success = await this.autoReconnect();
                 }
-            } else if (this.device) {
-                success = await this.reconnectToDevice();
+            } catch (err: any) {
+                this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
             }
 
             if (success) {
                 this.setState('connected');
                 this.reconnectAttempts = 0;
+                this.recordLog('reconnect', 'ok', Math.round(performance.now() - t0));
                 this.processQueue();
             } else if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.attemptAutoReconnect();
             }
-        }
+        }, delay);
     }
 
     // =============== SHARED OPERATIONS ===============
@@ -615,32 +689,33 @@ class PrinterManager {
             }
         }
 
+        const t0 = performance.now();
         try {
             const receiptBytes = await generateReceiptBytes(data);
 
             if (this._printerType === 'usb') {
-                // USB: use transport
                 const ok = await this.usbTransport.write(receiptBytes);
                 if (!ok) throw new Error('USB write failed');
             } else {
-                // Bluetooth: use characteristic
                 if (!this.characteristic) {
-                    console.error('No characteristic available');
+                    this.recordLog('print', 'fail', undefined, 'No characteristic');
                     this.printQueue.push(data);
                     return false;
                 }
-
                 await this.writeBluetoothBytes(receiptBytes);
             }
 
-            console.log('Print successful!');
+            const ms = Math.round(performance.now() - t0);
+            this.recordLog('print', 'ok', ms, `${receiptBytes.length}B → ${this.deviceName}`);
             return true;
 
         } catch (error: any) {
+            const ms = Math.round(performance.now() - t0);
+            const msg = String(error?.message || error);
+            this.recordLog('print', 'fail', ms, msg);
             console.error('Print error:', error);
 
-            if (error.message?.includes('GATT') || error.name === 'NetworkError' || error.message?.includes('USB')) {
-                console.log('Connection lost during print, attempting reconnect...');
+            if (msg.includes('GATT') || error.name === 'NetworkError' || msg.includes('USB')) {
                 this.handleDisconnect();
                 this.printQueue.push(data);
                 this.attemptAutoReconnect();
@@ -744,6 +819,80 @@ class PrinterManager {
             console.error('[printRawBytes] fallback print failed:', err);
         }
         return false;
+    }
+
+    // =============== TEST PRINT / SELF-TEST / DIAGNOSTICS ===============
+
+    /** Sends a small sample receipt and reports success/failure. */
+    public async sendTestPrint(): Promise<{ ok: boolean; ms: number; error?: string }> {
+        const t0 = performance.now();
+        if (!this.isConnected()) {
+            const connected = this._printerType === 'usb' ? await this.connectUSB() : await this.connect();
+            if (!connected) {
+                const err = 'Printer not connected';
+                this.recordLog('test', 'fail', 0, err);
+                return { ok: false, ms: 0, error: err };
+            }
+        }
+        try {
+            const enc = new TextEncoder();
+            const bytes = new Uint8Array([
+                0x1B, 0x40, // INIT
+                0x1B, 0x61, 0x01, // center
+                ...enc.encode('*** TEST PRINT ***\n'),
+                ...enc.encode(new Date().toLocaleString() + '\n'),
+                ...enc.encode(`Printer: ${this.deviceName || 'Unknown'}\n`),
+                ...enc.encode('Bluetooth write OK\n\n\n'),
+                0x1D, 0x56, 0x00 // full cut
+            ]);
+            if (this._printerType === 'usb') {
+                const ok = await this.usbTransport.write(bytes);
+                if (!ok) throw new Error('USB write failed');
+            } else {
+                await this.writeBluetoothBytes(bytes);
+            }
+            const ms = Math.round(performance.now() - t0);
+            this.recordLog('test', 'ok', ms, `${bytes.length}B → ${this.deviceName}`);
+            return { ok: true, ms };
+        } catch (err: any) {
+            const ms = Math.round(performance.now() - t0);
+            const msg = String(err?.message || err);
+            this.recordLog('test', 'fail', ms, msg);
+            return { ok: false, ms, error: msg };
+        }
+    }
+
+    /** Runs a full diagnostics sweep and returns a step-by-step report. */
+    public async runDiagnostics(): Promise<Array<{ step: string; ok: boolean; detail?: string }>> {
+        const report: Array<{ step: string; ok: boolean; detail?: string }> = [];
+        const nav = navigator as any;
+
+        report.push({ step: 'Web Bluetooth API', ok: !!nav.bluetooth, detail: nav.bluetooth ? 'supported' : 'not supported by browser' });
+        report.push({ step: 'HTTPS / Secure Context', ok: typeof window !== 'undefined' ? window.isSecureContext : false, detail: window.isSecureContext ? 'ok' : 'must be HTTPS' });
+
+        const permitted = await this.getPermittedBluetoothDeviceNames();
+        report.push({ step: 'Paired Devices', ok: permitted.length > 0, detail: permitted.length ? permitted.join(', ') : 'none paired — tap Connect first' });
+
+        report.push({ step: 'Active Printer', ok: !!this.deviceName, detail: this.deviceName || 'not selected' });
+        report.push({ step: 'GATT Connected', ok: this.isConnected(), detail: this.isConnected() ? 'live link' : 'no live link' });
+
+        if (this.serviceUUID) {
+            report.push({ step: 'Service UUID', ok: true, detail: this.serviceUUID });
+        }
+        if (this.characteristicUUID) {
+            report.push({ step: 'Characteristic UUID', ok: true, detail: this.characteristicUUID });
+        }
+
+        if (this.isConnected()) {
+            const test = await this.sendTestPrint();
+            report.push({ step: 'Test Write', ok: test.ok, detail: test.ok ? `${test.ms}ms` : test.error });
+        } else {
+            report.push({ step: 'Test Write', ok: false, detail: 'skipped — not connected' });
+        }
+        if (this.lastError) {
+            report.push({ step: 'Last Error', ok: false, detail: this.lastError });
+        }
+        return report;
     }
 }
 

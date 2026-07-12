@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Bell, Clipboard } from 'lucide-react';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
+import { PrinterStatusPanel } from '@/components/PrinterStatusPanel';
 import { TableSelector } from '@/components/TableSelector';
 import { getCachedImageUrl, cacheImageUrl, getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
@@ -3021,6 +3022,10 @@ const Billing = () => {
       onSaveWithoutPrint={handleSaveWithoutPrint}
       isRetrying={isRetryingPrint}
     />
+
+    {/* Floating Printer Status / Test / Diagnostics Panel */}
+    <PrinterStatusPanel />
+
 
     {/* Food Aggregator Modal */}
     <Dialog open={aggregatorDialogOpen} onOpenChange={setAggregatorDialogOpen}>
