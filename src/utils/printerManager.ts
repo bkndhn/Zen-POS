@@ -55,10 +55,10 @@ class PrinterManager {
     // Listeners for React components
     private listeners: Set<ConnectionListener> = new Set();
 
-    // Reconnection settings
+    // Reconnection settings — keep trying so printer stays live across app open/close/route changes
     private reconnectAttempts: number = 0;
-    private maxReconnectAttempts: number = 3;
-    private reconnectDelay: number = 1000;
+    private maxReconnectAttempts: number = 10;
+    private reconnectDelay: number = 800;
 
     // Print queue for offline/disconnected scenarios
     private printQueue: PrintData[] = [];
