@@ -75,7 +75,23 @@ class PrinterManager {
                 this.autoReconnect().catch(err => {
                     console.log('Background auto-reconnect failed:', err);
                 });
-            }, 1000); // delay slightly to ensure browser APIs are fully loaded
+            }, 500);
+        }
+
+        // Re-establish printer whenever the tab becomes visible or window regains focus.
+        // Keeps the printer "always connected" across app close/reopen, route changes,
+        // screen locks, and background/foreground transitions on mobile.
+        if (typeof window !== 'undefined') {
+            const tryReconnect = () => {
+                if (this._printerType !== 'none' && !this.isConnected() && this.connectionState !== 'connecting') {
+                    this.autoReconnect().catch(() => undefined);
+                }
+            };
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') tryReconnect();
+            });
+            window.addEventListener('focus', tryReconnect);
+            window.addEventListener('online', tryReconnect);
         }
     }
 
