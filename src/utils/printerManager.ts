@@ -19,10 +19,11 @@ export type PrinterType = 'bluetooth' | 'usb' | 'none';
 
 export interface PrintLogEntry {
     ts: number;
-    action: 'print' | 'test' | 'self-test' | 'connect' | 'reconnect' | 'disconnect' | 'error';
+    action: 'print' | 'test' | 'self-test' | 'connect' | 'reconnect' | 'disconnect' | 'error' | 'retry';
     status: 'ok' | 'fail' | 'info';
     ms?: number;
     detail?: string;
+    billNo?: string;
 }
 
 // Event types
