@@ -17,7 +17,7 @@ import { getShortUnit, formatStoredQuantity } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { CopyMenuToBranchDialog } from '@/components/CopyMenuToBranchDialog';
-import { getCDNUrl } from '@/utils/imageUtils';
+import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 
 interface Item {
   id: string;
