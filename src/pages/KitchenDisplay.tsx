@@ -850,7 +850,7 @@ const KitchenDisplay = () => {
                                     </div>
                                     <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
                                         <Clock className="w-3 h-3 mr-1" />
-                                        {elapsedMin}m
+                                        {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
                                     </Badge>
                                 </div>
                                 <div className="space-y-1.5 mb-3">
@@ -936,7 +936,7 @@ const KitchenDisplay = () => {
                                     </div>
                                     <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
                                         <Clock className="w-3 h-3 mr-1" />
-                                        {elapsedMin}m
+                                        {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
                                     </Badge>
                                 </div>
                                 <div className="space-y-1.5 mb-3">
@@ -1151,7 +1151,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                 </div>
                 <Badge className={cn('text-xs font-mono font-bold', badgeClass[urgency])}>
                     <Clock className="w-3 h-3 mr-1" />
-                    {elapsedMin}m
+                    {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
                 </Badge>
                 {bill.table_no && (
                     <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded absolute right-4 top-10">
