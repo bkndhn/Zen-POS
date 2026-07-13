@@ -326,8 +326,13 @@ const BillingListItemCard = React.memo(({
   const isInCart = cartQuantity > 0;
   return (
     <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
-      <CardContent className="p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <CardContent className="p-3">
+        <div className={cn(
+          "flex justify-between gap-3",
+          (!isInCart && item.quick_chips && item.quick_chips.length > 0)
+            ? "flex-col sm:flex-row sm:items-center"
+            : "flex-row items-center"
+        )}>
           <div className="flex items-center space-x-3 min-w-0">
             {/* Image */}
             <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
@@ -363,9 +368,14 @@ const BillingListItemCard = React.memo(({
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto shrink-0">
+          <div className={cn(
+            "flex items-center shrink-0",
+            (!isInCart && item.quick_chips && item.quick_chips.length > 0)
+              ? "justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto"
+              : "justify-end gap-1.5 w-auto"
+          )}>
             {isInCart ? (
-              <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3 ml-auto sm:ml-0">
+              <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3 ml-auto">
                 <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
                   <Minus className="w-3 h-3" />
                 </Button>
@@ -377,7 +387,12 @@ const BillingListItemCard = React.memo(({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto ml-auto sm:ml-0">
+              <div className={cn(
+                "flex items-center justify-end gap-1.5",
+                (item.quick_chips && item.quick_chips.length > 0)
+                  ? "flex-wrap w-full sm:w-auto ml-auto sm:ml-0"
+                  : "w-auto"
+              )}>
                 {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
                   const isAmt = chip.startsWith('₹');
                   return (
