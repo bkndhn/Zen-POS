@@ -692,9 +692,41 @@ class PrinterManager {
         console.log('Printer disconnected manually');
     }
 
-    // Print receipt — works with both BT and USB
+    // Print receipt — works with both BT and USB, and supports Android Wrapper JS Bridge
     public async print(data: PrintData): Promise<boolean> {
         this.lastPrintData = data;
+
+        // === NATIVE WRAPPER JS BRIDGE (INSTANT PRINT FOR POS TERMINALS) ===
+        const win = window as any;
+        if (win.AndroidPrinter) {
+            console.log('[Printer] Native AndroidPrinter JS Bridge detected. Routing to built-in printer.');
+            const t0 = performance.now();
+            try {
+                // Try sending JSON first
+                if (typeof win.AndroidPrinter.printReceipt === 'function') {
+                    win.AndroidPrinter.printReceipt(JSON.stringify(data));
+                } else if (typeof win.AndroidPrinter.printRawBytes === 'function') {
+                    // Fallback to sending raw ESC/POS bytes as hex/base64
+                    const receiptBytes = await generateReceiptBytes(data);
+                    // Convert Uint8Array to Hex string
+                    const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                    win.AndroidPrinter.printRawBytes(hex);
+                } else {
+                    throw new Error('No valid print method on AndroidPrinter bridge');
+                }
+
+                const ms = Math.round(performance.now() - t0);
+                this.recordLog('print', 'ok', ms, `Instant POS Print (Bridge)`, data.billNo);
+                return true;
+            } catch (error: any) {
+                const ms = Math.round(performance.now() - t0);
+                const msg = String(error?.message || error);
+                console.error('[Printer] Native bridge print failed:', error);
+                this.recordLog('print', 'fail', ms, `Bridge error: ${msg}`, data.billNo);
+                // Fail over to standard flow
+            }
+        }
+
         // If not connected, try to connect first
         if (!this.isConnected()) {
             console.log('Not connected, attempting to connect...');
