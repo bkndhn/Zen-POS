@@ -41,9 +41,9 @@ const BLUETOOTH_OPTIONAL_SERVICES = [
     '49535343-fe7d-4ae5-8fa9-9fafd205e455',
     'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
 ];
-const BLUETOOTH_CHUNK_SIZE = 180;
-const BLUETOOTH_CHUNK_DELAY_MS = 0;
-const QUEUE_INTER_JOB_DELAY_MS = 0;
+const BLUETOOTH_CHUNK_SIZE = 40;
+const BLUETOOTH_CHUNK_DELAY_MS = 15;
+const QUEUE_INTER_JOB_DELAY_MS = 100;
 const MAX_LOG_ENTRIES = 50;
 
 // Printer Manager Singleton
@@ -98,6 +98,17 @@ class PrinterManager {
             }, 500);
         }
 
+        // Restore print queue from persistent storage
+        try {
+            const savedQueue = localStorage.getItem('hotel_pos_print_queue');
+            if (savedQueue) {
+                this.printQueue = JSON.parse(savedQueue);
+                console.log(`[Printer] Restored ${this.printQueue.length} print jobs from storage`);
+            }
+        } catch (e) {
+            console.error('Failed to restore print queue:', e);
+        }
+
         // Re-establish printer whenever the tab becomes visible or window regains focus.
         // Keeps the printer "always connected" across app close/reopen, route changes,
         // screen locks, and background/foreground transitions on mobile.
@@ -112,6 +123,14 @@ class PrinterManager {
             });
             window.addEventListener('focus', tryReconnect);
             window.addEventListener('online', tryReconnect);
+        }
+    }
+
+    private saveQueueToStorage(): void {
+        try {
+            localStorage.setItem('hotel_pos_print_queue', JSON.stringify(this.printQueue));
+        } catch (e) {
+            console.error('Failed to save print queue:', e);
         }
     }
 
@@ -689,6 +708,7 @@ class PrinterManager {
             if (!connected) {
                 console.log('Connection failed, queueing print job');
                 this.printQueue.push(data);
+                this.saveQueueToStorage();
                 this.recordLog('print', 'fail', 0, 'queued — no connection', data.billNo);
                 return false;
             }
@@ -705,6 +725,7 @@ class PrinterManager {
                 if (!this.characteristic) {
                     this.recordLog('print', 'fail', undefined, 'No characteristic', data.billNo);
                     this.printQueue.push(data);
+                    this.saveQueueToStorage();
                     return false;
                 }
                 await this.writeBluetoothBytes(receiptBytes);
@@ -723,6 +744,7 @@ class PrinterManager {
             if (msg.includes('GATT') || error.name === 'NetworkError' || msg.includes('USB')) {
                 this.handleDisconnect();
                 this.printQueue.push(data);
+                this.saveQueueToStorage();
                 this.attemptAutoReconnect();
             }
 
@@ -757,6 +779,7 @@ class PrinterManager {
 
         while (this.printQueue.length > 0 && this.isConnected()) {
             const job = this.printQueue.shift();
+            this.saveQueueToStorage();
             if (job) {
                 await this.print(job);
                 if (QUEUE_INTER_JOB_DELAY_MS > 0) {
@@ -776,6 +799,7 @@ class PrinterManager {
     // Clear print queue
     public clearQueue(): void {
         this.printQueue = [];
+        localStorage.removeItem('hotel_pos_print_queue');
     }
 
     /**
