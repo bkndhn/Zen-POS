@@ -9,7 +9,7 @@ import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, Chevron
 import { cn } from '@/lib/utils';
 import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
-import { getCDNUrl } from '@/utils/imageUtils';
+import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { useTranslation } from 'react-i18next';
 
 // Types
@@ -377,9 +377,9 @@ const PublicMenu = () => {
         fetchMenuData();
     }, [adminId, branchId]);
 
-    // Real-time subscription for item updates
+    // Real-time subscription for item updates (active only when user has items in their cart)
     useEffect(() => {
-        if (!adminId) return;
+        if (!adminId || cart.length === 0) return;
 
         const channel = supabase
             .channel(`public-menu-${adminId}`)
@@ -431,11 +431,11 @@ const PublicMenu = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [adminId]);
+    }, [adminId, cart.length]);
 
-    // Real-time subscription for menu settings changes (items per row, colors, etc.)
+    // Real-time subscription for menu settings changes (active only when user has items in their cart)
     useEffect(() => {
-        if (!adminId) return;
+        if (!adminId || cart.length === 0) return;
 
         const settingsChannel = supabase
             .channel(`menu-settings-${adminId}`)
@@ -467,7 +467,7 @@ const PublicMenu = () => {
         return () => {
             supabase.removeChannel(settingsChannel);
         };
-    }, [adminId, branchId]);
+    }, [adminId, branchId, cart.length]);
 
     // Auto-swipe banners every 4 seconds (pauses when user interacts)
     useEffect(() => {
@@ -1034,9 +1034,9 @@ const PublicMenu = () => {
         initSession();
     }, [adminId, isTableMode, tableNo, sessionStorageKey]);
 
-    // Real-time subscription for order status updates
+    // Real-time subscription for order status updates (active only when user has active orders in their session)
     useEffect(() => {
-        if (!adminId || !sessionId || !isTableMode) return;
+        if (!adminId || !sessionId || !isTableMode || sessionOrders.length === 0) return;
 
         // Subscribe to broadcast for instant updates
         const channel = supabase.channel(`table-order-status-${sessionId}`)
@@ -1092,7 +1092,7 @@ const PublicMenu = () => {
             supabase.removeChannel(channel);
             supabase.removeChannel(pgChannel);
         };
-    }, [adminId, sessionId, isTableMode, sessionStorageKey]);
+    }, [adminId, sessionId, isTableMode, sessionStorageKey, sessionOrders.length]);
 
     // Status helpers
     const getStatusIcon = (status: string) => {
@@ -1302,9 +1302,10 @@ const PublicMenu = () => {
         }
     };
 
-    // Listen for acknowledgement/resolution from staff
+    // Listen for acknowledgement/resolution from staff (active only when there are active requests)
     useEffect(() => {
-        if (!adminId || !isTableMode || !sessionId) return;
+        const activeRequestsCount = Object.keys(helpStatus).length;
+        if (!adminId || !isTableMode || !sessionId || activeRequestsCount === 0) return;
 
         const channel = supabase.channel(`service-request-response-${sessionId}`)
             .on('broadcast', { event: 'request-status-update' }, (payload: any) => {
@@ -1330,7 +1331,7 @@ const PublicMenu = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [adminId, isTableMode, sessionId]);
+    }, [adminId, isTableMode, sessionId, Object.keys(helpStatus).length]);
 
     // Fetch active help requests on mount or when tableNo/sessionId changes
     useEffect(() => {
@@ -1519,9 +1520,11 @@ const PublicMenu = () => {
                         <div className="flex items-center gap-3.5 flex-1 min-w-0">
                             {shopSettings?.logo_url ? (
                                 <img
-                                    src={shopSettings.logo_url}
+                                    src={getCDNUrl(shopSettings.logo_url)}
                                     alt="Logo"
                                     className="w-12 h-12 rounded-xl object-cover border-2 border-white/40 flex-shrink-0 shadow-lg"
+                                    loading="lazy"
+                                    onError={(e) => handleImageError(e, shopSettings.logo_url)}
                                 />
                             ) : (
                                 <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/20">
@@ -1750,6 +1753,8 @@ const PublicMenu = () => {
                                                     alt={banner.title}
                                                     className="w-full h-full object-cover object-center"
                                                     draggable={false}
+                                                    loading="lazy"
+                                                    onError={(e) => handleImageError(e, banner.image_url)}
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                                                 <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
@@ -1859,12 +1864,12 @@ const PublicMenu = () => {
                                                     <div className="aspect-square bg-orange-50 relative overflow-hidden">
                                                         {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
                                                             item.media_type === 'gif' ? (
-                                                                <img src={item.video_url || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} />
+                                                                <img src={item.video_url || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.video_url || item.image_url)} />
                                                             ) : (
                                                                 <video src={item.video_url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
                                                             )
                                                         ) : item.image_url ? (
-                                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} />
+                                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.image_url)} />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-orange-300">
                                                                 <Utensils className="w-10 h-10" />
@@ -1993,6 +1998,7 @@ const PublicMenu = () => {
                                                                         loading="lazy"
                                                                         draggable={false}
                                                                         onContextMenu={(e) => e.preventDefault()}
+                                                                        onError={(e) => handleImageError(e, item.video_url || item.image_url)}
                                                                     />
                                                                 ) : (
                                                                     <video
@@ -2012,6 +2018,7 @@ const PublicMenu = () => {
                                                                     loading="lazy"
                                                                     draggable={false}
                                                                     onContextMenu={(e) => e.preventDefault()}
+                                                                    onError={(e) => handleImageError(e, item.image_url)}
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center text-orange-300">
@@ -2753,7 +2760,7 @@ const PublicMenu = () => {
                                 <div key={suggested.id} className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-800/40 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all">
                                     <div className="flex items-center gap-3">
                                         {suggested.image_url ? (
-                                            <img src={suggested.image_url} alt={suggested.name} className="w-12 h-12 rounded-xl object-cover" />
+                                            <img src={getCDNUrl(suggested.image_url)} alt={suggested.name} className="w-12 h-12 rounded-xl object-cover" loading="lazy" onError={(e) => handleImageError(e, suggested.image_url)} />
                                         ) : (
                                             <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500"><Utensils className="w-5 h-5" /></div>
                                         )}

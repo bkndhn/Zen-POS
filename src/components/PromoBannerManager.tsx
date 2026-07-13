@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Plus, Trash2, GripVertical, Image, Loader2, Calendar, X, Type, Palette } from 'lucide-react';
-import { compressImage, compressGifToImage } from '@/utils/imageUtils';
+import { compressImage, compressGifToImage, getCDNUrl } from '@/utils/imageUtils';
 
 interface Banner {
     id: string;
@@ -91,39 +91,40 @@ export const PromoBannerManager = () => {
 
         try {
             setSaving(true);
-            const maxSizeKB = 500; // 500KB limit for banners
             const isGif = file.type === 'image/gif';
             let uploadBlob: Blob = file;
-            let fileExt = file.name.split('.').pop() || 'jpg';
+            let fileExt = 'webp';
 
-            // Compress if file is too large
-            if (file.size > maxSizeKB * 1024) {
-                toast({
-                    title: "Compressing...",
-                    description: `Image is ${(file.size / 1024).toFixed(0)}KB, compressing to 500KB`,
-                });
+            // Always compress/convert images to WebP format for maximum egress savings
+            toast({
+                title: "Optimizing Image...",
+                description: `Processing banner for high-speed loading`,
+            });
 
-                if (isGif) {
-                    // Convert GIF to compressed JPEG
-                    uploadBlob = await compressGifToImage(file, maxSizeKB);
-                    fileExt = 'jpg';
-                } else {
-                    // Compress regular image
-                    uploadBlob = await compressImage(file, maxSizeKB);
-                    fileExt = 'jpg';
-                }
-
-                toast({
-                    title: "Image Compressed",
-                    description: `Reduced to ${(uploadBlob.size / 1024).toFixed(0)}KB`,
-                });
+            if (isGif) {
+                // Convert GIF to compressed JPEG
+                uploadBlob = await compressGifToImage(file, 300);
+                fileExt = 'jpg';
+            } else {
+                // Compress and convert to WebP format
+                uploadBlob = await compressImage(file, 200); // 200KB is plenty for high quality banners
+                fileExt = 'webp';
             }
+
+            toast({
+                title: "Image Optimized",
+                description: `Reduced size to ${(uploadBlob.size / 1024).toFixed(0)}KB`,
+            });
 
             const fileName = `${adminId}/banner-${Date.now()}.${fileExt}`;
 
             const { error } = await supabase.storage
                 .from('promo-banners')
-                .upload(fileName, uploadBlob, { cacheControl: '3600', upsert: true });
+                .upload(fileName, uploadBlob, { 
+                    cacheControl: '31536000, public', // Cache for a year since it's immutable (contains timestamp)
+                    upsert: true,
+                    contentType: fileExt === 'webp' ? 'image/webp' : 'image/jpeg'
+                });
 
             if (error) throw error;
 
@@ -131,7 +132,10 @@ export const PromoBannerManager = () => {
                 .from('promo-banners')
                 .getPublicUrl(fileName);
 
-            setFormData(prev => ({ ...prev, image_url: publicData.publicUrl }));
+            // Apply CDN rewriting to the returned URL
+            const finalUrl = getCDNUrl(publicData.publicUrl);
+
+            setFormData(prev => ({ ...prev, image_url: finalUrl }));
             toast({ title: "Image uploaded" });
         } catch (error) {
             console.error('Upload error:', error);
