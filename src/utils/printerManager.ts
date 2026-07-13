@@ -939,6 +939,100 @@ class PrinterManager {
         }
         return report;
     }
+
+    // ============ Cache Clear Recovery ============
+
+    /**
+     * Restore localStorage printer settings from Supabase server data.
+     * Called by BluetoothPrinterSettings when it detects server data exists
+     * but localStorage is empty (e.g. after browser cache clear).
+     * Returns true if settings were restored.
+     */
+    public restoreFromServer(serverData: {
+        printer_name?: string | null;
+        printer_type?: string | null;
+        is_enabled?: boolean;
+        auto_print?: boolean;
+        station_printer_map?: Record<string, string> | null;
+    }): boolean {
+        const currentType = localStorage.getItem(PRINTER_TYPE_KEY);
+        // Only restore if localStorage is empty (cache was cleared)
+        if (currentType && currentType !== 'none') {
+            return false; // localStorage already has settings, no need to restore
+        }
+
+        let restored = false;
+
+        // Restore printer type
+        if (serverData.printer_type && serverData.printer_type !== 'none') {
+            localStorage.setItem(PRINTER_TYPE_KEY, serverData.printer_type);
+            this._printerType = serverData.printer_type as PrinterType;
+            restored = true;
+        }
+
+        // Restore printer name
+        if (serverData.printer_name) {
+            localStorage.setItem('hotel_pos_bluetooth_printer_name', serverData.printer_name);
+            this.deviceName = serverData.printer_name;
+            restored = true;
+        }
+
+        // Restore station printer map
+        if (serverData.station_printer_map && Object.keys(serverData.station_printer_map).length > 0) {
+            localStorage.setItem('hotel_pos_station_printer_map', JSON.stringify(serverData.station_printer_map));
+            restored = true;
+        }
+
+        if (restored) {
+            console.log('[Printer] Settings restored from server after cache clear');
+            this.recordLog('reconnect', 'info', undefined, 'Settings restored from server backup');
+            // Trigger auto-reconnect with restored settings
+            setTimeout(() => {
+                this.autoReconnect().catch(() => undefined);
+            }, 500);
+        }
+
+        return restored;
+    }
+
+    /**
+     * Sync current localStorage printer settings TO Supabase.
+     * Called after any printer connection change so the server
+     * always has a backup of the config.
+     */
+    public getSettingsForSync(): {
+        printer_type: string;
+        printer_name: string | null;
+        station_printer_map: Record<string, string>;
+    } {
+        const stationMapRaw = localStorage.getItem('hotel_pos_station_printer_map');
+        let stationMap: Record<string, string> = {};
+        try {
+            stationMap = stationMapRaw ? JSON.parse(stationMapRaw) : {};
+        } catch { /* empty */ }
+
+        return {
+            printer_type: this._printerType,
+            printer_name: this.deviceName || null,
+            station_printer_map: stationMap,
+        };
+    }
+
+    // ============ Platform Detection ============
+
+    /**
+     * Detect if running on iOS/iPadOS (Safari/Chrome on iOS).
+     * Web Bluetooth is NOT supported on any iOS browser.
+     */
+    public static isIOSDevice(): boolean {
+        if (typeof navigator === 'undefined') return false;
+        const ua = navigator.userAgent || '';
+        // Standard iOS detection
+        if (/iPad|iPhone|iPod/.test(ua)) return true;
+        // iPadOS 13+ reports as Mac with touch support
+        if (/Macintosh/.test(ua) && 'ontouchend' in document) return true;
+        return false;
+    }
 }
 
 // Export singleton instance

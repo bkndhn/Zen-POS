@@ -370,6 +370,8 @@ export type Database = {
           id: string
           is_enabled: boolean
           printer_name: string | null
+          printer_type: string | null
+          station_printer_map: Record<string, string>
           updated_at: string
           user_id: string
         }
@@ -380,6 +382,8 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           printer_name?: string | null
+          printer_type?: string | null
+          station_printer_map?: Record<string, string>
           updated_at?: string
           user_id: string
         }
@@ -390,6 +394,8 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           printer_name?: string | null
+          printer_type?: string | null
+          station_printer_map?: Record<string, string>
           updated_at?: string
           user_id?: string
         }

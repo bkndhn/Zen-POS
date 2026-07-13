@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { Printer, Bluetooth, AlertCircle, CheckCircle2, RefreshCw, FileText, Zap, Upload, Image as ImageIcon, X, WifiOff, Loader2, Usb } from 'lucide-react';
 import { usePrinter } from '@/hooks/usePrinter';
-import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS } from '@/utils/stationPrinters';
-import { printerManager } from '@/utils/printerManager';
+import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS, setStationMap } from '@/utils/stationPrinters';
+import { printerManager, PrinterManager } from '@/utils/printerManager';
 
 
 // Local storage key for device persistence
@@ -62,6 +62,8 @@ export const BluetoothPrinterSettings: React.FC = () => {
   const [connecting, setConnecting] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'fair' | 'poor' | null>(null);
+  const [isIOS] = useState(() => PrinterManager.isIOSDevice());
+  const [cacheRestored, setCacheRestored] = useState(false);
 
   // Sync connection state with local state
   useEffect(() => {
@@ -103,6 +105,24 @@ export const BluetoothPrinterSettings: React.FC = () => {
           printer_name: data.printer_name,
           auto_print: data.auto_print
         });
+
+        // === CACHE CLEAR RECOVERY ===
+        // If server has printer settings but localStorage is empty,
+        // the browser cache was cleared. Restore from server backup.
+        const restored = printerManager.restoreFromServer({
+          printer_name: data.printer_name,
+          printer_type: (data as any).printer_type || 'bluetooth',
+          is_enabled: data.is_enabled,
+          auto_print: data.auto_print,
+          station_printer_map: (data as any).station_printer_map || {},
+        });
+        if (restored) {
+          setCacheRestored(true);
+          toast({
+            title: '🔄 Settings Restored',
+            description: 'Your printer settings were recovered from server backup. Please re-pair your printer to resume printing.',
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching bluetooth settings:', error);
@@ -129,14 +149,19 @@ export const BluetoothPrinterSettings: React.FC = () => {
       const newSettings = { ...settings, ...updates };
       setSettings(newSettings);
 
+      // Get full printer sync data (includes printer_type & station map)
+      const syncData = printerManager.getSettingsForSync();
+
       if (settings.id) {
         const { error } = await supabase
           .from('bluetooth_settings')
           .update({
             is_enabled: newSettings.is_enabled,
             printer_name: newSettings.printer_name,
-            auto_print: newSettings.auto_print
-          })
+            auto_print: newSettings.auto_print,
+            printer_type: syncData.printer_type,
+            station_printer_map: syncData.station_printer_map,
+          } as any)
           .eq('id', settings.id);
 
         if (error) throw error;
@@ -148,8 +173,10 @@ export const BluetoothPrinterSettings: React.FC = () => {
             branch_id: operatingBranchId,
             is_enabled: newSettings.is_enabled,
             printer_name: newSettings.printer_name,
-            auto_print: newSettings.auto_print
-          })
+            auto_print: newSettings.auto_print,
+            printer_type: syncData.printer_type,
+            station_printer_map: syncData.station_printer_map,
+          } as any)
           .select()
           .single();
 
@@ -351,6 +378,9 @@ export const BluetoothPrinterSettings: React.FC = () => {
             {queueSize > 0 && (
               <p className="text-xs text-amber-600">📋 {queueSize} print job(s) queued</p>
             )}
+            {cacheRestored && !isConnected && (
+              <p className="text-xs text-blue-600">🔄 Settings recovered — tap Settings to re-pair</p>
+            )}
           </div>
         </div>
         <Dialog>
@@ -445,9 +475,30 @@ export const BluetoothPrinterSettings: React.FC = () => {
                     </Button>
 
                     {!isBluetoothSupported && (
-                      <p className="text-xs text-red-500 mt-2">
-                        Bluetooth not supported. Use Chrome or Edge browser.
-                      </p>
+                      <div className="mt-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3">
+                        {isIOS ? (
+                          <div className="space-y-2">
+                            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4" />
+                              iOS / iPad Detected
+                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              Apple does not allow Bluetooth printing in any iOS browser (Safari, Chrome, or Edge). This is an Apple platform restriction.
+                            </p>
+                            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">✅ Alternatives that work on iOS:</p>
+                            <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1 ml-3 list-disc">
+                              <li><strong>USB Printer</strong> — Connect via USB adapter and use the USB button below</li>
+                              <li><strong>Browser Print</strong> — Use the "Print" button in billing which opens the standard iOS print dialog</li>
+                              <li><strong>Network Printer</strong> — WiFi/LAN printers work via browser print</li>
+                              <li><strong>Use Android</strong> — Bluetooth printing works perfectly on Chrome for Android</li>
+                            </ul>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-amber-700 dark:text-amber-400">
+                            Bluetooth not supported in this browser. Use <strong>Chrome</strong> or <strong>Edge</strong> for Bluetooth printing.
+                          </p>
+                        )}
+                      </div>
                     )}
 
                     {/* USB / Wired Printer Option */}
