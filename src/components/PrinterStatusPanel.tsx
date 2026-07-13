@@ -44,6 +44,30 @@ export const PrinterStatusPanel: React.FC = () => {
         return () => { unsub(); };
     }, []);
 
+    // Push/pop state to history to capture hardware back button on mobile
+    useEffect(() => {
+        if (open) {
+            // Push a temporary history state so back button closes the sheet
+            window.history.pushState({ sheet: 'printer-status' }, '');
+        }
+
+        const handlePopState = (event: PopStateEvent) => {
+            if (open) {
+                // Close sheet instead of navigating back / closing app
+                setOpen(false);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            // Clean up history state if sheet is closed programmatically
+            if (!open && window.history.state?.sheet === 'printer-status') {
+                window.history.back();
+            }
+        };
+    }, [open]);
+
     const info = useMemo(() => printerManager.getServiceInfo(), [connectionState, deviceName]);
     const lastError = printerManager.getLastError();
 

@@ -369,9 +369,9 @@ const BillingListItemCard = React.memo(({
 
           {/* Controls */}
           <div className={cn(
-            "flex items-center shrink-0",
+            "flex items-center shrink-0 max-w-full",
             (!isInCart && item.quick_chips && item.quick_chips.length > 0)
-              ? "justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto"
+              ? "justify-start sm:justify-end gap-2 flex-wrap w-full sm:w-auto"
               : "justify-end gap-1.5 w-auto"
           )}>
             {isInCart ? (
@@ -388,9 +388,9 @@ const BillingListItemCard = React.memo(({
               </div>
             ) : (
               <div className={cn(
-                "flex items-center justify-end gap-1.5",
+                "flex items-center justify-start sm:justify-end gap-1.5 max-w-full",
                 (item.quick_chips && item.quick_chips.length > 0)
-                  ? "flex-wrap w-full sm:w-auto ml-auto sm:ml-0"
+                  ? "flex-wrap w-full sm:w-auto ml-0 sm:ml-0"
                   : "w-auto"
               )}>
                 {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
@@ -412,7 +412,7 @@ const BillingListItemCard = React.memo(({
                     </button>
                   );
                 })}
-                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg">
+                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg shrink-0">
                   Add
                 </Button>
               </div>
