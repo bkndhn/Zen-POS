@@ -1882,94 +1882,42 @@ const Billing = () => {
     }
   };
 
-  // Helper function to save bill to database (OPTIMIZED - Non-blocking stock updates)
+  // Helper function to save bill to database securely via Server RPC
   const saveBillToDatabase = async (
     billPayload: any,
     validCart: CartItem[],
     billNumber: string
   ) => {
-    // Extract and remove internal GST data from payload before inserting
-    const taxRatesMap = billPayload._taxRatesMap;
-    const isComposition = billPayload._isComposition;
-    delete billPayload._taxRatesMap;
-    delete billPayload._isComposition;
-
-    // 1. Create Bill
-    const { data: billData, error: billError } = await supabase
-      .from('bills')
-      .insert(billPayload)
-      .select()
-      .single();
-
-    if (billError) throw billError;
-    if (!billData) throw new Error('Failed to create bill record');
-
-    // 2. Create Bill Items (with tax snapshots if GST enabled)
-    const billItems = validCart.map(item => {
-      const baseValue = item.base_value || 1;
-      const lineTotal = (item.quantity / baseValue) * item.price;
-      const billItem: any = {
-        bill_id: billData.id,
-        item_id: item.id,
-        quantity: item.quantity,
-        price: item.price,
-        total: lineTotal
-      };
-
-      // Add tax snapshot if GST is enabled
-      const itemAny = item as any;
-      const taxRateId = itemAny.tax_rate_id;
-      if (taxRateId && taxRatesMap) {
-        const taxRateInfo = taxRatesMap[taxRateId];
-        if (taxRateInfo) {
-          billItem.tax_rate_snapshot = taxRateInfo.rate;
-          billItem.tax_rate = taxRateInfo.rate;
-          billItem.hsn_code = itemAny.hsn_code || taxRateInfo.hsn_code || null;
-          billItem.tax_type = 'GST';
-          // Calculate individual item tax for snapshot
-          const taxRate = taxRateInfo.rate;
-          const isTaxInclusive = itemAny.is_tax_inclusive !== false;
-          const cessRate = taxRateInfo.cess || 0;
-          let taxableValue = lineTotal;
-          let taxAmount = 0;
-          if (isTaxInclusive) {
-            taxableValue = lineTotal / (1 + (taxRate + cessRate) / 100);
-            taxAmount = lineTotal - taxableValue;
-          } else {
-            taxAmount = lineTotal * (taxRate + cessRate) / 100;
-          }
-          billItem.taxable_amount = Math.round(taxableValue * 100) / 100;
-          billItem.tax_amount = Math.round(taxAmount * 100) / 100;
-        }
-      }
-
-      return billItem;
+    // 1. Invoke the secure stored procedure to calculate and insert everything server-side
+    const { data: resultData, error: rpcError } = await supabase.rpc('secure_create_bill', {
+      p_bill_payload: {
+        bill_no: billNumber,
+        created_by: profile?.user_id,
+        payment_mode: billPayload.payment_mode,
+        payment_details: billPayload.payment_details,
+        additional_charges: billPayload.additional_charges,
+        discount: billPayload.discount || 0,
+        order_type: billPayload.order_type || 'dine_in',
+        table_no: billPayload.table_no || null,
+        customer_mobile: billPayload.customer_mobile || null,
+        customer_gstin: billPayload.customer_gstin || null,
+        branch_id: operatingBranchId || null,
+        admin_id: adminId || null,
+        channel: billPayload.channel || 'store'
+      },
+      p_cart_items: validCart.map(item => ({
+        id: item.id,
+        quantity: item.quantity
+      }))
     });
 
-    const { error: itemsError } = await supabase
-      .from('bill_items')
-      .insert(billItems);
-
-    if (itemsError) {
-      console.error("Failed to insert items, rolling back bill...", itemsError);
-      await supabase.from('bills').delete().eq('id', billData.id);
-      throw itemsError;
+    if (rpcError) {
+      console.error('Error invoking secure_create_bill RPC:', rpcError);
+      throw rpcError;
     }
+    if (!resultData) throw new Error('Failed to create secure bill record');
 
-    // 3. Stock Deduction (Recipe-based Ingredient Deduction or Fallback to Item Stock)
-    try {
-      const { deductStockForItems } = await import('@/utils/stockManager');
-      await deductStockForItems(validCart.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        selling_unit: item.selling_unit,
-        inventory_unit: item.inventory_unit
-      })));
-    } catch (e) {
-      console.error("Stock deduction error:", e);
-    }
+    const billData = resultData as any;
 
     toast({
       title: "Success",

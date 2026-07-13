@@ -809,80 +809,32 @@ const TableOrderBilling: React.FC = () => {
                 billPayload.customer_gstin = paymentData.customerGstin || null;
             }
 
-            const { data: billData, error: billError } = await supabase
-                .from('bills')
-                .insert(billPayload as any)
-                .select()
-                .single();
-
-            if (billError) throw billError;
-            if (!billData) throw new Error('Failed to create bill');
-
-            // 2. Create Bill Items (with tax snapshots and rounding)
-            const billItems = validItems.map(item => {
-                const baseValue = item.base_value || 1;
-                const lineTotal = (item.quantity / baseValue) * item.price;
-                const billItem: any = {
-                    bill_id: billData.id,
-                    item_id: item.id,
-                    quantity: item.quantity,
-                    price: item.price,
-                    total: Math.round(lineTotal),
-                };
-
-                if (gstSettings.enabled) {
-                    const dbItem = dbItemsMap.get(item.id);
-                    const taxRateId = dbItem?.tax_rate_id;
-                    const taxRateInfo = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
-
-                    if (taxRateInfo) {
-                        billItem.tax_rate_snapshot = taxRateInfo.rate;
-                        billItem.tax_rate = taxRateInfo.rate;
-                        billItem.hsn_code = dbItem?.hsn_code || taxRateInfo.hsn_code || null;
-                        billItem.tax_type = 'GST';
-
-                        const taxRate = taxRateInfo.rate;
-                        const isTaxInclusive = dbItem?.is_tax_inclusive !== false;
-                        const cessRate = taxRateInfo.cess || 0;
-                        let taxableValue = lineTotal;
-                        let taxAmount = 0;
-                        if (isTaxInclusive) {
-                            taxableValue = lineTotal / (1 + (taxRate + cessRate) / 100);
-                            taxAmount = lineTotal - taxableValue;
-                        } else {
-                            taxAmount = lineTotal * (taxRate + cessRate) / 100;
-                        }
-                        billItem.taxable_amount = Math.round(taxableValue * 100) / 100;
-                        billItem.tax_amount = Math.round(taxAmount * 100) / 100;
-                    }
-                }
-                return billItem;
+            const { data: resultData, error: rpcError } = await supabase.rpc('secure_create_bill', {
+                p_bill_payload: {
+                    bill_no: billNumber,
+                    created_by: profile?.user_id,
+                    payment_mode: paymentMode,
+                    payment_details: paymentData.paymentAmounts,
+                    additional_charges: additionalChargesArray,
+                    discount: paymentData.discount || 0,
+                    order_type: paymentData.orderType || 'dine_in',
+                    table_no: selectedTable.seat_id ? `T${tableNumber} (Seat ${selectedTable.seat_id})` : `T${tableNumber}`,
+                    customer_mobile: paymentData.customerMobile || null,
+                    customer_gstin: paymentData.customerGstin || null,
+                    branch_id: operatingBranchId || null,
+                    admin_id: adminId || null,
+                    channel: 'store'
+                },
+                p_cart_items: validItems.map(item => ({
+                    id: item.id,
+                    quantity: item.quantity
+                }))
             });
 
-            const { error: itemsError } = await supabase
-                .from('bill_items')
-                .insert(billItems);
+            if (rpcError) throw rpcError;
+            if (!resultData) throw new Error('Failed to create secure bill');
 
-            if (itemsError) {
-                // Rollback bill
-                await supabase.from('bills').delete().eq('id', billData.id);
-                throw itemsError;
-            }
-
-            // 2.5 Stock Deduction (Recipe-based Ingredient Deduction or Fallback to Item Stock)
-            try {
-                const { deductStockForItems } = await import('@/utils/stockManager');
-                await deductStockForItems(validItems.map((item: any) => ({
-                    id: item.id,
-                    name: item.name,
-                    quantity: item.quantity,
-                    unit: item.unit,
-                    selling_unit: item.selling_unit,
-                    inventory_unit: item.inventory_unit
-                })));
-            } catch (e) {
-                console.error("Stock deduction error:", e);
-            }
+            const billData = resultData as any;
 
             // 3. Update table orders / billing state in DB based on split mode
             const orderIds = orders.map(o => o.id);
