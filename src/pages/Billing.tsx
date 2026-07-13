@@ -327,8 +327,8 @@ const BillingListItemCard = React.memo(({
   return (
     <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3 min-w-0">
             {/* Image */}
             <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
               {item.media_type === 'video' ? (
@@ -356,16 +356,16 @@ const BillingListItemCard = React.memo(({
             </div>
 
             {/* Name and Price */}
-            <div>
-              <h3 className="font-semibold text-sm">{item.name}</h3>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-sm truncate">{item.name}</h3>
               <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto shrink-0">
             {isInCart ? (
-              <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
+              <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3 ml-auto sm:ml-0">
                 <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
                   <Minus className="w-3 h-3" />
                 </Button>
@@ -377,7 +377,7 @@ const BillingListItemCard = React.memo(({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto ml-auto sm:ml-0">
                 {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
                   const isAmt = chip.startsWith('₹');
                   return (
@@ -397,7 +397,7 @@ const BillingListItemCard = React.memo(({
                     </button>
                   );
                 })}
-                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white">
+                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg">
                   Add
                 </Button>
               </div>
