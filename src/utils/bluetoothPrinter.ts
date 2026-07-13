@@ -616,7 +616,8 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
           const receiptBytes = await generateReceiptBytes(data);
 
           // Conservative BLE packets work across inexpensive 58/80mm printers.
-          const chunkSize = 100;
+          // Must match printerManager chunk size (40B/15ms) for consistent output.
+          const chunkSize = 40;
           for (let i = 0; i < receiptBytes.length; i += chunkSize) {
             const chunk = receiptBytes.slice(i, Math.min(i + chunkSize, receiptBytes.length));
             if (char.properties.writeWithoutResponse && typeof char.writeValueWithoutResponse === 'function') {
@@ -626,7 +627,7 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
             } else {
               await char.writeValue(chunk);
             }
-            await new Promise(resolve => setTimeout(resolve, 20));
+            await new Promise(resolve => setTimeout(resolve, 15));
           }
 
           server.disconnect();
