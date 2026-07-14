@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { printerManager, PrinterConnectionState, PrinterType } from '@/utils/printerManager';
+import { printerManager, AutoReconnectState, PrinterConnectionState, PrinterType } from '@/utils/printerManager';
 import { PrintData } from '@/utils/bluetoothPrinter';
 
 interface UsePrinterResult {
@@ -21,6 +21,8 @@ interface UsePrinterResult {
     isBluetoothSupported: boolean;
     isUSBSupported: boolean;
     printerType: PrinterType;
+    autoReconnectState: AutoReconnectState;
+    autoReconnectEnabled: boolean;
 
     // Queue info
     queueSize: number;
@@ -38,14 +40,18 @@ export const usePrinter = (): UsePrinterResult => {
     const [deviceName, setDeviceName] = useState<string>('');
     const [queueSize, setQueueSize] = useState<number>(0);
     const [printerType, setPrinterType] = useState<PrinterType>(printerManager.printerType);
+    const [autoReconnectState, setAutoReconnectState] = useState<AutoReconnectState>(printerManager.getAutoReconnectState());
+    const [autoReconnectEnabled, setAutoReconnectEnabled] = useState(printerManager.isAutoReconnectEnabled());
 
     // Subscribe to printer manager state changes
     useEffect(() => {
-        const unsubscribe = printerManager.subscribe((state, name) => {
+        const unsubscribe = printerManager.subscribe((state, name, reconnectState) => {
             setConnectionState(state);
             setDeviceName(name || '');
             setQueueSize(printerManager.getQueueSize());
             setPrinterType(printerManager.printerType);
+            setAutoReconnectState(reconnectState || printerManager.getAutoReconnectState());
+            setAutoReconnectEnabled(printerManager.isAutoReconnectEnabled());
         });
 
         // Check initial state
@@ -53,6 +59,8 @@ export const usePrinter = (): UsePrinterResult => {
         setDeviceName(printerManager.getDeviceName());
         setQueueSize(printerManager.getQueueSize());
         setPrinterType(printerManager.printerType);
+        setAutoReconnectState(printerManager.getAutoReconnectState());
+        setAutoReconnectEnabled(printerManager.isAutoReconnectEnabled());
 
         return unsubscribe;
     }, []);
@@ -92,6 +100,8 @@ export const usePrinter = (): UsePrinterResult => {
         isBluetoothSupported: printerManager.isBluetoothSupported(),
         isUSBSupported: printerManager.isUSBSupported(),
         printerType,
+        autoReconnectState,
+        autoReconnectEnabled,
         queueSize,
         connect,
         connectUSB,

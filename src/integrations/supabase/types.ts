@@ -371,7 +371,7 @@ export type Database = {
           is_enabled: boolean
           printer_name: string | null
           printer_type: string | null
-          station_printer_map: Record<string, string>
+          station_printer_map: Json
           updated_at: string
           user_id: string
         }
@@ -383,7 +383,7 @@ export type Database = {
           is_enabled?: boolean
           printer_name?: string | null
           printer_type?: string | null
-          station_printer_map?: Record<string, string>
+          station_printer_map?: Json
           updated_at?: string
           user_id: string
         }
@@ -395,7 +395,7 @@ export type Database = {
           is_enabled?: boolean
           printer_name?: string | null
           printer_type?: string | null
-          station_printer_map?: Record<string, string>
+          station_printer_map?: Json
           updated_at?: string
           user_id?: string
         }
@@ -2503,6 +2503,10 @@ export type Database = {
           admin_id: string
           branch_id: string
         }[]
+      }
+      secure_create_bill: {
+        Args: { p_bill_payload: Json; p_cart_items: Json }
+        Returns: Json
       }
       seed_branch_defaults: {
         Args: { p_source_branch_id?: string; p_target_branch_id: string }

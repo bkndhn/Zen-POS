@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle, Repeat } from 'lucide-react';
+import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle, Repeat, Link, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
 import { printerManager, PrintLogEntry, PrinterConnectionState } from '@/utils/printerManager';
 import { usePrinter } from '@/hooks/usePrinter';
@@ -33,7 +33,7 @@ const formatTime = (ts: number) => {
 };
 
 export const PrinterStatusPanel: React.FC = () => {
-    const { connectionState, deviceName, isConnected, connect, disconnect, printerType } = usePrinter();
+    const { connectionState, deviceName, isConnected, connect, disconnect, printerType, autoReconnectState, autoReconnectEnabled } = usePrinter();
     const [open, setOpen] = useState(false);
     const [log, setLog] = useState<PrintLogEntry[]>([]);
     const [diagnostics, setDiagnostics] = useState<Array<{ step: string; ok: boolean; detail?: string }>>([]);
@@ -82,10 +82,17 @@ export const PrinterStatusPanel: React.FC = () => {
 
     const doConnect = async () => {
         setRunning('connect');
-        const ok = await connect(true);
+        // First reconnect the already-authorized printer without opening a picker.
+        // Pairing/changing devices remains an explicit action in Printer Settings.
+        const ok = await connect(printerType === 'none');
         setRunning(null);
         if (ok) toast.success('Printer connected');
         else toast.error('Could not connect to printer');
+    };
+
+    const doDisconnect = () => {
+        disconnect();
+        toast.success('Printer disconnected. Auto-reconnect is off.');
     };
 
     const doDiag = async () => {
@@ -143,6 +150,21 @@ export const PrinterStatusPanel: React.FC = () => {
                                 </Badge>
                                 <span className="text-xs text-muted-foreground uppercase">{printerType}</span>
                             </div>
+                            <div className="flex items-center gap-2 text-xs">
+                                <span className={cn(
+                                    'w-2 h-2 rounded-full',
+                                    autoReconnectState === 'connected' && 'bg-success',
+                                    autoReconnectState === 'reconnecting' && 'bg-warning animate-pulse',
+                                    autoReconnectState === 'waiting' && 'bg-warning',
+                                    autoReconnectState === 'off' && 'bg-muted-foreground'
+                                )} />
+                                <span className="font-medium">
+                                    Auto-reconnect: {autoReconnectState === 'connected' ? 'active' : autoReconnectState}
+                                </span>
+                                {autoReconnectEnabled && autoReconnectState === 'waiting' && (
+                                    <span className="text-muted-foreground">retrying automatically</span>
+                                )}
+                            </div>
                             <div className="text-sm">
                                 <div className="font-medium truncate">{deviceName || '— not selected —'}</div>
                                 {info.serviceUUID && <div className="text-[11px] text-muted-foreground font-mono truncate">svc {info.serviceUUID}</div>}
@@ -166,11 +188,12 @@ export const PrinterStatusPanel: React.FC = () => {
                             <Button variant="outline" onClick={doRetry} disabled={running !== null} className="h-11">
                                 <Repeat className="w-4 h-4 mr-2" /> Retry Last Bill
                             </Button>
-                            <Button variant="outline" onClick={doConnect} disabled={running !== null} className="h-11">
-                                <RefreshCw className={cn('w-4 h-4 mr-2', running === 'connect' && 'animate-spin')} /> {isConnected ? 'Reconnect' : 'Connect'}
+                            <Button variant="outline" onClick={doConnect} disabled={running !== null || isConnected} className="h-11">
+                                {running === 'connect' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Link className="w-4 h-4 mr-2" />}
+                                Connect
                             </Button>
-                            <Button variant="ghost" onClick={disconnect} disabled={!isConnected} className="h-11 text-destructive col-span-2">
-                                <WifiOff className="w-4 h-4 mr-2" /> Disconnect
+                            <Button variant="ghost" onClick={doDisconnect} disabled={!autoReconnectEnabled && !isConnected} className="h-11 text-destructive col-span-2">
+                                <Unlink className="w-4 h-4 mr-2" /> Disconnect
                             </Button>
                         </div>
 
