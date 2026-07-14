@@ -388,7 +388,10 @@ class PrinterManager {
                     this._printerType = 'bluetooth';
                     this.enableAutoReconnect();
                     localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
+                    this.reconnectAttempts = 0;
+                    this.setState('connected');
                     this.setAutoReconnectState('connected');
+                    this.processQueue();
                     return true;
                 }
             }

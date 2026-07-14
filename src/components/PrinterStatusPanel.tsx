@@ -84,7 +84,7 @@ export const PrinterStatusPanel: React.FC = () => {
         setRunning('connect');
         // First reconnect the already-authorized printer without opening a picker.
         // Pairing/changing devices remains an explicit action in Printer Settings.
-        const ok = await connect(false);
+        const ok = await connect(printerType === 'none');
         setRunning(null);
         if (ok) toast.success('Printer connected');
         else toast.error('Could not connect to printer');
