@@ -16,6 +16,7 @@ import { USBPrinterTransport } from './usbPrinterTransport';
 // Connection states
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PrinterType = 'bluetooth' | 'usb' | 'none';
+export type AutoReconnectState = 'off' | 'waiting' | 'reconnecting' | 'connected';
 
 export interface PrintLogEntry {
     ts: number;
@@ -27,10 +28,13 @@ export interface PrintLogEntry {
 }
 
 // Event types
-type ConnectionListener = (state: PrinterConnectionState, deviceName?: string) => void;
+type ConnectionListener = (state: PrinterConnectionState, deviceName?: string, autoReconnectState?: AutoReconnectState) => void;
 type LogListener = (log: PrintLogEntry[]) => void;
 
 const PRINTER_TYPE_KEY = 'hotel_pos_printer_type';
+const BLUETOOTH_DEVICE_NAME_KEY = 'hotel_pos_bluetooth_printer_name';
+const BLUETOOTH_DEVICE_ID_KEY = 'hotel_pos_bluetooth_printer_id';
+const AUTO_RECONNECT_KEY = 'hotel_pos_printer_auto_reconnect';
 const BLUETOOTH_OPTIONAL_SERVICES = [
     '000018f0-0000-1000-8000-00805f9b34fb',
     '0000ffe0-0000-1000-8000-00805f9b34fb',
@@ -78,6 +82,11 @@ class PrinterManager {
     private maxReconnectAttempts: number = 10;
     private reconnectDelay: number = 800;
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    private reconnectPromise: Promise<boolean> | null = null;
+    private autoReconnectState: AutoReconnectState = 'off';
+    private reconnectEnabled: boolean = false;
+    private disconnectHandlers = new WeakSet<object>();
+    private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
 
     // Print queue for offline/disconnected scenarios
     private printQueue: PrintData[] = [];
@@ -90,9 +99,12 @@ class PrinterManager {
         const saved = localStorage.getItem(PRINTER_TYPE_KEY);
         if (saved === 'bluetooth' || saved === 'usb') {
             this._printerType = saved;
+            this.deviceName = localStorage.getItem(BLUETOOTH_DEVICE_NAME_KEY) || '';
+            this.reconnectEnabled = localStorage.getItem(AUTO_RECONNECT_KEY) !== 'false';
+            this.autoReconnectState = 'waiting';
             // Attempt background reconnection
             setTimeout(() => {
-                this.autoReconnect().catch(err => {
+                this.requestImmediateReconnect().catch(err => {
                     this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
                 });
             }, 500);
@@ -114,8 +126,8 @@ class PrinterManager {
         // screen locks, and background/foreground transitions on mobile.
         if (typeof window !== 'undefined') {
             const tryReconnect = () => {
-                if (this._printerType !== 'none' && !this.isConnected() && this.connectionState !== 'connecting') {
-                    this.autoReconnect().catch(() => undefined);
+                if (this.reconnectEnabled && this._printerType !== 'none' && !this.isConnected()) {
+                    this.requestImmediateReconnect().catch(() => undefined);
                 }
             };
             document.addEventListener('visibilitychange', () => {
@@ -123,6 +135,12 @@ class PrinterManager {
             });
             window.addEventListener('focus', tryReconnect);
             window.addEventListener('online', tryReconnect);
+            window.addEventListener('pageshow', tryReconnect);
+            // Android may suspend a PWA without firing a disconnect event. This
+            // lightweight check repairs that stale link while the POS is visible.
+            this.healthCheckTimer = setInterval(() => {
+                if (document.visibilityState === 'visible') tryReconnect();
+            }, 15_000);
         }
     }
 
@@ -145,13 +163,13 @@ class PrinterManager {
     public subscribe(listener: ConnectionListener): () => void {
         this.listeners.add(listener);
         // Immediately notify with current state
-        listener(this.connectionState, this.deviceName);
+        listener(this.connectionState, this.deviceName, this.autoReconnectState);
         // Return unsubscribe function
         return () => this.listeners.delete(listener);
     }
 
     private notifyListeners(): void {
-        this.listeners.forEach(listener => listener(this.connectionState, this.deviceName));
+        this.listeners.forEach(listener => listener(this.connectionState, this.deviceName, this.autoReconnectState));
     }
 
     // ============ Telemetry / logging ============
@@ -209,6 +227,30 @@ class PrinterManager {
 
     public getDeviceName(): string {
         return this.deviceName;
+    }
+
+    public getAutoReconnectState(): AutoReconnectState {
+        return this.autoReconnectState;
+    }
+
+    public isAutoReconnectEnabled(): boolean {
+        return this.reconnectEnabled;
+    }
+
+    private setAutoReconnectState(state: AutoReconnectState): void {
+        this.autoReconnectState = state;
+        this.notifyListeners();
+    }
+
+    private enableAutoReconnect(): void {
+        this.reconnectEnabled = true;
+        localStorage.setItem(AUTO_RECONNECT_KEY, 'true');
+    }
+
+    private attachDisconnectHandler(device: any): void {
+        if (!device || this.disconnectHandlers.has(device)) return;
+        device.addEventListener('gattserverdisconnected', () => this.handleDisconnect());
+        this.disconnectHandlers.add(device);
     }
 
     public get printerType(): PrinterType {
@@ -289,7 +331,12 @@ class PrinterManager {
                 const devices = await nav.bluetooth.getDevices();
                 if (devices && devices.length > 0) {
                     // Try to find the device that matches the saved printer name
-                    const savedPrinterName = localStorage.getItem('hotel_pos_bluetooth_printer_name');
+                    const savedDeviceId = localStorage.getItem(BLUETOOTH_DEVICE_ID_KEY);
+                    const savedPrinterName = localStorage.getItem(BLUETOOTH_DEVICE_NAME_KEY);
+                    if (savedDeviceId) {
+                        const matchedById = devices.find((d: any) => d.id === savedDeviceId);
+                        if (matchedById) return matchedById;
+                    }
                     if (savedPrinterName) {
                         const matched = devices.find((d: any) => d.name === savedPrinterName);
                         if (matched) {
@@ -330,6 +377,7 @@ class PrinterManager {
         }
 
         this.setState('connecting');
+        this.setAutoReconnectState('reconnecting');
 
         try {
             // If we have a cached device and it's not a forced new connection, try to reconnect
@@ -338,7 +386,9 @@ class PrinterManager {
                 const reconnected = await this.reconnectToDevice();
                 if (reconnected) {
                     this._printerType = 'bluetooth';
+                    this.enableAutoReconnect();
                     localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
+                    this.setAutoReconnectState('connected');
                     return true;
                 }
             }
@@ -349,21 +399,20 @@ class PrinterManager {
                 if (this.device) {
                     this.deviceName = this.device.name || 'Bluetooth Printer';
                     // Setup disconnect listener
-                    this.device.addEventListener('gattserverdisconnected', () => {
-                        console.log('Printer disconnected');
-                        this.handleDisconnect();
-                    });
+                    this.attachDisconnectHandler(this.device);
                     
                     console.log('Attempting to reconnect to permitted device:', this.deviceName);
                     const reconnected = await this.reconnectToDevice();
                     if (reconnected) {
                         this._printerType = 'bluetooth';
+                        this.enableAutoReconnect();
                         localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
                         if (this.deviceName) {
                             localStorage.setItem('hotel_pos_bluetooth_printer_name', this.deviceName);
                         }
                         this.reconnectAttempts = 0;
                         this.setState('connected');
+                        this.setAutoReconnectState('connected');
                         this.processQueue();
                         return true;
                     }
@@ -391,22 +440,22 @@ class PrinterManager {
             this.deviceName = this.device.name || 'Bluetooth Printer';
 
             // Setup disconnect listener
-            this.device.addEventListener('gattserverdisconnected', () => {
-                console.log('Printer disconnected');
-                this.handleDisconnect();
-            });
+            this.attachDisconnectHandler(this.device);
 
             // Connect to GATT server
             const connected = await this.connectToGATT();
 
             if (connected) {
                 this._printerType = 'bluetooth';
+                this.enableAutoReconnect();
                 localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
                 if (this.deviceName) {
                     localStorage.setItem('hotel_pos_bluetooth_printer_name', this.deviceName);
                 }
+                if (this.device.id) localStorage.setItem(BLUETOOTH_DEVICE_ID_KEY, this.device.id);
                 this.reconnectAttempts = 0;
                 this.setState('connected');
+                this.setAutoReconnectState('connected');
                 this.processQueue();
                 return true;
             } else {
@@ -418,6 +467,7 @@ class PrinterManager {
 
             if (error.name === 'NotFoundError' || error.message?.includes('cancelled')) {
                 this.setState('disconnected');
+                this.setAutoReconnectState(this.reconnectEnabled ? 'waiting' : 'off');
             } else {
                 this.setState('error');
             }
@@ -472,10 +522,12 @@ class PrinterManager {
 
             if (success) {
                 this._printerType = 'usb';
+                this.enableAutoReconnect();
                 localStorage.setItem(PRINTER_TYPE_KEY, 'usb');
                 this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
                 this.reconnectAttempts = 0;
                 this.setState('connected');
+                this.setAutoReconnectState('connected');
                 this.processQueue();
                 return true;
             } else {
@@ -499,12 +551,31 @@ class PrinterManager {
      * Call this on app startup.
      */
     public async autoReconnect(): Promise<boolean> {
+        if (!this.reconnectEnabled || this._printerType === 'none') return false;
+        if (this.isConnected()) {
+            this.setAutoReconnectState('connected');
+            return true;
+        }
+        if (this.reconnectPromise) return this.reconnectPromise;
+
+        this.reconnectPromise = this.performAutoReconnect();
+        try {
+            return await this.reconnectPromise;
+        } finally {
+            this.reconnectPromise = null;
+        }
+    }
+
+    private async performAutoReconnect(): Promise<boolean> {
+        this.setState('connecting');
+        this.setAutoReconnectState('reconnecting');
+        let connected = false;
         if (this._printerType === 'usb') {
             const ok = await this.usbTransport.reconnect();
             if (ok) {
                 this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
                 this.setState('connected');
-                return true;
+                connected = true;
             }
         } else if (this._printerType === 'bluetooth') {
             if (!this.device) {
@@ -512,21 +583,37 @@ class PrinterManager {
                 if (this.device) {
                     this.deviceName = this.device.name || 'Bluetooth Printer';
                     // Setup disconnect listener
-                    this.device.addEventListener('gattserverdisconnected', () => {
-                        console.log('Printer disconnected');
-                        this.handleDisconnect();
-                    });
+                    this.attachDisconnectHandler(this.device);
                 }
             }
             if (this.device) {
                 const ok = await this.reconnectToDevice();
                 if (ok) {
                     this.setState('connected');
-                    return true;
+                    connected = true;
                 }
             }
         }
+        if (connected) {
+            this.reconnectAttempts = 0;
+            this.setAutoReconnectState('connected');
+            this.processQueue();
+            return true;
+        }
+        this.setState('disconnected');
+        this.setAutoReconnectState('waiting');
         return false;
+    }
+
+    private async requestImmediateReconnect(): Promise<boolean> {
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        this.reconnectAttempts = 0;
+        const ok = await this.autoReconnect();
+        if (!ok && this.reconnectEnabled) this.attemptAutoReconnect();
+        return ok;
     }
 
     // =============== BLUETOOTH INTERNALS ===============
@@ -593,19 +680,19 @@ class PrinterManager {
         this.setState('disconnected');
         this.recordLog('disconnect', 'info', undefined, this.deviceName);
 
-        // Always try to auto-reconnect to keep printer sticky across route/screen locks.
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        // A dropped link is different from an explicit user disconnect.
+        if (this.reconnectEnabled) {
+            this.setAutoReconnectState('waiting');
             this.attemptAutoReconnect();
+        } else {
+            this.setAutoReconnectState('off');
         }
     }
 
     // Auto-reconnect with exponential backoff (capped, guarded by timer)
     private async attemptAutoReconnect(): Promise<void> {
         if (this.reconnectTimer) return; // Already scheduled
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.recordLog('reconnect', 'fail', undefined, 'max attempts reached');
-            return;
-        }
+        if (!this.reconnectEnabled || this._printerType === 'none') return;
 
         this.reconnectAttempts++;
         const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30_000);
@@ -634,8 +721,11 @@ class PrinterManager {
                 this.setState('connected');
                 this.reconnectAttempts = 0;
                 this.recordLog('reconnect', 'ok', Math.round(performance.now() - t0));
+                this.setAutoReconnectState('connected');
                 this.processQueue();
-            } else if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            } else if (this.reconnectEnabled) {
+                this.setState('disconnected');
+                this.setAutoReconnectState('waiting');
                 this.attemptAutoReconnect();
             }
         }, delay);
@@ -675,6 +765,12 @@ class PrinterManager {
 
     // Disconnect from printer
     public disconnect(): void {
+        // Disable reconnect before closing GATT because disconnect() synchronously
+        // emits gattserverdisconnected in Chromium.
+        this.reconnectEnabled = false;
+        localStorage.setItem(AUTO_RECONNECT_KEY, 'false');
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
         if (this._printerType === 'usb') {
             this.usbTransport.close();
         } else {
@@ -688,7 +784,10 @@ class PrinterManager {
         this.deviceName = '';
         this._printerType = 'none';
         localStorage.removeItem(PRINTER_TYPE_KEY);
+        localStorage.removeItem(BLUETOOTH_DEVICE_ID_KEY);
+        localStorage.removeItem(BLUETOOTH_DEVICE_NAME_KEY);
         this.setState('disconnected');
+        this.setAutoReconnectState('off');
         console.log('Printer disconnected manually');
     }
 
