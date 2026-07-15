@@ -71,7 +71,7 @@ export const PendingBillsQueue: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-20 right-4 z-50 w-72 sm:w-80">
+        <div className="fixed bottom-[145px] sm:bottom-20 right-4 z-50 w-72 sm:w-80">
             {/* Collapsed View - Just the badge */}
             <div 
                 onClick={() => setExpanded(!expanded)}

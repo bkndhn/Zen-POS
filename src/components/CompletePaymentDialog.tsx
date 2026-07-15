@@ -445,43 +445,9 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             Complete Payment
           </DialogTitle>
         </DialogHeader>
-
-        {/* Payment Methods - ALWAYS AT TOP for easy access */}
-        <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 p-2 border-b border-primary/10 flex-shrink-0">
-          <h3 className="font-semibold text-sm mb-1.5 text-orange-700 dark:text-orange-400">Payment Methods *</h3>
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(paymentTypes.length, 4)}, minmax(0, 1fr))` }}>
-            {paymentTypes.map((payment) => (
-              <div key={payment.id} className="flex flex-col items-center">
-                <Button
-                  variant={paymentAmounts[payment.payment_type] > 0 ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPaymentAmounts({ [payment.payment_type]: total })}
-                  className={`capitalize text-xs h-8 w-full font-bold rounded-lg transition-all duration-200 mb-1 ${paymentAmounts[payment.payment_type] > 0 ? 'bg-gradient-to-r from-primary to-primary/80 shadow-md' : 'bg-white dark:bg-gray-800'}`}
-                >
-                  {payment.payment_type}
-                </Button>
-                <Input
-                  type="number"
-                  value={paymentAmounts[payment.payment_type] || 0}
-                  onChange={(e) => handlePaymentAmountChange(payment.payment_type, Number(e.target.value))}
-                  className="h-8 text-sm text-center bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100 font-bold border-2 border-primary/20 focus:border-primary rounded-lg w-full"
-                  placeholder="0"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            ))}
-          </div>
-          {remaining !== 0 && (
-            <div className="text-right mt-1">
-              <span className={`text-xs font-semibold ${remaining > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                Remaining: ₹{remaining.toFixed(2)}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Order Type - Dine In / Parcel */}
+        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-3">
+          {/* Order Type - Dine In / Parcel */}
+          {/* Order Summary - Expanded to fill available space */}
         {showOrderType && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-2 border-b border-primary/10 flex-shrink-0">
             <RadioGroup
@@ -498,108 +464,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                 <span className={`text-xs font-semibold ${orderType === 'parcel' ? 'text-primary' : 'text-muted-foreground'}`}>📦 Parcel</span>
               </label>
             </RadioGroup>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-hidden p-2 flex flex-col gap-1.5">
-          {/* Order Summary - Expanded to fill available space */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="font-bold text-sm flex items-center justify-between bg-muted/50 p-2 rounded-lg mb-1.5">
-              <span>Order Summary ({cart.length} items)</span>
-              <span className="text-primary font-bold text-base">₹{cartSubtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-              {cart.map((item, index) => {
-                const effectiveQty = getEffectiveQty(item);
-                const isTotalOverridden = itemTotalOverrides[item.id] !== undefined;
-                const lineTotal = isTotalOverridden ? itemTotalOverrides[item.id] : (effectiveQty / (item.base_value || 1)) * item.price;
-
-
-                // Pastel colors for cart items - cycling
-                const colorClasses = [
-                  "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800",
-                  "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800",
-                  "bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800",
-                  "bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800",
-                  "bg-pink-50 border-pink-200 dark:bg-pink-900/20 dark:border-pink-800"
-                ];
-                const colorClass = colorClasses[index % colorClasses.length];
-
-                return (
-                  <div key={item.id} className={`flex items-center justify-between p-1.5 rounded-lg gap-1 border ${colorClass}`}>
-                    <div className="flex-1 min-w-0 mr-1">
-                      <div className="font-semibold truncate text-sm">{index + 1}.{item.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        ₹{item.price}/{item.base_value || 1}{getShortUnit(item.unit)}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleQuantityChange(item.id, -1)}
-                        className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-decrement))] text-white border-0 hover:opacity-80"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <Input
-                        type="number"
-                        value={effectiveQty}
-                        onChange={(e) => {
-                          const newQty = Number(e.target.value) || 0;
-                          if (item.unlimited_stock === false && item.stock_quantity !== undefined) {
-                            const sellUnit = item.selling_unit || item.unit;
-                            const invUnit = item.inventory_unit;
-                            const targetInInvUnit = convertToInventoryUnit(newQty, sellUnit, invUnit);
-                            if (targetInInvUnit > item.stock_quantity) {
-                              toast({
-                                title: "🚫 Stock Limit Exceeded",
-                                description: `Cannot add more of ${item.name}. Only ${formatStoredQuantity(item.stock_quantity, invUnit || item.unit)} available in stock.`,
-                                variant: "destructive"
-                              });
-                              const conversionFactor = convertToInventoryUnit(1, sellUnit, invUnit);
-                              const maxSellingQty = conversionFactor > 0 ? item.stock_quantity / conversionFactor : item.stock_quantity;
-                              setItemQuantityOverrides(prev => ({ ...prev, [item.id]: maxSellingQty }));
-                              return;
-                            }
-                          }
-                          setItemQuantityOverrides(prev => ({ ...prev, [item.id]: newQty }));
-                        }}
-                        className="h-7 w-12 text-xs text-center p-0 border-primary/30 rounded font-bold bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
-                        min="0"
-                        step={isWeightOrVolumeUnit(item.unit) ? "0.001" : "1"}
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleQuantityChange(item.id, 1)}
-                        className="h-6 w-6 p-0 rounded-full bg-[hsl(var(--btn-increment))] text-white border-0 hover:opacity-80"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                      <span className="text-xs text-muted-foreground mx-0.5">×</span>
-                      <Input
-                        type="number"
-                        value={itemTotalOverrides[item.id] !== undefined ? itemTotalOverrides[item.id] : (effectiveQty / (item.base_value || 1)) * item.price}
-                        onChange={(e) => {
-                          const newTotal = Number(e.target.value) || 0;
-                          setItemTotalOverrides(prev => ({ ...prev, [item.id]: newTotal }));
-                        }}
-                        className="h-7 w-16 text-xs text-center p-0 border-orange-400 bg-orange-50 dark:bg-orange-950/20 text-slate-900 dark:text-slate-100 rounded font-bold"
-                        min="0"
-                        step="1"
-                        title="Edit total price"
-                      />
-                      <Button size="sm" variant="ghost" onClick={() => onRemoveItem(item.id)} className="h-6 w-6 p-0 text-destructive hover:bg-red-50">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Additional Charges - Compact */}
           {additionalCharges.length > 0 && (
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg p-1.5 flex-shrink-0">
@@ -642,13 +506,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                         step="1"
                         disabled={!isSelected}
                       />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Discount - Collapsible, compact */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg flex-shrink-0">
             <button
@@ -661,36 +518,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                 <span className="font-semibold text-xs text-green-700 dark:text-green-400">
                   Discount {discountAmount > 0 && <span className="text-green-600">(−₹{discountAmount.toFixed(2)})</span>}
                 </span>
-              </div>
-              {showDiscount ? <ChevronUp className="w-3.5 h-3.5 text-green-600" /> : <ChevronDown className="w-3.5 h-3.5 text-green-600" />}
-            </button>
-            {showDiscount && (
-              <div className="px-1.5 pb-1.5">
-                <div className="flex items-center gap-1">
-                  <Select value={discountType} onValueChange={(value: 'flat' | 'percentage') => setDiscountType(value)}>
-                    <SelectTrigger className="w-14 h-7 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="flat">₹</SelectItem>
-                      <SelectItem value="percentage">%</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-                    className="flex-1 h-7 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
-                    placeholder="0"
-                    min="0"
-                    step={discountType === 'percentage' ? '1' : '0.01'}
-                    max={discountType === 'percentage' ? '100' : undefined}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* WhatsApp Bill Share - Only if enabled in settings */}
           {whatsappEnabled && (
             <div className="bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-950/20 dark:to-teal-950/20 rounded-lg p-2 flex-shrink-0">
@@ -699,43 +526,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                 <span className="font-semibold text-xs text-green-700 dark:text-green-400 flex-1">
                   {whatsappShareMode === 'image' ? 'Share Bill Image via WhatsApp' : 'Send Bill via WhatsApp'}
                 </span>
-              </div>
-              <div className="mt-1.5 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Customer Name"
-                      className="h-8 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
-                    />
-                    {customerName && !isValidCustomerName(customerName) && (
-                      <p className="text-[9px] text-red-500 mt-0.5 leading-tight">Enter valid real name (no fake patterns)</p>
-                    )}
-                  </div>
-                  <div>
-                    <Input
-                      type="tel"
-                      value={customerMobile}
-                      onChange={(e) => { setCustomerMobile(e.target.value); setSendWhatsApp(true); }}
-                      placeholder="Mobile (e.g. 9876543210)"
-                      className="h-8 text-xs bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
-                    />
-                    {customerMobile && !isValidPhoneNumber(customerMobile) && (
-                      <p className="text-[9px] text-red-500 mt-0.5 leading-tight">Enter valid 10-digit number</p>
-                    )}
-                  </div>
-                </div>
-                {whatsappShareMode === 'text' ? (
-                  <p className="text-[10px] text-muted-foreground">Text bill will be sent after payment</p>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground">Bill image will open share dialog after payment</p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Customer GSTIN for B2B bills - Only if GST enabled */}
           {gstEnabled && (
             <div className="flex-shrink-0">
@@ -747,15 +537,9 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   className="flex-1 h-8 text-xs font-mono bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100"
                   maxLength={15}
                 />
-              </div>
-              {customerGstin && customerGstin.length > 0 && customerGstin.length !== 15 && (
-                <p className="text-[10px] text-amber-500 mt-0.5">GSTIN must be 15 characters</p>
-              )}
-            </div>
-          )}
+          {/* Payment Methods - ALWAYS AT TOP for easy access */}
         </div>
-
-        {/* Summary - Fixed at bottom */}
+{/* Summary - Fixed at bottom */}
         <div className="border-t-2 border-primary/20 p-2.5 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-900 flex-shrink-0">
           <div className="space-y-0.5 text-xs">
             <div className="flex justify-between font-medium">
