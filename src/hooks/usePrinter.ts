@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { printerManager, AutoReconnectState, PrinterConnectionState, PrinterType } from '@/utils/printerManager';
+import { printerManager, AutoReconnectState, PrinterConnectionState, PrinterType, ReconnectStatus } from '@/utils/printerManager';
 import { PrintData } from '@/utils/bluetoothPrinter';
 
 interface UsePrinterResult {
@@ -23,6 +23,9 @@ interface UsePrinterResult {
     printerType: PrinterType;
     autoReconnectState: AutoReconnectState;
     autoReconnectEnabled: boolean;
+    reconnectStatus: ReconnectStatus;
+    isTrusted: boolean;
+    hasNativeBridge: boolean;
 
     // Queue info
     queueSize: number;
@@ -30,6 +33,7 @@ interface UsePrinterResult {
     // Actions
     connect: (forceNewDevice?: boolean) => Promise<boolean>;
     connectUSB: (forceNewDevice?: boolean) => Promise<boolean>;
+    trustPrinter: () => Promise<boolean>;
     disconnect: () => void;
     print: (data: PrintData) => Promise<boolean>;
     clearQueue: () => void;
@@ -42,6 +46,7 @@ export const usePrinter = (): UsePrinterResult => {
     const [printerType, setPrinterType] = useState<PrinterType>(printerManager.printerType);
     const [autoReconnectState, setAutoReconnectState] = useState<AutoReconnectState>(printerManager.getAutoReconnectState());
     const [autoReconnectEnabled, setAutoReconnectEnabled] = useState(printerManager.isAutoReconnectEnabled());
+    const [reconnectStatus, setReconnectStatus] = useState(printerManager.getReconnectStatus());
 
     // Subscribe to printer manager state changes
     useEffect(() => {
@@ -52,6 +57,7 @@ export const usePrinter = (): UsePrinterResult => {
             setPrinterType(printerManager.printerType);
             setAutoReconnectState(reconnectState || printerManager.getAutoReconnectState());
             setAutoReconnectEnabled(printerManager.isAutoReconnectEnabled());
+            setReconnectStatus(printerManager.getReconnectStatus());
         });
 
         // Check initial state
@@ -61,6 +67,7 @@ export const usePrinter = (): UsePrinterResult => {
         setPrinterType(printerManager.printerType);
         setAutoReconnectState(printerManager.getAutoReconnectState());
         setAutoReconnectEnabled(printerManager.isAutoReconnectEnabled());
+        setReconnectStatus(printerManager.getReconnectStatus());
 
         return unsubscribe;
     }, []);
@@ -74,6 +81,7 @@ export const usePrinter = (): UsePrinterResult => {
     const connectUSB = useCallback(async (forceNewDevice: boolean = false): Promise<boolean> => {
         return printerManager.connectUSB(forceNewDevice);
     }, []);
+    const trustPrinter = useCallback(() => printerManager.trustPrinter(), []);
 
     // Disconnect from printer
     const disconnect = useCallback((): void => {
@@ -102,9 +110,13 @@ export const usePrinter = (): UsePrinterResult => {
         printerType,
         autoReconnectState,
         autoReconnectEnabled,
+        reconnectStatus,
+        isTrusted: printerManager.isPrinterTrusted(),
+        hasNativeBridge: printerManager.hasNativePrinterBridge(),
         queueSize,
         connect,
         connectUSB,
+        trustPrinter,
         disconnect,
         print,
         clearQueue

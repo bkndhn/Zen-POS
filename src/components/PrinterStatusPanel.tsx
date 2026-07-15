@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle, Repeat, Link, Unlink } from 'lucide-react';
+import { Printer, Wifi, WifiOff, Activity, RefreshCw, PlayCircle, Bug, Trash2, CheckCircle2, XCircle, Repeat, Link, Unlink, ShieldCheck, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { printerManager, PrintLogEntry, PrinterConnectionState } from '@/utils/printerManager';
 import { usePrinter } from '@/hooks/usePrinter';
@@ -33,11 +33,11 @@ const formatTime = (ts: number) => {
 };
 
 export const PrinterStatusPanel: React.FC = () => {
-    const { connectionState, deviceName, isConnected, connect, disconnect, printerType, autoReconnectState, autoReconnectEnabled } = usePrinter();
+    const { connectionState, deviceName, isConnected, connect, disconnect, printerType, autoReconnectState, autoReconnectEnabled, reconnectStatus, isTrusted, hasNativeBridge, trustPrinter } = usePrinter();
     const [open, setOpen] = useState(false);
     const [log, setLog] = useState<PrintLogEntry[]>([]);
     const [diagnostics, setDiagnostics] = useState<Array<{ step: string; ok: boolean; detail?: string }>>([]);
-    const [running, setRunning] = useState<'test' | 'diag' | 'connect' | null>(null);
+    const [running, setRunning] = useState<'test' | 'diag' | 'connect' | 'trust' | null>(null);
 
     useEffect(() => {
         const unsub = printerManager.subscribeLog(setLog);
@@ -93,6 +93,15 @@ export const PrinterStatusPanel: React.FC = () => {
     const doDisconnect = () => {
         disconnect();
         toast.success('Printer disconnected. Auto-reconnect is off.');
+    };
+
+    const doTrust = async () => {
+        setRunning('trust');
+        const t = toast.loading('Choose and authorize your printer once…');
+        const ok = await trustPrinter();
+        setRunning(null);
+        if (ok) toast.success('Printer trusted. Automatic reconnect is enabled.', { id: t });
+        else toast.error('Printer authorization was not completed.', { id: t });
     };
 
     const doDiag = async () => {
@@ -175,7 +184,23 @@ export const PrinterStatusPanel: React.FC = () => {
                                     </div>
                                 )}
                             </div>
+                            <div className="border-t pt-2 text-xs space-y-1">
+                                <div className="flex items-center gap-1.5 font-medium">
+                                    {hasNativeBridge ? <Smartphone className="w-3.5 h-3.5 text-success" /> : <ShieldCheck className={cn('w-3.5 h-3.5', isTrusted ? 'text-success' : 'text-warning')} />}
+                                    {hasNativeBridge ? 'Native Android printer bridge active' : isTrusted ? 'Printer trusted for silent reconnect' : 'Printer authorization required'}
+                                </div>
+                                <div className={cn('break-words', reconnectStatus.reason === 'none' ? 'text-muted-foreground' : 'text-destructive')}>
+                                    {reconnectStatus.reason !== 'none' && <span className="font-semibold">{reconnectStatus.reason}: </span>}{reconnectStatus.detail}
+                                </div>
+                                {reconnectStatus.nextRetryMs && <div className="text-muted-foreground">Next retry in {(reconnectStatus.nextRetryMs / 1000).toFixed(1)}s · attempt {reconnectStatus.attempt}</div>}
+                            </div>
                         </Card>
+
+                        {!hasNativeBridge && !isTrusted && (
+                            <Button onClick={doTrust} disabled={running !== null} className="w-full h-11">
+                                {running === 'trust' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />} Trust this printer
+                            </Button>
+                        )}
 
                         {/* Actions */}
                         <div className="grid grid-cols-2 gap-2">

@@ -2434,6 +2434,7 @@ const Billing = () => {
           description: `${billNumber} queued. Will sync when online.`,
           duration: 3000
         });
+        clearCart();
 
         // Try print in offline mode ONLY if auto-print is enabled
         const offlineAutoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';

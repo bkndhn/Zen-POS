@@ -17,6 +17,8 @@ import { USBPrinterTransport } from './usbPrinterTransport';
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PrinterType = 'bluetooth' | 'usb' | 'none';
 export type AutoReconnectState = 'off' | 'waiting' | 'reconnecting' | 'connected';
+export type ReconnectFailureReason = 'none' | 'permission-blocked' | 'device-not-found' | 'service-mismatch' | 'gatt-disconnected' | 'browser-unsupported' | 'native-unavailable' | 'unknown';
+export interface ReconnectStatus { attempt: number; reason: ReconnectFailureReason; detail: string; nextRetryMs?: number; updatedAt: number; }
 
 export interface PrintLogEntry {
     ts: number;
@@ -35,6 +37,9 @@ const PRINTER_TYPE_KEY = 'hotel_pos_printer_type';
 const BLUETOOTH_DEVICE_NAME_KEY = 'hotel_pos_bluetooth_printer_name';
 const BLUETOOTH_DEVICE_ID_KEY = 'hotel_pos_bluetooth_printer_id';
 const AUTO_RECONNECT_KEY = 'hotel_pos_printer_auto_reconnect';
+const BLUETOOTH_SERVICE_UUID_KEY = 'hotel_pos_bluetooth_service_uuid';
+const BLUETOOTH_CHARACTERISTIC_UUID_KEY = 'hotel_pos_bluetooth_characteristic_uuid';
+const BLUETOOTH_TRUSTED_KEY = 'hotel_pos_bluetooth_trusted';
 const BLUETOOTH_OPTIONAL_SERVICES = [
     '000018f0-0000-1000-8000-00805f9b34fb',
     '0000ffe0-0000-1000-8000-00805f9b34fb',
@@ -84,6 +89,7 @@ class PrinterManager {
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     private reconnectPromise: Promise<boolean> | null = null;
     private autoReconnectState: AutoReconnectState = 'off';
+    private reconnectStatus: ReconnectStatus = { attempt: 0, reason: 'none', detail: 'No reconnect attempt yet', updatedAt: Date.now() };
     private reconnectEnabled: boolean = false;
     private disconnectHandlers = new WeakSet<object>();
     private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
@@ -100,6 +106,8 @@ class PrinterManager {
         if (saved === 'bluetooth' || saved === 'usb') {
             this._printerType = saved;
             this.deviceName = localStorage.getItem(BLUETOOTH_DEVICE_NAME_KEY) || '';
+            this.serviceUUID = localStorage.getItem(BLUETOOTH_SERVICE_UUID_KEY) || '';
+            this.characteristicUUID = localStorage.getItem(BLUETOOTH_CHARACTERISTIC_UUID_KEY) || '';
             this.reconnectEnabled = localStorage.getItem(AUTO_RECONNECT_KEY) !== 'false';
             this.autoReconnectState = 'waiting';
             // Attempt background reconnection
@@ -233,6 +241,25 @@ class PrinterManager {
         return this.autoReconnectState;
     }
 
+    public getReconnectStatus(): ReconnectStatus { return { ...this.reconnectStatus }; }
+    public isPrinterTrusted(): boolean { return localStorage.getItem(BLUETOOTH_TRUSTED_KEY) === 'true'; }
+    public hasNativePrinterBridge(): boolean { return typeof window !== 'undefined' && !!(window as any).AndroidPrinter; }
+
+    private updateReconnectStatus(reason: ReconnectFailureReason, detail: string, nextRetryMs?: number): void {
+        this.reconnectStatus = { attempt: this.reconnectAttempts, reason, detail, nextRetryMs, updatedAt: Date.now() };
+        this.notifyListeners();
+    }
+
+    private classifyReconnectError(error: any): { reason: ReconnectFailureReason; detail: string } {
+        const name = String(error?.name || '');
+        const message = String(error?.message || error || 'Unknown Bluetooth error');
+        if (name === 'SecurityError' || name === 'NotAllowedError' || /permission|access denied|not allowed/i.test(message)) return { reason: 'permission-blocked', detail: 'Browser permission is blocked or was revoked. Use Trust this printer once.' };
+        if (name === 'NotFoundError' || /not found|no permitted|no device/i.test(message)) return { reason: 'device-not-found', detail: 'Saved printer is not in this browser’s authorized device list.' };
+        if (/service|characteristic|uuid/i.test(message)) return { reason: 'service-mismatch', detail: `Saved printer service is unavailable: ${message}` };
+        if (/gatt|network|disconnected|connect/i.test(message)) return { reason: 'gatt-disconnected', detail: `Printer is authorized but its GATT link is unavailable: ${message}` };
+        return { reason: 'unknown', detail: message };
+    }
+
     public isAutoReconnectEnabled(): boolean {
         return this.reconnectEnabled;
     }
@@ -344,13 +371,16 @@ class PrinterManager {
                             return matched;
                         }
                     }
-                    // Fallback to the first permitted device
-                    console.log('Fallback to first permitted Bluetooth device:', devices[0].name);
-                    return devices[0];
+                    this.updateReconnectStatus('device-not-found', 'The saved printer is not present in the browser’s authorized device list.');
+                    return null;
                 }
             } catch (err) {
                 console.warn('Error fetching permitted Bluetooth devices:', err);
+                const failure = this.classifyReconnectError(err);
+                this.updateReconnectStatus(failure.reason, failure.detail);
             }
+        } else {
+            this.updateReconnectStatus('browser-unsupported', 'This browser cannot restore authorized Bluetooth devices after reopen. Use the native Android bridge.');
         }
         return null;
     }
@@ -362,6 +392,7 @@ class PrinterManager {
         if (!nav.bluetooth) {
             console.error('Bluetooth not supported');
             this.setState('error');
+            this.updateReconnectStatus('browser-unsupported', 'Web Bluetooth is not supported in this browser.');
             return false;
         }
 
@@ -456,6 +487,7 @@ class PrinterManager {
                     localStorage.setItem('hotel_pos_bluetooth_printer_name', this.deviceName);
                 }
                 if (this.device.id) localStorage.setItem(BLUETOOTH_DEVICE_ID_KEY, this.device.id);
+                localStorage.setItem(BLUETOOTH_TRUSTED_KEY, 'true');
                 this.reconnectAttempts = 0;
                 this.setState('connected');
                 this.setAutoReconnectState('connected');
@@ -467,6 +499,8 @@ class PrinterManager {
 
         } catch (error: any) {
             console.error('Connection error:', error);
+            const failure = this.classifyReconnectError(error);
+            this.updateReconnectStatus(failure.reason, failure.detail);
 
             if (error.name === 'NotFoundError' || error.message?.includes('cancelled')) {
                 this.setState('disconnected');
@@ -476,6 +510,13 @@ class PrinterManager {
             }
             return false;
         }
+    }
+
+    public async trustPrinter(): Promise<boolean> {
+        this.updateReconnectStatus('none', 'Waiting for one-time printer authorization…');
+        const ok = await this.connect(true);
+        if (ok) this.updateReconnectStatus('none', 'Printer authorized. Silent reconnect is enabled for this browser.');
+        return ok;
     }
 
     // =============== USB CONNECTION ===============
@@ -581,6 +622,26 @@ class PrinterManager {
                 connected = true;
             }
         } else if (this._printerType === 'bluetooth') {
+            if (this.hasNativePrinterBridge()) {
+                try {
+                    const bridge = (window as any).AndroidPrinter;
+                    const result = typeof bridge.connectSavedPrinter === 'function' ? bridge.connectSavedPrinter() : true;
+                    const ok = result instanceof Promise ? await result : result !== false;
+                    if (ok) {
+                        this.deviceName = this.deviceName || 'Android printer';
+                        this.setState('connected');
+                        this.updateReconnectStatus('none', 'Connected through native Android printer bridge.');
+                        connected = true;
+                    }
+                } catch (error: any) {
+                    this.updateReconnectStatus('native-unavailable', `Native printer bridge failed: ${String(error?.message || error)}`);
+                }
+            }
+            if (connected) {
+                this.reconnectAttempts = 0;
+                this.setAutoReconnectState('connected');
+                return true;
+            }
             if (!this.device) {
                 this.device = await this.findPermittedBluetoothDevice();
                 if (this.device) {
@@ -595,6 +656,8 @@ class PrinterManager {
                     this.setState('connected');
                     connected = true;
                 }
+            } else if (this.reconnectStatus.reason === 'none') {
+                this.updateReconnectStatus('device-not-found', 'No authorized saved printer was returned by this browser.');
             }
         }
         if (connected) {
@@ -609,11 +672,11 @@ class PrinterManager {
     }
 
     private async requestImmediateReconnect(): Promise<boolean> {
+        if (this.reconnectPromise) return this.reconnectPromise;
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
-        this.reconnectAttempts = 0;
         const ok = await this.autoReconnect();
         if (!ok && this.reconnectEnabled) this.attemptAutoReconnect();
         return ok;
@@ -646,6 +709,21 @@ class PrinterManager {
                 throw new Error('Failed to get GATT server');
             }
 
+            if (this.serviceUUID && this.characteristicUUID) {
+                try {
+                    const savedService = await this.server.getPrimaryService(this.serviceUUID);
+                    const savedCharacteristic = await savedService.getCharacteristic(this.characteristicUUID);
+                    if (savedCharacteristic.properties.write || savedCharacteristic.properties.writeWithoutResponse) {
+                        this.characteristic = savedCharacteristic;
+                        this.recordLog('connect', 'ok', undefined, `restored svc=${this.serviceUUID}`);
+                        this.updateReconnectStatus('none', 'GATT connected using saved service metadata.');
+                        return true;
+                    }
+                } catch {
+                    this.recordLog('reconnect', 'info', undefined, 'Saved GATT metadata unavailable; validating authorized services');
+                }
+            }
+
             const services = await this.server.getPrimaryServices();
 
             if (services.length === 0) {
@@ -660,8 +738,11 @@ class PrinterManager {
                         this.characteristic = char;
                         this.serviceUUID = service.uuid || '';
                         this.characteristicUUID = char.uuid || '';
+                        localStorage.setItem(BLUETOOTH_SERVICE_UUID_KEY, this.serviceUUID);
+                        localStorage.setItem(BLUETOOTH_CHARACTERISTIC_UUID_KEY, this.characteristicUUID);
                         this.recordLog('connect', 'ok', undefined, `svc=${this.serviceUUID}`);
                         console.log('Found writable characteristic on service', this.serviceUUID);
+                        this.updateReconnectStatus('none', 'GATT connected and writable service verified.');
                         return true;
                     }
                 }
@@ -672,6 +753,8 @@ class PrinterManager {
         } catch (error: any) {
             this.recordLog('connect', 'fail', undefined, String(error?.message || error));
             console.error('GATT connection error:', error);
+            const failure = this.classifyReconnectError(error);
+            this.updateReconnectStatus(failure.reason, failure.detail);
             return false;
         }
     }
@@ -697,9 +780,30 @@ class PrinterManager {
         if (this.reconnectTimer) return; // Already scheduled
         if (!this.reconnectEnabled || this._printerType === 'none') return;
 
+        // Permission and browser-capability failures cannot recover in a timer loop.
+        // Keep the saved printer, but wait for the user's Trust/Connect gesture.
+        if (this.reconnectStatus.reason === 'permission-blocked' || this.reconnectStatus.reason === 'browser-unsupported') {
+            this.setState('disconnected');
+            this.setAutoReconnectState('waiting');
+            return;
+        }
+
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.updateReconnectStatus(
+                this.reconnectStatus.reason === 'none' ? 'gatt-disconnected' : this.reconnectStatus.reason,
+                `Automatic reconnect paused after ${this.maxReconnectAttempts} attempts. Tap Connect to retry now.`
+            );
+            this.setState('disconnected');
+            this.setAutoReconnectState('waiting');
+            return;
+        }
+
         this.reconnectAttempts++;
         const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30_000);
-        this.recordLog('reconnect', 'info', delay, `attempt ${this.reconnectAttempts}`);
+        const reason = this.reconnectStatus.reason === 'none' ? 'gatt-disconnected' : this.reconnectStatus.reason;
+        const detail = this.reconnectStatus.detail || 'Connection dropped';
+        this.updateReconnectStatus(reason, detail, delay);
+        this.recordLog('reconnect', 'info', delay, `attempt ${this.reconnectAttempts}: ${reason} — ${detail}`);
 
         this.reconnectTimer = setTimeout(async () => {
             this.reconnectTimer = null;
@@ -708,14 +812,9 @@ class PrinterManager {
             let success = false;
             const t0 = performance.now();
             try {
-                if (this._printerType === 'usb') {
-                    success = await this.usbTransport.reconnect();
-                    if (success) this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
-                } else if (this.device) {
-                    success = await this.reconnectToDevice();
-                } else {
-                    success = await this.autoReconnect();
-                }
+                // All reconnect paths share the same promise mutex, preventing focus,
+                // pageshow and health-check events from racing one GATT connection.
+                success = await this.autoReconnect();
             } catch (err: any) {
                 this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
             }
@@ -789,6 +888,9 @@ class PrinterManager {
         localStorage.removeItem(PRINTER_TYPE_KEY);
         localStorage.removeItem(BLUETOOTH_DEVICE_ID_KEY);
         localStorage.removeItem(BLUETOOTH_DEVICE_NAME_KEY);
+        localStorage.removeItem(BLUETOOTH_SERVICE_UUID_KEY);
+        localStorage.removeItem(BLUETOOTH_CHARACTERISTIC_UUID_KEY);
+        localStorage.removeItem(BLUETOOTH_TRUSTED_KEY);
         this.setState('disconnected');
         this.setAutoReconnectState('off');
         console.log('Printer disconnected manually');
@@ -1053,6 +1155,8 @@ class PrinterManager {
         report.push({ step: 'Paired Devices', ok: permitted.length > 0, detail: permitted.length ? permitted.join(', ') : 'none paired — tap Connect first' });
 
         report.push({ step: 'Active Printer', ok: !!this.deviceName, detail: this.deviceName || 'not selected' });
+        report.push({ step: 'Trusted Authorization', ok: this.isPrinterTrusted() || this.hasNativePrinterBridge(), detail: this.hasNativePrinterBridge() ? 'native Android bridge' : (this.isPrinterTrusted() ? 'saved for silent reconnect' : 'tap Trust this printer once') });
+        report.push({ step: 'Reconnect Reason', ok: this.reconnectStatus.reason === 'none', detail: `${this.reconnectStatus.reason}: ${this.reconnectStatus.detail}` });
         report.push({ step: 'GATT Connected', ok: this.isConnected(), detail: this.isConnected() ? 'live link' : 'no live link' });
 
         if (this.serviceUUID) {
