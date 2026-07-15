@@ -1,0 +1,10 @@
+import { Capacitor } from '@capacitor/core';
+import { CapacitorThermalPrinter } from 'capacitor-thermal-printer-bluetooth';
+
+// Inside PrinterManager:
+    public async connect(forceNewDevice: boolean = false): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            // Setup Native Capacitor Bluetooth
+            // ...
+        }
+

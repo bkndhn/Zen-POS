@@ -12,6 +12,13 @@
 
 import { generateReceiptBytes, PrintData } from './bluetoothPrinter';
 import { USBPrinterTransport } from './usbPrinterTransport';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+export interface BluetoothPrinterPlugin {
+  printRaw(options: { hex: string, name?: string }): Promise<{ success: boolean }>;
+}
+
+const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
 
 // Connection states
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -244,7 +251,7 @@ class PrinterManager {
 
     public getReconnectStatus(): ReconnectStatus { return { ...this.reconnectStatus }; }
     public isPrinterTrusted(): boolean { return localStorage.getItem(BLUETOOTH_TRUSTED_KEY) === 'true'; }
-    public hasNativePrinterBridge(): boolean { return typeof window !== 'undefined' && !!(window as any).AndroidPrinter; }
+    public hasNativePrinterBridge(): boolean { return typeof window !== 'undefined' && (!!(window as any).AndroidPrinter || Capacitor.isNativePlatform()); }
 
     private updateReconnectStatus(reason: ReconnectFailureReason, detail: string, nextRetryMs?: number): void {
         this.reconnectStatus = { attempt: this.reconnectAttempts, reason, detail, nextRetryMs, updatedAt: Date.now() };
@@ -622,12 +629,20 @@ class PrinterManager {
                 this.setState('connected');
                 connected = true;
             }
-        } else if (this._printerType === 'bluetooth') {
+        if (this._printerType === 'bluetooth') {
             if (this.hasNativePrinterBridge()) {
                 try {
                     const bridge = (window as any).AndroidPrinter;
-                    const result = typeof bridge.connectSavedPrinter === 'function' ? bridge.connectSavedPrinter() : true;
-                    const ok = result instanceof Promise ? await result : result !== false;
+                    
+                    let ok = false;
+                    if (Capacitor.isNativePlatform()) {
+                        // Capacitor native bridge doesn't need to "connect" first, it connects on print
+                        ok = true;
+                    } else {
+                        const result = typeof bridge?.connectSavedPrinter === 'function' ? bridge.connectSavedPrinter() : true;
+                        ok = result instanceof Promise ? await result : result !== false;
+                    }
+                    
                     if (ok) {
                         this.deviceName = this.deviceName || 'Android printer';
                         this.setState('connected');
@@ -904,17 +919,23 @@ class PrinterManager {
 
         // === NATIVE WRAPPER JS BRIDGE (INSTANT PRINT FOR POS TERMINALS) ===
         const win = window as any;
-        if (win.AndroidPrinter) {
-            console.log('[Printer] Native AndroidPrinter JS Bridge detected. Routing to built-in printer.');
+        if (win.AndroidPrinter || Capacitor.isNativePlatform()) {
+            console.log('[Printer] Native JS Bridge or Capacitor detected. Routing to built-in printer.');
             const t0 = performance.now();
             try {
-                // Try sending JSON first
-                if (typeof win.AndroidPrinter.printReceipt === 'function') {
+                // Capacitor Flow
+                if (Capacitor.isNativePlatform()) {
+                    const receiptBytes = await generateReceiptBytes(data);
+                    const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                    
+                    const savedPrinterName = localStorage.getItem('hotel_pos_bluetooth_printer_name') || '';
+                    await BluetoothPrinter.printRaw({ hex, name: savedPrinterName });
+                } 
+                // Legacy Android WebView Flow
+                else if (typeof win.AndroidPrinter.printReceipt === 'function') {
                     win.AndroidPrinter.printReceipt(JSON.stringify(data));
                 } else if (typeof win.AndroidPrinter.printRawBytes === 'function') {
-                    // Fallback to sending raw ESC/POS bytes as hex/base64
                     const receiptBytes = await generateReceiptBytes(data);
-                    // Convert Uint8Array to Hex string
                     const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
                     win.AndroidPrinter.printRawBytes(hex);
                 } else {
@@ -922,7 +943,7 @@ class PrinterManager {
                 }
 
                 const ms = Math.round(performance.now() - t0);
-                this.recordLog('print', 'ok', ms, `Instant POS Print (Bridge)`, data.billNo);
+                this.recordLog('print', 'ok', ms, `Instant POS Print (Native Bridge)`, data.billNo);
                 return true;
             } catch (error: any) {
                 const ms = Math.round(performance.now() - t0);
