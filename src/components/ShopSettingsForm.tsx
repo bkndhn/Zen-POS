@@ -82,7 +82,7 @@ export const ShopSettingsForm = () => {
     useEffect(() => {
         // 1. Instant load from localStorage cache (no loading state)
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
-        const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+        const saved = localStorage.getItem(headerKey);
         
         const savedAutoCut = localStorage.getItem('hotel_pos_auto_cut');
         if (savedAutoCut !== null) {

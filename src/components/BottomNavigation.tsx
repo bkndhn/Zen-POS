@@ -55,7 +55,7 @@ export const BottomNavigation: React.FC = () => {
       
       // First, load from localStorage for instant display
       const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
-      const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+      const saved = localStorage.getItem(headerKey);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
