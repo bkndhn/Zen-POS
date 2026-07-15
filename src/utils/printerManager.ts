@@ -672,11 +672,11 @@ class PrinterManager {
     }
 
     private async requestImmediateReconnect(): Promise<boolean> {
+        if (this.reconnectPromise) return this.reconnectPromise;
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
-        this.reconnectAttempts = 0;
         const ok = await this.autoReconnect();
         if (!ok && this.reconnectEnabled) this.attemptAutoReconnect();
         return ok;
@@ -780,6 +780,24 @@ class PrinterManager {
         if (this.reconnectTimer) return; // Already scheduled
         if (!this.reconnectEnabled || this._printerType === 'none') return;
 
+        // Permission and browser-capability failures cannot recover in a timer loop.
+        // Keep the saved printer, but wait for the user's Trust/Connect gesture.
+        if (this.reconnectStatus.reason === 'permission-blocked' || this.reconnectStatus.reason === 'browser-unsupported') {
+            this.setState('disconnected');
+            this.setAutoReconnectState('waiting');
+            return;
+        }
+
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.updateReconnectStatus(
+                this.reconnectStatus.reason === 'none' ? 'gatt-disconnected' : this.reconnectStatus.reason,
+                `Automatic reconnect paused after ${this.maxReconnectAttempts} attempts. Tap Connect to retry now.`
+            );
+            this.setState('disconnected');
+            this.setAutoReconnectState('waiting');
+            return;
+        }
+
         this.reconnectAttempts++;
         const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30_000);
         const reason = this.reconnectStatus.reason === 'none' ? 'gatt-disconnected' : this.reconnectStatus.reason;
@@ -794,14 +812,9 @@ class PrinterManager {
             let success = false;
             const t0 = performance.now();
             try {
-                if (this._printerType === 'usb') {
-                    success = await this.usbTransport.reconnect();
-                    if (success) this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
-                } else if (this.device) {
-                    success = await this.reconnectToDevice();
-                } else {
-                    success = await this.autoReconnect();
-                }
+                // All reconnect paths share the same promise mutex, preventing focus,
+                // pageshow and health-check events from racing one GATT connection.
+                success = await this.autoReconnect();
             } catch (err: any) {
                 this.recordLog('reconnect', 'fail', undefined, String(err?.message || err));
             }
