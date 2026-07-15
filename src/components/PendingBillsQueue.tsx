@@ -71,12 +71,12 @@ export const PendingBillsQueue: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-[145px] sm:bottom-20 right-4 z-50 w-72 sm:w-80">
+        <div className="fixed top-36 left-3 z-30 w-auto max-w-[calc(100vw-1.5rem)] sm:top-auto sm:bottom-20 sm:left-auto sm:right-4 sm:w-80">
             {/* Collapsed View - Just the badge */}
             <div 
                 onClick={() => setExpanded(!expanded)}
                 className={cn(
-                    "flex items-center justify-between px-4 py-3 rounded-t-lg cursor-pointer transition-all",
+                    "flex items-center justify-between gap-4 px-3 py-2 rounded-t-lg cursor-pointer transition-all",
                     "bg-amber-500 text-white shadow-lg",
                     !expanded && "rounded-b-lg"
                 )}

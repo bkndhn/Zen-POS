@@ -446,61 +446,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Payment Methods - ALWAYS AT TOP for easy access */}
-        <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 p-2 border-b border-primary/10 flex-shrink-0">
-          <h3 className="font-semibold text-sm mb-1.5 text-orange-700 dark:text-orange-400">Payment Methods *</h3>
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(paymentTypes.length, 4)}, minmax(0, 1fr))` }}>
-            {paymentTypes.map((payment) => (
-              <div key={payment.id} className="flex flex-col items-center">
-                <Button
-                  variant={paymentAmounts[payment.payment_type] > 0 ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPaymentAmounts({ [payment.payment_type]: total })}
-                  className={`capitalize text-xs h-8 w-full font-bold rounded-lg transition-all duration-200 mb-1 ${paymentAmounts[payment.payment_type] > 0 ? 'bg-gradient-to-r from-primary to-primary/80 shadow-md' : 'bg-white dark:bg-gray-800'}`}
-                >
-                  {payment.payment_type}
-                </Button>
-                <Input
-                  type="number"
-                  value={paymentAmounts[payment.payment_type] || 0}
-                  onChange={(e) => handlePaymentAmountChange(payment.payment_type, Number(e.target.value))}
-                  className="h-8 text-sm text-center bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100 font-bold border-2 border-primary/20 focus:border-primary rounded-lg w-full"
-                  placeholder="0"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            ))}
-          </div>
-          {remaining !== 0 && (
-            <div className="text-right mt-1">
-              <span className={`text-xs font-semibold ${remaining > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                Remaining: ₹{remaining.toFixed(2)}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Order Type - Dine In / Parcel */}
-        {showOrderType && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-2 border-b border-primary/10 flex-shrink-0">
-            <RadioGroup
-              value={orderType}
-              onValueChange={(v) => setOrderType(v as 'dine_in' | 'parcel')}
-              className="flex gap-4"
-            >
-              <label className="flex items-center gap-2 cursor-pointer">
-                <RadioGroupItem value="dine_in" />
-                <span className={`text-xs font-semibold ${orderType === 'dine_in' ? 'text-primary' : 'text-muted-foreground'}`}>🍽️ Dine In</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <RadioGroupItem value="parcel" />
-                <span className={`text-xs font-semibold ${orderType === 'parcel' ? 'text-primary' : 'text-muted-foreground'}`}>📦 Parcel</span>
-              </label>
-            </RadioGroup>
-          </div>
-        )}
-
         <div className="flex-1 overflow-hidden p-2 flex flex-col gap-1.5">
           {/* Order Summary - Expanded to fill available space */}
           <div className="flex-1 min-h-0 flex flex-col">
@@ -753,6 +698,26 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
               )}
             </div>
           )}
+        </div>
+
+        <div className="border-t border-primary/10 bg-muted/30 p-2 flex-shrink-0 space-y-2">
+          {showOrderType && (
+            <RadioGroup value={orderType} onValueChange={(v) => setOrderType(v as 'dine_in' | 'parcel')} className="flex justify-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer min-h-10"><RadioGroupItem value="dine_in" /><span className="text-xs font-semibold">🍽️ Dine In</span></label>
+              <label className="flex items-center gap-2 cursor-pointer min-h-10"><RadioGroupItem value="parcel" /><span className="text-xs font-semibold">📦 Parcel</span></label>
+            </RadioGroup>
+          )}
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(paymentTypes.length, 4)}, minmax(0, 1fr))` }}>
+            {paymentTypes.map((payment) => (
+              <div key={payment.id} className="flex flex-col items-center">
+                <Button variant={paymentAmounts[payment.payment_type] > 0 ? "default" : "outline"} size="sm" onClick={() => setPaymentAmounts({ [payment.payment_type]: total })} className="capitalize text-xs h-10 w-full font-bold mb-1">
+                  {payment.payment_type}
+                </Button>
+                <Input type="number" value={paymentAmounts[payment.payment_type] || 0} onChange={(e) => handlePaymentAmountChange(payment.payment_type, Number(e.target.value))} className="h-9 text-sm text-center font-bold w-full" min="0" step="0.01" />
+              </div>
+            ))}
+          </div>
+          {remaining !== 0 && <div className="text-right text-xs font-semibold text-destructive">Remaining: ₹{remaining.toFixed(2)}</div>}
         </div>
 
         {/* Summary - Fixed at bottom */}
