@@ -429,10 +429,14 @@ export const ShopSettingsForm = () => {
                 upi_id: sanitizeString(upiId || '', 100) || null,
                 upi_name: sanitizeString(upiName || '', 100) || null,
                 qr_payment_enabled: qrPaymentEnabled,
+                updated_at: new Date().toISOString()
+            };
+
+            // QR receipt fields — these require the migration to have been applied
+            const qrFields: any = {
                 telegram: cleanUrl(telegram),
                 receipt_qr_enabled: receiptQrEnabled,
                 receipt_qr_type: receiptQrType,
-                updated_at: new Date().toISOString()
             };
 
             // Find existing row for THIS branch only
@@ -443,16 +447,34 @@ export const ShopSettingsForm = () => {
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
 
+            // Try saving with QR fields first; if columns don't exist yet, retry without them
+            const saveData = { ...settingsData, ...qrFields };
             let error: any = null;
             if (existing?.id) {
                 ({ error } = await supabase
                     .from('shop_settings')
-                    .update(settingsData)
+                    .update(saveData)
                     .eq('id', existing.id));
             } else {
                 ({ error } = await supabase
                     .from('shop_settings')
-                    .insert({ ...settingsData, user_id: adminAuthUid, branch_id: operatingBranchId }));
+                    .insert({ ...saveData, user_id: adminAuthUid, branch_id: operatingBranchId }));
+            }
+
+            // Fallback: if save failed (likely missing columns), retry without QR fields
+            if (error) {
+                console.warn('Save with QR fields failed, retrying without:', error.message);
+                error = null;
+                if (existing?.id) {
+                    ({ error } = await supabase
+                        .from('shop_settings')
+                        .update(settingsData)
+                        .eq('id', existing.id));
+                } else {
+                    ({ error } = await supabase
+                        .from('shop_settings')
+                        .insert({ ...settingsData, user_id: adminAuthUid, branch_id: operatingBranchId }));
+                }
             }
 
             if (error) throw error;
