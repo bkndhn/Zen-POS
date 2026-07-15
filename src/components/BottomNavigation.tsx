@@ -51,6 +51,8 @@ export const BottomNavigation: React.FC = () => {
   useEffect(() => {
     // Load from Supabase as primary source, with localStorage as fallback
     const loadSettings = async () => {
+      let localPages: string[] | null = null;
+      
       // First, load from localStorage for instant display
       const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
       const saved = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
@@ -58,15 +60,10 @@ export const BottomNavigation: React.FC = () => {
         try {
           const parsed = JSON.parse(saved);
           if (parsed.visiblePages && Array.isArray(parsed.visiblePages)) {
-            setVisiblePages(parsed.visiblePages);
-          } else {
-            setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'waiterCompanion', 'customers', 'qrMenu']);
+            localPages = parsed.visiblePages;
+            setVisiblePages(localPages);
           }
-        } catch {
-          setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'waiterCompanion', 'customers', 'qrMenu']);
-        }
-      } else {
-        setVisiblePages(['analytics', 'billing', 'serviceArea', 'tables', 'tableBilling', 'items', 'expenses', 'reports', 'settings', 'kitchen', 'waiterCompanion', 'customers', 'qrMenu']);
+        } catch { }
       }
 
       // Then sync from Supabase for latest data
@@ -92,19 +89,20 @@ export const BottomNavigation: React.FC = () => {
           const { data } = await query.maybeSingle();
 
           if (data?.visible_nav_pages && Array.isArray(data.visible_nav_pages)) {
-            // Respect the user's explicit selection exactly — do NOT auto-inject pages
-            // they have intentionally disabled.
             const savedPages = data.visible_nav_pages as string[];
             setVisiblePages(savedPages);
-            const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
-            const cached = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
-            if (cached) {
-              try {
-                const parsed = JSON.parse(cached);
-                parsed.visiblePages = savedPages;
-                localStorage.setItem(headerKey, JSON.stringify(parsed));
-              } catch { }
+            
+            // Sync cache
+            if (saved) {
+               try {
+                 const parsed = JSON.parse(saved);
+                 parsed.visiblePages = savedPages;
+                 localStorage.setItem(headerKey, JSON.stringify(parsed));
+               } catch {}
             }
+          } else if (!localPages) {
+            // No data in DB and no data in local storage
+            setVisiblePages([]);
           }
         } catch (err) {
           console.error('Error fetching nav settings from Supabase:', err);
@@ -142,11 +140,6 @@ export const BottomNavigation: React.FC = () => {
 
   // Filter nav items by permissions AND the user's explicit visibility selection.
   // If visiblePages is empty (never saved) fall back to permission-only filtering.
-  // NEW_PAGE_KEYS = modules added after the original visibility list shipped.
-  // These are auto-included so newly-added pages never silently disappear from
-  // an older user's saved customisation. (Users can still disable them by
-  // re-saving the bottom-nav customiser.)
-  const NEW_PAGE_KEYS = new Set(['suppliers', 'purchases', 'stock', 'tableBilling']);
   const navItems = allNavItems
     .filter(item => {
       if (!hasAccess(item.page)) return false;
@@ -156,9 +149,7 @@ export const BottomNavigation: React.FC = () => {
       return true;
     })
     .filter(item =>
-      visiblePages.length === 0
-      || visiblePages.includes(item.page as string)
-      || NEW_PAGE_KEYS.has(item.page as string)
+      visiblePages.length === 0 || visiblePages.includes(item.page as string)
     );
 
 

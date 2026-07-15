@@ -77,7 +77,7 @@ export const ShopSettingsForm = () => {
     const [receiptQrType, setReceiptQrType] = useState('payment');
 
     // Nav Settings
-    const [visiblePages, setVisiblePages] = useState<string[]>(['dashboard', 'billing', 'serviceArea', 'kitchen', 'tables', 'tableBilling', 'items', 'reports', 'settings', 'customers', 'expenses', 'qrMenu']);
+    const [visiblePages, setVisiblePages] = useState<string[]>([]);
 
     useEffect(() => {
         // 1. Instant load from localStorage cache (no loading state)
@@ -110,7 +110,11 @@ export const ShopSettingsForm = () => {
                 setShowInstagram(parsed.showInstagram !== false);
                 setWhatsapp(parsed.whatsapp || '');
                 setShowWhatsapp(parsed.showWhatsapp !== false);
-                if (parsed.visiblePages) setVisiblePages(parsed.visiblePages);
+                if (parsed.visiblePages && Array.isArray(parsed.visiblePages) && parsed.visiblePages.length > 0) {
+                    setVisiblePages(parsed.visiblePages);
+                } else {
+                    setVisiblePages(ALL_NAV_ITEMS.filter(i => i.bottomNav).map(i => i.page as string));
+                }
                 if (parsed.menuSlug) setMenuSlug(parsed.menuSlug);
                 if (parsed.menuShowShopName !== undefined) setMenuShowShopName(parsed.menuShowShopName);
                 if (parsed.menuShowAddress !== undefined) setMenuShowAddress(parsed.menuShowAddress);
@@ -189,13 +193,10 @@ export const ShopSettingsForm = () => {
                 setTelegram(data.telegram || '');
                 setReceiptQrEnabled(data.receipt_qr_enabled || false);
                 setReceiptQrType(data.receipt_qr_type || 'payment');
-                if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages)) {
-                    const savedPages = (data as any).visible_nav_pages as string[];
-                    // Auto-inject any new pages that didn't exist when the user last saved
-                    const requiredNewPages = ['tableBilling'];
-                    const updated = [...savedPages];
-                    requiredNewPages.forEach(p => { if (!updated.includes(p)) updated.push(p); });
-                    setVisiblePages(updated);
+                if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
+                    setVisiblePages((data as any).visible_nav_pages);
+                } else {
+                    setVisiblePages(ALL_NAV_ITEMS.filter(i => i.bottomNav).map(i => i.page as string));
                 }
 
                 // Menu settings
@@ -219,7 +220,7 @@ export const ShopSettingsForm = () => {
                     showInstagram: data.show_instagram !== false,
                     whatsapp: data.whatsapp || '',
                     showWhatsapp: data.show_whatsapp !== false,
-                    visiblePages: (data as any).visible_nav_pages || ['dashboard', 'billing', 'serviceArea', 'kitchen', 'tables', 'tableBilling', 'items', 'reports', 'settings', 'customers', 'expenses', 'qrMenu'],
+                    visiblePages: ((data as any).visible_nav_pages && (data as any).visible_nav_pages.length > 0) ? (data as any).visible_nav_pages : ALL_NAV_ITEMS.filter(i => i.bottomNav).map(i => i.page as string),
                     menuSlug: resolvedSlug,
                     menuShowShopName: (data as any).menu_show_shop_name !== false,
                     menuShowAddress: (data as any).menu_show_address !== false,
