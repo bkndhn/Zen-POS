@@ -1048,14 +1048,14 @@ const TableOrderBilling: React.FC = () => {
                     ]);
                     const printed = receiptResult.status === 'fulfilled' && receiptResult.value;
                     if (!printed) {
-                        printBrowserReceipt(printData as any);
+                        await printBrowserReceipt(printData as any);
                     }
                 } catch (printErr) {
                     console.error('Print failed, falling back to browser print:', printErr);
-                    printBrowserReceipt(printData as any);
+                    await printBrowserReceipt(printData as any);
                 }
             } else {
-                printBrowserReceipt(printData as any);
+                await printBrowserReceipt(printData as any);
             }
 
             // 9. Save Customer details to CRM (Auto-Save on every Checkout)

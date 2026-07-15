@@ -392,7 +392,7 @@ const CRM: React.FC = () => {
         });
       } else {
         console.log("Bluetooth print failed, falling back to browser print");
-        printBrowserReceipt(printData as any);
+        await printBrowserReceipt(printData as any);
       }
     } catch (error) {
       console.error('Print error:', error);
@@ -435,7 +435,7 @@ const CRM: React.FC = () => {
           roundOff: bill.round_off || undefined,
           customerMobile: bill.customer_phone || historyCustomer?.phone || undefined
         };
-        printBrowserReceipt(printData as any);
+        await printBrowserReceipt(printData as any);
       } catch (err) {
         console.error('Browser print fallback failed:', err);
       }

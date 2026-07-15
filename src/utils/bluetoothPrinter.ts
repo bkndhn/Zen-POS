@@ -1,3 +1,5 @@
+import QRCode from 'qrcode';
+
 // ESC/POS Commands
 const ESC = 0x1B;
 const GS = 0x1D;
@@ -528,6 +530,40 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   } else {
     commands.push(textToBytes(fmtLine('Paid', data.paymentMethod.toUpperCase())));
     commands.push(FEED_LINE);
+  }
+
+  // Receipt QR Code Generation
+  try {
+    const cachedHeaderStr = localStorage.getItem('hotel_pos_bill_header')
+      || Object.keys(localStorage).filter(k => k.startsWith('hotel_pos_bill_header_')).map(k => localStorage.getItem(k)).find(v => v);
+    if (cachedHeaderStr) {
+      const parsedHeader = JSON.parse(cachedHeaderStr);
+      const receiptQrEnabled = parsedHeader.receiptQrEnabled === true;
+      
+      if (receiptQrEnabled && !paperSaving) {
+        const receiptQrType = parsedHeader.receiptQrType || 'payment';
+        let qrCodeDataUrl = '';
+        
+        if (receiptQrType === 'payment' && parsedHeader.upiId) {
+          const upiUrl = `upi://pay?pa=${parsedHeader.upiId}&pn=${encodeURIComponent(parsedHeader.upiName || data.shopName || '')}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR`;
+          qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { margin: 1 });
+        } else if (receiptQrType === 'social' && parsedHeader.telegram) {
+          qrCodeDataUrl = await QRCode.toDataURL(parsedHeader.telegram, { margin: 1 });
+        }
+
+        if (qrCodeDataUrl) {
+          const qrSize = data.printerWidth === '80mm' ? 240 : 180;
+          const qrBytes = await processImageForPrinting(qrCodeDataUrl, qrSize);
+          if (qrBytes) {
+            commands.push(ALIGN_CENTER);
+            commands.push(qrBytes);
+            commands.push(FEED_LINE);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('BT Receipt QR Generation error:', err);
   }
 
   // Footer - minimal

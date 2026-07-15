@@ -47,6 +47,7 @@ export const usePrinter = (): UsePrinterResult => {
     const [autoReconnectState, setAutoReconnectState] = useState<AutoReconnectState>(printerManager.getAutoReconnectState());
     const [autoReconnectEnabled, setAutoReconnectEnabled] = useState(printerManager.isAutoReconnectEnabled());
     const [reconnectStatus, setReconnectStatus] = useState(printerManager.getReconnectStatus());
+    const [isTrusted, setIsTrusted] = useState(printerManager.isPrinterTrusted());
 
     // Subscribe to printer manager state changes
     useEffect(() => {
@@ -58,6 +59,7 @@ export const usePrinter = (): UsePrinterResult => {
             setAutoReconnectState(reconnectState || printerManager.getAutoReconnectState());
             setAutoReconnectEnabled(printerManager.isAutoReconnectEnabled());
             setReconnectStatus(printerManager.getReconnectStatus());
+            setIsTrusted(printerManager.isPrinterTrusted());
         });
 
         // Check initial state
@@ -68,6 +70,7 @@ export const usePrinter = (): UsePrinterResult => {
         setAutoReconnectState(printerManager.getAutoReconnectState());
         setAutoReconnectEnabled(printerManager.isAutoReconnectEnabled());
         setReconnectStatus(printerManager.getReconnectStatus());
+        setIsTrusted(printerManager.isPrinterTrusted());
 
         return unsubscribe;
     }, []);
@@ -111,7 +114,7 @@ export const usePrinter = (): UsePrinterResult => {
         autoReconnectState,
         autoReconnectEnabled,
         reconnectStatus,
-        isTrusted: printerManager.isPrinterTrusted(),
+        isTrusted,
         hasNativeBridge: printerManager.hasNativePrinterBridge(),
         queueSize,
         connect,

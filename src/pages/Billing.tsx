@@ -844,6 +844,13 @@ const Billing = () => {
 
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Safety check: close payment dialog if cart is empty
+  useEffect(() => {
+    if (cart.length === 0) {
+      setPaymentDialogOpen(false);
+    }
+  }, [cart]);
   const [billSettings, setBillSettings] = useState<{
     shopName: string;
     address: string;
@@ -2074,7 +2081,7 @@ const Billing = () => {
       );
 
       // Fallback to browser print
-      printBrowserReceipt(pendingPaymentRef.current.printData);
+      await printBrowserReceipt(pendingPaymentRef.current.printData);
 
       toast({
         title: "Bill Saved",
@@ -2847,7 +2854,14 @@ const Billing = () => {
 
         {cart.some(i => i.quantity > 0) && <div className="flex justify-between items-center text-sm">
           <span>Total: ₹{total.toFixed(0)}</span>
-          <Button onClick={() => setPaymentDialogOpen(true)} className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-white" size="sm">
+          <Button 
+            onClick={() => {
+              setPaymentDialogOpen(false);
+              setTimeout(() => setPaymentDialogOpen(true), 30);
+            }} 
+            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-white" 
+            size="sm"
+          >
             Pay
           </Button>
         </div>}
@@ -2966,7 +2980,13 @@ const Billing = () => {
             <Button variant="ghost" size="sm" onClick={clearCart} className="h-9 w-9 p-0 text-white hover:bg-white/20 rounded-full">
               <Trash2 className="w-5 h-5" />
             </Button>
-            <Button onClick={() => setPaymentDialogOpen(true)} className="h-9 px-5 bg-white text-primary hover:bg-gray-100 font-bold rounded-full shadow-md">
+            <Button 
+              onClick={() => {
+                setPaymentDialogOpen(false);
+                setTimeout(() => setPaymentDialogOpen(true), 30);
+              }} 
+              className="h-9 px-5 bg-white text-primary hover:bg-gray-100 font-bold rounded-full shadow-md"
+            >
               Pay
             </Button>
           </div>

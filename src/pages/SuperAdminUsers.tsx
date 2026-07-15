@@ -63,6 +63,74 @@ const SuperAdminUsers: React.FC = () => {
   const [isBackupEnabled, setIsBackupEnabled] = useState(true);
   const [retentionDays, setRetentionDays] = useState(10);
 
+  // Support details state
+  const [supportPhone, setSupportPhone] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportWhatsapp, setSupportWhatsapp] = useState('');
+  const [supportCustomDetails, setSupportCustomDetails] = useState('');
+  const [showSupportPhone, setShowSupportPhone] = useState(true);
+  const [showSupportEmail, setShowSupportEmail] = useState(true);
+  const [showSupportWhatsapp, setShowSupportWhatsapp] = useState(true);
+  const [showSupportCustom, setShowSupportCustom] = useState(true);
+  const [savingSupport, setSavingSupport] = useState(false);
+  const [loadingSupport, setLoadingSupport] = useState(false);
+
+  const fetchSupportData = async () => {
+    try {
+      setLoadingSupport(true);
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('id', true)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setSupportPhone(data.support_phone || '');
+        setSupportEmail(data.support_email || '');
+        setSupportWhatsapp(data.support_whatsapp || '');
+        setSupportCustomDetails(data.support_custom_details || '');
+        setShowSupportPhone(data.show_support_phone ?? true);
+        setShowSupportEmail(data.show_support_email ?? true);
+        setShowSupportWhatsapp(data.show_support_whatsapp ?? true);
+        setShowSupportCustom(data.show_support_custom ?? true);
+      }
+    } catch (e: any) {
+      console.error("Failed to load support data:", e);
+      toast({ title: "Failed to load support settings", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingSupport(false);
+    }
+  };
+
+  const handleSaveSupport = async () => {
+    try {
+      setSavingSupport(true);
+      const { error } = await supabase
+        .from('app_settings')
+        .update({
+          support_phone: supportPhone,
+          support_email: supportEmail,
+          support_whatsapp: supportWhatsapp,
+          support_custom_details: supportCustomDetails,
+          show_support_phone: showSupportPhone,
+          show_support_email: showSupportEmail,
+          show_support_whatsapp: showSupportWhatsapp,
+          show_support_custom: showSupportCustom,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', true);
+
+      if (error) throw error;
+      toast({ title: "Success", description: "Support settings saved successfully." });
+    } catch (e: any) {
+      console.error("Failed to save support settings:", e);
+      toast({ title: "Failed to save support settings", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingSupport(false);
+    }
+  };
+
   const fetchBackupData = async () => {
     try {
       setLoadingBackup(true);
@@ -279,6 +347,12 @@ const SuperAdminUsers: React.FC = () => {
     }
   }, [activeTab, profile]);
 
+  useEffect(() => {
+    if (profile?.role === 'super_admin' && activeTab === 'support') {
+      fetchSupportData();
+    }
+  }, [activeTab, profile]);
+
   const handleTogglePermission = async (adminProfileId: string, toPath: string, enabled: boolean) => {
     const admin = rows.find(r => r.profile_id === adminProfileId);
     if (!admin) return;
@@ -348,12 +422,15 @@ const SuperAdminUsers: React.FC = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 max-w-md bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
+          <TabsList className="grid grid-cols-3 max-w-lg bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
             <TabsTrigger value="users" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
               <UsersIcon className="w-3.5 h-3.5 mr-2" /> Users & Permissions
             </TabsTrigger>
             <TabsTrigger value="backups" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
               <Database className="w-3.5 h-3.5 mr-2" /> Backup & Recovery
+            </TabsTrigger>
+            <TabsTrigger value="support" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+              <Settings className="w-3.5 h-3.5 mr-2" /> Support Settings
             </TabsTrigger>
           </TabsList>
 
@@ -663,6 +740,120 @@ const SuperAdminUsers: React.FC = () => {
               </div>
             </div>
           </TabsContent>
+
+          <TabsContent value="support" className="space-y-6 mt-6 focus-visible:outline-none">
+            {loadingSupport ? (
+              <div className="text-center py-12 text-muted-foreground">Loading support details...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Column 1: Contact details */}
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm bg-white dark:bg-zinc-900 overflow-hidden">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <Settings className="w-4 h-4 text-primary" /> Contact Channels
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Manage channels clients use to contact you for billing, bugs, or help.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    {/* Phone field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="support-phone" className="text-xs font-bold">Support Phone Number</Label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground">Show in App</span>
+                          <Switch id="show-phone" checked={showSupportPhone} onCheckedChange={setShowSupportPhone} />
+                        </div>
+                      </div>
+                      <Input
+                        id="support-phone"
+                        value={supportPhone}
+                        onChange={(e) => setSupportPhone(e.target.value)}
+                        placeholder="e.g. +91 9876543210"
+                        className="h-10 bg-slate-50/50 dark:bg-zinc-950"
+                      />
+                    </div>
+
+                    {/* Email field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="support-email" className="text-xs font-bold">Support Email Address</Label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground">Show in App</span>
+                          <Switch id="show-email" checked={showSupportEmail} onCheckedChange={setShowSupportEmail} />
+                        </div>
+                      </div>
+                      <Input
+                        id="support-email"
+                        type="email"
+                        value={supportEmail}
+                        onChange={(e) => setSupportEmail(e.target.value)}
+                        placeholder="e.g. support@zenpos.com"
+                        className="h-10 bg-slate-50/50 dark:bg-zinc-950"
+                      />
+                    </div>
+
+                    {/* WhatsApp field */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="support-whatsapp" className="text-xs font-bold">Support WhatsApp Number</Label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground">Show in App</span>
+                          <Switch id="show-whatsapp" checked={showSupportWhatsapp} onCheckedChange={setShowSupportWhatsapp} />
+                        </div>
+                      </div>
+                      <Input
+                        id="support-whatsapp"
+                        value={supportWhatsapp}
+                        onChange={(e) => setSupportWhatsapp(e.target.value)}
+                        placeholder="e.g. +91 9876543210 (with country code)"
+                        className="h-10 bg-slate-50/50 dark:bg-zinc-950"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Column 2: Custom details */}
+                <div className="space-y-6">
+                  <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm bg-white dark:bg-zinc-900 overflow-hidden">
+                    <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                      <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                        <Database className="w-4 h-4 text-primary" /> Custom Info & Deep Links
+                      </CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground">Additional details, links, or notice banner to show clients.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="support-custom" className="text-xs font-bold">Custom Support Text / Notice</Label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground">Show in App</span>
+                            <Switch id="show-custom" checked={showSupportCustom} onCheckedChange={setShowSupportCustom} />
+                          </div>
+                        </div>
+                        <textarea
+                          id="support-custom"
+                          value={supportCustomDetails}
+                          onChange={(e) => setSupportCustomDetails(e.target.value)}
+                          placeholder="e.g. For server outages, check status.zenpos.com. Support hours are 9 AM - 11 PM."
+                          rows={6}
+                          className="w-full text-sm p-3 rounded-xl border border-input bg-slate-50/50 dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Button 
+                    onClick={handleSaveSupport} 
+                    disabled={savingSupport} 
+                    className="w-full h-11 font-bold text-white shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
+                  >
+                    {savingSupport ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    💾 Save Support Coordinates
+                  </Button>
+                </div>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -705,6 +896,26 @@ const SuperAdminUsers: React.FC = () => {
                 </div>
               );
             })}
+            
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center dark:bg-blue-900/60">
+                  <span className="text-sm">🖨️</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">Custom Receipt QR Code</span>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">receipt_qr</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.client_permissions?.['receipt_qr'] === true}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) {
+                    handleTogglePermission(selectedAdmin.profile_id, 'receipt_qr', checked);
+                  }
+                }}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>

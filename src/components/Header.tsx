@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { LogOut, User, Hotel, Menu, Sun, Moon } from 'lucide-react';
+import { LogOut, User, Hotel, Menu, Sun, Moon, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BranchSwitcher } from './BranchSwitcher';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { ContactSupportDialog } from './ContactSupportDialog';
 
 const allNavItems = ALL_NAV_ITEMS;
 
@@ -54,6 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
   const { hasAccess, loading: permLoading } = useUserPermissions();
   const location = useLocation();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return document.documentElement.classList.contains('dark');
@@ -165,6 +167,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
                           </li>
                         );
                       })}
+                      <li>
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            setSupportOpen(true);
+                          }}
+                          className="w-full flex items-center px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all text-left"
+                        >
+                          <ShieldAlert className="w-5 h-5 mr-3 text-primary animate-pulse" />
+                          <span className="font-semibold text-primary">Contact Support</span>
+                        </button>
+                      </li>
                     </ul>
                   </nav>
                 </SheetContent>
@@ -233,6 +247,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
+                  onClick={() => setSupportOpen(true)}
+                  className="cursor-pointer rounded-lg mx-1 font-semibold text-primary"
+                >
+                  <ShieldAlert className="w-4 h-4 mr-2 text-primary" />
+                  Contact Support
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
                   onClick={() => setShowSignOutConfirm(true)}
                   className="text-destructive focus:text-destructive cursor-pointer rounded-lg mx-1"
                 >
@@ -276,6 +300,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ContactSupportDialog open={supportOpen} onOpenChange={setSupportOpen} />
     </>
   );
 };

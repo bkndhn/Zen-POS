@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { Users, Settings } from 'lucide-react';
+import { Users, Settings, ShieldAlert } from 'lucide-react';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { useTranslation } from 'react-i18next';
+import { ContactSupportDialog } from './ContactSupportDialog';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -46,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
   const { t } = useTranslation();
+  const [supportOpen, setSupportOpen] = useState(false);
 
   if (!profile || loading) return null;
 
@@ -132,8 +134,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               </li>
             );
           })}
+          <li className="mt-4 pt-4 border-t border-sidebar-border">
+            <button
+              onClick={() => setSupportOpen(true)}
+              className={cn(
+                "w-full flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm text-left",
+                "text-primary hover:bg-sidebar-accent hover:text-primary font-bold"
+              )}
+            >
+              <ShieldAlert className="w-4 h-4 mr-3 flex-shrink-0 text-primary animate-pulse" />
+              <span className="truncate">Contact Support</span>
+            </button>
+          </li>
         </ul>
       </nav>
+
+      <ContactSupportDialog open={supportOpen} onOpenChange={setSupportOpen} />
     </div>
   );
 };

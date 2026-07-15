@@ -99,6 +99,7 @@ class PrinterManager {
     private isProcessingQueue: boolean = false;
     private writeChain: Promise<void> = Promise.resolve();
     private lastPrintData: PrintData | null = null;
+    private lastPrintFailed: boolean = false;
 
     private constructor() {
         // Restore saved printer type
@@ -899,6 +900,7 @@ class PrinterManager {
     // Print receipt — works with both BT and USB, and supports Android Wrapper JS Bridge
     public async print(data: PrintData): Promise<boolean> {
         this.lastPrintData = data;
+        this.lastPrintFailed = false;
 
         // === NATIVE WRAPPER JS BRIDGE (INSTANT PRINT FOR POS TERMINALS) ===
         const win = window as any;
@@ -945,6 +947,7 @@ class PrinterManager {
                 console.log('Connection failed, queueing print job');
                 this.printQueue.push(data);
                 this.saveQueueToStorage();
+                this.lastPrintFailed = true;
                 this.recordLog('print', 'fail', 0, 'queued — no connection', data.billNo);
                 return false;
             }
@@ -974,6 +977,7 @@ class PrinterManager {
         } catch (error: any) {
             const ms = Math.round(performance.now() - t0);
             const msg = String(error?.message || error);
+            this.lastPrintFailed = true;
             this.recordLog('print', 'fail', ms, msg, data.billNo);
             console.error('Print error:', error);
 
@@ -1006,7 +1010,18 @@ class PrinterManager {
 
     // Process queued print jobs
     private async processQueue(): Promise<void> {
-        if (this.isProcessingQueue || this.printQueue.length === 0) {
+        if (this.isProcessingQueue) {
+            return;
+        }
+
+        // Auto-reprint last failed bill upon successful reconnect if the print queue is empty
+        if (this.printQueue.length === 0) {
+            if (this.lastPrintFailed && this.lastPrintData && this.isConnected()) {
+                console.log('[Printer] Auto-reprinting last failed bill after reconnect:', this.lastPrintData.billNo);
+                this.lastPrintFailed = false; // reset to avoid infinite loop
+                this.recordLog('reconnect', 'info', undefined, `Auto-reprinting bill #${this.lastPrintData.billNo}`);
+                await this.print(this.lastPrintData);
+            }
             return;
         }
 

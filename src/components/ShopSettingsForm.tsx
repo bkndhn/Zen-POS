@@ -72,6 +72,9 @@ export const ShopSettingsForm = () => {
     const [showInstagram, setShowInstagram] = useState(true);
     const [whatsapp, setWhatsapp] = useState('');
     const [showWhatsapp, setShowWhatsapp] = useState(true);
+    const [telegram, setTelegram] = useState('');
+    const [receiptQrEnabled, setReceiptQrEnabled] = useState(false);
+    const [receiptQrType, setReceiptQrType] = useState('payment');
 
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>(['dashboard', 'billing', 'serviceArea', 'kitchen', 'tables', 'tableBilling', 'items', 'reports', 'settings', 'customers', 'expenses', 'qrMenu']);
@@ -115,6 +118,9 @@ export const ShopSettingsForm = () => {
                 if (parsed.upiId) setUpiId(parsed.upiId);
                 if (parsed.upiName) setUpiName(parsed.upiName);
                 if (parsed.qrPaymentEnabled !== undefined) setQrPaymentEnabled(parsed.qrPaymentEnabled);
+                if (parsed.telegram) setTelegram(parsed.telegram);
+                if (parsed.receiptQrEnabled !== undefined) setReceiptQrEnabled(parsed.receiptQrEnabled);
+                if (parsed.receiptQrType) setReceiptQrType(parsed.receiptQrType);
             } catch (e) { /* ignore parse errors */ }
         }
         // Always show the form (with cached or empty values)
@@ -180,6 +186,9 @@ export const ShopSettingsForm = () => {
                 setUpiId(data.upi_id || '');
                 setUpiName(data.upi_name || '');
                 setQrPaymentEnabled(data.qr_payment_enabled || false);
+                setTelegram(data.telegram || '');
+                setReceiptQrEnabled(data.receipt_qr_enabled || false);
+                setReceiptQrType(data.receipt_qr_type || 'payment');
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages)) {
                     const savedPages = (data as any).visible_nav_pages as string[];
                     // Auto-inject any new pages that didn't exist when the user last saved
@@ -218,6 +227,9 @@ export const ShopSettingsForm = () => {
                     upiId: data.upi_id || '',
                     upiName: data.upi_name || '',
                     qrPaymentEnabled: data.qr_payment_enabled || false,
+                    telegram: data.telegram || '',
+                    receiptQrEnabled: data.receipt_qr_enabled || false,
+                    receiptQrType: data.receipt_qr_type || 'payment',
                     paperSavingMode: localStorage.getItem('hotel_pos_paper_saving_mode') === 'true',
                 };
                 const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
@@ -417,6 +429,9 @@ export const ShopSettingsForm = () => {
                 upi_id: sanitizeString(upiId || '', 100) || null,
                 upi_name: sanitizeString(upiName || '', 100) || null,
                 qr_payment_enabled: qrPaymentEnabled,
+                telegram: cleanUrl(telegram),
+                receipt_qr_enabled: receiptQrEnabled,
+                receipt_qr_type: receiptQrType,
                 updated_at: new Date().toISOString()
             };
 
@@ -456,7 +471,7 @@ export const ShopSettingsForm = () => {
                 shopName, address, contactNumber, logoUrl, printerWidth, autoCut, paperSavingMode,
                 facebook, showFacebook, instagram, showInstagram, whatsapp, showWhatsapp, visiblePages,
                 menuSlug, menuShowShopName, menuShowAddress, menuShowPhone,
-                upiId, upiName, qrPaymentEnabled
+                upiId, upiName, qrPaymentEnabled, telegram, receiptQrEnabled, receiptQrType
             };
             const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
             localStorage.setItem(headerKey, JSON.stringify(cacheData));
@@ -700,6 +715,56 @@ export const ShopSettingsForm = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Custom Receipt QR Code */}
+                {profile?.client_permissions?.['receipt_qr'] !== false && (
+                    <div className="space-y-4 pt-4 border-t">
+                        <Label className="text-base font-semibold">Custom Receipt QR Code</Label>
+                        <CardDescription>
+                            Print a custom QR code at the end of customer receipts for payments or social media follow-ups.
+                        </CardDescription>
+
+                        <div className="flex items-center gap-4">
+                            <Switch checked={receiptQrEnabled} onCheckedChange={setReceiptQrEnabled} />
+                            <span className="text-sm font-medium">Enable Custom QR on Receipt</span>
+                        </div>
+
+                        {receiptQrEnabled && (
+                            <div className="space-y-4 pl-0 md:pl-2">
+                                <div className="space-y-2">
+                                    <Label>QR Code Type</Label>
+                                    <Select value={receiptQrType} onValueChange={setReceiptQrType}>
+                                        <SelectTrigger className="w-full max-w-sm"><SelectValue placeholder="Select type" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="payment">Payment (UPI)</SelectItem>
+                                            <SelectItem value="social">Social Media / Website</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {receiptQrType === 'payment' && (
+                                    <div className="p-3 bg-muted/30 rounded-md border text-sm text-muted-foreground">
+                                        Uses the <strong>Merchant UPI ID</strong> and <strong>Name</strong> from the "Dine-In QR Payments (UPI)" section above to generate a scannable payment code containing the exact bill amount.
+                                    </div>
+                                )}
+
+                                {receiptQrType === 'social' && (
+                                    <div className="space-y-2 max-w-sm">
+                                        <Label>Social / Custom Link URL *</Label>
+                                        <Input
+                                            placeholder="e.g. https://instagram.com/myhotel"
+                                            value={telegram}
+                                            onChange={e => setTelegram(e.target.value)}
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Enter a valid URL to encode in the QR code (e.g. WhatsApp chat link, Instagram profile, or Linktree).
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Navigation Menu Settings */}
                 {!permissionsLoading && hasAccess('bottomNavCustomize') && (

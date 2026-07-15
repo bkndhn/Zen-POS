@@ -1109,7 +1109,7 @@ const Reports: React.FC = () => {
         });
       } else {
         console.log("Bluetooth print failed (returned false), falling back to browser print");
-        printBrowserReceipt(printData as any);
+        await printBrowserReceipt(printData as any);
         // Toast is optional here since browser print dialog will open
       }
     } catch (error) {
@@ -1158,7 +1158,7 @@ const Reports: React.FC = () => {
         customerGstin: (bill as any).customer_gstin || undefined,
         roundOff: (bill as any).round_off || undefined
       };
-      printBrowserReceipt(printData as any);
+      await printBrowserReceipt(printData as any);
     }
   };
 

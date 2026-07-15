@@ -1,12 +1,35 @@
 import { PrintData } from './bluetoothPrinter';
 import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './timeUtils';
+import QRCode from 'qrcode';
 
-export const printBrowserReceipt = (data: PrintData) => {
+export const printBrowserReceipt = async (data: PrintData) => {
   const width = data.printerWidth || '58mm';
+  const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
   const widthValue = width === '80mm' ? '80mm' : '58mm';
   const fontSize = width === '80mm' ? '16px' : '12px';
   const shopNameFontSize = width === '80mm' ? '22px' : '15px';
   const totalFontSize = width === '80mm' ? '18px' : '13px';
+
+  let qrCodeDataUrl = '';
+  try {
+    const cachedHeaderStr = localStorage.getItem('hotel_pos_bill_header')
+      || Object.keys(localStorage).filter(k => k.startsWith('hotel_pos_bill_header_')).map(k => localStorage.getItem(k)).find(v => v);
+    if (cachedHeaderStr) {
+      const parsedHeader = JSON.parse(cachedHeaderStr);
+      const receiptQrEnabled = parsedHeader.receiptQrEnabled === true;
+      if (receiptQrEnabled && !paperSaving) {
+        const receiptQrType = parsedHeader.receiptQrType || 'payment';
+        if (receiptQrType === 'payment' && parsedHeader.upiId) {
+          const upiUrl = `upi://pay?pa=${parsedHeader.upiId}&pn=${encodeURIComponent(parsedHeader.upiName || data.shopName || '')}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR`;
+          qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { width: 140, margin: 1 });
+        } else if (receiptQrType === 'social' && parsedHeader.telegram) {
+          qrCodeDataUrl = await QRCode.toDataURL(parsedHeader.telegram, { width: 140, margin: 1 });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('QR Generation error:', e);
+  }
 
   // Debug logging
   console.log('🖨️ Browser Print Data:', {
@@ -134,21 +157,21 @@ export const printBrowserReceipt = (data: PrintData) => {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: monospace;
-      font-size: ${fontSize};
+      font-size: ${paperSaving ? (width === '80mm' ? '14px' : '11px') : fontSize};
       width: ${widthValue};
       max-width: 100%;
       margin: 0 auto;
-      padding: 6px;
+      padding: ${paperSaving ? '2px' : '6px'};
       background: white;
       color: black;
     }
     .center { text-align: center; }
-    .shop-name { font-size: ${shopNameFontSize}; font-weight: bold; margin-bottom: 4px; }
-    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    .shop-name { font-size: ${paperSaving ? (width === '80mm' ? '18px' : '13px') : shopNameFontSize}; font-weight: bold; margin-bottom: ${paperSaving ? '2px' : '4px'}; }
+    hr { border: none; border-top: 1px dashed #000; margin: ${paperSaving ? '4px 0' : '6px 0'}; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    td { padding: 3px 2px; vertical-align: top; font-size: ${fontSize}; }
-    .total { font-size: ${totalFontSize}; font-weight: bold; }
-    .footer { margin-top: 12px; font-size: ${fontSize}; margin-bottom: 24px; }
+    td { padding: ${paperSaving ? '1.5px 1px' : '3px 2px'}; vertical-align: top; font-size: ${paperSaving ? (width === '80mm' ? '14px' : '11px') : fontSize}; }
+    .total { font-size: ${paperSaving ? (width === '80mm' ? '16px' : '12px') : totalFontSize}; font-weight: bold; }
+    .footer { margin-top: ${paperSaving ? '6px' : '12px'}; font-size: ${paperSaving ? (width === '80mm' ? '13px' : '10px') : fontSize}; margin-bottom: ${paperSaving ? '8px' : '24px'}; }
     @media print {
       @page { 
         margin: 0 !important; 
@@ -166,7 +189,7 @@ export const printBrowserReceipt = (data: PrintData) => {
       body { 
         width: ${widthValue}; 
         margin: 0; 
-        padding: 4px 4px 10px 4px !important; 
+        padding: ${paperSaving ? '0px 0px 4px 0px' : '4px 4px 10px 4px'} !important; 
       }
       /* Hide browser default headers and footers */
       header, footer, .no-print {
@@ -177,10 +200,10 @@ export const printBrowserReceipt = (data: PrintData) => {
 </head>
 <body>
   <div class="center">
-    ${(data as any).logoUrl ? `<img src="${(data as any).logoUrl}" alt="logo" style="max-height:60px;max-width:120px;object-fit:contain;margin-bottom:4px;" />` : ''}
+    ${(data as any).logoUrl && !paperSaving ? `<img src="${(data as any).logoUrl}" alt="logo" style="max-height:55px;max-width:110px;object-fit:contain;margin-bottom:4px;" />` : ''}
     <div class="shop-name">${(data.shopName || data.hotelName || 'HOTEL').toUpperCase()}</div>
-    ${data.address ? `<div>${data.address}</div>` : ''}
-    ${data.contactNumber ? `<div>Ph: ${data.contactNumber}${data.gstin ? ` | GSTIN: ${data.gstin}` : ''}</div>` : (data.gstin ? `<div>GSTIN: ${data.gstin}</div>` : '')}
+    ${data.address && !paperSaving ? `<div>${data.address}</div>` : ''}
+    ${data.contactNumber && !paperSaving ? `<div>Ph: ${data.contactNumber}${data.gstin ? ` | GSTIN: ${data.gstin}` : ''}</div>` : (!paperSaving && data.gstin ? `<div>GSTIN: ${data.gstin}</div>` : '')}
   </div>
   
   <hr>
@@ -189,8 +212,8 @@ export const printBrowserReceipt = (data: PrintData) => {
     <tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>
     <tr><td>Time:</td><td style="text-align:right">${data.time}</td></tr>
     ${(data as any).orderType ? `<tr><td><b>Type:</b></td><td style="text-align:right"><b>${(data as any).orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}</b></td></tr>` : ''}
-    ${data.customerMobile ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}
-    ${data.customerGstin ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.customerGstin}</td></tr>` : ''}
+    ${data.customerMobile && !paperSaving ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}
+    ${data.customerGstin && !paperSaving ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.customerGstin}</td></tr>` : ''}
   </table>
   
   <hr>
@@ -212,18 +235,19 @@ export const printBrowserReceipt = (data: PrintData) => {
     <tr class="total"><td>TOTAL:</td><td style="text-align:right">₹${data.total.toFixed(2)}</td></tr>
   </table>
   
-  <table style="margin-top:8px">
+  <table style="margin-top: ${paperSaving ? '4px' : '8px'}">
     <tr><td>Paid via:</td><td style="text-align:right">${data.paymentMethod.toUpperCase()}</td></tr>
   </table>
-
+ 
   ${gstHtml}
   
   <div class="footer center">
+    ${qrCodeDataUrl ? `<div style="margin-top: 10px; margin-bottom: 5px;"><img src="${qrCodeDataUrl}" alt="QR Code" style="display:block;margin:0 auto;max-width:140px;" /></div>` : ''}
     <div>Thank you!</div>
-    ${data.facebook || data.instagram || data.whatsapp ? '<hr>' : ''}
-    ${data.facebook ? `<div>FB: ${data.facebook}</div>` : ''}
-    ${data.instagram ? `<div>IG: ${data.instagram}</div>` : ''}
-    ${data.whatsapp ? `<div>WA: ${data.whatsapp}</div>` : ''}
+    ${(data.facebook || data.instagram || data.whatsapp) && !paperSaving ? '<hr>' : ''}
+    ${data.facebook && !paperSaving ? `<div>FB: ${data.facebook}</div>` : ''}
+    ${data.instagram && !paperSaving ? `<div>IG: ${data.instagram}</div>` : ''}
+    ${data.whatsapp && !paperSaving ? `<div>WA: ${data.whatsapp}</div>` : ''}
   </div>
 
   <script>

@@ -116,18 +116,42 @@ export type Database = {
           signup_enabled: boolean
           updated_at: string
           updated_by: string | null
+          support_phone: string | null
+          support_email: string | null
+          support_whatsapp: string | null
+          support_custom_details: string | null
+          show_support_phone: boolean
+          show_support_email: boolean
+          show_support_whatsapp: boolean
+          show_support_custom: boolean
         }
         Insert: {
           id?: boolean
           signup_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
+          support_phone?: string | null
+          support_email?: string | null
+          support_whatsapp?: string | null
+          support_custom_details?: string | null
+          show_support_phone?: boolean
+          show_support_email?: boolean
+          show_support_whatsapp?: boolean
+          show_support_custom?: boolean
         }
         Update: {
           id?: boolean
           signup_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
+          support_phone?: string | null
+          support_email?: string | null
+          support_whatsapp?: string | null
+          support_custom_details?: string | null
+          show_support_phone?: boolean
+          show_support_email?: boolean
+          show_support_whatsapp?: boolean
+          show_support_custom?: boolean
         }
         Relationships: []
       }

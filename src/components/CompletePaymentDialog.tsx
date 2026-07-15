@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -436,6 +437,20 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     }
   }, [total, open]);
 
+  // Safety check: if paymentAmounts is empty or total paid is 0, auto-populate with default payment method
+  React.useEffect(() => {
+    if (open && paymentTypes.length > 0) {
+      const totalPaid = Object.values(paymentAmounts).reduce((sum, amount) => sum + amount, 0);
+      const hasPayments = Object.keys(paymentAmounts).length > 0;
+      if (!hasPayments || totalPaid === 0) {
+        const defaultPayment = paymentTypes.find(p => p.is_default) || paymentTypes[0];
+        if (defaultPayment && total > 0) {
+          setPaymentAmounts({ [defaultPayment.payment_type]: total });
+        }
+      }
+    }
+  }, [open, paymentTypes, total, paymentAmounts]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md h-[100dvh] sm:h-[95vh] flex flex-col p-0 gap-0 overflow-hidden border-2 border-primary/20 sm:rounded-lg rounded-none bg-background text-foreground">
@@ -700,24 +715,58 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
           )}
         </div>
 
-        <div className="border-t border-primary/10 bg-muted/30 p-2 flex-shrink-0 space-y-2">
+        <div className="border-t border-primary/10 bg-muted/40 p-3 pb-3.5 flex-shrink-0 space-y-3">
           {showOrderType && (
-            <RadioGroup value={orderType} onValueChange={(v) => setOrderType(v as 'dine_in' | 'parcel')} className="flex justify-center gap-6">
-              <label className="flex items-center gap-2 cursor-pointer min-h-10"><RadioGroupItem value="dine_in" /><span className="text-xs font-semibold">🍽️ Dine In</span></label>
-              <label className="flex items-center gap-2 cursor-pointer min-h-10"><RadioGroupItem value="parcel" /><span className="text-xs font-semibold">📦 Parcel</span></label>
-            </RadioGroup>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOrderType('dine_in')}
+                className={cn(
+                  "flex-1 h-11 sm:h-12 rounded-xl border flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all active:scale-[0.98]",
+                  orderType === 'dine_in'
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background text-muted-foreground border-border hover:bg-muted"
+                )}
+              >
+                🍽️ Dine In
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderType('parcel')}
+                className={cn(
+                  "flex-1 h-11 sm:h-12 rounded-xl border flex items-center justify-center gap-2 font-bold text-xs sm:text-sm transition-all active:scale-[0.98]",
+                  orderType === 'parcel'
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background text-muted-foreground border-border hover:bg-muted"
+                )}
+              >
+                📦 Parcel
+              </button>
+            </div>
           )}
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(paymentTypes.length, 4)}, minmax(0, 1fr))` }}>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(paymentTypes.length, 4)}, minmax(0, 1fr))` }}>
             {paymentTypes.map((payment) => (
               <div key={payment.id} className="flex flex-col items-center">
-                <Button variant={paymentAmounts[payment.payment_type] > 0 ? "default" : "outline"} size="sm" onClick={() => setPaymentAmounts({ [payment.payment_type]: total })} className="capitalize text-xs h-10 w-full font-bold mb-1">
+                <Button 
+                  variant={paymentAmounts[payment.payment_type] > 0 ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setPaymentAmounts({ [payment.payment_type]: total })} 
+                  className="capitalize text-xs h-11 sm:h-12 w-full font-bold mb-1 rounded-xl transition-all"
+                >
                   {payment.payment_type}
                 </Button>
-                <Input type="number" value={paymentAmounts[payment.payment_type] || 0} onChange={(e) => handlePaymentAmountChange(payment.payment_type, Number(e.target.value))} className="h-9 text-sm text-center font-bold w-full" min="0" step="0.01" />
+                <Input 
+                  type="number" 
+                  value={paymentAmounts[payment.payment_type] || 0} 
+                  onChange={(e) => handlePaymentAmountChange(payment.payment_type, Number(e.target.value))} 
+                  className="h-10 text-sm text-center font-bold w-full rounded-xl bg-white dark:bg-zinc-950 border border-input" 
+                  min="0" 
+                  step="0.01" 
+                />
               </div>
             ))}
           </div>
-          {remaining !== 0 && <div className="text-right text-xs font-semibold text-destructive">Remaining: ₹{remaining.toFixed(2)}</div>}
+          {remaining !== 0 && <div className="text-right text-xs font-bold text-destructive">Remaining: ₹{remaining.toFixed(2)}</div>}
         </div>
 
         {/* Summary - Fixed at bottom */}

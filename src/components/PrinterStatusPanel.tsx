@@ -76,8 +76,27 @@ export const PrinterStatusPanel: React.FC = () => {
         const t = toast.loading('Sending test print…');
         const res = await printerManager.sendTestPrint();
         setRunning(null);
-        if (res.ok) toast.success(`Test print OK (${res.ms}ms)`, { id: t });
-        else toast.error(`Test print failed: ${res.error || 'unknown'}`, { id: t });
+        if (res.ok) {
+            toast.success(`Test print OK (${res.ms}ms)`, { id: t });
+            setDiagnostics(prev => {
+                const stepName = 'Test Write';
+                const nextReport = prev.filter(r => r.step !== stepName);
+                return [
+                    ...nextReport,
+                    { step: stepName, ok: true, detail: `Success: ${res.ms}ms` }
+                ];
+            });
+        } else {
+            toast.error(`Test print failed: ${res.error || 'unknown'}`, { id: t });
+            setDiagnostics(prev => {
+                const stepName = 'Test Write';
+                const nextReport = prev.filter(r => r.step !== stepName);
+                return [
+                    ...nextReport,
+                    { step: stepName, ok: false, detail: res.error || 'Test print failed' }
+                ];
+            });
+        }
     };
 
     const doConnect = async () => {
