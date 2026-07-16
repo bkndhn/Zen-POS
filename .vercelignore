@@ -1,0 +1,10 @@
+android/
+resources/
+capacitor.config.ts
+capacitor_bridge.txt
+eas.json
+app.json
+bun.lock
+dist/
+*.apk
+*.aab
