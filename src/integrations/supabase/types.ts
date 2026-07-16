@@ -113,45 +113,45 @@ export type Database = {
       app_settings: {
         Row: {
           id: boolean
+          show_support_custom: boolean
+          show_support_email: boolean
+          show_support_phone: boolean
+          show_support_whatsapp: boolean
           signup_enabled: boolean
+          support_custom_details: string | null
+          support_email: string | null
+          support_phone: string | null
+          support_whatsapp: string | null
           updated_at: string
           updated_by: string | null
-          support_phone: string | null
-          support_email: string | null
-          support_whatsapp: string | null
-          support_custom_details: string | null
-          show_support_phone: boolean
-          show_support_email: boolean
-          show_support_whatsapp: boolean
-          show_support_custom: boolean
         }
         Insert: {
           id?: boolean
+          show_support_custom?: boolean
+          show_support_email?: boolean
+          show_support_phone?: boolean
+          show_support_whatsapp?: boolean
           signup_enabled?: boolean
+          support_custom_details?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          support_whatsapp?: string | null
           updated_at?: string
           updated_by?: string | null
-          support_phone?: string | null
-          support_email?: string | null
-          support_whatsapp?: string | null
-          support_custom_details?: string | null
-          show_support_phone?: boolean
-          show_support_email?: boolean
-          show_support_whatsapp?: boolean
-          show_support_custom?: boolean
         }
         Update: {
           id?: boolean
+          show_support_custom?: boolean
+          show_support_email?: boolean
+          show_support_phone?: boolean
+          show_support_whatsapp?: boolean
           signup_enabled?: boolean
+          support_custom_details?: string | null
+          support_email?: string | null
+          support_phone?: string | null
+          support_whatsapp?: string | null
           updated_at?: string
           updated_by?: string | null
-          support_phone?: string | null
-          support_email?: string | null
-          support_whatsapp?: string | null
-          support_custom_details?: string | null
-          show_support_phone?: boolean
-          show_support_email?: boolean
-          show_support_whatsapp?: boolean
-          show_support_custom?: boolean
         }
         Relationships: []
       }
@@ -1522,6 +1522,8 @@ export type Database = {
           menu_text_color: string | null
           printer_width: string | null
           qr_payment_enabled: boolean
+          receipt_qr_enabled: boolean
+          receipt_qr_type: string | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -1529,6 +1531,7 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+          telegram: string | null
           updated_at: string | null
           upi_id: string | null
           upi_name: string | null
@@ -1572,6 +1575,8 @@ export type Database = {
           menu_text_color?: string | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
+          receipt_qr_enabled?: boolean
+          receipt_qr_type?: string | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -1579,6 +1584,7 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+          telegram?: string | null
           updated_at?: string | null
           upi_id?: string | null
           upi_name?: string | null
@@ -1622,6 +1628,8 @@ export type Database = {
           menu_text_color?: string | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
+          receipt_qr_enabled?: boolean
+          receipt_qr_type?: string | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -1629,6 +1637,7 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+          telegram?: string | null
           updated_at?: string | null
           upi_id?: string | null
           upi_name?: string | null
@@ -2382,6 +2391,8 @@ export type Database = {
           menu_text_color: string | null
           printer_width: string | null
           qr_payment_enabled: boolean
+          receipt_qr_enabled: boolean
+          receipt_qr_type: string | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -2389,6 +2400,7 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+          telegram: string | null
           updated_at: string | null
           upi_id: string | null
           upi_name: string | null

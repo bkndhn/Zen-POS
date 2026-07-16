@@ -1,7 +1,15 @@
 {
+  "cli": {
+    "version": ">= 5.9.0"
+  },
   "build": {
     "production": {
+      "image": "latest",
+      "env": {
+        "JAVA_VERSION": "17"
+      },
       "android": {
+        "image": "latest",
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       }
