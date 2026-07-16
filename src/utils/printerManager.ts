@@ -628,7 +628,8 @@ class PrinterManager {
                 this.deviceName = this.usbTransport.getDeviceName() || 'USB Printer';
                 this.setState('connected');
                 connected = true;
-            }
+        }
+        }
         if (this._printerType === 'bluetooth') {
             if (this.hasNativePrinterBridge()) {
                 try {
