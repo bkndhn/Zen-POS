@@ -11,6 +11,7 @@
       "android": {
         "image": "latest",
         "buildType": "apk",
+        "withoutCredentials": true,
         "gradleCommand": ":app:assembleRelease"
       }
     }

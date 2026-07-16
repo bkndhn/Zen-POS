@@ -1,0 +1,1 @@
+const fs = require('fs'); const path = require('path'); const gradlewPath = path.join('android', 'gradlew'); if (fs.existsSync(gradlewPath)) { let content = fs.readFileSync(gradlewPath, 'utf8'); content = content.replace(/\r\n/g, '\n'); fs.writeFileSync(gradlewPath, content); fs.chmodSync(gradlewPath, '755'); console.log('gradlew fixed'); }
