@@ -12,7 +12,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "eas-build-pre-build": "npm run build && npx cap sync && node scripts/fix-gradlew.cjs"
+    "eas-build-post-install": "npm run build && npx cap sync && node scripts/fix-gradlew.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
