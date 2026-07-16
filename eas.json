@@ -4,7 +4,6 @@
   },
   "build": {
     "production": {
-      "image": "latest",
       "env": {
         "JAVA_VERSION": "17"
       },
