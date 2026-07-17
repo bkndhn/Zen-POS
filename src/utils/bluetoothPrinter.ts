@@ -595,12 +595,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   
   if (autoCut) {
-    // Feed to clear cutter, then cut (1 line for paper saving, 2 lines otherwise)
-    commands.push(FEED_LINES(paperSaving ? 1 : 2));
+    // Push "Thank you!" past the cutter blade so it's not hidden inside the printer housing
+    commands.push(FEED_LINES(paperSaving ? 4 : 5));
     commands.push(CUT_FULL); // Standard ESC/POS cut (GS V 0)
   } else {
-    // Feed so it reaches tear-bar, but DO NOT cut
-    commands.push(FEED_LINES(paperSaving ? 2 : 4));
+    // Feed so it reaches tear-bar, but DO NOT cut. Extra feed keeps "Thank you!" visible.
+    commands.push(FEED_LINES(paperSaving ? 5 : 6));
   }
 
   // Combine all commands
