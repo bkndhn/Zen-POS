@@ -315,8 +315,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     const baseValue = item.selling_quantity || item.base_value;
     const baseValStr = baseValue && baseValue !== 1 ? `${baseValue}` : '';
     const right = LINE_WIDTH >= 48
-      ? `x${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`
-      : `x${qtyWithUnit} = ${item.total.toFixed(0)}`;
+      ? `x ${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`
+      : `x ${qtyWithUnit} = ${item.total.toFixed(0)}`;
     const maxName = LINE_WIDTH - right.length - 1;
     if (maxName >= 10) {
       const shortName = item.name.length > maxName ? item.name.substring(0, maxName) : item.name;
@@ -333,7 +333,22 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(INIT);
 
 
-  // COMPACT HEADER - Shop name only (no logo for thermal to save paper)
+  // Logo (only when not paper-saving and a URL is provided). Failures are silent.
+  if (data.logoUrl && !paperSaving) {
+    try {
+      const logoWidth = data.printerWidth === '80mm' ? 320 : 220;
+      const logoBytes = await processImageForPrinting(data.logoUrl, logoWidth);
+      if (logoBytes) {
+        commands.push(ALIGN_CENTER);
+        commands.push(logoBytes);
+        commands.push(FEED_LINE);
+      }
+    } catch (e) {
+      console.warn('[Print] Logo render skipped:', e);
+    }
+  }
+
+  // COMPACT HEADER - Shop name (logo above when available)
   const headerName = data.shopName || data.hotelName;
   if (headerName) {
     commands.push(ALIGN_CENTER);
@@ -369,11 +384,14 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Bill info & metadata
   if (paperSaving) {
-    // Ultra compact single line info: e.g. #001 09/07 3:54 PM DINE
+    // Ultra compact single line info. Keep the full date so "Jul 17" isn't truncated to "Jul 1"
     commands.push(ALIGN_LEFT);
     const typeAbbr = data.orderType === 'parcel' ? 'PARCEL' : 'DINE';
     const shortBillNo = data.billNo.replace('BILL-', '');
-    const compactInfo = `#${shortBillNo} | ${data.date.substring(0, 5)} | ${data.time} | ${typeAbbr}`;
+    // Use compact numeric date (DD/MM) instead of "MMM DD, YYYY" substring which chopped mid-number
+    const now = new Date();
+    const compactDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const compactInfo = `#${shortBillNo} | ${compactDate} | ${data.time} | ${typeAbbr}`;
     commands.push(textToBytes(compactInfo.substring(0, LINE_WIDTH)));
     commands.push(FEED_LINE);
   } else {
@@ -577,12 +595,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   
   if (autoCut) {
-    // Feed to clear cutter, then cut (1 line for paper saving, 2 lines otherwise)
-    commands.push(FEED_LINES(paperSaving ? 1 : 2));
+    // Push "Thank you!" past the cutter blade so it's not hidden inside the printer housing
+    commands.push(FEED_LINES(paperSaving ? 4 : 5));
     commands.push(CUT_FULL); // Standard ESC/POS cut (GS V 0)
   } else {
-    // Feed so it reaches tear-bar, but DO NOT cut
-    commands.push(FEED_LINES(paperSaving ? 2 : 4));
+    // Feed so it reaches tear-bar, but DO NOT cut. Extra feed keeps "Thank you!" visible.
+    commands.push(FEED_LINES(paperSaving ? 5 : 6));
   }
 
   // Combine all commands
