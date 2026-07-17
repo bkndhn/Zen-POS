@@ -369,11 +369,14 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Bill info & metadata
   if (paperSaving) {
-    // Ultra compact single line info: e.g. #001 09/07 3:54 PM DINE
+    // Ultra compact single line info. Keep the full date so "Jul 17" isn't truncated to "Jul 1"
     commands.push(ALIGN_LEFT);
     const typeAbbr = data.orderType === 'parcel' ? 'PARCEL' : 'DINE';
     const shortBillNo = data.billNo.replace('BILL-', '');
-    const compactInfo = `#${shortBillNo} | ${data.date.substring(0, 5)} | ${data.time} | ${typeAbbr}`;
+    // Use compact numeric date (DD/MM) instead of "MMM DD, YYYY" substring which chopped mid-number
+    const now = new Date();
+    const compactDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const compactInfo = `#${shortBillNo} | ${compactDate} | ${data.time} | ${typeAbbr}`;
     commands.push(textToBytes(compactInfo.substring(0, LINE_WIDTH)));
     commands.push(FEED_LINE);
   } else {
