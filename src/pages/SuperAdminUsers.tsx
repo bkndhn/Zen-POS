@@ -916,6 +916,26 @@ const SuperAdminUsers: React.FC = () => {
                 }}
               />
             </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-green-50/50 dark:bg-green-900/20 hover:bg-green-50 dark:hover:bg-green-900/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center dark:bg-green-900/60">
+                  <span className="text-sm">🧮</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-green-800 dark:text-green-300">Calci Billing Mode</span>
+                  <span className="text-[10px] text-green-600 dark:text-green-400 font-mono">calci_billing</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.client_permissions?.['calci_billing'] === true}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) {
+                    handleTogglePermission(selectedAdmin.profile_id, 'calci_billing', checked);
+                  }
+                }}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>

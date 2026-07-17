@@ -125,6 +125,7 @@ export const ThemeSettings: React.FC = () => {
 
     const [activeTheme, setActiveTheme] = useState<string>(readTheme);
     const [customColor, setCustomColor] = useState<string>(readCustomColor);
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(document.documentElement.classList.contains('dark'));
 
     useEffect(() => {
         // Apply theme on mount
@@ -133,6 +134,12 @@ export const ThemeSettings: React.FC = () => {
         } else {
             applyTheme(activeTheme);
         }
+        
+        const handleThemeChange = () => {
+            setIsDarkMode(document.documentElement.classList.contains('dark'));
+        };
+        window.addEventListener('theme-changed', handleThemeChange);
+        return () => window.removeEventListener('theme-changed', handleThemeChange);
     }, []);
 
     // Re-apply theme when branch changes
@@ -265,9 +272,19 @@ export const ThemeSettings: React.FC = () => {
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-3 sm:p-6">
-                <p className="text-sm text-muted-foreground mb-4">
-                    Choose a theme to personalize your app experience.
-                </p>
+                {isDarkMode ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 rounded-xl border border-dashed">
+                        <Droplet className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Themes Disabled in Dark Mode</h3>
+                        <p className="text-sm text-muted-foreground max-w-sm">
+                            To ensure optimal text visibility and contrast, color themes are automatically disabled while Dark Mode is active.
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Choose a theme to personalize your app experience.
+                        </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
                     {themes.map((theme) => (
                         <button
@@ -347,6 +364,8 @@ export const ThemeSettings: React.FC = () => {
                         )}
                      </div>
                 </div>
+                </>
+                )}
             </CardContent>
         </Card >
     );

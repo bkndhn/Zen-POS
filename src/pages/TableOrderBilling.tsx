@@ -313,7 +313,13 @@ const TableOrderBilling: React.FC = () => {
                     printerWidth: data.printer_width as '58mm' | '80mm' || '58mm',
                     whatsappEnabled: data.whatsapp_bill_share_enabled || false,
                     whatsappShareMode: (data as any).whatsapp_share_mode || 'text',
-                    showOrderType: (data as any).show_order_type || false
+                    showOrderType: (data as any).show_order_type || false,
+                    qrPaymentEnabled: data.qr_payment_enabled || false,
+                    telegram: data.telegram || '',
+                    receiptQrEnabled: data.receipt_qr_enabled || false,
+                    receiptQrType: data.receipt_qr_type || 'payment',
+                    upiId: data.upi_id || '',
+                    upiName: data.upi_name || ''
                 };
                 setBillSettings(settings);
                 setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
@@ -382,7 +388,13 @@ const TableOrderBilling: React.FC = () => {
                     logoUrl: parsed.logoUrl || '',
                     whatsapp: parsed.whatsapp || '',
                     showWhatsapp: parsed.showWhatsapp !== false,
-                    printerWidth: parsed.printerWidth || '58mm'
+                    printerWidth: parsed.printerWidth || '58mm',
+                    qrPaymentEnabled: parsed.qrPaymentEnabled || false,
+                    telegram: parsed.telegram || '',
+                    receiptQrEnabled: parsed.receiptQrEnabled || false,
+                    receiptQrType: parsed.receiptQrType || 'payment',
+                    upiId: parsed.upiId || '',
+                    upiName: parsed.upiName || ''
                 });
                 setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
                 setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
@@ -812,6 +824,7 @@ const TableOrderBilling: React.FC = () => {
             const { data: resultData, error: rpcError } = await supabase.rpc('secure_create_bill', {
                 p_bill_payload: {
                     bill_no: billNumber,
+                    total_amount: totalAmount,
                     created_by: profile?.user_id,
                     payment_mode: paymentMode,
                     payment_details: paymentData.paymentAmounts,
@@ -823,7 +836,8 @@ const TableOrderBilling: React.FC = () => {
                     customer_gstin: paymentData.customerGstin || null,
                     branch_id: operatingBranchId || null,
                     admin_id: adminId || null,
-                    channel: 'store'
+                    channel: 'store',
+                    billing_type: 'pos'
                 },
                 p_cart_items: validItems.map(item => ({
                     id: item.id,
@@ -1023,6 +1037,11 @@ const TableOrderBilling: React.FC = () => {
                 contactNumber: billSettings?.contactNumber,
                 printerWidth: billSettings?.printerWidth || '58mm',
                 logoUrl: billSettings?.logoUrl,
+                receiptQrEnabled: billSettings?.receiptQrEnabled,
+                receiptQrType: billSettings?.receiptQrType,
+                upiId: billSettings?.upiId,
+                upiName: billSettings?.upiName,
+                telegram: billSettings?.telegram,
                 tableNo: selectedTable.seat_id ? `T${tableNumber} (${selectedTable.seat_id})` : `T${tableNumber}`,
                 totalItemsCount: validItems.length,
                 smartQtyCount: calculateSmartQtyCount(validItems),

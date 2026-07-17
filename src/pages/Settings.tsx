@@ -23,6 +23,7 @@ import { BranchManagement } from '@/components/BranchManagement';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
+import { CalciBillingSettings } from '@/components/CalciBillingSettings';
 
 interface AdditionalCharge {
   id: string;
@@ -355,6 +356,11 @@ const Settings = () => {
           {/* GST / Tax Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">GST Settings failed to load. Try refreshing.</div>}>
             <GSTSettings />
+          </ErrorBoundary>
+
+          {/* Calci Billing Settings */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Calci Billing Settings failed to load. Try refreshing.</div>}>
+            <CalciBillingSettings />
           </ErrorBoundary>
 
           {/* WhatsApp Bill Share Settings */}

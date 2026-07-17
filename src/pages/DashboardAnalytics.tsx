@@ -281,7 +281,7 @@ const DashboardAnalytics = () => {
 
         let billsQ = supabase.from('bills').select('total_amount, is_deleted').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false');
         let expensesQ = supabase.from('expenses').select('amount').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr);
-        let billItemsQ = supabase.from('bill_items').select('quantity, total, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
+        let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
         if (branchFilterId) {
           billsQ = billsQ.eq('branch_id', branchFilterId);
           expensesQ = expensesQ.eq('branch_id', branchFilterId);
@@ -297,7 +297,7 @@ const DashboardAnalytics = () => {
         const itemsMap = new Map<string, { quantity: number; revenue: number; unit: string }>();
         billItems?.forEach((item: any) => {
           if (item.bills?.is_deleted) return;
-          const name = item.items?.name || 'Unknown';
+          const name = item.items?.name || item.item_name_override || 'Unknown';
           const unit = item.items?.unit || 'pcs';
           const current = itemsMap.get(name) || { quantity: 0, revenue: 0, unit };
           itemsMap.set(name, { quantity: current.quantity + Number(item.quantity), revenue: current.revenue + Number(item.total), unit });
@@ -328,7 +328,7 @@ const DashboardAnalytics = () => {
     // To keep file clean, I'll essentially paste the logic from original component here
     let billsQ = supabase.from('bills').select('total_amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
     let expensesQ = supabase.from('expenses').select('amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).order('date');
-    let billItemsQ = supabase.from('bill_items').select('quantity, total, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
+    let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
     if (branchFilterId) {
       billsQ = billsQ.eq('branch_id', branchFilterId);
       expensesQ = expensesQ.eq('branch_id', branchFilterId);
@@ -357,7 +357,7 @@ const DashboardAnalytics = () => {
     const iMap = new Map<string, any>();
     billItemsData?.forEach((item: any) => {
       if (item.bills?.is_deleted) return;
-      const name = item.items?.name || 'Unknown';
+      const name = item.items?.name || item.item_name_override || 'Unknown';
       const unit = item.items?.unit || 'pcs';
       const c = iMap.get(name) || { q: 0, r: 0, unit };
       iMap.set(name, { q: c.q + Number(item.quantity), r: c.r + Number(item.total), unit });
@@ -531,7 +531,7 @@ const DashboardAnalytics = () => {
     try {
       setInsightsLoading(true);
       let billsQ = supabase.from('bills').select('id,total_amount,discount,payment_mode,date,created_at,is_deleted').eq('admin_id', adminId).gte('date', insightsFrom).lte('date', insightsTo).or('is_deleted.is.null,is_deleted.eq.false');
-      let itemsQ = supabase.from('bill_items').select('quantity,total,price,items(name,category,purchase_rate),bills!inner(admin_id,branch_id,date,is_deleted)').eq('bills.admin_id', adminId).gte('bills.date', insightsFrom).lte('bills.date', insightsTo);
+      let itemsQ = supabase.from('bill_items').select('quantity,total,price,billing_type,item_name_override,items(name,category,purchase_rate),bills!inner(admin_id,branch_id,date,is_deleted)').eq('bills.admin_id', adminId).gte('bills.date', insightsFrom).lte('bills.date', insightsTo);
       if (branchFilterId) { billsQ = billsQ.eq('branch_id', branchFilterId); itemsQ = itemsQ.eq('bills.branch_id', branchFilterId); }
       const [{ data: bills }, { data: bItems }] = await Promise.all([billsQ, itemsQ]);
 
@@ -582,8 +582,8 @@ const DashboardAnalytics = () => {
       const marginMap = new Map<string, { revenue: number; cost: number; qty: number }>();
       (bItems || []).forEach((it: any) => {
         if (it.bills?.is_deleted) return;
-        const cat = it.items?.category || 'Uncategorized';
-        const name = it.items?.name || 'Unknown';
+        const cat = it.items?.category || (it.billing_type === 'calci' ? 'Calculator' : 'Uncategorized');
+        const name = it.items?.name || it.item_name_override || 'Unknown';
         const qty = Number(it.quantity || 0);
         const tot = Number(it.total || 0);
         const cost = Number(it.items?.purchase_rate || 0) * qty;

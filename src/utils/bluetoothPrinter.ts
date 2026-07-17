@@ -265,6 +265,12 @@ interface PrintData {
   totalItemsCount?: number;
   smartQtyCount?: number;
   tableNo?: string;
+  // QR fields
+  receiptQrEnabled?: boolean;
+  receiptQrType?: string;
+  upiId?: string;
+  upiName?: string;
+  telegram?: string;
   // GST fields
   gstin?: string;
   customerGstin?: string;
@@ -552,31 +558,25 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Receipt QR Code Generation
   try {
-    const cachedHeaderStr = localStorage.getItem('hotel_pos_bill_header')
-      || Object.keys(localStorage).filter(k => k.startsWith('hotel_pos_bill_header_')).map(k => localStorage.getItem(k)).find(v => v);
-    if (cachedHeaderStr) {
-      const parsedHeader = JSON.parse(cachedHeaderStr);
-      const receiptQrEnabled = parsedHeader.receiptQrEnabled === true;
+    if (data.receiptQrEnabled && !paperSaving) {
+      const receiptQrType = data.receiptQrType || 'payment';
+      let qrCodeDataUrl = '';
       
-      if (receiptQrEnabled && !paperSaving) {
-        const receiptQrType = parsedHeader.receiptQrType || 'payment';
-        let qrCodeDataUrl = '';
-        
-        if (receiptQrType === 'payment' && parsedHeader.upiId) {
-          const upiUrl = `upi://pay?pa=${parsedHeader.upiId}&pn=${encodeURIComponent(parsedHeader.upiName || data.shopName || '')}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR`;
-          qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { margin: 1 });
-        } else if (receiptQrType === 'social' && parsedHeader.telegram) {
-          qrCodeDataUrl = await QRCode.toDataURL(parsedHeader.telegram, { margin: 1 });
-        }
+      if (receiptQrType === 'payment' && data.upiId) {
+        // According to UPI Spec, we can pass &mode=02 for secure QR/Dine-In, which often locks amounts depending on the app.
+        const upiUrl = `upi://pay?pa=${data.upiId}&pn=${encodeURIComponent(data.upiName || data.shopName || '')}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR&mode=02`;
+        qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { margin: 1 });
+      } else if (receiptQrType === 'social' && data.telegram) {
+        qrCodeDataUrl = await QRCode.toDataURL(data.telegram, { margin: 1 });
+      }
 
-        if (qrCodeDataUrl) {
-          const qrSize = data.printerWidth === '80mm' ? 240 : 180;
-          const qrBytes = await processImageForPrinting(qrCodeDataUrl, qrSize);
-          if (qrBytes) {
-            commands.push(ALIGN_CENTER);
-            commands.push(qrBytes);
-            commands.push(FEED_LINE);
-          }
+      if (qrCodeDataUrl) {
+        const qrSize = data.printerWidth === '80mm' ? 240 : 180;
+        const qrBytes = await processImageForPrinting(qrCodeDataUrl, qrSize);
+        if (qrBytes) {
+          commands.push(ALIGN_CENTER);
+          commands.push(qrBytes);
+          commands.push(FEED_LINE);
         }
       }
     }
@@ -596,11 +596,11 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   
   if (autoCut) {
     // Push "Thank you!" past the cutter blade so it's not hidden inside the printer housing
-    commands.push(FEED_LINES(paperSaving ? 4 : 5));
+    commands.push(FEED_LINES(paperSaving ? 2 : 3));
     commands.push(CUT_FULL); // Standard ESC/POS cut (GS V 0)
   } else {
     // Feed so it reaches tear-bar, but DO NOT cut. Extra feed keeps "Thank you!" visible.
-    commands.push(FEED_LINES(paperSaving ? 5 : 6));
+    commands.push(FEED_LINES(paperSaving ? 3 : 4));
   }
 
   // Combine all commands

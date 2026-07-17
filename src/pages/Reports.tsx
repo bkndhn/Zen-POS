@@ -255,7 +255,7 @@ const Reports: React.FC = () => {
         phone: settings?.contactNumber,
         gstin: settings?.gstin,
         items: bill.bill_items.map(item => ({
-          name: item.items?.name || 'Item',
+          name: item.items?.name || item.item_name_override || 'Item',
           quantity: item.quantity,
           total: item.total,
           unit: item.items?.unit,
@@ -298,7 +298,7 @@ const Reports: React.FC = () => {
         shopName: settings?.shopName || profile?.hotel_name || 'Hotel',
         gstin: settings?.gstin,
         items: bill.bill_items.map(item => ({
-          name: item.items?.name || 'Item',
+          name: item.items?.name || item.item_name_override || 'Item',
           quantity: item.quantity,
           total: item.total,
           unit: item.items?.unit,
@@ -746,8 +746,10 @@ const Reports: React.FC = () => {
 
             // Generate item reports
             filteredBillsData.forEach((bill: any) => {
-              bill.bill_items?.forEach(item => {
-                const key = item.items?.name || 'Unknown';
+              bill.bill_items?.forEach((item: any) => {
+                const key = item.items?.name || item.item_name_override || 'Unknown';
+                const category = item.items?.category || (item.billing_type === 'calci' ? 'Calculator' : 'Unknown');
+
                 const existing = itemReportMap.get(key);
 
                 if (existing) {
@@ -755,11 +757,11 @@ const Reports: React.FC = () => {
                   existing.total_revenue += item.total;
                 } else {
                   itemReportMap.set(key, {
-                    item_name: item.items?.name || 'Unknown',
-                    category: item.items?.category || 'Unknown',
+                    item_name: key,
+                    category: category,
                     total_quantity: item.quantity,
                     total_revenue: item.total,
-                    unit: item.items?.unit
+                    unit: item.items?.unit || 'pcs'
                   });
                 }
               });
@@ -1057,7 +1059,7 @@ const Reports: React.FC = () => {
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
         time: format(new Date(bill.created_at), 'hh:mm a'),
         items: bill.bill_items?.map(item => ({
-          name: item.items?.name || 'Unknown Item',
+          name: item.items?.name || item.item_name_override || 'Unknown Item',
           quantity: item.quantity,
           price: item.price,
           total: item.total,
@@ -1121,7 +1123,7 @@ const Reports: React.FC = () => {
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
         time: format(new Date(bill.created_at), 'hh:mm a'),
         items: bill.bill_items?.map(item => ({
-          name: item.items?.name || 'Unknown Item',
+          name: item.items?.name || item.item_name_override || 'Unknown Item',
           quantity: item.quantity,
           price: item.price,
           total: item.total,

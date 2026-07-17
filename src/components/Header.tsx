@@ -72,6 +72,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
       localStorage.setItem('hotel_pos_dark_mode', 'true');
       setIsDarkMode(true);
     }
+    window.dispatchEvent(new CustomEvent('theme-changed'));
   };
 
   if (!profile) return null;

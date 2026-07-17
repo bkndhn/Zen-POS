@@ -621,7 +621,7 @@ All colors MUST be HSL.
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
+    overflow-x: clip;
     scroll-behavior: smooth;
     /* Responsive root font size with scaling support */
     font-size: calc(14px * var(--app-font-scale, 1));
@@ -646,7 +646,7 @@ All colors MUST be HSL.
     font-size: 1rem;
     line-height: 1.5;
     letter-spacing: -0.01em;
-    overflow-x: hidden;
+    overflow-x: clip;
     min-height: 100vh;
     min-height: 100dvh;
     /* Safe areas for notch devices */
@@ -658,7 +658,7 @@ All colors MUST be HSL.
   #root {
     width: 100%;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
     min-height: 100vh;
     min-height: 100dvh;
   }

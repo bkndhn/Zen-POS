@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages } from 'lucide-react';
+import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
@@ -132,7 +132,39 @@ const PublicMenu = () => {
     const [branchId, setBranchId] = useState<string | null>(null);
     const [items, setItems] = useState<MenuItem[]>([]);
     const [categories, setCategories] = useState<ItemCategory[]>([]);
-    const [shopSettings, setShopSettings] = useState<ShopSettings | null>(null);
+    const [rawShopSettings, setShopSettings] = useState<ShopSettings | null>(null);
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('public_menu_dark_mode') === 'true');
+
+    useEffect(() => {
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [isDarkMode]);
+
+    const toggleDarkMode = () => {
+        setIsDarkMode(prev => {
+            const next = !prev;
+            localStorage.setItem('public_menu_dark_mode', String(next));
+            return next;
+        });
+    };
+
+    const shopSettings = useMemo(() => {
+        if (!rawShopSettings) return null;
+        if (isDarkMode) {
+            return {
+                ...rawShopSettings,
+                menu_primary_color: undefined,
+                menu_secondary_color: undefined,
+                menu_background_color: undefined,
+                menu_text_color: undefined
+            };
+        }
+        return rawShopSettings;
+    }, [rawShopSettings, isDarkMode]);
+
     const [banners, setBanners] = useState<PromoBanner[]>([]);
     const [gstEnabled, setGstEnabled] = useState(false);
     const [taxRatesMap, setTaxRatesMap] = useState<Record<string, { rate: number; name: string; cess: number }>>({});
@@ -1553,6 +1585,12 @@ const PublicMenu = () => {
                             >
                                 <Languages className="w-3.5 h-3.5" />
                                 {i18n.language?.startsWith('ta') ? 'EN' : 'தமிழ்'}
+                            </button>
+                            <button
+                                onClick={toggleDarkMode}
+                                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
+                            >
+                                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                             </button>
                             <Button
                                 variant="ghost"

@@ -58,10 +58,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // User is properly authenticated with active profile
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-background flex w-full max-w-[100vw] overflow-x-hidden">
+    <div className="h-screen h-[100dvh] bg-background flex w-full max-w-[100vw] overflow-hidden">
       <Sidebar collapsed={sidebarCollapsed} />
 
-      <div className="flex flex-col flex-1 w-full min-w-0 overflow-x-hidden">
+      <div className="flex flex-col flex-1 w-full min-w-0">
         <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
 
         {/* Offline Status Indicator */}
@@ -70,7 +70,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <main
-          className="flex-1 overflow-x-hidden relative"
+          className="flex-1 relative w-full overflow-hidden"
           style={{ paddingBottom: 'max(80px, calc(70px + env(safe-area-inset-bottom, 0px)))' }}
         >
           <PullToRefresh>

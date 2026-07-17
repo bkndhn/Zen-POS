@@ -221,7 +221,8 @@ export type Database = {
           created_at: string
           hsn_code: string | null
           id: string
-          item_id: string
+          item_id: string | null
+          item_name_override: string | null
           price: number
           quantity: number
           tax_amount: number | null
@@ -236,7 +237,8 @@ export type Database = {
           created_at?: string
           hsn_code?: string | null
           id?: string
-          item_id: string
+          item_id?: string | null
+          item_name_override?: string | null
           price: number
           quantity: number
           tax_amount?: number | null
@@ -251,7 +253,8 @@ export type Database = {
           created_at?: string
           hsn_code?: string | null
           id?: string
-          item_id?: string
+          item_id?: string | null
+          item_name_override?: string | null
           price?: number
           quantity?: number
           tax_amount?: number | null
@@ -282,7 +285,8 @@ export type Database = {
         Row: {
           additional_charges: Json | null
           admin_id: string | null
-          bill_no: string
+          billing_type: string | null
+            bill_no: string
           branch_id: string | null
           channel: string
           created_at: string
@@ -312,7 +316,8 @@ export type Database = {
         Insert: {
           additional_charges?: Json | null
           admin_id?: string | null
-          bill_no: string
+          billing_type?: string | null
+            bill_no: string
           branch_id?: string | null
           channel?: string
           created_at?: string
@@ -342,7 +347,8 @@ export type Database = {
         Update: {
           additional_charges?: Json | null
           admin_id?: string | null
-          bill_no?: string
+          billing_type?: string | null
+            bill_no?: string
           branch_id?: string | null
           channel?: string
           created_at?: string
@@ -1494,7 +1500,8 @@ export type Database = {
         Row: {
           address: string | null
           branch_id: string | null
-          composition_rate: number | null
+          calci_billing_enabled: boolean | null
+            composition_rate: number | null
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
@@ -1547,7 +1554,8 @@ export type Database = {
         Insert: {
           address?: string | null
           branch_id?: string | null
-          composition_rate?: number | null
+          calci_billing_enabled?: boolean | null
+            composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
@@ -1600,7 +1608,8 @@ export type Database = {
         Update: {
           address?: string | null
           branch_id?: string | null
-          composition_rate?: number | null
+          calci_billing_enabled?: boolean | null
+            composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
@@ -2363,7 +2372,8 @@ export type Database = {
         Returns: {
           address: string | null
           branch_id: string | null
-          composition_rate: number | null
+          calci_billing_enabled: boolean | null
+            composition_rate: number | null
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null

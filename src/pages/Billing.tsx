@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Bell, Clipboard } from 'lucide-react';
+import { Bell, Clipboard, Calculator, AlertCircle, Delete } from 'lucide-react';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { PrinterStatusPanel } from '@/components/PrinterStatusPanel';
 import { TableSelector } from '@/components/TableSelector';
@@ -68,6 +69,7 @@ const isLowStock = (item: Item): boolean => {
 interface CartItem extends Item {
   quantity: number;
   store_price?: number;
+  item_name_override?: string;
 }
 interface PaymentType {
   id: string;
@@ -822,6 +824,9 @@ const Billing = () => {
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
   const [showOrderType, setShowOrderType] = useState(false);
   const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
+  const [calciEnabled, setCalciEnabled] = useState(false);
+  const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>('pos');
+  const [calciInput, setCalciInput] = useState('');
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
@@ -829,6 +834,22 @@ const Billing = () => {
     taxRatesMap: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
   }>({ enabled: false, gstin: '', isComposition: false, taxRatesMap: {} });
   const syncChannelRef = useRef<any>(null);
+  const calciInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (appBillingMode === 'calci') {
+      // Use multiple timeouts for reliability on mobile browsers
+      // Some mobile browsers need a longer delay to open the keyboard
+      const t1 = setTimeout(() => calciInputRef.current?.focus(), 50);
+      const t2 = setTimeout(() => {
+        if (calciInputRef.current && document.activeElement !== calciInputRef.current) {
+          calciInputRef.current.focus();
+          calciInputRef.current.click(); // Some mobile browsers need click to open keyboard
+        }
+      }, 300);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [appBillingMode]);
 
   // Setup Global Sync Channel for Cross-Device updates
   useEffect(() => {
@@ -1123,7 +1144,13 @@ const Billing = () => {
           showInstagram: parsed.showInstagram !== false,
           whatsapp: parsed.whatsapp || '',
           showWhatsapp: parsed.showWhatsapp !== false,
-          printerWidth: parsed.printerWidth || '58mm'
+          printerWidth: parsed.printerWidth || '58mm',
+          qrPaymentEnabled: parsed.qrPaymentEnabled || false,
+          telegram: parsed.telegram || '',
+          receiptQrEnabled: parsed.receiptQrEnabled || false,
+          receiptQrType: parsed.receiptQrType || 'payment',
+          upiId: parsed.upiId || '',
+          upiName: parsed.upiName || ''
         });
         setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
         setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
@@ -1214,7 +1241,13 @@ const Billing = () => {
           whatsappEnabled: data.whatsapp_bill_share_enabled || false,
           whatsappShareMode: (data as any).whatsapp_share_mode || 'text',
           showOrderType: (data as any).show_order_type || false,
-          defaultOrderType: (data as any).default_order_type || undefined
+          defaultOrderType: (data as any).default_order_type || undefined,
+          qrPaymentEnabled: data.qr_payment_enabled || false,
+          telegram: data.telegram || '',
+          receiptQrEnabled: data.receipt_qr_enabled || false,
+          receiptQrType: data.receipt_qr_type || 'payment',
+          upiId: data.upi_id || '',
+          upiName: data.upi_name || ''
         };
         setBillSettings(settings);
         setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
@@ -1222,6 +1255,11 @@ const Billing = () => {
         setShowOrderType((data as any).show_order_type || false);
         const dot = (data as any).default_order_type;
         if (dot === 'dine_in' || dot === 'parcel') setDefaultOrderType(dot); else setDefaultOrderType(undefined);
+        const calciFromShopSettings = !!(data as any).calci_billing_enabled;
+        const calciFromClientPerms = profile?.client_permissions?.['calci_billing'] === true;
+        const isCalciAvailable = calciFromShopSettings || calciFromClientPerms;
+        setCalciEnabled(isCalciAvailable);
+        if (!isCalciAvailable) setAppBillingMode('pos');
         // Update cache
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
         localStorage.setItem(headerKey, JSON.stringify(settings));
@@ -1266,10 +1304,19 @@ const Billing = () => {
         }
 
         return settings;
+      } else {
+        // No shop_settings found — still check client_permissions for calci access
+        if (profile?.client_permissions?.['calci_billing'] === true) {
+          setCalciEnabled(true);
+        }
       }
       return null;
     } catch (error) {
       console.error('Error fetching shop settings:', error);
+      // Even on error, check client_permissions for calci
+      if (profile?.client_permissions?.['calci_billing'] === true) {
+        setCalciEnabled(true);
+      }
       return null;
     }
   };
@@ -1324,7 +1371,7 @@ const Billing = () => {
       try {
         const { data: billItems, error } = await supabase
           .from('bill_items')
-          .select('quantity, price, item_id, items(id, name, is_active, price, unit, base_value, quantity_step, stock_quantity)')
+          .select('quantity, price, item_id, item_name_override, billing_type, items(id, name, is_active, price, unit, base_value, quantity_step, stock_quantity)')
           .eq('bill_id', reorderBillId);
         if (error) throw error;
         const catalogById = new Map(items.map(i => [i.id, i]));
@@ -1332,6 +1379,26 @@ const Billing = () => {
         const unavailable: string[] = [];
         const newCart: CartItem[] = [];
         for (const bi of (billItems || [])) {
+          // Handle calci items (item_id is null)
+          if (!bi.item_id || (bi as any).billing_type === 'calci') {
+            const calciName = (bi as any).item_name_override || `Calci Item (${bi.price})`;
+            const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            newCart.push({
+              id: tempId,
+              name: calciName,
+              item_name_override: calciName,
+              price: Number(bi.price),
+              quantity: Number(bi.quantity) || 1,
+              is_active: true,
+              unit: 'pcs',
+              base_value: 1,
+              is_tax_inclusive: true,
+              tax_rate_id: null,
+              store_price: Number(bi.price)
+            } as CartItem);
+            added.push(calciName);
+            continue;
+          }
           const catalogItem = catalogById.get(bi.item_id) || (bi as any).items;
           const name = (bi as any).items?.name || 'Item';
           if (!catalogItem || !catalogItem.is_active) { unavailable.push(name); continue; }
@@ -1393,6 +1460,24 @@ const Billing = () => {
       if (billItems && billItems.length > 0) {
         const cartItems: CartItem[] = billItems.map((billItem: BillItem) => {
           const itemData = billItem.items as any;
+          // Handle calci items (item_id is null, no joined items data)
+          if (!billItem.item_id || !itemData) {
+            const calciName = (billItem as any).item_name_override || `Calci Item (${billItem.price})`;
+            const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            return {
+              id: tempId,
+              name: calciName,
+              item_name_override: calciName,
+              price: billItem.price,
+              quantity: billItem.quantity,
+              is_active: true,
+              unit: 'pcs',
+              base_value: 1,
+              is_tax_inclusive: true,
+              tax_rate_id: null,
+              store_price: billItem.price
+            };
+          }
           return {
             id: itemData.id,
             name: itemData.name,
@@ -1661,6 +1746,79 @@ const Billing = () => {
   };
 
   // Voice command handler
+  // --- Calci Billing Logic ---
+  const handleCalciSubmit = (expression: string) => {
+    if (!expression.trim()) return;
+    
+    try {
+      // Split by +
+      const parts = expression.split('+');
+      let localCart = [...cart];
+      
+      for (const part of parts) {
+        const trimmed = part.trim().toLowerCase();
+        if (!trimmed) continue;
+        
+        let qty = 1;
+        let price = 0;
+        
+        // Handle multiplication (*, x, ×)
+        if (trimmed.includes('*') || trimmed.includes('x') || trimmed.includes('×')) {
+          const multParts = trimmed.split(/[*x×]/);
+          if (multParts.length === 2) {
+            qty = parseFloat(multParts[0]);
+            price = parseFloat(multParts[1]);
+          } else {
+            price = parseFloat(trimmed);
+          }
+        } else {
+          price = parseFloat(trimmed);
+        }
+        
+        if (isNaN(price) || isNaN(qty) || price <= 0 || qty <= 0) continue;
+        
+        const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newItem: CartItem = {
+          id: tempId,
+          name: `Calci Item (${price})`,
+          item_name_override: `Calci Item (${price})`,
+          price: price,
+          quantity: qty,
+          is_active: true,
+          unit: 'pcs',
+          base_value: 1,
+          is_tax_inclusive: true,
+          tax_rate_id: null,
+          store_price: price
+        };
+        
+        // Consolidate: if a calci item with the same price already exists, increase qty
+        const existingIdx = localCart.findIndex(ci => String(ci.id).startsWith('calci-') && ci.price === price);
+        if (existingIdx >= 0) {
+          localCart[existingIdx] = { ...localCart[existingIdx], quantity: localCart[existingIdx].quantity + qty };
+        } else {
+          localCart.push(newItem);
+        }
+      }
+      
+      if (localCart.length > cart.length) {
+        setCart(localCart);
+        setCalciInput('');
+        toast({ title: "Added from Calculator", description: expression });
+      } else {
+        toast({ title: "Invalid expression", description: "Please enter something like 10+25+2*15", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error parsing expression", variant: "destructive" });
+    }
+  };
+  
+  const handleCalciKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleCalciSubmit(calciInput);
+    }
+  };
+
   const handleVoiceIntent = useCallback((intent: VoiceIntent) => {
     switch (intent.intent) {
       case 'add_item': {
@@ -1844,10 +2002,12 @@ const Billing = () => {
         const lineTotal = (item.quantity / baseValue) * item.price;
         const billItem: any = {
           bill_id: editingBill.id,
-          item_id: item.id,
+          item_id: String(item.id).startsWith('calci-') ? null : item.id,
           quantity: item.quantity,
           price: item.price,
-          total: lineTotal
+          total: lineTotal,
+          billing_type: String(item.id).startsWith('calci-') ? 'calci' : 'pos',
+          item_name_override: String(item.id).startsWith('calci-') ? item.name : undefined
         };
 
         if (gstSettings.enabled) {
@@ -1914,6 +2074,7 @@ const Billing = () => {
     const { data: resultData, error: rpcError } = await supabase.rpc('secure_create_bill', {
       p_bill_payload: {
         bill_no: billNumber,
+        total_amount: billPayload.total_amount,
         created_by: profile?.user_id,
         payment_mode: billPayload.payment_mode,
         payment_details: billPayload.payment_details,
@@ -1925,11 +2086,16 @@ const Billing = () => {
         customer_gstin: billPayload.customer_gstin || null,
         branch_id: operatingBranchId || null,
         admin_id: adminId || null,
-        channel: billPayload.channel || 'store'
+        channel: billPayload.channel || 'store',
+        billing_type: appBillingMode
       },
       p_cart_items: validCart.map(item => ({
-        id: item.id,
-        quantity: item.quantity
+        id: String(item.id).startsWith('calci-') ? null : item.id,
+        name: item.name,
+        item_name_override: item.item_name_override,
+        price: item.price,
+        quantity: item.quantity,
+        billing_type: String(item.id).startsWith('calci-') ? 'calci' : 'pos'
       }))
     });
 
@@ -2367,11 +2533,13 @@ const Billing = () => {
           const baseValue = item.base_value || 1;
           const lineTotal = (item.quantity / baseValue) * item.price;
           const billItem: any = {
-            item_id: item.id,
+            item_id: String(item.id).startsWith('calci-') ? null : item.id,
             name: item.name,
             quantity: item.quantity,
             price: item.price,
-            total: lineTotal
+            total: lineTotal,
+            billing_type: String(item.id).startsWith('calci-') ? 'calci' : 'pos',
+            item_name_override: String(item.id).startsWith('calci-') ? item.name : undefined
           };
 
           if (gstSettings.enabled && taxSummary && itemTaxes && itemTaxes[index]) {
@@ -2533,6 +2701,11 @@ const Billing = () => {
         tableNo: selectedTableNumber || undefined,
         totalItemsCount: validCart.length,
         smartQtyCount: calculateSmartQtyCount(validCart),
+        receiptQrEnabled: settingsToUse?.receiptQrEnabled,
+        receiptQrType: settingsToUse?.receiptQrType,
+        upiId: settingsToUse?.upiId,
+        upiName: settingsToUse?.upiName,
+        telegram: settingsToUse?.telegram,
         // GST fields
         gstin: gstSettings.enabled ? gstSettings.gstin : undefined,
         customerGstin: paymentData.customerGstin || undefined,
@@ -2704,9 +2877,9 @@ const Billing = () => {
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>;
   }
-  return <div className="min-h-screen flex overflow-x-hidden max-w-[100vw] bg-zinc-50 dark:bg-zinc-950">
+  return <div className="h-[100dvh] flex overflow-x-hidden max-w-[100vw] bg-zinc-50 dark:bg-zinc-950">
     {/* Main Items Area */}
-    <div className="flex-1 p-6 overflow-hidden max-w-full lg:p-8">
+    <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden max-w-full flex flex-col pb-[72px] md:pb-6">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -2744,7 +2917,106 @@ const Billing = () => {
         </div>
       </div>
 
-      {/* Search and Layout Toggle */}
+      {calciEnabled && (
+        <div className="mb-3 flex items-center justify-center p-1 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 w-fit mx-auto">
+          <button
+            onClick={() => setAppBillingMode('pos')}
+            className={cn(
+              "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
+              appBillingMode === 'pos' 
+                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
+                : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+            )}
+          >
+            <Grid className="w-4 h-4 inline-block mr-2" />
+            POS Mode
+          </button>
+          <button
+            onClick={() => setAppBillingMode('calci')}
+            className={cn(
+              "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
+              appBillingMode === 'calci' 
+                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
+                : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+            )}
+          >
+            <Calculator className="w-4 h-4 inline-block mr-2" />
+            Calci Mode
+          </button>
+        </div>
+      )}
+
+      {/* Search and Layout Toggle OR Calci Input */}
+      {appBillingMode === 'calci' ? (
+        <div className="mb-4">
+          {/* Desktop: text input with keyboard */}
+          <div className="hidden md:block">
+            <div className="relative flex items-center">
+              <Calculator className="absolute left-4 w-5 h-5 text-muted-foreground" />
+              <Input 
+                ref={calciInputRef}
+                autoFocus
+                inputMode="tel"
+                placeholder="Enter amounts (e.g. 10 + 25 + 2*15)"
+                value={calciInput}
+                onChange={e => setCalciInput(e.target.value)}
+                onKeyDown={handleCalciKeyDown}
+                className="pl-12 h-14 text-lg bg-white/50 dark:bg-zinc-900/50 rounded-xl shadow-sm border-zinc-200 dark:border-zinc-800 font-mono"
+              />
+              <Button 
+                className="absolute right-2 h-10 rounded-lg"
+                onClick={() => handleCalciSubmit(calciInput)}
+              >
+                Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 px-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Press <kbd className="bg-muted px-1.5 rounded text-[10px] mx-1 border shadow-sm font-mono">Enter</kbd> to add to cart.
+            </p>
+          </div>
+
+          {/* Mobile: built-in calculator numpad */}
+          <div className="md:hidden">
+            {/* Display */}
+            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-t-2xl px-4 py-3 border border-zinc-700 border-b-0">
+              <div className="text-right font-mono text-2xl text-white min-h-[40px] flex items-center justify-end overflow-x-auto">
+                {calciInput || <span className="text-zinc-500">0</span>}
+              </div>
+            </div>
+            {/* Numpad Grid */}
+            <div className="grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700">
+              {/* Row 1: C, ×, +, ⌫ */}
+              <button onClick={() => setCalciInput('')} className="bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">C</button>
+              <button onClick={() => setCalciInput(p => p + '*')} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">×</button>
+              <button onClick={() => setCalciInput(p => p + '+')} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">+</button>
+              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className="bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center"><Delete className="w-5 h-5" /></button>
+              {/* Row 2: 7, 8, 9 */}
+              <button onClick={() => setCalciInput(p => p + '7')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">7</button>
+              <button onClick={() => setCalciInput(p => p + '8')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">8</button>
+              <button onClick={() => setCalciInput(p => p + '9')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">9</button>
+              {/* Add button spans 2 rows */}
+              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-primary text-primary-foreground font-bold text-lg row-span-2 active:bg-primary/80 transition-colors flex items-center justify-center">Add<br/>to<br/>Cart</button>
+              {/* Row 3: 4, 5, 6 */}
+              <button onClick={() => setCalciInput(p => p + '4')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">4</button>
+              <button onClick={() => setCalciInput(p => p + '5')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">5</button>
+              <button onClick={() => setCalciInput(p => p + '6')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">6</button>
+              {/* Row 4: 1, 2, 3 */}
+              <button onClick={() => setCalciInput(p => p + '1')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">1</button>
+              <button onClick={() => setCalciInput(p => p + '2')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">2</button>
+              <button onClick={() => setCalciInput(p => p + '3')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">3</button>
+              {/* Add button spans 2 rows */}
+              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-green-600 text-white font-bold text-base row-span-2 active:bg-green-700 transition-colors flex items-center justify-center">✓<br/>Done</button>
+              {/* Row 5: 0 (spans 2), . */}
+              <button onClick={() => setCalciInput(p => p + '0')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 col-span-2 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">0</button>
+              <button onClick={() => setCalciInput(p => p + '.')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">.</button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 px-1 text-center">
+              Type amounts like <span className="font-mono bg-muted px-1 rounded">10+25+2×15</span> then tap Add
+            </p>
+          </div>
+        </div>
+      ) : (
       <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="flex-1 flex items-center relative">
           <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
@@ -2781,6 +3053,7 @@ const Billing = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Category Horizontal Scroll */}
       <CategoryScrollBar
@@ -2793,9 +3066,9 @@ const Billing = () => {
 
       {/* Items Grid - Scrollable */}
       <div
-        className="overflow-y-auto pb-40 md:pb-4 scroll-smooth"
+        className="flex-1 overflow-y-auto scroll-smooth min-h-0 relative"
         style={{
-          height: 'calc(100vh - 200px)',
+          paddingBottom: cart.some(i => i.quantity > 0) && !paymentDialogOpen ? '140px' : '16px',
           WebkitOverflowScrolling: 'touch'  // Smooth scroll on iOS
         }}
       >
@@ -2838,6 +3111,38 @@ const Billing = () => {
           </div>}
       </div>
     </div>
+
+    {/* Mobile Floating Cart - Rendered via Portal to bypass overflow-x-hidden parent */}
+    {cart.some(i => i.quantity > 0) && !paymentDialogOpen && createPortal(
+      <div className="fixed bottom-[72px] left-0 right-0 md:hidden z-[9999] px-3 pb-2 pointer-events-none">
+        <div className="bg-gradient-to-r from-primary to-primary/80 rounded-xl shadow-2xl px-4 py-3 pointer-events-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-white">
+              <ShoppingCart className="w-5 h-5" />
+              <span className="font-bold text-lg">
+                {cart.filter(i => i.quantity > 0).length} {cart.filter(i => i.quantity > 0).length === 1 ? 'item' : 'items'}
+              </span>
+              <span className="font-bold text-xl">₹{total.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={clearCart} className="h-9 w-9 p-0 text-white hover:bg-white/20 rounded-full">
+                <Trash2 className="w-5 h-5" />
+              </Button>
+              <Button 
+                onClick={() => {
+                  setPaymentDialogOpen(false);
+                  setTimeout(() => setPaymentDialogOpen(true), 30);
+                }} 
+                className="h-9 px-5 bg-white text-primary hover:bg-gray-100 font-bold rounded-full shadow-md"
+              >
+                Pay
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
 
     {/* Desktop Cart Section */}
     <div className="hidden md:flex w-96 bg-white dark:bg-zinc-900 border-l border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex-col">
@@ -2915,9 +3220,12 @@ const Billing = () => {
           <p className="text-gray-500 font-medium">Your cart is empty</p>
           <p className="text-gray-400 text-sm mt-1">Add items to get started</p>
         </div> : <div className="space-y-3">
-          {cart.map(item => <div key={item.id} className="bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md">
+          {cart.map(item => <div key={item.id} className={`bg-gradient-to-r ${String(item.id).startsWith('calci-') ? 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800' : 'from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 border-gray-100 dark:border-gray-700'} rounded-2xl p-4 shadow-sm border transition-all hover:shadow-md`}>
             <div className="flex justify-between items-start mb-3">
-              <h3 className="font-bold text-sm line-clamp-2 flex-1 text-gray-800 dark:text-white">{item.name}</h3>
+              <h3 className="font-bold text-sm line-clamp-2 flex-1 text-gray-800 dark:text-white">
+                {String(item.id).startsWith('calci-') && <span className="inline-flex items-center mr-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-200 align-middle"><Calculator className="w-2.5 h-2.5 mr-0.5" />CALCI</span>}
+                {item.name}
+              </h3>
               <Button variant="ghost" size="sm" onClick={() => removeFromCart(item.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2 rounded-full h-8 w-8 p-0">
                 <X className="w-4 h-4" />
               </Button>
@@ -2964,35 +3272,6 @@ const Billing = () => {
         </div>}
       </div>
     </div>
-
-    {/* Mobile Cart Button - Blue gradient bar above bottom nav */}
-    {cart.some(i => i.quantity > 0) && <div className="fixed bottom-20 left-0 right-0 md:hidden z-40 px-3">
-      <div className="bg-gradient-to-r from-primary to-primary/80 rounded-xl shadow-2xl px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-white">
-            <ShoppingCart className="w-5 h-5" />
-            <span className="font-bold text-lg">
-              {cart.filter(i => i.quantity > 0).length} {cart.filter(i => i.quantity > 0).length === 1 ? 'item' : 'items'}
-            </span>
-            <span className="font-bold text-xl">₹{total.toFixed(2)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={clearCart} className="h-9 w-9 p-0 text-white hover:bg-white/20 rounded-full">
-              <Trash2 className="w-5 h-5" />
-            </Button>
-            <Button 
-              onClick={() => {
-                setPaymentDialogOpen(false);
-                setTimeout(() => setPaymentDialogOpen(true), 30);
-              }} 
-              className="h-9 px-5 bg-white text-primary hover:bg-gray-100 font-bold rounded-full shadow-md"
-            >
-              Pay
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>}
 
     {/* Payment Dialog */}
     <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} defaultOrderType={defaultOrderType} />

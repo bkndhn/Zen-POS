@@ -51,6 +51,29 @@ const ThemeLoader = () => {
         'hotpink': '#c11c84'
       };
 
+      const isDarkMode = savedDarkMode === 'true' || (savedDarkMode === null && prefersDark);
+      if (isDarkMode) {
+        document.documentElement.style.removeProperty('--primary');
+        document.documentElement.style.removeProperty('--primary-foreground');
+        document.documentElement.style.removeProperty('--primary-glow');
+        document.documentElement.style.removeProperty('--ring');
+        document.documentElement.style.removeProperty('--gradient-primary');
+        document.documentElement.style.removeProperty('--sidebar-primary');
+        document.documentElement.style.removeProperty('--sidebar-ring');
+        document.documentElement.style.removeProperty('--btn-increment');
+        document.documentElement.style.removeProperty('--qty-badge');
+
+        themes.forEach(t => {
+          if (t.class) document.documentElement.classList.remove(t.class);
+        });
+
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+          metaThemeColor.setAttribute('content', '#09090b');
+        }
+        return;
+      }
+
       if (savedTheme === 'custom') {
         const hexToHSL = (hex: string) => {
           let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);

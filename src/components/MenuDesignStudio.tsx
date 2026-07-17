@@ -289,6 +289,14 @@ export const MenuDesignStudio = () => {
     const [secondaryColor, setSecondaryColor] = useState('#ea580c');
     const [backgroundColor, setBackgroundColor] = useState('#fffbeb');
     const [textColor, setTextColor] = useState('#1c1917');
+    
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(() => document.documentElement.classList.contains('dark'));
+
+    useEffect(() => {
+        const handleThemeChange = () => setIsDarkMode(document.documentElement.classList.contains('dark'));
+        window.addEventListener('theme-changed', handleThemeChange);
+        return () => window.removeEventListener('theme-changed', handleThemeChange);
+    }, []);
 
     // Preset selection change handler
     const handlePresetChange = (presetId: string) => {
@@ -597,6 +605,15 @@ export const MenuDesignStudio = () => {
                             <Palette className="w-5 h-5 text-purple-600" />
                             <h3 className="font-semibold text-lg">Color Theme & Branding</h3>
                         </div>
+                        {isDarkMode ? (
+                            <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 rounded-xl border border-dashed">
+                                <Droplets className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+                                <h3 className="text-lg font-semibold text-foreground mb-2">Themes Disabled in Dark Mode</h3>
+                                <p className="text-sm text-muted-foreground max-w-sm">
+                                    To ensure optimal text visibility and contrast, color themes are automatically disabled while Dark Mode is active.
+                                </p>
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2 md:col-span-1">
                                 <Label>Preset Theme Palette</Label>
@@ -712,6 +729,7 @@ export const MenuDesignStudio = () => {
                                 </div>
                             </div>
                         </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t">
