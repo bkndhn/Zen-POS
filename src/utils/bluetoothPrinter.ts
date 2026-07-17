@@ -333,7 +333,22 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(INIT);
 
 
-  // COMPACT HEADER - Shop name only (no logo for thermal to save paper)
+  // Logo (only when not paper-saving and a URL is provided). Failures are silent.
+  if (data.logoUrl && !paperSaving) {
+    try {
+      const logoWidth = data.printerWidth === '80mm' ? 320 : 220;
+      const logoBytes = await processImageForPrinting(data.logoUrl, logoWidth);
+      if (logoBytes) {
+        commands.push(ALIGN_CENTER);
+        commands.push(logoBytes);
+        commands.push(FEED_LINE);
+      }
+    } catch (e) {
+      console.warn('[Print] Logo render skipped:', e);
+    }
+  }
+
+  // COMPACT HEADER - Shop name (logo above when available)
   const headerName = data.shopName || data.hotelName;
   if (headerName) {
     commands.push(ALIGN_CENTER);
