@@ -315,8 +315,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     const baseValue = item.selling_quantity || item.base_value;
     const baseValStr = baseValue && baseValue !== 1 ? `${baseValue}` : '';
     const right = LINE_WIDTH >= 48
-      ? `x${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`
-      : `x${qtyWithUnit} = ${item.total.toFixed(0)}`;
+      ? `x ${qtyWithUnit} @ ${item.price.toFixed(0)}/${baseValStr}${shortUnit} = ${item.total.toFixed(0)}`
+      : `x ${qtyWithUnit} = ${item.total.toFixed(0)}`;
     const maxName = LINE_WIDTH - right.length - 1;
     if (maxName >= 10) {
       const shortName = item.name.length > maxName ? item.name.substring(0, maxName) : item.name;
