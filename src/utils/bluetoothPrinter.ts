@@ -397,7 +397,10 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     // Use compact numeric date (DD/MM) instead of "MMM DD, YYYY" substring which chopped mid-number
     const now = new Date();
     const compactDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const compactInfo = `#${shortBillNo} | ${compactDate} | ${data.time} | ${typeAbbr}`;
+    const hideBillNumber = localStorage.getItem('hotel_pos_hide_bill_number') === 'true';
+    const compactInfo = hideBillNumber 
+      ? `${compactDate} | ${data.time} | ${typeAbbr}`
+      : `#${shortBillNo} | ${compactDate} | ${data.time} | ${typeAbbr}`;
     commands.push(textToBytes(compactInfo.substring(0, LINE_WIDTH)));
     commands.push(FEED_LINE);
   } else {
@@ -405,7 +408,14 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(textToBytes(SEP));
     commands.push(FEED_LINE);
     commands.push(ALIGN_LEFT);
-    commands.push(textToBytes(fmtLine(`#${data.billNo}`, data.date)));
+    const hideBillNumber = localStorage.getItem('hotel_pos_hide_bill_number') === 'true';
+    if (!hideBillNumber) {
+      commands.push(textToBytes(fmtLine(`#${data.billNo}`, data.date)));
+      commands.push(FEED_LINE);
+    } else {
+      commands.push(textToBytes(fmtLine('Date:', data.date)));
+      commands.push(FEED_LINE);
+    }
     commands.push(FEED_LINE);
     commands.push(textToBytes(fmtLine('Time:', data.time)));
     commands.push(FEED_LINE);

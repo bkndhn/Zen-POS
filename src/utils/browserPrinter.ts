@@ -152,7 +152,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bill ${data.billNo}</title>
+  <title>Bill Receipt</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -209,7 +209,9 @@ export const printBrowserReceipt = async (data: PrintData) => {
   <hr>
   
   <table>
-    <tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>
+    ${localStorage.getItem('hotel_pos_hide_bill_number') === 'true' 
+      ? `<tr><td><b>Date:</b></td><td style="text-align:right">${data.date}</td></tr>` 
+      : `<tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>`}
     <tr><td>Time:</td><td style="text-align:right">${data.time}</td></tr>
     ${(data as any).orderType ? `<tr><td><b>Type:</b></td><td style="text-align:right"><b>${(data as any).orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}</b></td></tr>` : ''}
     ${data.customerMobile && !paperSaving ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}

@@ -10,15 +10,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Seed the localStorage counter from the last bill in the database.
- * Call this on mount in Billing.tsx / TableOrderBilling.tsx to ensure
- * the counter doesn't reset to 0 on a new device/browser.
+ * Synchronize the localStorage counter from the true maximum bill in the database.
+ * Call this before creating a bill to ensure perfect isolation across devices.
  */
-export const initBillCounter = async (adminId: string | null | undefined, branchId?: string | null): Promise<void> => {
+export const syncBillCounter = async (adminId: string | null | undefined, branchId?: string | null): Promise<void> => {
     if (!adminId) return;
+    const branchKey = branchId ? `hotel_pos_continue_bill_number_${branchId}` : 'hotel_pos_continue_bill_number';
+    const continueBillFromYesterday = (localStorage.getItem(branchKey) ?? localStorage.getItem('hotel_pos_continue_bill_number')) !== 'false';
     const counterKey = `bill_counter_${adminId}_${branchId || 'main'}`;
-    // If counter already exists in localStorage, we're good
-    if (localStorage.getItem(counterKey) !== null) return;
 
     try {
         let query = supabase
@@ -32,20 +31,61 @@ export const initBillCounter = async (adminId: string | null | undefined, branch
             query = query.is('branch_id', null);
         }
 
-        const { data } = await query
-            .order('created_at', { ascending: false })
-            .limit(1);
+        if (!continueBillFromYesterday) {
+            // Only look at today's bills for daily reset mode
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            query = query.gte('created_at', startOfDay.toISOString());
+        }
 
-        if (data?.[0]?.bill_no) {
-            // Extract the numeric part from the end of the bill number
-            const match = data[0].bill_no.match(/(\d+)$/);
-            if (match) {
-                localStorage.setItem(counterKey, match[1]);
+        // Fetch last 100 bills to robustly find the max number, bypassing any out-of-order created_at from offline syncs
+        const { data } = await query
+            .not('bill_no', 'like', 'BILL-OFF-%')
+            .not('bill_no', 'like', 'BILL-ONLINE-%')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (data && data.length > 0) {
+            let maxNum = 0;
+            for (const row of data) {
+                if (!row.bill_no) continue;
+                
+                let match;
+                if (continueBillFromYesterday) {
+                    match = row.bill_no.match(/BILL-(\d+)$/);
+                } else {
+                    match = row.bill_no.match(/-(\d+)$/);
+                }
+                
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNum) {
+                        maxNum = num;
+                    }
+                }
+            }
+            
+            if (maxNum > 0) {
+                // Read current local to avoid moving backwards
+                const currentLocal = parseInt(localStorage.getItem(counterKey) || '0', 10);
+                if (maxNum > currentLocal) {
+                    localStorage.setItem(counterKey, maxNum.toString());
+                }
             }
         }
     } catch (e) {
-        console.warn('[BillCounter] Failed to seed from DB:', e);
+        console.warn('[BillCounter] Failed to sync from DB:', e);
     }
+};
+
+/**
+ * Seed the localStorage counter. 
+ * Retained for backwards compatibility on mount.
+ */
+export const initBillCounter = async (adminId: string | null | undefined, branchId?: string | null): Promise<void> => {
+    const counterKey = `bill_counter_${adminId}_${branchId || 'main'}`;
+    if (localStorage.getItem(counterKey) !== null) return;
+    await syncBillCounter(adminId, branchId);
 };
 
 export const getInstantBillNumber = (adminId: string | null | undefined, branchId?: string | null): string => {

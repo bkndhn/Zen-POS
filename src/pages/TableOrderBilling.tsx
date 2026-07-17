@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from '@/hooks/use-toast';
 import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getInstantBillNumber, initBillCounter } from '@/utils/billNumberGenerator';
+import { getInstantBillNumber, initBillCounter, syncBillCounter } from '@/utils/billNumberGenerator';
 import { calculateSmartQtyCount, getTimeElapsed } from '@/utils/timeUtils';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -720,6 +720,9 @@ const TableOrderBilling: React.FC = () => {
             const totalAdditionalCharges = paymentData.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
             let totalAmount = subtotal + totalAdditionalCharges - paymentData.discount;
 
+            if (isOnline) {
+                await syncBillCounter(adminId, operatingBranchId);
+            }
             const billNumber = getInstantBillNumber(adminId, operatingBranchId);
             const now = new Date();
             const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

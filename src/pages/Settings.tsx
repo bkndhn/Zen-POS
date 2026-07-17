@@ -63,6 +63,12 @@ const Settings = () => {
     return saved !== null ? saved === 'true' : true;
   });
 
+  const [hideBillNumber, setHideBillNumber] = useState(() => {
+    const saved = localStorage.getItem(branchKey('hotel_pos_hide_bill_number'))
+      ?? localStorage.getItem('hotel_pos_hide_bill_number');
+    return saved === 'true';
+  });
+
   const handleAutoPrintToggle = (enabled: boolean) => {
     setAutoPrintEnabled(enabled);
     localStorage.setItem(branchKey('hotel_pos_auto_print'), String(enabled));
@@ -99,6 +105,17 @@ const Settings = () => {
     });
   };
 
+  const handleHideBillNumberToggle = (hide: boolean) => {
+    setHideBillNumber(hide);
+    localStorage.setItem(branchKey('hotel_pos_hide_bill_number'), String(hide));
+    toast({
+      title: hide ? "Bill Number Hidden" : "Bill Number Visible",
+      description: hide
+        ? "Bill numbers will not be printed on receipts."
+        : "Bill numbers will be printed normally.",
+    });
+  };
+
   // Re-load settings when branch changes
   useEffect(() => {
     // Re-read branch-scoped localStorage values when branch switches
@@ -109,6 +126,10 @@ const Settings = () => {
     const bn = localStorage.getItem(branchKey('hotel_pos_continue_bill_number'))
       ?? localStorage.getItem('hotel_pos_continue_bill_number');
     setContinueBillFromYesterday(bn !== null ? bn === 'true' : true);
+
+    const hn = localStorage.getItem(branchKey('hotel_pos_hide_bill_number'))
+      ?? localStorage.getItem('hotel_pos_hide_bill_number');
+    setHideBillNumber(hn === 'true');
 
     const fs = (localStorage.getItem(branchKey('hotel_pos_font_scale'))
       ?? localStorage.getItem('hotel_pos_font_scale')) || '1';
@@ -482,6 +503,25 @@ const Settings = () => {
                   id="bill-numbering"
                   checked={continueBillFromYesterday}
                   onCheckedChange={handleBillNumberingToggle}
+                  disabled={isAllBranchesView}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="hide-bill-number" className="text-sm font-medium">
+                    Hide Bill Number on Print
+                  </Label>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    {hideBillNumber
+                      ? "Bill numbers will not be shown on printed receipts."
+                      : "Bill numbers will be printed normally."}
+                  </p>
+                </div>
+                <Switch
+                  id="hide-bill-number"
+                  checked={hideBillNumber}
+                  onCheckedChange={handleHideBillNumberToggle}
                   disabled={isAllBranchesView}
                 />
               </div>
