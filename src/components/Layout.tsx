@@ -6,6 +6,7 @@ import { BottomNavigation } from './BottomNavigation';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { OfflineIndicator } from './OfflineIndicator';
+import { PullToRefresh } from './PullToRefresh';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -69,10 +70,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <main
-          className="flex-1 overflow-x-hidden overflow-y-auto"
+          className="flex-1 overflow-x-hidden relative"
           style={{ paddingBottom: 'max(80px, calc(70px + env(safe-area-inset-bottom, 0px)))' }}
         >
-          {children}
+          <PullToRefresh>
+            {children}
+          </PullToRefresh>
         </main>
 
         <BottomNavigation />

@@ -395,6 +395,18 @@ class PrinterManager {
 
     // Connect to Bluetooth printer (will use cached device if available)
     public async connect(forceNewDevice: boolean = false): Promise<boolean> {
+        if (this.hasNativePrinterBridge()) {
+            this._printerType = 'bluetooth';
+            this.enableAutoReconnect();
+            localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
+            this.deviceName = 'Native Android Printer';
+            this.reconnectAttempts = 0;
+            this.setState('connected');
+            this.setAutoReconnectState('connected');
+            this.updateReconnectStatus('none', 'Connected through native Android printer bridge.');
+            return true;
+        }
+
         const nav = navigator as any;
 
         if (!nav.bluetooth) {
@@ -1145,7 +1157,12 @@ class PrinterManager {
     public async sendTestPrint(): Promise<{ ok: boolean; ms: number; error?: string }> {
         const t0 = performance.now();
         if (!this.isConnected()) {
-            const connected = this._printerType === 'usb' ? await this.connectUSB() : await this.connect();
+            let connected = false;
+            if (this.hasNativePrinterBridge()) {
+                connected = await this.connect();
+            } else {
+                connected = this._printerType === 'usb' ? await this.connectUSB() : await this.connect();
+            }
             if (!connected) {
                 const err = 'Printer not connected';
                 this.recordLog('test', 'fail', 0, err);
