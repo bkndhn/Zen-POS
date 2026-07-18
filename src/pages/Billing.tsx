@@ -964,7 +964,7 @@ const Billing = () => {
 
   // Fetch functions defined before useEffect
   const fetchItems = async () => {
-    if (!adminId) return;
+    if (!adminId) { setLoading(false); return; }
     try {
       // Try to get from network first
       if (navigator.onLine) {
