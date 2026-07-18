@@ -2468,7 +2468,7 @@ const Billing = () => {
   };
   
   const executeFastCash = () => {
-    const cashType = paymentTypes.find(p => p.name.toLowerCase().includes('cash'))?.name || 'Cash';
+    const cashType = paymentTypes.find(p => p.payment_type.toLowerCase().includes('cash'))?.payment_type || 'Cash';
     const currentTotal = getTotalAmount();
     handleCompletePayment({
       paymentMethod: cashType,
