@@ -15,7 +15,8 @@ import { USBPrinterTransport } from './usbPrinterTransport';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
 export interface BluetoothPrinterPlugin {
-  printRaw(options: { hex: string, name?: string }): Promise<{ success: boolean }>;
+  printRaw(options: { hex: string, address?: string }): Promise<{ success: boolean }>;
+  getPairedDevices(): Promise<{ devices: Array<{ name: string, address: string }> }>;
 }
 
 const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
@@ -252,6 +253,19 @@ class PrinterManager {
     public getReconnectStatus(): ReconnectStatus { return { ...this.reconnectStatus }; }
     public isPrinterTrusted(): boolean { return localStorage.getItem(BLUETOOTH_TRUSTED_KEY) === 'true'; }
     public hasNativePrinterBridge(): boolean { return typeof window !== 'undefined' && (!!(window as any).AndroidPrinter || Capacitor.isNativePlatform()); }
+
+    public async getNativePairedDevices(): Promise<Array<{ name: string, address: string }>> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const result = await BluetoothPrinter.getPairedDevices();
+                return result.devices || [];
+            } catch (e) {
+                console.error("Failed to get paired devices", e);
+                return [];
+            }
+        }
+        return [];
+    }
 
     private updateReconnectStatus(reason: ReconnectFailureReason, detail: string, nextRetryMs?: number): void {
         this.reconnectStatus = { attempt: this.reconnectAttempts, reason, detail, nextRetryMs, updatedAt: Date.now() };
@@ -941,8 +955,8 @@ class PrinterManager {
                     const receiptBytes = await generateReceiptBytes(data);
                     const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
                     
-                    const savedPrinterName = localStorage.getItem('hotel_pos_bluetooth_printer_name') || '';
-                    await BluetoothPrinter.printRaw({ hex, name: savedPrinterName });
+                    const savedPrinterAddress = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
+                    await BluetoothPrinter.printRaw({ hex, address: savedPrinterAddress });
                 } 
                 // Legacy Android WebView Flow
                 else if (typeof win.AndroidPrinter.printReceipt === 'function') {

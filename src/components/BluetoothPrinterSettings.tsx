@@ -210,6 +210,14 @@ export const BluetoothPrinterSettings: React.FC = () => {
 
     setConnecting(true);
     try {
+      if (printerManager.hasNativePrinterBridge()) {
+        const devices = await printerManager.getNativePairedDevices();
+        setNativeDevices(devices);
+        setShowNativePicker(true);
+        setConnecting(false);
+        return;
+      }
+
       const success = await connect(true); // Force new device selection
 
       if (success) {
@@ -241,6 +249,25 @@ export const BluetoothPrinterSettings: React.FC = () => {
       }
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const selectNativePrinter = async (device: { name: string, address: string }) => {
+    setShowNativePicker(false);
+    localStorage.setItem('hotel_pos_bluetooth_printer_address', device.address);
+    localStorage.setItem('hotel_pos_bluetooth_printer_name', device.name);
+    
+    // Simulate successful native connection state
+    const success = await connect(true);
+    if (success) {
+      await updateSettings({
+        printer_name: device.name,
+        is_enabled: true
+      });
+      toast({
+        title: "Connected!",
+        description: `Successfully configured ${device.name} as default printer.`,
+      });
     }
   };
 
@@ -742,6 +769,27 @@ const StationPrinterMap: React.FC = () => {
       <p className="text-[11px] text-slate-500 px-1">
         Assign each station to a specific Bluetooth printer. Categories tagged with that station will KOT-print to the mapped device.
       </p>
+      <Dialog open={showNativePicker} onOpenChange={setShowNativePicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Bluetooth Printer</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto p-2">
+            {nativeDevices.length > 0 ? (
+              nativeDevices.map(d => (
+                <Button key={d.address} variant="outline" className="justify-start py-6" onClick={() => selectNativePrinter(d)}>
+                  <div className="flex flex-col items-start">
+                    <span className="font-semibold">{d.name}</span>
+                    <span className="text-xs text-muted-foreground">{d.address}</span>
+                  </div>
+                </Button>
+              ))
+            ) : (
+              <p className="text-sm text-center text-muted-foreground py-4">No paired devices found. Please pair your printer in Android Settings first.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

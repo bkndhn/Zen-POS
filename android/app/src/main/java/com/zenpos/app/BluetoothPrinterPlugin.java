@@ -28,7 +28,7 @@ public class BluetoothPrinterPlugin extends Plugin {
     @PluginMethod
     public void printRaw(PluginCall call) {
         String hexString = call.getString("hex");
-        String targetName = call.getString("name"); // optional name to match
+        String targetAddress = call.getString("address"); // MAC address to match
 
         if (hexString == null) {
             call.reject("Must provide hex data");
@@ -64,9 +64,9 @@ public class BluetoothPrinterPlugin extends Plugin {
                     }
 
                     BluetoothDevice targetDevice = null;
-                    if (targetName != null && !targetName.isEmpty()) {
+                    if (targetAddress != null && !targetAddress.isEmpty()) {
                         for (BluetoothDevice device : pairedDevices) {
-                            if (targetName.equals(device.getName())) {
+                            if (targetAddress.equals(device.getAddress())) {
                                 targetDevice = device;
                                 break;
                             }
@@ -106,5 +106,37 @@ public class BluetoothPrinterPlugin extends Plugin {
                 call.reject("Print failed: " + e.getMessage());
             }
         }).start();
+    }
+
+    @PluginMethod
+    public void getPairedDevices(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                call.reject("BLUETOOTH_CONNECT permission is required.");
+                return;
+            }
+        }
+
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null || !adapter.isEnabled()) {
+            call.reject("Bluetooth is not available or disabled.");
+            return;
+        }
+
+        Set<BluetoothDevice> pairedDevices = adapter.getBondedDevices();
+        com.getcapacitor.JSArray devicesArray = new com.getcapacitor.JSArray();
+
+        if (pairedDevices != null) {
+            for (BluetoothDevice device : pairedDevices) {
+                JSObject devObj = new JSObject();
+                devObj.put("name", device.getName() != null ? device.getName() : "Unknown Device");
+                devObj.put("address", device.getAddress());
+                devicesArray.put(devObj);
+            }
+        }
+
+        JSObject ret = new JSObject();
+        ret.put("devices", devicesArray);
+        call.resolve(ret);
     }
 }

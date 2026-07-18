@@ -3,7 +3,9 @@ import React, { useState, useEffect, Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createIDBPersister } from './utils/queryPersister';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
@@ -203,14 +205,17 @@ const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes - longer cache
-      gcTime: 1000 * 60 * 30, // 30 minutes cache retention
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours for offline mode
+      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days cache retention
       retry: 1, // Fewer retries for faster perceived failure
       refetchOnWindowFocus: false,
       refetchOnMount: false, // Don't refetch on every mount
+      networkMode: 'offlineFirst', // CRITICAL: Allow queries to run offline
     },
   },
 });
+
+const persister = createIDBPersister();
 
 import { InstallPrompt } from './components/InstallPrompt';
 import { DevicePermissions } from './components/DevicePermissions';
@@ -293,7 +298,7 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -347,7 +352,7 @@ const App = () => {
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
-      </QueryClientProvider>
+        </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 };
