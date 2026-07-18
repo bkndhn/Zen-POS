@@ -557,10 +557,6 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   if (pdEntries.length > 1) {
     commands.push(textToBytes(fmtLine('Paid', 'MULTIPLE')));
     commands.push(FEED_LINE);
-    pdEntries.forEach(([method, amt]) => {
-      commands.push(textToBytes(fmtLine(`  ${method.toUpperCase()}`, `Rs.${(amt as number).toFixed(2)}`)));
-      commands.push(FEED_LINE);
-    });
   } else {
     commands.push(textToBytes(fmtLine('Paid', data.paymentMethod.toUpperCase())));
     commands.push(FEED_LINE);
