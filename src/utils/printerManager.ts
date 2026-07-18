@@ -17,6 +17,9 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 export interface BluetoothPrinterPlugin {
   printRaw(options: { hex: string, address?: string }): Promise<{ success: boolean }>;
   getPairedDevices(): Promise<{ devices: Array<{ name: string, address: string }> }>;
+  connectSavedPrinter(options: { address?: string }): Promise<{ success: boolean; name?: string; address?: string; serviceUuid?: string }>;
+  getConnectionStatus(): Promise<{ connected: boolean; name?: string; address?: string }>;
+  disconnect(): Promise<void>;
 }
 
 const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
@@ -108,6 +111,7 @@ class PrinterManager {
     private writeChain: Promise<void> = Promise.resolve();
     private lastPrintData: PrintData | null = null;
     private lastPrintFailed: boolean = false;
+    private nativeConnected: boolean = false;
 
     private constructor() {
         // Restore saved printer type
@@ -310,6 +314,9 @@ class PrinterManager {
         if (this._printerType === 'usb') {
             return this.connectionState === 'connected' && this.usbTransport.isConnected();
         }
+        if (Capacitor.isNativePlatform()) {
+            return this.connectionState === 'connected' && this.nativeConnected;
+        }
         return this.connectionState === 'connected' &&
             this.server !== null &&
             this.server.connected === true;
@@ -409,7 +416,37 @@ class PrinterManager {
 
     // Connect to Bluetooth printer (will use cached device if available)
     public async connect(forceNewDevice: boolean = false): Promise<boolean> {
-        if (this.hasNativePrinterBridge()) {
+        if (Capacitor.isNativePlatform()) {
+            this._printerType = 'bluetooth';
+            this.enableAutoReconnect();
+            localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
+            this.setState('connecting');
+            this.setAutoReconnectState('reconnecting');
+            try {
+                const address = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
+                const result = await BluetoothPrinter.connectSavedPrinter({ address });
+                this.nativeConnected = result.success === true;
+                if (!this.nativeConnected) throw new Error('Native printer did not confirm connection');
+                this.deviceName = result.name || localStorage.getItem(BLUETOOTH_DEVICE_NAME_KEY) || 'Android printer';
+                if (result.address) localStorage.setItem('hotel_pos_bluetooth_printer_address', result.address);
+                if (result.serviceUuid) this.serviceUUID = result.serviceUuid;
+                this.reconnectAttempts = 0;
+                this.setState('connected');
+                this.setAutoReconnectState('connected');
+                this.updateReconnectStatus('none', 'Native Bluetooth socket connected.');
+                this.processQueue();
+                return true;
+            } catch (error: any) {
+                this.nativeConnected = false;
+                const detail = String(error?.message || error || 'Printer not connected');
+                this.recordLog('connect', 'fail', undefined, detail);
+                this.updateReconnectStatus(/permission/i.test(detail) ? 'permission-blocked' : 'native-unavailable', detail);
+                this.setState('disconnected');
+                this.setAutoReconnectState('waiting');
+                return false;
+            }
+        }
+        if (typeof (window as any).AndroidPrinter !== 'undefined') {
             this._printerType = 'bluetooth';
             this.enableAutoReconnect();
             localStorage.setItem(PRINTER_TYPE_KEY, 'bluetooth');
@@ -417,7 +454,6 @@ class PrinterManager {
             this.reconnectAttempts = 0;
             this.setState('connected');
             this.setAutoReconnectState('connected');
-            this.updateReconnectStatus('none', 'Connected through native Android printer bridge.');
             return true;
         }
 
@@ -663,8 +699,12 @@ class PrinterManager {
                     
                     let ok = false;
                     if (Capacitor.isNativePlatform()) {
-                        // Capacitor native bridge doesn't need to "connect" first, it connects on print
-                        ok = true;
+                        const address = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
+                        const result = await BluetoothPrinter.connectSavedPrinter({ address });
+                        ok = result.success === true;
+                        this.nativeConnected = ok;
+                        this.deviceName = result.name || this.deviceName || 'Android printer';
+                        if (result.address) localStorage.setItem('hotel_pos_bluetooth_printer_address', result.address);
                     } else {
                         const result = typeof bridge?.connectSavedPrinter === 'function' ? bridge.connectSavedPrinter() : true;
                         ok = result instanceof Promise ? await result : result !== false;
@@ -804,6 +844,7 @@ class PrinterManager {
 
     // Handle disconnect event
     private handleDisconnect(): void {
+        this.nativeConnected = false;
         this.server = null;
         this.characteristic = null;
         this.setState('disconnected');
@@ -916,6 +957,10 @@ class PrinterManager {
         localStorage.setItem(AUTO_RECONNECT_KEY, 'false');
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
+        if (Capacitor.isNativePlatform()) {
+            BluetoothPrinter.disconnect().catch(() => undefined);
+            this.nativeConnected = false;
+        }
         if (this._printerType === 'usb') {
             this.usbTransport.close();
         } else {
@@ -952,11 +997,13 @@ class PrinterManager {
             try {
                 // Capacitor Flow
                 if (Capacitor.isNativePlatform()) {
+                    if (!this.nativeConnected && !(await this.connect())) throw new Error('Printer not connected');
                     const receiptBytes = await generateReceiptBytes(data);
                     const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
                     
                     const savedPrinterAddress = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
                     await BluetoothPrinter.printRaw({ hex, address: savedPrinterAddress });
+                    this.nativeConnected = true;
                 } 
                 // Legacy Android WebView Flow
                 else if (typeof win.AndroidPrinter.printReceipt === 'function') {
@@ -977,7 +1024,17 @@ class PrinterManager {
                 const msg = String(error?.message || error);
                 console.error('[Printer] Native bridge print failed:', error);
                 this.recordLog('print', 'fail', ms, `Bridge error: ${msg}`, data.billNo);
-                // Fail over to standard flow
+                this.nativeConnected = false;
+                this.setState('disconnected');
+                this.setAutoReconnectState('waiting');
+                if (Capacitor.isNativePlatform()) {
+                    if (!this.printQueue.some(job => job.billNo === data.billNo)) this.printQueue.push(data);
+                    this.saveQueueToStorage();
+                    this.lastPrintFailed = true;
+                    this.attemptAutoReconnect();
+                    return false;
+                }
+                // Legacy wrappers can still fall over to the Web Bluetooth flow.
             }
         }
 
@@ -1108,6 +1165,22 @@ class PrinterManager {
      * Chunked writes match the main print() flow to keep timing consistent.
      */
     public async printRawBytes(bytesData: Uint8Array, targetDeviceName?: string): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                if (!this.nativeConnected && !(await this.connect())) return false;
+                const hex = Array.from(bytesData).map(b => b.toString(16).padStart(2, '0')).join('');
+                const address = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
+                await BluetoothPrinter.printRaw({ hex, address });
+                this.nativeConnected = true;
+                return true;
+            } catch (error: any) {
+                this.nativeConnected = false;
+                this.setState('disconnected');
+                this.recordLog('error', 'fail', undefined, `Native raw print failed: ${String(error?.message || error)}`);
+                this.attemptAutoReconnect();
+                return false;
+            }
+        }
         // Try routed BT print first
         if (targetDeviceName) {
             const nav = navigator as any;
@@ -1194,7 +1267,12 @@ class PrinterManager {
                 ...enc.encode('Bluetooth write OK\n\n\n'),
                 0x1D, 0x56, 0x00 // full cut
             ]);
-            if (this._printerType === 'usb') {
+            if (Capacitor.isNativePlatform()) {
+                const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                const address = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
+                await BluetoothPrinter.printRaw({ hex, address });
+                this.nativeConnected = true;
+            } else if (this._printerType === 'usb') {
                 const ok = await this.usbTransport.write(bytes);
                 if (!ok) throw new Error('USB write failed');
             } else {
@@ -1216,11 +1294,21 @@ class PrinterManager {
         const report: Array<{ step: string; ok: boolean; detail?: string }> = [];
         const nav = navigator as any;
 
-        report.push({ step: 'Web Bluetooth API', ok: !!nav.bluetooth, detail: nav.bluetooth ? 'supported' : 'not supported by browser' });
+        if (Capacitor.isNativePlatform()) {
+            let nativeStatus = { connected: false, name: '', address: '' };
+            try { nativeStatus = await BluetoothPrinter.getConnectionStatus(); } catch { /* reported below */ }
+            this.nativeConnected = nativeStatus.connected;
+            report.push({ step: 'Native Android Bridge', ok: true, detail: 'active' });
+            report.push({ step: 'Native Bluetooth Socket', ok: nativeStatus.connected, detail: nativeStatus.connected ? `${nativeStatus.name || 'Printer'} connected` : 'printer not connected — automatic reconnect will retry' });
+        } else {
+            report.push({ step: 'Web Bluetooth API', ok: !!nav.bluetooth, detail: nav.bluetooth ? 'supported' : 'not supported by browser' });
+        }
         report.push({ step: 'HTTPS / Secure Context', ok: typeof window !== 'undefined' ? window.isSecureContext : false, detail: window.isSecureContext ? 'ok' : 'must be HTTPS' });
 
-        const permitted = await this.getPermittedBluetoothDeviceNames();
-        report.push({ step: 'Paired Devices', ok: permitted.length > 0, detail: permitted.length ? permitted.join(', ') : 'none paired — tap Connect first' });
+        const permitted = Capacitor.isNativePlatform()
+            ? (await this.getNativePairedDevices()).map(device => device.name)
+            : await this.getPermittedBluetoothDeviceNames();
+        report.push({ step: 'Paired Devices', ok: permitted.length > 0, detail: permitted.length ? permitted.join(', ') : 'none paired in Android settings' });
 
         report.push({ step: 'Active Printer', ok: !!this.deviceName, detail: this.deviceName || 'not selected' });
         report.push({ step: 'Trusted Authorization', ok: this.isPrinterTrusted() || this.hasNativePrinterBridge(), detail: this.hasNativePrinterBridge() ? 'native Android bridge' : (this.isPrinterTrusted() ? 'saved for silent reconnect' : 'tap Trust this printer once') });
