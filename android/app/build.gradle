@@ -16,19 +16,26 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    def releaseStorePassword = System.getenv('ZENPOS_KEYSTORE_PASSWORD')
+    def releaseKeyAlias = System.getenv('ZENPOS_KEY_ALIAS')
+    def releaseKeyPassword = System.getenv('ZENPOS_KEY_PASSWORD')
     signingConfigs {
-        release {
-            storeFile file('release.keystore')
-            storePassword 'zenpos123'
-            keyAlias 'zenpos'
-            keyPassword 'zenpos123'
+        if (releaseStorePassword && releaseKeyAlias && releaseKeyPassword && file('release.keystore').exists()) {
+            release {
+                storeFile file('release.keystore')
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (signingConfigs.findByName('release')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
