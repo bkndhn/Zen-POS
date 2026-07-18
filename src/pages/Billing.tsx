@@ -964,7 +964,7 @@ const Billing = () => {
 
   // Fetch functions defined before useEffect
   const fetchItems = async () => {
-    if (!adminId) return;
+    if (!adminId) { setLoading(false); return; }
     try {
       // Try to get from network first
       if (navigator.onLine) {
@@ -1338,6 +1338,7 @@ const Billing = () => {
   };
 
   useEffect(() => {
+    if (!adminId) return;
     fetchItems();
     fetchPaymentTypes();
     fetchAdditionalCharges();
@@ -1347,7 +1348,8 @@ const Billing = () => {
     if (profile?.user_id) {
       fetchDisplaySettings();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminId, branchFilterId]);
 
   // Re-fetch shop settings whenever the active branch changes so prints/share use branch header
   useEffect(() => {
