@@ -24,6 +24,7 @@ import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanne
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
 import { CalciBillingSettings } from '@/components/CalciBillingSettings';
+import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
 
 interface AdditionalCharge {
   id: string;
@@ -407,6 +408,158 @@ const Settings = () => {
           {/* Branch Management (admin only) */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Branch Management failed to load. Try refreshing.</div>}>
             <BranchManagement />
+          </ErrorBoundary>
+
+          {/* Data Privacy & Storage */}
+          <Card>
+            <CardHeader className="p-4 sm:p-6 pb-2">
+              <CardTitle className="flex items-center space-x-2">
+                <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                <span className="text-base sm:text-lg">Data Privacy & Storage</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6 pt-2">
+              <div className="flex flex-col space-y-3">
+                <div className="space-y-0.5 mb-2">
+                  <Label className="text-sm font-medium">
+                    Bill & Report Storage Location
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Control where your sensitive sales data is stored. Master data (Items, Categories) is always stored in the cloud for multi-device sync.
+                  </p>
+                </div>
+                
+                <div className="bg-slate-50 dark:bg-zinc-900 border rounded-xl p-1 w-full max-w-sm flex">
+                  <Button
+                    type="button"
+                    variant={
+                      (profile?.client_permissions as any)?.allow_cloud_storage === false 
+                        ? 'ghost' 
+                        : (localStorage.getItem(branchKey('privacy_storage_mode')) !== 'local' ? 'default' : 'ghost')
+                    }
+                    className="flex-1 text-xs h-9 rounded-lg"
+                    onClick={() => {
+                      if ((profile?.client_permissions as any)?.allow_cloud_storage !== false) {
+                        localStorage.setItem(branchKey('privacy_storage_mode'), 'cloud');
+                        window.dispatchEvent(new Event('privacy_storage_changed'));
+                        toast({ title: "Cloud Storage Enabled", description: "Bills will be synced across all devices securely." });
+                      }
+                    }}
+                    disabled={(profile?.client_permissions as any)?.allow_cloud_storage === false || isAllBranchesView}
+                  >
+                    ☁️ Cloud Sync (Default)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      (profile?.client_permissions as any)?.allow_cloud_storage === false || 
+                      localStorage.getItem(branchKey('privacy_storage_mode')) === 'local' 
+                        ? 'default' 
+                        : 'ghost'
+                    }
+                    className="flex-1 text-xs h-9 rounded-lg"
+                    onClick={() => {
+                      localStorage.setItem(branchKey('privacy_storage_mode'), 'local');
+                      window.dispatchEvent(new Event('privacy_storage_changed'));
+                      toast({ 
+                        title: "Local Only Mode Enabled", 
+                        description: "Bills will ONLY be saved on this device. Do not clear browser cache!",
+                        variant: "destructive"
+                      });
+                    }}
+                    disabled={isAllBranchesView}
+                  >
+                    🔒 Local Only
+                  </Button>
+                </div>
+                
+                {(profile?.client_permissions as any)?.allow_cloud_storage === false && (
+                  <div className="mt-2 p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 rounded-lg text-xs flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">⚠️</span>
+                    <p>
+                      <strong>Cloud Storage is disabled by Super Admin.</strong> Your transactional data is strictly local.
+                      If you uninstall the app or clear browser data, your billing history will be permanently lost.
+                    </p>
+                  </div>
+                )}
+                {(profile?.client_permissions as any)?.allow_cloud_storage !== false && localStorage.getItem(branchKey('privacy_storage_mode')) === 'local' && (
+                  <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg text-xs flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">⚠️</span>
+                    <p>
+                      <strong>Local Only Mode Active.</strong> Bills created on this device will not be backed up or visible on other devices.
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Auto-Wipe Local Data (Self-Destruct)</Label>
+                  <p className="text-xs text-muted-foreground">Only applies when "Local Only" is active. Automatically permanently deletes local bills older than the specified days to ensure ultimate privacy.</p>
+                </div>
+                <div className="flex items-center gap-2 max-w-sm">
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    max="365"
+                    inputMode="numeric"
+                    placeholder="Days (e.g. 7)" 
+                    defaultValue={localStorage.getItem(branchKey('hotel_pos_auto_wipe_days')) || ''}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (val && val > 0 && val <= 365) {
+                        localStorage.setItem(branchKey('hotel_pos_auto_wipe_days'), String(val));
+                        toast({ title: "Auto-Wipe Configured", description: `Local bills older than ${val} days will be deleted automatically.` });
+                      } else if (!e.target.value || e.target.value === '0') {
+                        localStorage.removeItem(branchKey('hotel_pos_auto_wipe_days'));
+                      } else {
+                        toast({ title: "Invalid Value", description: "Enter a number between 1 and 365.", variant: "destructive" });
+                        e.target.value = '';
+                        localStorage.removeItem(branchKey('hotel_pos_auto_wipe_days'));
+                      }
+                    }}
+                    className="h-9"
+                  />
+                  <span className="text-sm font-medium text-muted-foreground">days</span>
+                </div>
+
+                <div className="space-y-1 pt-2">
+                  <Label className="text-sm font-medium">Reports PIN Lock</Label>
+                  <p className="text-xs text-muted-foreground">Protect the Reports and Dashboard screens with a 4-digit PIN so staff cannot view daily totals.</p>
+                </div>
+                <div className="flex items-center gap-2 max-w-sm">
+                  <Input 
+                    type="password" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    placeholder="4-digit PIN" 
+                    defaultValue={localStorage.getItem(branchKey('hotel_pos_reports_pin')) || ''}
+                    onChange={(e) => {
+                      // Only allow digits
+                      e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                    }}
+                    onBlur={(e) => {
+                      const pin = e.target.value.replace(/[^0-9]/g, '');
+                      if (pin && pin.length === 4) {
+                        localStorage.setItem(branchKey('hotel_pos_reports_pin'), pin);
+                        toast({ title: "PIN Set", description: "Reports and Dashboard are now protected." });
+                      } else if (!pin) {
+                        localStorage.removeItem(branchKey('hotel_pos_reports_pin'));
+                        toast({ title: "PIN Removed", description: "Reports are now accessible to all." });
+                      } else {
+                        toast({ title: "Invalid PIN", description: "PIN must be exactly 4 digits.", variant: "destructive" });
+                      }
+                    }}
+                    className="h-9 font-mono tracking-widest"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Calci Quick Keys failed to load. Try refreshing.</div>}>
+            <CalciQuickKeysSettings />
           </ErrorBoundary>
 
           {/* Print Settings */}

@@ -827,6 +827,9 @@ const Billing = () => {
   const [calciEnabled, setCalciEnabled] = useState(false);
   const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>('pos');
   const [calciInput, setCalciInput] = useState('');
+  const [isCalciStretched, setIsCalciStretched] = useState(() => {
+    return localStorage.getItem('hotel_pos_calci_stretched') === 'true';
+  });
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
@@ -835,6 +838,7 @@ const Billing = () => {
   }>({ enabled: false, gstin: '', isComposition: false, taxRatesMap: {} });
   const syncChannelRef = useRef<any>(null);
   const calciInputRef = useRef<HTMLInputElement>(null);
+  const fastCashPendingRef = useRef(false);
 
   useEffect(() => {
     if (appBillingMode === 'calci') {
@@ -870,6 +874,12 @@ const Billing = () => {
   useEffect(() => {
     if (cart.length === 0) {
       setPaymentDialogOpen(false);
+    }
+    // Fast Cash: if calciInput was submitted and we're waiting for cart to update, now execute payment
+    if (fastCashPendingRef.current && cart.filter(i => i.quantity > 0).length > 0) {
+      fastCashPendingRef.current = false;
+      // Use setTimeout(0) to let React finish rendering so getTotalAmount reads the updated cart
+      setTimeout(() => executeFastCash(), 0);
     }
   }, [cart]);
   const [billSettings, setBillSettings] = useState<{
@@ -1753,27 +1763,73 @@ const Billing = () => {
 
   // Voice command handler
   // --- Calci Billing Logic ---
-  const handleCalciSubmit = (expression: string) => {
-    if (!expression.trim()) return;
+  const handleCalciSubmit = (expression: string): boolean => {
+    if (!expression.trim()) return false;
     
     try {
       // Split by +
       const parts = expression.split('+');
       const localCart = [...cart];
       
+      const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
+      let shortcodes: Record<string, string> = {};
+      try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch { /* corrupted data, ignore */ }
+      
+      let itemsAdded = 0;
+
       for (const part of parts) {
-        const trimmed = part.trim().toLowerCase();
+        let trimmed = part.trim().toLowerCase();
         if (!trimmed) continue;
         
         let qty = 1;
+        
+        // Extract leading quantity multiplier if it exists (e.g., "2*T1" or "3x#12")
+        const multMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*[*x×]\s*(.+)$/);
+        if (multMatch) {
+          qty = parseFloat(multMatch[1]);
+          trimmed = multMatch[2].trim();
+        }
+        
+        // 1. Check if it's a shortcode (e.g., *1, #tea, or just matched directly in dictionary)
+        let matchedItemId: string | undefined = undefined;
+        
+        // Exact match first
+        if (shortcodes[trimmed]) {
+          matchedItemId = shortcodes[trimmed];
+        } else if (trimmed.startsWith('*') || trimmed.startsWith('#')) {
+           // Also try without the prefix
+           const withoutPrefix = trimmed.substring(1);
+           if (shortcodes[withoutPrefix]) {
+             matchedItemId = shortcodes[withoutPrefix];
+           }
+        }
+
+        if (matchedItemId) {
+          const actualItem = items.find(i => i.id === matchedItemId);
+          if (actualItem && !isNaN(qty) && qty > 0) {
+            const safeQty = Math.max(1, Math.round(qty)); // Ensure whole positive quantity
+            const existingIdx = localCart.findIndex(ci => ci.id === actualItem.id);
+            if (existingIdx >= 0) {
+              localCart[existingIdx] = { ...localCart[existingIdx], quantity: localCart[existingIdx].quantity + safeQty };
+            } else {
+              localCart.push({ ...actualItem, quantity: safeQty, store_price: actualItem.price });
+            }
+            itemsAdded++;
+            continue;
+          }
+        }
+        
+        // 2. If no shortcode matched, process as a standard price entry
         let price = 0;
         
-        // Handle multiplication (*, x, ×)
-        if (trimmed.includes('*') || trimmed.includes('x') || trimmed.includes('×')) {
-          const multParts = trimmed.split(/[*x×]/);
-          if (multParts.length === 2) {
-            qty = parseFloat(multParts[0]);
-            price = parseFloat(multParts[1]);
+        // If there was no leading multiplier, maybe it's in the middle (e.g., "15*2" -> qty=15, price=2 or vice versa)
+        // By convention let's assume the larger number is price, smaller is qty if ambiguous, or just first is qty.
+        // Actually, we'll just parse whatever is left.
+        if (!multMatch && (trimmed.includes('*') || trimmed.includes('x') || trimmed.includes('×'))) {
+          const splitParts = trimmed.split(/[*x×]/);
+          if (splitParts.length === 2) {
+            qty = parseFloat(splitParts[0]);
+            price = parseFloat(splitParts[1]);
           } else {
             price = parseFloat(trimmed);
           }
@@ -1805,17 +1861,21 @@ const Billing = () => {
         } else {
           localCart.push(newItem);
         }
+        itemsAdded++;
       }
       
-      if (localCart.length > cart.length) {
+      if (itemsAdded > 0) {
         setCart(localCart);
         setCalciInput('');
         toast({ title: "Added from Calculator", description: expression });
+        return true;
       } else {
-        toast({ title: "Invalid expression", description: "Please enter something like 10+25+2*15", variant: "destructive" });
+        toast({ title: "Invalid expression", description: "Please enter a valid amount or shortcode", variant: "destructive" });
+        return false;
       }
     } catch (err) {
       toast({ title: "Error parsing expression", variant: "destructive" });
+      return false;
     }
   };
   
@@ -2383,6 +2443,47 @@ const Billing = () => {
     }
   };
 
+  const handleFastCash = () => {
+    const currentCart = cart.filter(i => i.quantity > 0);
+    
+    if (currentCart.length === 0 && !calciInput.trim()) {
+      toast({ title: "Cart empty", description: "Add items first", variant: "destructive" });
+      return;
+    }
+    
+    if (calciInput.trim()) {
+      // Submit calci input first, then flag that we want fast cash after the cart updates
+      const success = handleCalciSubmit(calciInput);
+      if (success) {
+        fastCashPendingRef.current = true;
+        // The useEffect will trigger executeFastCash once cart re-renders
+      } else {
+        // Parse failed — don't leave a dangling ref
+        fastCashPendingRef.current = false;
+      }
+    } else {
+      // Cart already has items, proceed immediately
+      executeFastCash();
+    }
+  };
+  
+  const executeFastCash = () => {
+    const cashType = paymentTypes.find(p => p.name.toLowerCase().includes('cash'))?.name || 'Cash';
+    const currentTotal = getTotalAmount();
+    handleCompletePayment({
+      paymentMethod: cashType,
+      paymentAmounts: { [cashType]: currentTotal },
+      discount: 0,
+      discountType: 'flat',
+      additionalCharges: additionalCharges.map(c => ({
+        name: c.name,
+        amount: c.amount,
+        enabled: c.is_default
+      })),
+      orderType: defaultOrderType || 'dine_in'
+    });
+  };
+
   const handleCompletePayment = async (paymentData: {
     paymentMethod: string;
     paymentAmounts: Record<string, number>;
@@ -2532,8 +2633,14 @@ const Billing = () => {
         billPayload._isComposition = gstSettings.isComposition;
       }
 
-      // OFFLINE MODE - Use new PendingBill system
-      if (isOffline) {
+      // --- DATA PRIVACY: Check if this client should store locally only ---
+      const privacyBranchKey = operatingBranchId ? `privacy_storage_mode_${operatingBranchId}` : 'privacy_storage_mode';
+      const privacyMode = localStorage.getItem(privacyBranchKey) || localStorage.getItem('privacy_storage_mode') || 'cloud';
+      const superAdminBlockedCloud = (profile?.client_permissions as any)?.allow_cloud_storage === false;
+      const isLocalOnlyMode = superAdminBlockedCloud || privacyMode === 'local';
+      
+      // OFFLINE MODE or LOCAL-ONLY MODE - Use PendingBill system (IndexedDB only)
+      if (isOffline || isLocalOnlyMode) {
         const { offlineManager } = await import('@/utils/offlineManager');
 
         const pendingBillId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -2614,8 +2721,10 @@ const Billing = () => {
         window.dispatchEvent(new CustomEvent('bills-updated'));
 
         toast({
-          title: "📴 Bill Saved Offline",
-          description: `${billNumber} queued. Will sync when online.`,
+          title: isLocalOnlyMode && !isOffline ? "🔒 Bill Saved Locally" : "📴 Bill Saved Offline",
+          description: isLocalOnlyMode && !isOffline 
+            ? `${billNumber} saved to this device only (Local Only mode).`
+            : `${billNumber} queued. Will sync when online.`,
           duration: 3000
         });
         clearCart();
@@ -2988,37 +3097,46 @@ const Billing = () => {
           {/* Mobile: built-in calculator numpad */}
           <div className="md:hidden">
             {/* Display */}
-            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-t-2xl px-4 py-3 border border-zinc-700 border-b-0">
-              <div className="text-right font-mono text-2xl text-white min-h-[40px] flex items-center justify-end overflow-x-auto">
+            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-t-2xl px-4 py-3 border border-zinc-700 border-b-0 flex items-center justify-between">
+              <button 
+                onClick={() => {
+                  const newVal = !isCalciStretched;
+                  setIsCalciStretched(newVal);
+                  localStorage.setItem('hotel_pos_calci_stretched', String(newVal));
+                }}
+                className="text-zinc-400 p-2 -ml-2 rounded-lg active:bg-white/10"
+              >
+                {isCalciStretched ? <span className="text-xl font-bold">⇲</span> : <span className="text-xl font-bold">⇱</span>}
+              </button>
+              <div className="text-right font-mono text-2xl text-white min-h-[40px] flex items-center justify-end overflow-x-auto flex-1 ml-2">
                 {calciInput || <span className="text-zinc-500">0</span>}
               </div>
             </div>
             {/* Numpad Grid */}
-            <div className="grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700">
+            <div className={cn("grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700", isCalciStretched ? "h-[60vh]" : "")}>
               {/* Row 1: C, ×, +, ⌫ */}
-              <button onClick={() => setCalciInput('')} className="bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">C</button>
-              <button onClick={() => setCalciInput(p => p + '*')} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">×</button>
-              <button onClick={() => setCalciInput(p => p + '+')} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">+</button>
-              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className="bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center"><Delete className="w-5 h-5" /></button>
+              <button onClick={() => setCalciInput('')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full" : "py-4")}>C</button>
+              <button onClick={() => setCalciInput(p => p + '*')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full" : "py-4")}>×</button>
+              <button onClick={() => setCalciInput(p => p + '+')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full" : "py-4")}>+</button>
+              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className={cn("bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center", isCalciStretched ? "h-full" : "py-4")}><Delete className="w-5 h-5" /></button>
               {/* Row 2: 7, 8, 9 */}
-              <button onClick={() => setCalciInput(p => p + '7')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">7</button>
-              <button onClick={() => setCalciInput(p => p + '8')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">8</button>
-              <button onClick={() => setCalciInput(p => p + '9')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">9</button>
-              {/* Add button spans 2 rows */}
-              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-primary text-primary-foreground font-bold text-lg row-span-2 active:bg-primary/80 transition-colors flex items-center justify-center">Add<br/>to<br/>Cart</button>
+              <button onClick={() => setCalciInput(p => p + '7')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>7</button>
+              <button onClick={() => setCalciInput(p => p + '8')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>8</button>
+              <button onClick={() => setCalciInput(p => p + '9')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>9</button>
+              {/* Add button spans 3 rows (rows 2-4) */}
+              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-primary text-primary-foreground font-bold text-lg row-span-3 h-full active:bg-primary/80 transition-colors flex items-center justify-center">Add<br/>to<br/>Cart</button>
               {/* Row 3: 4, 5, 6 */}
-              <button onClick={() => setCalciInput(p => p + '4')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">4</button>
-              <button onClick={() => setCalciInput(p => p + '5')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">5</button>
-              <button onClick={() => setCalciInput(p => p + '6')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">6</button>
+              <button onClick={() => setCalciInput(p => p + '4')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>4</button>
+              <button onClick={() => setCalciInput(p => p + '5')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>5</button>
+              <button onClick={() => setCalciInput(p => p + '6')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>6</button>
               {/* Row 4: 1, 2, 3 */}
-              <button onClick={() => setCalciInput(p => p + '1')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">1</button>
-              <button onClick={() => setCalciInput(p => p + '2')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">2</button>
-              <button onClick={() => setCalciInput(p => p + '3')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">3</button>
-              {/* Add button spans 2 rows */}
-              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-green-600 text-white font-bold text-base row-span-2 active:bg-green-700 transition-colors flex items-center justify-center">✓<br/>Done</button>
-              {/* Row 5: 0 (spans 2), . */}
-              <button onClick={() => setCalciInput(p => p + '0')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 col-span-2 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">0</button>
-              <button onClick={() => setCalciInput(p => p + '.')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">.</button>
+              <button onClick={() => setCalciInput(p => p + '1')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>1</button>
+              <button onClick={() => setCalciInput(p => p + '2')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>2</button>
+              <button onClick={() => setCalciInput(p => p + '3')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>3</button>
+              {/* Row 5: 0, ., Fast Cash */}
+              <button onClick={() => setCalciInput(p => p + '0')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>0</button>
+              <button onClick={() => setCalciInput(p => p + '.')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>.</button>
+              <button onClick={handleFastCash} className="bg-green-600 text-white font-bold text-base h-full active:bg-green-700 transition-colors flex items-center justify-center col-span-2">⚡ Fast Cash</button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 px-1 text-center">
               Type amounts like <span className="font-mono bg-muted px-1 rounded">10+25+2×15</span> then tap Add
@@ -3065,15 +3183,18 @@ const Billing = () => {
       )}
 
       {/* Category Horizontal Scroll */}
-      <CategoryScrollBar
-        categories={itemCategories}
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-        categoryOrder={displaySettings.category_order}
-        items={items}
-      />
+      {!isCalciStretched && (
+        <CategoryScrollBar
+          categories={itemCategories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+          categoryOrder={displaySettings.category_order}
+          items={items}
+        />
+      )}
 
       {/* Items Grid - Scrollable */}
+      {!isCalciStretched && (
       <div
         className="flex-1 overflow-y-auto scroll-smooth min-h-0 relative"
         style={{
@@ -3119,6 +3240,7 @@ const Billing = () => {
             })}
           </div>}
       </div>
+      )}
     </div>
 
     {/* Mobile Floating Cart - Rendered via Portal to bypass overflow-x-hidden parent */}

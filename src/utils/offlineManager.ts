@@ -97,6 +97,10 @@ class OfflineManager {
                         console.error('[Sync] Auto-sync on startup failed:', err);
                     });
                 }
+                
+                // Run privacy auto-wipe on startup
+                this.performAutoWipe().catch(err => console.error('[Privacy] Auto-wipe failed:', err));
+                
                 resolve();
             };
 
@@ -139,6 +143,71 @@ class OfflineManager {
                 console.log('IndexedDB stores created/upgraded');
             };
         });
+    }
+
+    private async performAutoWipe(): Promise<void> {
+        if (!this.db) return;
+        
+        try {
+            // Snapshot keys first to avoid issues with iteration during modification
+            const keys: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.includes('hotel_pos_auto_wipe_days')) keys.push(k);
+            }
+            
+            for (const key of keys) {
+                const days = parseInt(localStorage.getItem(key) || '0', 10);
+                if (!days || days <= 0 || isNaN(days)) continue;
+                
+                const isGlobal = key === 'hotel_pos_auto_wipe_days';
+                const branchId = isGlobal ? '' : key.replace('hotel_pos_auto_wipe_days_', '');
+                const storageModeKey = isGlobal ? 'privacy_storage_mode' : `privacy_storage_mode_${branchId}`;
+                const isLocal = localStorage.getItem(storageModeKey) === 'local';
+                
+                if (!isLocal) continue;
+                
+                const cutoffTime = new Date();
+                cutoffTime.setDate(cutoffTime.getDate() - days);
+                const cutoffString = cutoffTime.toISOString();
+                
+                try {
+                    const transaction = this.db!.transaction([STORES.BILLS], 'readwrite');
+                    const store = transaction.objectStore(STORES.BILLS);
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => {
+                        const bills = request.result;
+                        let deletedCount = 0;
+                        for (const bill of bills) {
+                            if ((isGlobal || bill.branch_id === branchId) && bill.created_at && bill.created_at < cutoffString) {
+                                try {
+                                    store.delete(bill.id);
+                                    deletedCount++;
+                                } catch (delErr) {
+                                    console.warn('[Privacy] Failed to delete bill:', bill.id, delErr);
+                                }
+                            }
+                        }
+                        if (deletedCount > 0) {
+                            console.log(`[Privacy] Auto-wiped ${deletedCount} local bills older than ${days} days.`);
+                        }
+                    };
+                    
+                    request.onerror = () => {
+                        console.error('[Privacy] Failed to read bills for auto-wipe:', request.error);
+                    };
+                    
+                    transaction.onerror = () => {
+                        console.error('[Privacy] Auto-wipe transaction error:', transaction.error);
+                    };
+                } catch (txErr) {
+                    console.error('[Privacy] Failed to create auto-wipe transaction:', txErr);
+                }
+            }
+        } catch (err) {
+            console.error('Error during auto-wipe:', err);
+        }
     }
 
     private setupNetworkListeners(): void {
@@ -609,6 +678,76 @@ class OfflineManager {
         if (finalBranchId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(finalBranchId)) {
             finalBranchId = null;
         }
+
+        // --- Data Privacy Check ---
+        let allowCloudStorage = true;
+        let privacyMode = 'cloud';
+        
+        if (currentUserId) {
+            const cachedProfileStr = localStorage.getItem(`profile_${currentUserId}`);
+            if (cachedProfileStr) {
+                try {
+                    const prof = JSON.parse(cachedProfileStr);
+                    if (prof.client_permissions && prof.client_permissions.allow_cloud_storage === false) {
+                        allowCloudStorage = false;
+                    }
+                } catch {}
+            }
+        }
+        
+        const branchKey = finalBranchId ? `privacy_storage_mode_${finalBranchId}` : 'privacy_storage_mode';
+        privacyMode = localStorage.getItem(branchKey) || localStorage.getItem('privacy_storage_mode') || 'cloud';
+
+        if (!allowCloudStorage || privacyMode === 'local') {
+            console.log(`[Sync] Local Only mode active for bill ${bill.bill_no}. Skipping Supabase upload.`);
+            
+            // Delete from pending bills cache
+            await this.delete(STORES.PENDING_BILLS, bill.id);
+            
+            // Cache the local-only bill so it appears in reports locally
+            const localBillCached = {
+                id: bill.id,
+                bill_no: bill.bill_no,
+                total_amount: bill.total_amount,
+                discount: bill.discount,
+                payment_mode: bill.payment_mode,
+                payment_details: bill.payment_details,
+                additional_charges: bill.additional_charges,
+                created_by: finalCreatedBy,
+                admin_id: finalAdminId || null,
+                branch_id: finalBranchId || null,
+                date: bill.date,
+                created_at: bill.created_at,
+                status_updated_at: bill.created_at,
+                service_status: bill.service_status || 'pending',
+                kitchen_status: bill.kitchen_status || 'pending',
+                table_no: bill.table_no || null,
+                round_off: bill.round_off || 0,
+                order_type: bill.order_type || 'dine_in',
+                customer_mobile: bill.customer_mobile || null,
+                customer_phone: bill.customer_phone || null,
+                tax_summary: bill.tax_summary || null,
+                total_tax: bill.total_tax || 0,
+                customer_gstin: bill.customer_gstin || null,
+                synced: true, // Marked as synced so it doesn't trigger pending indicators
+                is_local_only: true, // Custom flag to identify local bills
+                bill_items: bill.items.map(item => ({
+                    item_id: item.item_id,
+                    quantity: item.quantity,
+                    price: item.price,
+                    total: item.total,
+                    items: {
+                        name: item.name,
+                        category: 'Unknown',
+                        is_active: true
+                    }
+                }))
+            };
+            await this.store(STORES.BILLS, localBillCached);
+            window.dispatchEvent(new CustomEvent('bills-updated'));
+            return; // Exit early, no upload to Supabase!
+        }
+        // --- End Data Privacy Check ---
 
         // Sanitize payment mode to match Supabase payment_method enum: cash, card, upi, other
         let finalPaymentMode = bill.payment_mode ? bill.payment_mode.toLowerCase() : 'cash';

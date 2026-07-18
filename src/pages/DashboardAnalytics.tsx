@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { PinLockGuard } from '@/components/PinLockGuard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -1280,4 +1281,10 @@ const StatsCard = ({ title, value, icon: Icon, color, sub }: any) => {
   );
 }
 
-export default DashboardAnalytics;
+export default function DashboardAnalyticsProtected() {
+  return (
+    <PinLockGuard>
+      <DashboardAnalytics />
+    </PinLockGuard>
+  );
+}

@@ -27,6 +27,8 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 
+import { PinLockGuard } from '@/components/PinLockGuard';
+
 interface Bill {
   id: string;
   bill_no: string;
@@ -810,6 +812,50 @@ const Reports: React.FC = () => {
           additional_charges: parsedCharges
         };
       }));
+      
+      // --- DATA PRIVACY: Merge local-only bills from IndexedDB ---
+      const privacyBranchKey = branchFilterId ? `privacy_storage_mode_${branchFilterId}` : 'privacy_storage_mode';
+      const privacyMode = localStorage.getItem(privacyBranchKey) || localStorage.getItem('privacy_storage_mode') || 'cloud';
+      const superAdminBlockedCloud = (profile?.client_permissions as any)?.allow_cloud_storage === false;
+      
+      if (superAdminBlockedCloud || privacyMode === 'local') {
+        try {
+          const localBills = await offlineManager.getCachedBills();
+          const filteredLocalBills = localBills.filter((bill: any) => {
+            const billDate = bill.date;
+            const dateMatch = billDate >= start && billDate <= end;
+            const deletedMatch = billFilter === 'processed' ? !bill.is_deleted : bill.is_deleted;
+            const branchMatch = !branchFilterId || bill.branch_id === branchFilterId;
+            return dateMatch && deletedMatch && branchMatch && bill.is_local_only;
+          });
+          
+          if (filteredLocalBills.length > 0) {
+            setBills(prev => {
+              // Merge: add local bills that aren't already in cloud results (by ID)
+              const existingIds = new Set(prev.map(b => b.id));
+              const newLocalBills = filteredLocalBills
+                .filter((b: any) => !existingIds.has(b.id))
+                .map((bill: any) => {
+                  let parsedCharges: { name: string; amount: number }[] = [];
+                  if (bill.additional_charges) {
+                    if (typeof bill.additional_charges === 'string') {
+                      try { parsedCharges = JSON.parse(bill.additional_charges); } catch { parsedCharges = []; }
+                    } else if (Array.isArray(bill.additional_charges)) {
+                      parsedCharges = bill.additional_charges;
+                    }
+                  }
+                  return { ...bill, payment_details: bill.payment_details || {}, additional_charges: parsedCharges };
+                });
+              return [...prev, ...newLocalBills].sort((a, b) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+            });
+          }
+        } catch (localErr) {
+          console.warn('[Privacy] Failed to load local bills for merge:', localErr);
+        }
+      }
+
       setExpenses(reportData.expenses);
       setPurchases(reportData.purchases || []);
       setPurchasePayments(reportData.purchasePayments || []);
@@ -2690,4 +2736,10 @@ const Reports: React.FC = () => {
   );
 };
 
-export default Reports;
+export default function ReportsProtected() {
+  return (
+    <PinLockGuard>
+      <Reports />
+    </PinLockGuard>
+  );
+}

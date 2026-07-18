@@ -936,6 +936,26 @@ const SuperAdminUsers: React.FC = () => {
                 }}
               />
             </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-purple-50/50 dark:bg-purple-900/20 hover:bg-purple-50 dark:hover:bg-purple-900/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center dark:bg-purple-900/60">
+                  <span className="text-sm">☁️</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-purple-800 dark:text-purple-300">Cloud Storage (Bills/Reports)</span>
+                  <span className="text-[10px] text-purple-600 dark:text-purple-400 font-mono">allow_cloud_storage</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.client_permissions?.['allow_cloud_storage'] !== false}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) {
+                    handleTogglePermission(selectedAdmin.profile_id, 'allow_cloud_storage', checked);
+                  }
+                }}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
