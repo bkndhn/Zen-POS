@@ -56,6 +56,8 @@ export interface PendingBill {
     customer_gstin?: string | null;
     customer_mobile?: string | null;
     customer_phone?: string | null;
+    service_status?: string;
+    kitchen_status?: string;
 }
 
 interface SyncQueueItem {
