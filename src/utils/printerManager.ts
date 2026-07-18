@@ -324,6 +324,7 @@ class PrinterManager {
 
     // Check if Bluetooth is supported
     public isBluetoothSupported(): boolean {
+        if (this.hasNativePrinterBridge()) return true;
         const nav = navigator as any;
         return 'bluetooth' in nav;
     }
