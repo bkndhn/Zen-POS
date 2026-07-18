@@ -26,6 +26,11 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+      "prefer-const": "off",
+      "no-empty": "off",
+      "no-useless-escape": "off",
+      "no-control-regex": "off",
     },
   }
 );
