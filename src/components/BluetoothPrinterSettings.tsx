@@ -64,6 +64,8 @@ export const BluetoothPrinterSettings: React.FC = () => {
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'fair' | 'poor' | null>(null);
   const [isIOS] = useState(() => PrinterManager.isIOSDevice());
   const [cacheRestored, setCacheRestored] = useState(false);
+  const [nativeDevices, setNativeDevices] = useState<Array<{ name: string; address: string }>>([]);
+  const [showNativePicker, setShowNativePicker] = useState(false);
 
   // Sync connection state with local state
   useEffect(() => {
@@ -625,6 +627,25 @@ export const BluetoothPrinterSettings: React.FC = () => {
             </div>
           </DialogContent>
         </Dialog>
+        <Dialog open={showNativePicker} onOpenChange={setShowNativePicker}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select Bluetooth Printer</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto p-2">
+              {nativeDevices.length > 0 ? nativeDevices.map(device => (
+                <Button key={device.address} variant="outline" className="justify-start py-6" onClick={() => selectNativePrinter(device)}>
+                  <div className="flex flex-col items-start">
+                    <span className="font-semibold">{device.name}</span>
+                    <span className="text-xs text-muted-foreground">{device.address}</span>
+                  </div>
+                </Button>
+              )) : (
+                <p className="text-sm text-center text-muted-foreground py-4">No paired devices found. Pair the printer in Android Settings first.</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
@@ -769,27 +790,6 @@ const StationPrinterMap: React.FC = () => {
       <p className="text-[11px] text-slate-500 px-1">
         Assign each station to a specific Bluetooth printer. Categories tagged with that station will KOT-print to the mapped device.
       </p>
-      <Dialog open={showNativePicker} onOpenChange={setShowNativePicker}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Bluetooth Printer</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto p-2">
-            {nativeDevices.length > 0 ? (
-              nativeDevices.map(d => (
-                <Button key={d.address} variant="outline" className="justify-start py-6" onClick={() => selectNativePrinter(d)}>
-                  <div className="flex flex-col items-start">
-                    <span className="font-semibold">{d.name}</span>
-                    <span className="text-xs text-muted-foreground">{d.address}</span>
-                  </div>
-                </Button>
-              ))
-            ) : (
-              <p className="text-sm text-center text-muted-foreground py-4">No paired devices found. Please pair your printer in Android Settings first.</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

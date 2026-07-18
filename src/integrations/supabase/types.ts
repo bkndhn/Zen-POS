@@ -218,6 +218,7 @@ export type Database = {
       bill_items: {
         Row: {
           bill_id: string
+          billing_type: string | null
           created_at: string
           hsn_code: string | null
           id: string
@@ -234,6 +235,7 @@ export type Database = {
         }
         Insert: {
           bill_id: string
+          billing_type?: string | null
           created_at?: string
           hsn_code?: string | null
           id?: string
@@ -250,6 +252,7 @@ export type Database = {
         }
         Update: {
           bill_id?: string
+          billing_type?: string | null
           created_at?: string
           hsn_code?: string | null
           id?: string
@@ -285,8 +288,8 @@ export type Database = {
         Row: {
           additional_charges: Json | null
           admin_id: string | null
+          bill_no: string
           billing_type: string | null
-            bill_no: string
           branch_id: string | null
           channel: string
           created_at: string
@@ -316,8 +319,8 @@ export type Database = {
         Insert: {
           additional_charges?: Json | null
           admin_id?: string | null
+          bill_no: string
           billing_type?: string | null
-            bill_no: string
           branch_id?: string | null
           channel?: string
           created_at?: string
@@ -347,8 +350,8 @@ export type Database = {
         Update: {
           additional_charges?: Json | null
           admin_id?: string | null
+          bill_no?: string
           billing_type?: string | null
-            bill_no?: string
           branch_id?: string | null
           channel?: string
           created_at?: string
@@ -1501,7 +1504,7 @@ export type Database = {
           address: string | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
-            composition_rate: number | null
+          composition_rate: number | null
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
@@ -1555,7 +1558,7 @@ export type Database = {
           address?: string | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
-            composition_rate?: number | null
+          composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
@@ -1609,7 +1612,7 @@ export type Database = {
           address?: string | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
-            composition_rate?: number | null
+          composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
@@ -2373,7 +2376,7 @@ export type Database = {
           address: string | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
-            composition_rate: number | null
+          composition_rate: number | null
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
