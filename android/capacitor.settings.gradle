@@ -2,5 +2,3 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
-include ':capacitor-thermal-printer-bluetooth'
-project(':capacitor-thermal-printer-bluetooth').projectDir = new File('../node_modules/capacitor-thermal-printer-bluetooth/android')
