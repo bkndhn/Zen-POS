@@ -2949,64 +2949,75 @@ const Billing = () => {
         </div>
       )}
 
-      {/* Unified Responsive Large Calculator */}
+      {/* Search and Layout Toggle OR Calci Input */}
       {appBillingMode === 'calci' ? (
-        <div className="w-full max-w-2xl mx-auto pb-4 px-2 sm:px-4">
-          {/* Hidden actual input to capture physical keyboard if they want to type */}
-          <input 
-             ref={calciInputRef as any}
-             autoFocus
-             className="opacity-0 absolute w-0 h-0"
-             value={calciInput}
-             onChange={(e) => setCalciInput(e.target.value.replace(/[^0-9+\-*/.]/g, ''))}
-             onKeyDown={(e) => { if (e.key === 'Enter') handleCalciSubmit(calciInput); }}
-             onBlur={() => {
-               // Keep focus if possible so physical keyboard keeps working
-               setTimeout(() => calciInputRef.current?.focus(), 100);
-             }}
-          />
-          
-          {/* Display */}
-          <div className="bg-zinc-900 dark:bg-zinc-950 rounded-t-3xl px-6 py-6 border-2 border-zinc-700 border-b-0 shadow-inner">
-             <div className="text-right font-mono text-4xl sm:text-5xl lg:text-6xl text-white min-h-[60px] sm:min-h-[80px] flex items-center justify-end overflow-x-auto tracking-wider font-bold">
-               {calciInput || <span className="text-zinc-700">0</span>}
-             </div>
+        <div className="mb-4">
+          {/* Desktop: text input with keyboard */}
+          <div className="hidden md:block">
+            <div className="relative flex items-center">
+              <Calculator className="absolute left-4 w-5 h-5 text-muted-foreground" />
+              <Input 
+                ref={calciInputRef}
+                autoFocus
+                inputMode="tel"
+                placeholder="Enter amounts (e.g. 10 + 25 + 2*15)"
+                value={calciInput}
+                onChange={e => setCalciInput(e.target.value)}
+                onKeyDown={handleCalciKeyDown}
+                className="pl-12 h-14 text-lg bg-white/50 dark:bg-zinc-900/50 rounded-xl shadow-sm border-zinc-200 dark:border-zinc-800 font-mono"
+              />
+              <Button 
+                className="absolute right-2 h-10 rounded-lg"
+                onClick={() => handleCalciSubmit(calciInput)}
+              >
+                Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 px-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Press <kbd className="bg-muted px-1.5 rounded text-[10px] mx-1 border shadow-sm font-mono">Enter</kbd> to add to cart.
+            </p>
           </div>
-          
-          {/* Numpad Grid */}
-          <div className="grid grid-cols-4 gap-[2px] bg-zinc-300 dark:bg-zinc-700 rounded-b-3xl overflow-hidden border-2 border-t-0 border-zinc-300 dark:border-zinc-700 shadow-xl">
-            {/* Row 1: C, ×, +, ⌫ */}
-            <button onClick={() => { setCalciInput(''); calciInputRef.current?.focus(); }} className="bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold text-2xl sm:text-3xl py-6 sm:py-8 lg:py-10 active:bg-zinc-300 dark:active:bg-zinc-600 transition-colors">C</button>
-            <button onClick={() => { setCalciInput(p => p + '*'); calciInputRef.current?.focus(); }} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-2xl sm:text-3xl py-6 sm:py-8 lg:py-10 active:bg-zinc-300 dark:active:bg-zinc-600 transition-colors">×</button>
-            <button onClick={() => { setCalciInput(p => p + '+'); calciInputRef.current?.focus(); }} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-2xl sm:text-3xl py-6 sm:py-8 lg:py-10 active:bg-zinc-300 dark:active:bg-zinc-600 transition-colors">+</button>
-            <button onClick={() => { setCalciInput(p => p.slice(0, -1)); calciInputRef.current?.focus(); }} className="bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold text-2xl sm:text-3xl py-6 sm:py-8 lg:py-10 active:bg-zinc-300 dark:active:bg-zinc-600 transition-colors flex items-center justify-center"><Delete className="w-8 h-8 sm:w-10 sm:h-10" /></button>
-            
-            {/* Row 2: 7, 8, 9 */}
-            <button onClick={() => { setCalciInput(p => p + '7'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">7</button>
-            <button onClick={() => { setCalciInput(p => p + '8'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">8</button>
-            <button onClick={() => { setCalciInput(p => p + '9'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">9</button>
-            {/* Add button spans 2 rows */}
-            <button onClick={() => { handleCalciSubmit(calciInput); calciInputRef.current?.focus(); }} className="bg-primary text-primary-foreground font-bold text-xl sm:text-2xl row-span-2 active:bg-primary/80 transition-colors flex items-center justify-center tracking-wide leading-tight">Add<br/>to<br/>Cart</button>
-            
-            {/* Row 3: 4, 5, 6 */}
-            <button onClick={() => { setCalciInput(p => p + '4'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">4</button>
-            <button onClick={() => { setCalciInput(p => p + '5'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">5</button>
-            <button onClick={() => { setCalciInput(p => p + '6'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">6</button>
-            
-            {/* Row 4: 1, 2, 3 */}
-            <button onClick={() => { setCalciInput(p => p + '1'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">1</button>
-            <button onClick={() => { setCalciInput(p => p + '2'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">2</button>
-            <button onClick={() => { setCalciInput(p => p + '3'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">3</button>
-            {/* Done button spans 2 rows */}
-            <button onClick={() => { handleCalciSubmit(calciInput); setIsCalciMode(false); }} className="bg-green-600 text-white font-bold text-xl sm:text-2xl row-span-2 active:bg-green-700 transition-colors flex items-center justify-center tracking-wide leading-tight">✓<br/>Done</button>
-            
-            {/* Row 5: 0 (spans 2), . */}
-            <button onClick={() => { setCalciInput(p => p + '0'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 col-span-2 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">0</button>
-            <button onClick={() => { setCalciInput(p => p + '.'); calciInputRef.current?.focus(); }} className="bg-white dark:bg-zinc-900 text-foreground font-bold text-3xl sm:text-4xl py-6 sm:py-8 lg:py-10 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">.</button>
+
+          {/* Mobile: built-in calculator numpad */}
+          <div className="md:hidden">
+            {/* Display */}
+            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-t-2xl px-4 py-3 border border-zinc-700 border-b-0">
+              <div className="text-right font-mono text-2xl text-white min-h-[40px] flex items-center justify-end overflow-x-auto">
+                {calciInput || <span className="text-zinc-500">0</span>}
+              </div>
+            </div>
+            {/* Numpad Grid */}
+            <div className="grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700">
+              {/* Row 1: C, ×, +, ⌫ */}
+              <button onClick={() => setCalciInput('')} className="bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">C</button>
+              <button onClick={() => setCalciInput(p => p + '*')} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">×</button>
+              <button onClick={() => setCalciInput(p => p + '+')} className="bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors">+</button>
+              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className="bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold text-lg py-4 active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center"><Delete className="w-5 h-5" /></button>
+              {/* Row 2: 7, 8, 9 */}
+              <button onClick={() => setCalciInput(p => p + '7')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">7</button>
+              <button onClick={() => setCalciInput(p => p + '8')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">8</button>
+              <button onClick={() => setCalciInput(p => p + '9')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">9</button>
+              {/* Add button spans 2 rows */}
+              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-primary text-primary-foreground font-bold text-lg row-span-2 active:bg-primary/80 transition-colors flex items-center justify-center">Add<br/>to<br/>Cart</button>
+              {/* Row 3: 4, 5, 6 */}
+              <button onClick={() => setCalciInput(p => p + '4')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">4</button>
+              <button onClick={() => setCalciInput(p => p + '5')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">5</button>
+              <button onClick={() => setCalciInput(p => p + '6')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">6</button>
+              {/* Row 4: 1, 2, 3 */}
+              <button onClick={() => setCalciInput(p => p + '1')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">1</button>
+              <button onClick={() => setCalciInput(p => p + '2')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">2</button>
+              <button onClick={() => setCalciInput(p => p + '3')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">3</button>
+              {/* Add button spans 2 rows */}
+              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-green-600 text-white font-bold text-base row-span-2 active:bg-green-700 transition-colors flex items-center justify-center">✓<br/>Done</button>
+              {/* Row 5: 0 (spans 2), . */}
+              <button onClick={() => setCalciInput(p => p + '0')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 col-span-2 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">0</button>
+              <button onClick={() => setCalciInput(p => p + '.')} className="bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl py-4 active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">.</button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 px-1 text-center">
+              Type amounts like <span className="font-mono bg-muted px-1 rounded">10+25+2×15</span> then tap Add
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-4 px-2 text-center font-medium">
-            Physical keyboard supported. Type <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">10+25+2*15</span> and press <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">Enter</span>
-          </p>
         </div>
       ) : (
       <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
