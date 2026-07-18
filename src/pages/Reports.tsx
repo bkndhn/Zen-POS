@@ -52,6 +52,7 @@ interface BillItem {
   price: number;
   total: number;
   item_id: string;
+  item_name_override?: string;
   items: {
     name: string;
     category: string;

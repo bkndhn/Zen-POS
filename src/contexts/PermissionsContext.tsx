@@ -23,6 +23,7 @@ export interface UserPermissions {
     stock: boolean;
     waiterCompanion: boolean;
     bottomNavCustomize: boolean;
+    calci_billing: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -46,6 +47,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     stock: false,
     waiterCompanion: false,
     bottomNavCustomize: false,
+    calci_billing: false,
 };
 
 const ADMIN_PERMISSIONS: UserPermissions = {
@@ -69,6 +71,7 @@ const ADMIN_PERMISSIONS: UserPermissions = {
     stock: true,
     waiterCompanion: true,
     bottomNavCustomize: true,
+    calci_billing: true,
 };
 
 interface PermissionsContextType {

@@ -886,6 +886,12 @@ const Billing = () => {
     printerWidth: '58mm' | '80mm';
     auto_connect_printer?: boolean;
     printer_name?: string;
+    qrPaymentEnabled?: boolean;
+    receiptQrEnabled?: boolean;
+    receiptQrType?: string;
+    upiId?: string;
+    upiName?: string;
+    telegram?: string;
   } | null>(null);
 
   // Printer error dialog state
