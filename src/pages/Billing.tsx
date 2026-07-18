@@ -1338,6 +1338,7 @@ const Billing = () => {
   };
 
   useEffect(() => {
+    if (!adminId) return;
     fetchItems();
     fetchPaymentTypes();
     fetchAdditionalCharges();
@@ -1347,7 +1348,8 @@ const Billing = () => {
     if (profile?.user_id) {
       fetchDisplaySettings();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminId, branchFilterId]);
 
   // Re-fetch shop settings whenever the active branch changes so prints/share use branch header
   useEffect(() => {
