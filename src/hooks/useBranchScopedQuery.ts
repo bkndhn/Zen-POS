@@ -41,7 +41,7 @@ export function useBranchScopedQuery(onChange?: () => void) {
     // Branch (or All-view) changed → tell the page to refetch.
     // This runs AFTER render, so the page's fetch closure now sees the new branchFilterId.
     cbRef.current?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [branchFilterId, isAllBranchesView]);
 
   return {

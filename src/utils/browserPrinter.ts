@@ -49,7 +49,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
     <td style="width:20%;text-align:center;padding-right:4px;">QTY</td>
     <td style="width:25%;text-align:right;">VALUE</td>
   </tr>`;
-  let itemsHtml = data.items.map(item => {
+  const itemsHtml = data.items.map(item => {
     const targetUnit = (item as any).selling_unit || item.unit;
     const qtyWithUnit = formatQuantityWithUnit(item.quantity, targetUnit);
     const shortUnit = getShortUnit(targetUnit);

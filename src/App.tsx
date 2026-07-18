@@ -69,7 +69,7 @@ const ThemeLoader = () => {
           if (t.class) document.documentElement.classList.remove(t.class);
         });
 
-        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
           metaThemeColor.setAttribute('content', '#09090b');
         }
@@ -78,15 +78,15 @@ const ThemeLoader = () => {
 
       if (savedTheme === 'custom') {
         const hexToHSL = (hex: string) => {
-          let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
           if (!result) return { h: 0, s: 0, l: 0 };
-          let r = parseInt(result[1], 16) / 255;
-          let g = parseInt(result[2], 16) / 255;
-          let b = parseInt(result[3], 16) / 255;
-          let max = Math.max(r, g, b), min = Math.min(r, g, b);
+          const r = parseInt(result[1], 16) / 255;
+          const g = parseInt(result[2], 16) / 255;
+          const b = parseInt(result[3], 16) / 255;
+          const max = Math.max(r, g, b), min = Math.min(r, g, b);
           let h = 0, s = 0, l = (max + min) / 2;
           if (max !== min) {
-            let d = max - min;
+            const d = max - min;
             s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
             switch (max) {
               case r: h = (g - b) / d + (g < b ? 6 : 0); break;
@@ -117,7 +117,7 @@ const ThemeLoader = () => {
         document.documentElement.style.setProperty('--btn-increment', hslString);
         document.documentElement.style.setProperty('--qty-badge', hslString);
 
-        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
           metaThemeColor.setAttribute('content', customColor);
         }
@@ -142,7 +142,7 @@ const ThemeLoader = () => {
         }
 
         const themeColor = themeColors[savedTheme] || '#3b82f6';
-        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
           metaThemeColor.setAttribute('content', themeColor);
         }
@@ -219,6 +219,7 @@ const persister = createIDBPersister();
 
 import { InstallPrompt } from './components/InstallPrompt';
 import { DevicePermissions } from './components/DevicePermissions';
+import { NativeAppController } from './components/NativeAppController';
 
 const App = () => {
   // Always On Display State
@@ -306,6 +307,7 @@ const App = () => {
           <DevicePermissions />
           <PendingBillsQueue />
           <BrowserRouter>
+            <NativeAppController />
             <AuthProvider>
               <PermissionsProvider>
                 <BranchProvider>

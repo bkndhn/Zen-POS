@@ -94,7 +94,7 @@ const StockAdjustment: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, [adminId]);
+  useEffect(() => { fetchAll();   }, [adminId]);
 
   const filteredItems = useMemo(() => {
     const s = q.trim().toLowerCase();

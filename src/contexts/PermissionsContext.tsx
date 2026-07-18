@@ -139,8 +139,8 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
             // For ADMIN: Check their own permissions set by Super Admin
             // For USER (child): Check their own permissions AND their parent admin's permissions
 
-            let adminPermissions: Record<string, boolean> = {};
-            let userPermissions: Record<string, boolean> = {};
+            const adminPermissions: Record<string, boolean> = {};
+            const userPermissions: Record<string, boolean> = {};
 
             // If this is an admin, fetch their permissions
             if (profile.role === 'admin') {

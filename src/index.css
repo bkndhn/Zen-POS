@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Native App Behaviors */
+html, body {
+  -webkit-user-select: none; /* Safari */
+  user-select: none; /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
+  -webkit-touch-callout: none; /* Disable long-press popup menu on iOS */
+  overscroll-behavior-y: none; /* Disable pull-to-refresh bounce */
+  -webkit-tap-highlight-color: transparent; /* Remove blue tap highlight */
+}
+
+input, textarea, [contenteditable] {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
 /* Scrollbar hide utility */
 .scrollbar-hide {
   -ms-overflow-style: none;

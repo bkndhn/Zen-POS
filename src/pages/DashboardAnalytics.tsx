@@ -186,7 +186,7 @@ const DashboardAnalytics = () => {
 
   const getRange = (mode: ComparisonMode, dateStr: string) => {
     const date = new Date(dateStr);
-    let start = new Date(date);
+    const start = new Date(date);
     let end = new Date(date);
 
     if (mode === 'day') {

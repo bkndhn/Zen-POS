@@ -708,7 +708,7 @@ const Reports: React.FC = () => {
             expensesData = expensesResult || [];
 
             // Fetch purchases — client-isolated
-            let purchasesQ: any = supabase
+            const purchasesQ: any = supabase
               .from('purchases')
               .select(`
                 id,
@@ -734,7 +734,7 @@ const Reports: React.FC = () => {
             purchasesData = purchasesResult || [];
 
             // Fetch purchase payments — client-isolated
-            let paymentsQ: any = (supabase as any)
+            const paymentsQ: any = (supabase as any)
               .from('purchase_payments')
               .select('*')
               .eq('admin_id', adminId)
@@ -826,7 +826,7 @@ const Reports: React.FC = () => {
         const cachedBills = await offlineManager.getCachedBills();
         if (cachedBills.length > 0) {
           const { start, end } = getDateFilter();
-          let filteredBills = cachedBills.filter((bill: any) => {
+          const filteredBills = cachedBills.filter((bill: any) => {
             const billDate = bill.date;
             return billDate >= start && billDate <= end && !bill.is_deleted;
           });

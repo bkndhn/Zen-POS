@@ -1753,7 +1753,7 @@ const Billing = () => {
     try {
       // Split by +
       const parts = expression.split('+');
-      let localCart = [...cart];
+      const localCart = [...cart];
       
       for (const part of parts) {
         const trimmed = part.trim().toLowerCase();
