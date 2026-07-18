@@ -1295,7 +1295,7 @@ class PrinterManager {
         const nav = navigator as any;
 
         if (Capacitor.isNativePlatform()) {
-            let nativeStatus = { connected: false, name: '', address: '' };
+            let nativeStatus: { connected: boolean; name?: string; address?: string } = { connected: false, name: '', address: '' };
             try { nativeStatus = await BluetoothPrinter.getConnectionStatus(); } catch { /* reported below */ }
             this.nativeConnected = nativeStatus.connected;
             report.push({ step: 'Native Android Bridge', ok: true, detail: 'active' });

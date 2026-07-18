@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
-import { Palette, LayoutTemplate, LayoutGrid, Type, Sparkles, Box, Check, RefreshCw } from 'lucide-react';
+import { Palette, LayoutTemplate, LayoutGrid, Type, Sparkles, Box, Check, RefreshCw, Droplets } from 'lucide-react';
 
 const COLOR_PRESETS = [
     { id: 'custom', label: 'Custom Colors (Use Pickers)', primary: '', secondary: '', bg: '', text: '' },
