@@ -1,3 +1,4 @@
+import { getAppBaseUrl } from '@/utils/urlUtils';
 
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -138,7 +139,7 @@ const Auth = () => {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${window.location.origin}/auth`,
+        redirectTo: `${getAppBaseUrl()}/auth`,
         captchaToken: captchaToken || undefined,
       });
 

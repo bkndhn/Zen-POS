@@ -1,3 +1,4 @@
+import { getAppBaseUrl } from '@/utils/urlUtils';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -462,7 +463,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${getAppBaseUrl()}/`,
         data: userData,
         captchaToken: extras?.captchaToken,
       }

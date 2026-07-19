@@ -1,3 +1,4 @@
+import { getAppBaseUrl } from '@/utils/urlUtils';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
@@ -137,7 +138,7 @@ const QRCodeSettings = () => {
 
     // Base menu URL (uses custom slug if available, otherwise admin ID)
     const baseUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/menu/${menuSlug || adminId}`
+        ? `${getAppBaseUrl()}/menu/${menuSlug || adminId}`
         : '';
 
     // Current QR URL (with optional table and seat)
@@ -1180,8 +1181,24 @@ const QRCodeSettings = () => {
                         <StoreOperatingHours 
                             operatingHours={operatingHours}
                             storeStatusOverride={storeStatusOverride}
-                            onUpdateHours={setOperatingHours}
-                            onUpdateOverride={setStoreStatusOverride}
+                            onUpdateHours={(newHours) => {
+                                setOperatingHours(newHours);
+                                if (!adminAuthUid) return;
+                                const ssPayload: any = { user_id: adminAuthUid, branch_id: operatingBranchId, operating_hours: newHours };
+                                supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle().then(({ data }) => {
+                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then();
+                                    else supabase.from('shop_settings').insert(ssPayload).then();
+                                });
+                            }}
+                            onUpdateOverride={(newOverride) => {
+                                setStoreStatusOverride(newOverride);
+                                if (!adminAuthUid) return;
+                                const ssPayload: any = { user_id: adminAuthUid, branch_id: operatingBranchId, store_status_override: newOverride };
+                                supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle().then(({ data }) => {
+                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then();
+                                    else supabase.from('shop_settings').insert(ssPayload).then();
+                                });
+                            }}
                         />
                     </div>
 

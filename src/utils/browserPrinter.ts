@@ -1,3 +1,4 @@
+import { isBillNumberHidden } from './printerConfig';
 import { PrintData } from './bluetoothPrinter';
 import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './timeUtils';
 import QRCode from 'qrcode';
@@ -209,7 +210,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
   <hr>
   
   <table>
-    ${localStorage.getItem('hotel_pos_hide_bill_number') === 'true' 
+    ${isBillNumberHidden() 
       ? `<tr><td><b>Date:</b></td><td style="text-align:right">${data.date}</td></tr>` 
       : `<tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>`}
     <tr><td>Time:</td><td style="text-align:right">${data.time}</td></tr>

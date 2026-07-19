@@ -1,3 +1,4 @@
+import { getAppBaseUrl } from '@/utils/urlUtils';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -219,7 +220,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
                 <div className="relative flex-1">
                   <Input
                     readOnly
-                    value={`${window.location.origin}/display?admin=${adminId}&branch=${operatingBranchId || ''}`}
+                    value={`${getAppBaseUrl()}/display?admin=${adminId}&branch=${operatingBranchId || ''}`}
                     className="bg-muted/50 font-mono text-xs pr-20"
                   />
                   <Badge variant="outline" className="absolute right-2 top-1/2 -translate-y-1/2 bg-background shadow-sm">
@@ -231,7 +232,7 @@ export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
                     variant="outline"
                     className="flex-1 sm:flex-none hover:bg-primary hover:text-primary-foreground transition-colors"
                     onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/display?admin=${adminId}&branch=${operatingBranchId || ''}`);
+                      navigator.clipboard.writeText(`${getAppBaseUrl()}/display?admin=${adminId}&branch=${operatingBranchId || ''}`);
                       toast({ title: "Copied!", description: "TV Display link copied to clipboard" });
                     }}
                   >

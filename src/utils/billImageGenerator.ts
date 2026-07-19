@@ -1,3 +1,4 @@
+import { isBillNumberHidden } from './printerConfig';
 /**
  * Bill Image Generator for WhatsApp Sharing
  * 
@@ -134,8 +135,8 @@ const generateBillHtml = (data: BillImageData): string => {
         border-radius: 12px;
         text-align: center;
       ">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">
-          ${localStorage.getItem('hotel_pos_hide_bill_number') === 'true' ? 'Bill Details' : `Bill Details - ${escapeHtml(data.billNo)}`}
+        <div class="header-title" style="margin-bottom: 2px; font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">
+          ${isBillNumberHidden() ? 'Bill Details' : `Bill Details - ${escapeHtml(data.billNo)}`}
         </div>
         <div style="font-size: 11px; color: rgba(255,255,255,0.85); margin-top: 4px;">${data.date} ${data.time}</div>
         ${data.orderType ? `<div style="font-size: 12px; font-weight: 700; color: #fef08a; margin-top: 4px; text-transform: uppercase;">${data.orderType === 'parcel' ? '📦 PARCEL' : '🍽️ DINE IN'}</div>` : ''}

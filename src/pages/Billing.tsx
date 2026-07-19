@@ -1272,8 +1272,7 @@ const Billing = () => {
         const dot = (data as any).default_order_type;
         if (dot === 'dine_in' || dot === 'parcel') setDefaultOrderType(dot); else setDefaultOrderType(undefined);
         const calciFromShopSettings = !!(data as any).calci_billing_enabled;
-        const calciFromClientPerms = profile?.client_permissions?.['calci_billing'] === true;
-        const isCalciAvailable = calciFromShopSettings || calciFromClientPerms;
+        const isCalciAvailable = calciFromShopSettings;
         setCalciEnabled(isCalciAvailable);
         if (!isCalciAvailable) setAppBillingMode('pos');
         // Update cache

@@ -1,3 +1,4 @@
+import { isBillNumberHidden } from './printerConfig';
 import QRCode from 'qrcode';
 
 // ESC/POS Commands
@@ -309,6 +310,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   const SEP_DOUBLE = '='.repeat(LINE_WIDTH);
 
   const { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } = await import('./timeUtils');
+  
 
   // Compact format helper - fits more on line
   const fmtLine = (left: string, right: string) => formatLine(left, right, LINE_WIDTH);
@@ -397,7 +399,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     // Use compact numeric date (DD/MM) instead of "MMM DD, YYYY" substring which chopped mid-number
     const now = new Date();
     const compactDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const hideBillNumber = localStorage.getItem('hotel_pos_hide_bill_number') === 'true';
+    const hideBillNumber = isBillNumberHidden();
     const compactInfo = hideBillNumber 
       ? `${compactDate} | ${data.time} | ${typeAbbr}`
       : `#${shortBillNo} | ${compactDate} | ${data.time} | ${typeAbbr}`;
@@ -408,7 +410,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(textToBytes(SEP));
     commands.push(FEED_LINE);
     commands.push(ALIGN_LEFT);
-    const hideBillNumber = localStorage.getItem('hotel_pos_hide_bill_number') === 'true';
+    const hideBillNumber = isBillNumberHidden();
     if (!hideBillNumber) {
       commands.push(textToBytes(fmtLine(`#${data.billNo}`, data.date)));
       commands.push(FEED_LINE);

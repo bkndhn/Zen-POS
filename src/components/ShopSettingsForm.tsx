@@ -1,3 +1,4 @@
+import { getAppBaseUrl } from '@/utils/urlUtils';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -527,8 +528,8 @@ export const ShopSettingsForm = () => {
     // Get the admin ID for menu URL
     const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
     const menuUrl = menuSlug
-        ? `${window.location.origin}/menu/${menuSlug}`
-        : `${window.location.origin}/menu/${adminId}`;
+        ? `${getAppBaseUrl()}/menu/${menuSlug}`
+        : `${getAppBaseUrl()}/menu/${adminId}`;
 
     return (
         <Card>
