@@ -34,6 +34,8 @@ import {
 import { PromoBannerManager } from '@/components/PromoBannerManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
 import QRPosterStudio from '@/components/QRPosterStudio';
+import { StoreOperatingHours } from '@/components/StoreOperatingHours';
+import { OperatingHours, defaultOperatingHours } from '@/types/operatingHours';
 
 // Simple QR Code generator using a public API
 const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '1a1a6c', bgColor: string = 'ffffff'): string => {
@@ -82,6 +84,10 @@ const QRCodeSettings = () => {
     const [upiId, setUpiId] = useState('');
     const [upiName, setUpiName] = useState('');
     const [qrPaymentEnabled, setQrPaymentEnabled] = useState(false);
+
+    // Operating Hours
+    const [storeStatusOverride, setStoreStatusOverride] = useState<string>('auto');
+    const [operatingHours, setOperatingHours] = useState<OperatingHours>(defaultOperatingHours);
 
     // Determine the admin ID to use for the menu URL
     const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
@@ -158,7 +164,7 @@ const QRCodeSettings = () => {
         if (adminAuthUid) {
             let { data } = await (supabase as any)
                 .from('shop_settings')
-                .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude, upi_id, upi_name, qr_payment_enabled')
+                .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude, upi_id, upi_name, qr_payment_enabled, store_status_override, operating_hours')
                 .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
@@ -167,7 +173,7 @@ const QRCodeSettings = () => {
             if (!data) {
                 const { data: fb } = await (supabase as any)
                     .from('shop_settings')
-                    .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude, upi_id, upi_name, qr_payment_enabled')
+                    .select('menu_slug, menu_show_shop_name, menu_show_address, menu_show_phone, menu_primary_color, menu_secondary_color, menu_background_color, menu_text_color, menu_items_per_row, shop_latitude, shop_longitude, upi_id, upi_name, qr_payment_enabled, store_status_override, operating_hours')
                     .eq('user_id', adminAuthUid)
                     .order('branch_id', { nullsFirst: false })
                     .limit(1)
@@ -189,6 +195,8 @@ const QRCodeSettings = () => {
                 setUpiId(data.upi_id || '');
                 setUpiName(data.upi_name || '');
                 setQrPaymentEnabled(data.qr_payment_enabled || false);
+                if (data.store_status_override) setStoreStatusOverride(data.store_status_override);
+                if (data.operating_hours) setOperatingHours(data.operating_hours);
             }
 
             // Slug source depends on branch:
@@ -272,6 +280,8 @@ const QRCodeSettings = () => {
             menu_show_phone: menuShowPhone,
             shop_latitude: shopLatitude,
             shop_longitude: shopLongitude,
+            store_status_override: storeStatusOverride,
+            operating_hours: operatingHours
         };
         if (isMainBranch) ssPayload.menu_slug = menuSlug || null;
 
@@ -1165,8 +1175,18 @@ const QRCodeSettings = () => {
                         )}
                     </div>
 
+                    {/* Operating Hours Settings */}
+                    <div className="mt-8">
+                        <StoreOperatingHours 
+                            operatingHours={operatingHours}
+                            storeStatusOverride={storeStatusOverride}
+                            onUpdateHours={setOperatingHours}
+                            onUpdateOverride={setStoreStatusOverride}
+                        />
+                    </div>
+
                     {/* Menu Display Options */}
-                    <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="mt-8 bg-muted/50 rounded-lg p-4 space-y-3">
                         <Label className="text-sm font-medium">What to show on public menu:</Label>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">

@@ -11,6 +11,7 @@ import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { useTranslation } from 'react-i18next';
+import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
 
 // Types
 interface MenuItem {
@@ -69,6 +70,9 @@ interface ShopSettings {
     upi_id?: string;
     upi_name?: string;
     qr_payment_enabled?: boolean;
+    // Operating Hours
+    store_status_override?: string;
+    operating_hours?: any;
 }
 
 
@@ -133,7 +137,20 @@ const PublicMenu = () => {
     const [items, setItems] = useState<MenuItem[]>([]);
     const [categories, setCategories] = useState<ItemCategory[]>([]);
     const [rawShopSettings, setShopSettings] = useState<ShopSettings | null>(null);
+    const [storeStatus, setStoreStatus] = useState<StoreStatusInfo | null>(null);
     const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('public_menu_dark_mode') === 'true');
+
+    // Periodically check store status
+    useEffect(() => {
+        const checkStatus = () => {
+            if (rawShopSettings) {
+                setStoreStatus(getStoreStatus(rawShopSettings.operating_hours, rawShopSettings.store_status_override));
+            }
+        };
+        checkStatus();
+        const interval = setInterval(checkStatus, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, [rawShopSettings]);
 
     useEffect(() => {
         if (isDarkMode) {
@@ -729,6 +746,11 @@ const PublicMenu = () => {
 
     // Add item to cart
     const addToCart = useCallback((item: MenuItem, e?: React.MouseEvent) => {
+        if (storeStatus && storeStatus.status !== 'open') {
+            toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
+            return;
+        }
+        
         const step = item.base_value || 1;
         setCart(prev => {
             const existing = prev.find(c => c.id === item.id);
@@ -840,6 +862,10 @@ const PublicMenu = () => {
 
     // Update quantity
     const updateQuantity = useCallback((itemId: string, delta: number) => {
+        if (delta > 0 && storeStatus && storeStatus.status !== 'open') {
+            toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
+            return;
+        }
         setCart(prev => {
             return prev.map(c => {
                 if (c.id !== itemId) return c;
@@ -1564,8 +1590,15 @@ const PublicMenu = () => {
                                 </div>
                             )}
                             <div className="min-w-0 flex-1">
-                                <h1 className="text-xl font-extrabold leading-tight truncate tracking-tight" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+                                <h1 className="text-xl font-extrabold leading-tight truncate tracking-tight flex items-center gap-2" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
                                     {headerTitle}
+                                    {storeStatus && (
+                                        <span className={cn(
+                                            "w-2.5 h-2.5 rounded-full inline-block animate-pulse shadow-sm",
+                                            storeStatus.status === 'open' ? "bg-green-400" :
+                                            storeStatus.status === 'break' ? "bg-amber-400" : "bg-red-400"
+                                        )} title={storeStatus.message} />
+                                    )}
                                 </h1>
                             </div>
                         </div>
@@ -1643,13 +1676,24 @@ const PublicMenu = () => {
                 </div>
             </header>
 
-            {/* Category Filter */}
-            {itemCategories.length > 0 && (
+            {/* Store Status Banner */}
+            {storeStatus && storeStatus.status !== 'open' && (
                 <div className={cn(
-                    "sticky z-40 bg-white/95 backdrop-blur-md border-b shadow-sm",
-                    showSearch ? "top-[120px]" : "top-[72px]"
-                )}
-                    style={{ borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa' }}
+                    "w-full px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold shadow-sm sticky top-[72px] z-40 transition-colors",
+                    storeStatus.status === 'break' ? "bg-amber-500 text-white" : "bg-red-500 text-white"
+                )}>
+                    {storeStatus.status === 'break' ? <Clock className="w-4 h-4 animate-pulse" /> : <Power className="w-4 h-4" />}
+                    {storeStatus.message}
+                </div>
+            )}
+
+            {/* Main Content */}
+            {itemCategories.length > 0 && (
+                <div className="sticky z-40 bg-white/95 backdrop-blur-md border-b shadow-sm transition-all duration-300"
+                    style={{ 
+                        top: `${72 + (storeStatus && storeStatus.status !== 'open' ? 40 : 0) + (showSearch ? 48 : 0)}px`,
+                        borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa' 
+                    }}
                 >
                     <div className="max-w-2xl mx-auto px-4 py-2.5">
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -2064,7 +2108,7 @@ const PublicMenu = () => {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="p-2.5 text-center">
+                                                        <div className="p-2.5 text-center flex flex-col flex-1 justify-between">
                                                             <h3 className={cn(
                                                                 "font-semibold text-gray-800 leading-tight line-clamp-2",
                                                                 shopSettings?.menu_items_per_row === 3 ? "text-xs" : "text-sm"

@@ -966,7 +966,43 @@ const Billing = () => {
   const fetchItems = async () => {
     if (!adminId) { setLoading(false); return; }
     try {
-      // Try to get from network first
+      // 1. FAST PATH: Load from cache instantly for zero lag
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cachedItems = await offlineManager.getCachedItems();
+      
+      let loadedFromCache = false;
+      if (cachedItems && cachedItems.length > 0) {
+        const sortedData = cachedItems
+          .filter((i: any) => i.is_active && i.is_saleable !== false)
+          .sort((a: any, b: any) => {
+          const orderA = a.display_order ?? 9999;
+          const orderB = b.display_order ?? 9999;
+          if (orderA !== orderB) return orderA - orderB;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        setItems(sortedData);
+        loadedFromCache = true;
+        // Don't toast if we're online, just silently load it to avoid lag
+        if (!navigator.onLine) {
+           toast({
+            title: "Offline Mode",
+            description: `Loaded ${sortedData.length} items from cache`,
+          });
+        }
+      } else if (!navigator.onLine) {
+        toast({
+          title: "No Cached Data",
+          description: "Connect to internet to load items",
+          variant: "destructive"
+        });
+      }
+
+      // If we got items from cache, we can hide the loading spinner immediately
+      if (loadedFromCache) {
+          setLoading(false);
+      }
+
+      // 2. SYNC PATH: Fetch latest from network if online
       if (navigator.onLine) {
         let q = supabase
           .from('items')
@@ -974,8 +1010,8 @@ const Billing = () => {
           .eq('admin_id', adminId)
           .eq('is_active', true);
         if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+        
         const { data, error } = await q.order('name');
-
         if (error) throw error;
 
         // Filter saleable items client-side (default true)
@@ -995,52 +1031,16 @@ const Billing = () => {
         }));
 
         setItems(mappedData as Item[]);
-
-        // Cache items for offline use
-        const { offlineManager } = await import('@/utils/offlineManager');
         await offlineManager.cacheItems(mappedData);
-      } else {
-        // Offline: Use cached items
-        const { offlineManager } = await import('@/utils/offlineManager');
-        const cachedItems = await offlineManager.getCachedItems();
-        if (cachedItems.length > 0) {
-          const sortedData = cachedItems
-            .filter((i: any) => i.is_active && i.is_saleable !== false)
-            .sort((a: any, b: any) => {
-            const orderA = a.display_order ?? 9999;
-            const orderB = b.display_order ?? 9999;
-            if (orderA !== orderB) return orderA - orderB;
-            return (a.name || '').localeCompare(b.name || '');
-          });
-          setItems(sortedData);
-          toast({
-            title: "Offline Mode",
-            description: `Loaded ${sortedData.length} items from cache`,
-          });
-        } else {
-          toast({
-            title: "No Cached Data",
-            description: "Connect to internet to load items",
-            variant: "destructive"
-          });
-        }
       }
     } catch (error) {
       console.error('Error fetching items:', error);
-      // Fallback to cache on error
-      try {
-        const { offlineManager } = await import('@/utils/offlineManager');
-        const cachedItems = await offlineManager.getCachedItems();
-        if (cachedItems.length > 0) {
-          setItems(cachedItems.filter((i: any) => i.is_active));
-        }
-      } catch (cacheError) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch items",
-          variant: "destructive"
-        });
-      }
+      // If we already loaded from cache, no need to show destructive error, just a warning
+      toast({
+        title: "Sync Error",
+        description: "Could not sync latest items. Using cached data if available.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -3002,9 +3002,9 @@ const Billing = () => {
     <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden max-w-full flex flex-col pb-[72px] md:pb-6">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
       {/* Header & Modes */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 w-full">
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 mb-3 w-full">
+        <div className="flex flex-wrap items-center gap-2 w-full">
+          <div className="flex items-center gap-2 shrink-0">
             <h1 className="text-xl md:text-2xl font-bold leading-none hidden xs:block">
               {isEditMode ? `Edit Bill - ${editingBill?.bill_no}` : 'Billing'}
             </h1>
@@ -3016,26 +3016,23 @@ const Billing = () => {
               }}
             />
           </div>
-          {/* On mobile, if we want Online Orders in the same row when space is tight: */}
-          <div className="sm:hidden">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAggregatorDialogOpen(true)}
-              className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
-            >
-              <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
-              <span>Online</span>
-              {incomingOrders.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-                  {incomingOrders.length}
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAggregatorDialogOpen(true)}
+            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
+          >
+            <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
+            <span className="hidden sm:inline">Online Orders</span>
+            <span className="sm:hidden">Online</span>
+            {incomingOrders.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                {incomingOrders.length}
+              </span>
+            )}
+          </Button>
+
           {calciEnabled && (
             <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
               <button
@@ -3065,24 +3062,32 @@ const Billing = () => {
             </div>
           )}
 
-          <PrinterStatusPanel inline className="shrink-0" />
+          {appBillingMode !== 'calci' && (
+            <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => handleViewModeChange('grid')}
+                className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                title="Grid View"
+              >
+                <Grid className="w-4 h-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => handleViewModeChange('list')}
+                className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
 
-          <div className="hidden sm:block">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAggregatorDialogOpen(true)}
-              className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
-            >
-              <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
-              <span>🍕 Online Orders</span>
-              {incomingOrders.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-                  {incomingOrders.length}
-                </span>
-              )}
-            </Button>
-          </div>
+          <PrinterStatusPanel inline className="shrink-0" />
         </div>
       </div>
 
@@ -3137,28 +3142,28 @@ const Billing = () => {
             {/* Numpad Grid */}
             <div className={cn("grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700", isCalciStretched ? "h-[60vh]" : "")}>
               {/* Row 1: C, ×, +, ⌫ */}
-              <button onClick={() => setCalciInput('')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full" : "py-4")}>C</button>
-              <button onClick={() => setCalciInput(p => p + '*')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full" : "py-4")}>×</button>
-              <button onClick={() => setCalciInput(p => p + '+')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full" : "py-4")}>+</button>
-              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className={cn("bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold text-lg active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center", isCalciStretched ? "h-full" : "py-4")}><Delete className="w-5 h-5" /></button>
+              <button onClick={() => setCalciInput('')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>C</button>
+              <button onClick={() => setCalciInput(p => p + '*')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>×</button>
+              <button onClick={() => setCalciInput(p => p + '+')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>+</button>
+              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className={cn("bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center", isCalciStretched ? "h-full" : "py-4")}><Delete className={cn(isCalciStretched ? "w-8 h-8" : "w-6 h-6")} /></button>
               {/* Row 2: 7, 8, 9 */}
-              <button onClick={() => setCalciInput(p => p + '7')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>7</button>
-              <button onClick={() => setCalciInput(p => p + '8')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>8</button>
-              <button onClick={() => setCalciInput(p => p + '9')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>9</button>
+              <button onClick={() => setCalciInput(p => p + '7')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>7</button>
+              <button onClick={() => setCalciInput(p => p + '8')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>8</button>
+              <button onClick={() => setCalciInput(p => p + '9')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>9</button>
               {/* Add button spans 3 rows (rows 2-4) */}
-              <button onClick={() => { handleCalciSubmit(calciInput); }} className="bg-primary text-primary-foreground font-bold text-lg row-span-3 h-full active:bg-primary/80 transition-colors flex items-center justify-center">Add<br/>to<br/>Cart</button>
+              <button onClick={() => { handleCalciSubmit(calciInput); }} className={cn("bg-primary text-primary-foreground font-bold row-span-3 h-full active:bg-primary/80 transition-colors flex items-center justify-center", isCalciStretched ? "text-2xl" : "text-xl")}>Add<br/>to<br/>Cart</button>
               {/* Row 3: 4, 5, 6 */}
-              <button onClick={() => setCalciInput(p => p + '4')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>4</button>
-              <button onClick={() => setCalciInput(p => p + '5')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>5</button>
-              <button onClick={() => setCalciInput(p => p + '6')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>6</button>
+              <button onClick={() => setCalciInput(p => p + '4')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>4</button>
+              <button onClick={() => setCalciInput(p => p + '5')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>5</button>
+              <button onClick={() => setCalciInput(p => p + '6')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>6</button>
               {/* Row 4: 1, 2, 3 */}
-              <button onClick={() => setCalciInput(p => p + '1')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>1</button>
-              <button onClick={() => setCalciInput(p => p + '2')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>2</button>
-              <button onClick={() => setCalciInput(p => p + '3')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>3</button>
+              <button onClick={() => setCalciInput(p => p + '1')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>1</button>
+              <button onClick={() => setCalciInput(p => p + '2')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>2</button>
+              <button onClick={() => setCalciInput(p => p + '3')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>3</button>
               {/* Row 5: 0, ., Fast Cash */}
-              <button onClick={() => setCalciInput(p => p + '0')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>0</button>
-              <button onClick={() => setCalciInput(p => p + '.')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold text-xl active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full" : "py-4")}>.</button>
-              <button onClick={handleFastCash} className="bg-green-600 text-white font-bold text-base h-full active:bg-green-700 transition-colors flex items-center justify-center col-span-2">⚡ Fast Cash</button>
+              <button onClick={() => setCalciInput(p => p + '0')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>0</button>
+              <button onClick={() => setCalciInput(p => p + '.')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>.</button>
+              <button onClick={handleFastCash} className={cn("bg-green-600 text-white font-bold h-full active:bg-green-700 transition-colors flex items-center justify-center col-span-2", isCalciStretched ? "text-2xl" : "text-xl")}>⚡ Fast Cash</button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 px-1 text-center">
               Type amounts like <span className="font-mono bg-muted px-1 rounded">10+25+2×15</span> then tap Add
@@ -3166,40 +3171,14 @@ const Billing = () => {
           </div>
         </div>
       ) : (
-      <div className="mb-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <div className="flex-1 flex items-center relative">
-          <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
-          <div className="absolute right-1 top-1/2 -translate-y-1/2">
-            <VoiceBillingButton
-              items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
-              onIntent={handleVoiceIntent}
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 justify-end">
-          <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => handleViewModeChange('grid')}
-              className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              title="Grid View"
-            >
-              <Grid className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => handleViewModeChange('list')}
-              className={`h-7 w-7 rounded p-0 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-800 text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              title="List View"
-            >
-              <List className="w-4 h-4" />
-            </Button>
-          </div>
+      <div className="mb-3 flex items-center relative">
+        <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
+        <div className="absolute right-1 top-1/2 -translate-y-1/2">
+          <VoiceBillingButton
+            items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
+            onIntent={handleVoiceIntent}
+          />
         </div>
       </div>
       )}
@@ -3439,10 +3418,7 @@ const Billing = () => {
       isRetrying={isRetryingPrint}
     />
 
-    {/* Floating Printer Status / Test / Diagnostics Panel */}
-    <PrinterStatusPanel />
-
-
+    {/* Floating Printer Status / Test / Diagnostics Panel Removed in favor of inline header panel */}
     {/* Food Aggregator Modal */}
     <Dialog open={aggregatorDialogOpen} onOpenChange={setAggregatorDialogOpen}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border shadow-2xl rounded-2xl p-0">
