@@ -75,6 +75,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
     window.dispatchEvent(new CustomEvent('theme-changed'));
   };
 
+  const isSuperAdmin = profile?.role === 'super_admin';
+
+  // Enable swipe gesture to open sidebar on mobile
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (!isSuperAdmin) {
+        setMobileMenuOpen(true);
+      }
+    },
+    threshold: 50,
+    edgeWidth: 30,
+  });
+
   if (!profile) return null;
 
   const handleSignOut = async () => {
@@ -93,17 +106,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
     }
     return true;
   }));
-
-  // Enable swipe gesture to open sidebar on mobile
-  useSwipeGesture({
-    onSwipeRight: () => {
-      if (!isSuperAdmin) {
-        setMobileMenuOpen(true);
-      }
-    },
-    threshold: 50,
-    edgeWidth: 30,
-  });
 
   return (
     <>

@@ -16,6 +16,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('hotel_pos_sidebar_collapsed') === 'true';
+  });
+
   // Don't show navigation on auth page
   if (location.pathname === '/auth') {
     return <>{children}</>;
@@ -45,10 +49,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   if (profile.status !== 'active') {
     return <Navigate to="/auth" replace />;
   }
-
-  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
-    return localStorage.getItem('hotel_pos_sidebar_collapsed') === 'true';
-  });
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed;

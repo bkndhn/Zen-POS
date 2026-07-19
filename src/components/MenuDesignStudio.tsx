@@ -356,7 +356,6 @@ export const MenuDesignStudio = () => {
     const loadSettings = async () => {
         if (!adminAuthUid) return;
         setLoading(true);
-        try {
             // Fetch branch-specific settings or fallback to main
             let { data } = await supabase
                 .from('shop_settings')
@@ -431,11 +430,7 @@ export const MenuDesignStudio = () => {
                     setColorPreset('custom');
                 }
             }
-        } catch (error) {
-            console.error('Error loading menu design settings:', error);
-        } finally {
-            setLoading(false);
-        }
+        setLoading(false);
     };
 
     const handleSave = async () => {
