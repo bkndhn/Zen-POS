@@ -29,8 +29,14 @@ const Auth = () => {
     role: 'admin', // Only admins can signup from login page
     hotelName: ''
   });
+  const [rememberMe, setRememberMe] = useState(false);
 
   React.useEffect(() => {
+    const savedEmail = localStorage.getItem('hotel_pos_saved_email');
+    if (savedEmail) {
+      setFormData(prev => ({ ...prev, email: savedEmail }));
+      setRememberMe(true);
+    }
     (async () => {
       try {
         const { supabase } = await import('@/integrations/supabase/client');
@@ -220,6 +226,13 @@ const Auth = () => {
 
         // Clear rate limit on successful login
         clearRateLimit('login_attempt');
+        
+        if (rememberMe) {
+          localStorage.setItem('hotel_pos_saved_email', formData.email);
+        } else {
+          localStorage.removeItem('hotel_pos_saved_email');
+        }
+
         toast({
           title: "Welcome back!",
           description: "Successfully signed in.",
@@ -381,6 +394,20 @@ const Auth = () => {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {isLogin && (
+                  <div className="flex items-center space-x-2 pt-2">
+                    <input
+                      type="checkbox"
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500"
+                    />
+                    <Label htmlFor="rememberMe" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+                      Remember my email
+                    </Label>
+                  </div>
+                )}
               </div>
             )}
 

@@ -5,6 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { MapPin, Camera, CheckCircle2, XCircle, Shield, ChevronRight, Loader2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
+import { Camera as CapCamera } from '@capacitor/camera';
 
 const PERMISSIONS_KEY = 'hotel_pos_permissions_requested';
 
@@ -32,7 +35,16 @@ export const DevicePermissions: React.FC = () => {
             const newState: PermissionStatus = { location: 'pending', camera: 'pending' };
 
             try {
-                if (navigator.permissions) {
+                if (Capacitor.isNativePlatform()) {
+                    try {
+                        const geo = await Geolocation.checkPermissions();
+                        newState.location = geo.location === 'granted' ? 'granted' : geo.location === 'denied' ? 'denied' : 'pending';
+                    } catch { /* plugin error */ }
+                    try {
+                        const cam = await CapCamera.checkPermissions();
+                        newState.camera = cam.camera === 'granted' ? 'granted' : cam.camera === 'denied' ? 'denied' : 'pending';
+                    } catch { /* plugin error */ }
+                } else if (navigator.permissions) {
                     // Check location
                     try {
                         const geo = await navigator.permissions.query({ name: 'geolocation' });
@@ -68,14 +80,19 @@ export const DevicePermissions: React.FC = () => {
         setPermissions(prev => ({ ...prev, location: 'requesting' }));
 
         try {
-            await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: false,
-                    timeout: 10000,
-                    maximumAge: 60000
+            if (Capacitor.isNativePlatform()) {
+                const p = await Geolocation.requestPermissions();
+                setPermissions(prev => ({ ...prev, location: p.location === 'granted' ? 'granted' : 'denied' }));
+            } else {
+                await new Promise<GeolocationPosition>((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: false,
+                        timeout: 10000,
+                        maximumAge: 60000
+                    });
                 });
-            });
-            setPermissions(prev => ({ ...prev, location: 'granted' }));
+                setPermissions(prev => ({ ...prev, location: 'granted' }));
+            }
         } catch (error: any) {
             if (error?.code === 1) {
                 // Permission denied
@@ -101,10 +118,15 @@ export const DevicePermissions: React.FC = () => {
         setPermissions(prev => ({ ...prev, camera: 'requesting' }));
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            // Stop all tracks immediately — we just wanted the permission
-            stream.getTracks().forEach(track => track.stop());
-            setPermissions(prev => ({ ...prev, camera: 'granted' }));
+            if (Capacitor.isNativePlatform()) {
+                const p = await CapCamera.requestPermissions();
+                setPermissions(prev => ({ ...prev, camera: p.camera === 'granted' ? 'granted' : 'denied' }));
+            } else {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                // Stop all tracks immediately — we just wanted the permission
+                stream.getTracks().forEach(track => track.stop());
+                setPermissions(prev => ({ ...prev, camera: 'granted' }));
+            }
         } catch (error: any) {
             if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
                 setPermissions(prev => ({ ...prev, camera: 'denied' }));

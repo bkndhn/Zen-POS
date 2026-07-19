@@ -197,7 +197,7 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                             <h4 className="text-sm font-semibold">Breaks & Custom Timings</h4>
                             <p className="text-xs text-muted-foreground mt-0.5">Add lunch time, prayer time, etc. during which ordering is paused.</p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={handleAddBreak} className="h-8 gap-1.5">
+                        <Button variant="outline" size="sm" onClick={handleAddBreak} className="h-10 gap-1.5">
                             <Plus className="w-3.5 h-3.5" />
                             Add Break
                         </Button>
@@ -213,17 +213,17 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                             <div key={b.id} className="flex flex-col md:flex-row md:items-end gap-3 p-3 bg-muted/20 border border-zinc-100 dark:border-zinc-800 rounded-xl relative group">
                                 <div className="w-full md:flex-1 space-y-1.5">
                                     <Label className="text-xs text-muted-foreground">Break Name</Label>
-                                    <Input value={b.name} onChange={(e) => handleUpdateBreak(b.id, 'name', e.target.value)} placeholder="e.g. Lunch Break" className="h-8 text-sm" />
+                                    <Input value={b.name} onChange={(e) => handleUpdateBreak(b.id, 'name', e.target.value)} placeholder="e.g. Lunch Break" className="h-10 text-base" />
                                 </div>
                                 <div className="w-full md:w-32 space-y-1.5">
                                     <Label className="text-xs text-muted-foreground">Start</Label>
-                                    <Input type="time" value={b.startTime} onChange={(e) => handleUpdateBreak(b.id, 'startTime', e.target.value)} className="h-8 text-sm" />
+                                    <Input type="time" value={b.startTime} onChange={(e) => handleUpdateBreak(b.id, 'startTime', e.target.value)} className="h-10 text-base" />
                                 </div>
                                 <div className="w-full md:w-32 space-y-1.5">
                                     <Label className="text-xs text-muted-foreground">End</Label>
-                                    <Input type="time" value={b.endTime} onChange={(e) => handleUpdateBreak(b.id, 'endTime', e.target.value)} className="h-8 text-sm" />
+                                    <Input type="time" value={b.endTime} onChange={(e) => handleUpdateBreak(b.id, 'endTime', e.target.value)} className="h-10 text-base" />
                                 </div>
-                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 md:static md:top-auto md:right-auto h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => handleRemoveBreak(b.id)}>
+                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 md:static md:top-auto md:right-auto h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => handleRemoveBreak(b.id)}>
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>
@@ -237,7 +237,7 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                             <h4 className="text-sm font-semibold">Custom Holidays</h4>
                             <p className="text-xs text-muted-foreground mt-0.5">Add specific dates when the store will be closed all day.</p>
                         </div>
-                        <Button variant="outline" size="sm" onClick={handleAddHoliday} className="h-8 gap-1.5">
+                        <Button variant="outline" size="sm" onClick={handleAddHoliday} className="h-10 gap-1.5">
                             <Plus className="w-3.5 h-3.5" />
                             Add Holiday
                         </Button>
@@ -253,17 +253,17 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                             <div key={h.id} className="flex flex-col md:flex-row md:items-end gap-3 p-3 bg-muted/20 border border-zinc-100 dark:border-zinc-800 rounded-xl relative group">
                                 <div className="w-full md:w-36 space-y-1.5">
                                     <Label className="text-xs text-muted-foreground">Start Date</Label>
-                                    <Input type="date" value={h.startDate || ''} onChange={(e) => handleUpdateHoliday(h.id, 'startDate', e.target.value)} className="h-8 text-sm" />
+                                    <Input type="date" value={h.startDate || ''} onChange={(e) => handleUpdateHoliday(h.id, 'startDate', e.target.value)} className="h-10 text-base" />
                                 </div>
                                 <div className="w-full md:w-36 space-y-1.5">
                                     <Label className="text-xs text-muted-foreground">End Date (Optional)</Label>
-                                    <Input type="date" value={h.endDate || ''} onChange={(e) => handleUpdateHoliday(h.id, 'endDate', e.target.value)} className="h-8 text-sm" />
+                                    <Input type="date" value={h.endDate || ''} onChange={(e) => handleUpdateHoliday(h.id, 'endDate', e.target.value)} className="h-10 text-base" />
                                 </div>
                                 <div className="w-full md:flex-1 space-y-1.5">
                                     <Label className="text-xs text-muted-foreground">Reason / Name (Optional)</Label>
-                                    <Input value={h.reason || ''} onChange={(e) => handleUpdateHoliday(h.id, 'reason', e.target.value)} placeholder="e.g. Maintenance / Festival" className="h-8 text-sm" />
+                                    <Input value={h.reason || ''} onChange={(e) => handleUpdateHoliday(h.id, 'reason', e.target.value)} placeholder="e.g. Maintenance / Festival" className="h-10 text-base" />
                                 </div>
-                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 md:static md:top-auto md:right-auto h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => handleRemoveHoliday(h.id)}>
+                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 md:static md:top-auto md:right-auto h-10 w-10 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => handleRemoveHoliday(h.id)}>
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>

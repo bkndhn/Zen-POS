@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon } from 'lucide-react';
+import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
