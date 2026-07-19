@@ -3001,70 +3001,90 @@ const Billing = () => {
     {/* Main Items Area */}
     <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden max-w-full flex flex-col pb-[72px] md:pb-6">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-bold leading-none">
+      {/* Header & Modes */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 w-full">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-bold leading-none hidden xs:block">
               {isEditMode ? `Edit Bill - ${editingBill?.bill_no}` : 'Billing'}
             </h1>
+            <TableSelector
+              selectedTableId={selectedTableId}
+              onSelectTable={(tableId, tableNumber) => {
+                setSelectedTableId(tableId);
+                setSelectedTableNumber(tableNumber);
+              }}
+            />
           </div>
-          {/* Table Selector */}
-          <TableSelector
-            selectedTableId={selectedTableId}
-            onSelectTable={(tableId, tableNumber) => {
-              setSelectedTableId(tableId);
-              setSelectedTableNumber(tableNumber);
-            }}
-          />
+          {/* On mobile, if we want Online Orders in the same row when space is tight: */}
+          <div className="sm:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAggregatorDialogOpen(true)}
+              className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
+            >
+              <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
+              <span>Online</span>
+              {incomingOrders.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                  {incomingOrders.length}
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Bell Icon for Incoming Orders */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAggregatorDialogOpen(true)}
-            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl"
-          >
-            <Bell className="w-4 h-4 mr-1 text-red-500" />
-            🍕 Online Orders
-            {incomingOrders.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-                {incomingOrders.length}
-              </span>
-            )}
-          </Button>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+          {calciEnabled && (
+            <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
+              <button
+                onClick={() => setAppBillingMode('pos')}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200",
+                  appBillingMode === 'pos' 
+                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                )}
+              >
+                <Grid className="w-3.5 h-3.5 inline-block mr-1" />
+                POS
+              </button>
+              <button
+                onClick={() => setAppBillingMode('calci')}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200",
+                  appBillingMode === 'calci' 
+                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                )}
+              >
+                <Calculator className="w-3.5 h-3.5 inline-block mr-1" />
+                Calci
+              </button>
+            </div>
+          )}
+
+          <PrinterStatusPanel inline className="shrink-0" />
+
+          <div className="hidden sm:block">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAggregatorDialogOpen(true)}
+              className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
+            >
+              <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
+              <span>🍕 Online Orders</span>
+              {incomingOrders.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                  {incomingOrders.length}
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
-
-      {calciEnabled && (
-        <div className="mb-3 flex items-center justify-center p-1 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 w-fit mx-auto">
-          <button
-            onClick={() => setAppBillingMode('pos')}
-            className={cn(
-              "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
-              appBillingMode === 'pos' 
-                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
-                : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-            )}
-          >
-            <Grid className="w-4 h-4 inline-block mr-2" />
-            POS Mode
-          </button>
-          <button
-            onClick={() => setAppBillingMode('calci')}
-            className={cn(
-              "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
-              appBillingMode === 'calci' 
-                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
-                : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-            )}
-          >
-            <Calculator className="w-4 h-4 inline-block mr-2" />
-            Calci Mode
-          </button>
-        </div>
-      )}
 
       {/* Search and Layout Toggle OR Calci Input */}
       {appBillingMode === 'calci' ? (

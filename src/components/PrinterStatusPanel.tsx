@@ -32,7 +32,7 @@ const formatTime = (ts: number) => {
     return d.toLocaleTimeString(undefined, { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
 };
 
-export const PrinterStatusPanel: React.FC = () => {
+export const PrinterStatusPanel: React.FC<{ inline?: boolean; className?: string }> = ({ inline, className }) => {
     const { connectionState, deviceName, isConnected, connect, disconnect, printerType, autoReconnectState, autoReconnectEnabled, reconnectStatus, isTrusted, hasNativeBridge, trustPrinter } = usePrinter();
     const [open, setOpen] = useState(false);
     const [log, setLog] = useState<PrintLogEntry[]>([]);
@@ -148,8 +148,8 @@ export const PrinterStatusPanel: React.FC = () => {
             <SheetTrigger asChild>
                 <button
                     className={cn(
-                        'fixed z-40 top-16 right-2 h-9 px-2.5 rounded-full shadow-md border flex items-center gap-1.5 backdrop-blur',
-                        'bg-card/90 hover:bg-card active:scale-95 transition-all sm:top-20 sm:right-3 sm:h-10 sm:px-3'
+                        inline ? 'h-9 px-2.5 rounded-full shadow-sm border flex items-center gap-1.5 bg-card/90 hover:bg-card active:scale-95 transition-all' : 'fixed z-40 top-16 right-2 h-9 px-2.5 rounded-full shadow-md border flex items-center gap-1.5 backdrop-blur bg-card/90 hover:bg-card active:scale-95 transition-all sm:top-20 sm:right-3 sm:h-10 sm:px-3',
+                        className
                     )}
                     aria-label="Printer status"
                 >
