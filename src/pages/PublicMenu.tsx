@@ -2739,65 +2739,74 @@ const PublicMenu = () => {
             )}
 
             {/* Footer with Contact Info */}
-            <footer
-                className="fixed bottom-0 left-0 right-0 text-white py-2 shadow-2xl backdrop-blur-sm"
-                style={{
-                    background: shopSettings?.menu_primary_color
-                        ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}ee, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}dd)`
-                        : 'linear-gradient(135deg, #ea580cee, #dc2626dd)'
-                }}
-            >
-                <div className="max-w-2xl mx-auto px-4">
-                    {(showPhone || showAddress) && (
-                        <div className="flex items-center justify-center gap-3 text-xs">
+            {(showPhone || showAddress || shopSettings?.shop_latitude) && (
+                <footer
+                    className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]"
+                    style={{
+                        background: shopSettings?.menu_primary_color
+                            ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)`
+                            : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)'
+                    }}
+                >
+                    <div className="max-w-2xl mx-auto px-4 py-2.5">
+                        <div className="flex items-center justify-center gap-3">
+                            {/* Call Button */}
                             {showPhone && shopSettings?.contact_number && (
-                                <div className="flex items-center gap-2">
-                                    {/* Call Button */}
-                                    <a
-                                        href={`tel:${shopSettings.contact_number}`}
-                                        className="flex items-center justify-center w-9 h-9 bg-white/15 hover:bg-white/25 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20 hover:scale-105"
-                                        aria-label="Call us"
-                                    >
-                                        <Phone className="w-4 h-4" />
-                                    </a>
-                                    {/* WhatsApp Button - Official Logo */}
-                                    <a
-                                        href={`https://wa.me/${shopSettings.contact_number.replace(/[^0-9]/g, '')}?text=Hi! I visited your restaurant and have a query.`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center w-9 h-9 bg-[#25D366] hover:bg-[#20BD5A] rounded-xl transition-all duration-200 border border-[#25D366]/40 hover:scale-105 shadow-md"
-                                        aria-label="WhatsApp us"
-                                    >
-                                        <svg viewBox="0 0 32 32" className="w-5 h-5" fill="white">
-                                            <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.744 3.054 9.378L1.054 31.29l6.166-1.964C9.79 30.988 12.79 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.31 22.608c-.39 1.1-1.932 2.014-3.166 2.28-.846.18-1.95.322-5.668-1.218-4.762-1.97-7.824-6.8-8.062-7.114-.228-.314-1.918-2.554-1.918-4.872s1.214-3.456 1.644-3.928c.43-.472.94-.59 1.254-.59.312 0 .626.002.9.016.288.016.676-.11 1.058.808.39.94 1.328 3.242 1.446 3.476.118.234.196.508.04.82-.158.314-.236.508-.47.784-.236.274-.496.614-.708.824-.236.234-.482.49-.208.962.274.47 1.22 2.014 2.62 3.264 1.8 1.606 3.316 2.104 3.786 2.338.472.234.748.196 1.022-.118.274-.314 1.176-1.372 1.49-1.844.314-.47.626-.39 1.058-.234.43.156 2.736 1.292 3.206 1.526.47.234.784.352.9.548.118.196.118 1.138-.27 2.238z" />
-                                        </svg>
-                                    </a>
-                                </div>
-                            )}
-                            {showAddress && shopSettings?.address && (
                                 <a
-                                    href={shopSettings.shop_latitude && shopSettings.shop_longitude
-                                        ? `https://www.google.com/maps?q=${shopSettings.shop_latitude},${shopSettings.shop_longitude}`
-                                        : `https://www.google.com/maps/search/${encodeURIComponent(shopSettings.address)}`
+                                    href={`tel:${shopSettings.contact_number}`}
+                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 backdrop-blur-sm border border-white/20"
+                                    aria-label="Call us"
+                                >
+                                    <Phone className="w-4 h-4 flex-shrink-0" />
+                                    <span className="text-xs font-medium hidden sm:inline">Call</span>
+                                </a>
+                            )}
+
+                            {/* WhatsApp Button */}
+                            {showPhone && shopSettings?.contact_number && (
+                                <a
+                                    href={`https://wa.me/${shopSettings.contact_number.replace(/[^0-9]/g, '')}?text=Hi! I visited your ${shopSettings.shop_name || 'restaurant'} and have a query.`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 border border-[#25D366]/40 shadow-sm"
+                                    aria-label="WhatsApp us"
+                                >
+                                    <svg viewBox="0 0 32 32" className="w-4 h-4 flex-shrink-0" fill="white">
+                                        <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.744 3.054 9.378L1.054 31.29l6.166-1.964C9.79 30.988 12.79 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.31 22.608c-.39 1.1-1.932 2.014-3.166 2.28-.846.18-1.95.322-5.668-1.218-4.762-1.97-7.824-6.8-8.062-7.114-.228-.314-1.918-2.554-1.918-4.872s1.214-3.456 1.644-3.928c.43-.472.94-.59 1.254-.59.312 0 .626.002.9.016.288.016.676-.11 1.058.808.39.94 1.328 3.242 1.446 3.476.118.234.196.508.04.82-.158.314-.236.508-.47.784-.236.274-.496.614-.708.824-.236.234-.482.49-.208.962.274.47 1.22 2.014 2.62 3.264 1.8 1.606 3.316 2.104 3.786 2.338.472.234.748.196 1.022-.118.274-.314 1.176-1.372 1.49-1.844.314-.47.626-.39 1.058-.234.43.156 2.736 1.292 3.206 1.526.47.234.784.352.9.548.118.196.118 1.138-.27 2.238z" />
+                                    </svg>
+                                    <span className="text-xs font-medium hidden sm:inline">WhatsApp</span>
+                                </a>
+                            )}
+
+                            {/* Location / Maps Button — shows when lat/lon pinned OR address text exists */}
+                            {showAddress && (shopSettings?.shop_latitude || shopSettings?.address) && (
+                                <a
+                                    href={
+                                        shopSettings?.shop_latitude && shopSettings?.shop_longitude
+                                            ? `https://www.google.com/maps?q=${shopSettings.shop_latitude},${shopSettings.shop_longitude}`
+                                            : `https://www.google.com/maps/search/${encodeURIComponent(shopSettings?.address || '')}`
                                     }
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-white/90 hover:text-white transition-colors"
+                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 backdrop-blur-sm border border-white/20 max-w-[180px]"
+                                    aria-label="Get directions"
                                 >
-                                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                                    <span className="truncate max-w-[180px] text-[10px]">{shopSettings.address}</span>
+                                    <MapPin className="w-4 h-4 flex-shrink-0" />
+                                    {shopSettings?.address ? (
+                                        <span className="truncate text-xs font-medium">{shopSettings.address}</span>
+                                    ) : (
+                                        <span className="text-xs font-medium">Get Directions</span>
+                                    )}
                                 </a>
                             )}
                         </div>
-                    )}
-                    <p className={cn(
-                        "text-center text-[7px] text-white/25 tracking-wider uppercase",
-                        (showPhone || showAddress) ? "mt-1" : ""
-                    )}>
-                        Powered by ZenPOS
-                    </p>
-                </div>
-            </footer>
+                        <p className="text-center text-[7px] text-white/25 tracking-wider uppercase mt-1">
+                            Powered by ZenPOS
+                        </p>
+                    </div>
+                </footer>
+            )}
+
 
             {/* Smart AI Waiter Floating Button */}
             {shopSettings?.menu_ai_features_enabled && (

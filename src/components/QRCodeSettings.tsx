@@ -37,6 +37,7 @@ import { MenuDesignStudio } from '@/components/MenuDesignStudio';
 import QRPosterStudio from '@/components/QRPosterStudio';
 import { StoreOperatingHours } from '@/components/StoreOperatingHours';
 import { OperatingHours, defaultOperatingHours } from '@/types/operatingHours';
+import { Geolocation } from '@capacitor/geolocation';
 
 // Simple QR Code generator using a public API
 const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '1a1a6c', bgColor: string = 'ffffff'): string => {
@@ -322,58 +323,81 @@ const QRCodeSettings = () => {
         supabase.removeChannel(settingsChannel);
     };
 
-    // Get current location using browser geo-location with progressive retry
+    // Get current location — uses Capacitor native GPS on Android, falls back to Web API
     const pinCurrentLocation = async () => {
-        // First check if geolocation is supported
-        if (!navigator.geolocation) {
-            setLocationError('Geolocation is not supported by your browser. Use manual entry below.');
-            toast({ title: 'Error', description: 'Geolocation not supported. Use manual entry.', variant: 'destructive' });
-            return;
-        }
-
         setLocationLoading(true);
         setLocationError(null);
 
-        // Helper to get position as a promise
-        const getPosition = (highAccuracy: boolean, timeout: number): Promise<GeolocationPosition> => {
-            return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: highAccuracy,
-                    timeout,
+        try {
+            // Try Capacitor native first (works best on Android APK)
+            let lat: number;
+            let lng: number;
+
+            try {
+                // Request permissions natively first
+                const perm = await Geolocation.requestPermissions();
+                if (perm.location === 'denied') {
+                    throw new Error('PERMISSION_DENIED');
+                }
+
+                const position = await Geolocation.getCurrentPosition({
+                    enableHighAccuracy: true,
+                    timeout: 15000,
                     maximumAge: 60000
                 });
-            });
-        };
-
-        try {
-            // Try 1: Network location (fast)
-            let position: GeolocationPosition;
-            try {
-                position = await getPosition(false, 10000);
-            } catch (err1: any) {
-                if (err1?.code === 1) {
-                    // Permission denied — try to re-request by building a fresh prompt
-                    // On some browsers, we can trigger re-prompt by catching and retrying
-                    throw err1; // Don't retry if denied
+                lat = position.coords.latitude;
+                lng = position.coords.longitude;
+            } catch (capacitorErr: any) {
+                // Capacitor not available (PWA/browser) — fall back to web API
+                if (capacitorErr?.message === 'PERMISSION_DENIED' ||
+                    (typeof capacitorErr?.code === 'number' && capacitorErr.code === 1)) {
+                    setLocationLoading(false);
+                    setLocationError('Location permission denied. Please allow location access in your browser/app settings, then try again.');
+                    toast({
+                        title: 'Permission Denied',
+                        description: 'Allow location access in settings and try again.',
+                        variant: 'destructive',
+                        duration: 8000
+                    });
+                    return;
                 }
-                // Try 2: GPS (more accurate, slower)
-                position = await getPosition(true, 20000);
+
+                if (!navigator.geolocation) {
+                    setLocationLoading(false);
+                    setLocationError('Geolocation is not supported by your browser. Use manual entry below.');
+                    toast({ title: 'Error', description: 'Geolocation not supported. Use manual entry.', variant: 'destructive' });
+                    return;
+                }
+
+                // Web API fallback for PWA
+                const webPosition: GeolocationPosition = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 60000
+                    });
+                });
+                lat = webPosition.coords.latitude;
+                lng = webPosition.coords.longitude;
             }
 
-            setShopLatitude(position.coords.latitude);
-            setShopLongitude(position.coords.longitude);
+            setShopLatitude(lat);
+            setShopLongitude(lng);
             setLocationLoading(false);
             setLocationError(null);
-            toast({ title: '📍 Location Pinned!', description: `Lat: ${position.coords.latitude.toFixed(5)}, Lng: ${position.coords.longitude.toFixed(5)}` });
+            toast({
+                title: '📍 Location Pinned!',
+                description: `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`
+            });
             setTimeout(() => saveSettings(), 500);
+
         } catch (error: any) {
             setLocationLoading(false);
-            if (error?.code === 1) {
-                // Permission denied
-                setLocationError('Location permission denied. Please allow location access:');
+            if (error?.code === 1 || error?.message === 'PERMISSION_DENIED') {
+                setLocationError('Location permission denied. Please allow location access in your device settings.');
                 toast({
                     title: 'Permission Denied',
-                    description: 'Tap the lock icon (🔒) in your browser address bar → Permissions → Location → Allow, then try again.',
+                    description: 'Tap the lock icon in your browser address bar → Permissions → Location → Allow, then try again.',
                     variant: 'destructive',
                     duration: 8000
                 });
@@ -381,7 +405,7 @@ const QRCodeSettings = () => {
                 setLocationError('GPS unavailable. Please enable GPS/Location in your phone settings, or use manual entry below.');
                 toast({ title: 'GPS Unavailable', description: 'Enable GPS in phone settings or enter manually.', variant: 'destructive' });
             } else {
-                setLocationError('Location request timed out. Ensure GPS is enabled, then try again. Or use manual entry.');
+                setLocationError('Location request timed out. Ensure GPS is enabled and try again, or use manual entry.');
                 toast({ title: 'Timeout', description: 'Please try again or enter coordinates manually.', variant: 'destructive' });
             }
         }
