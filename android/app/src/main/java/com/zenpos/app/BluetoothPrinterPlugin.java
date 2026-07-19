@@ -152,8 +152,16 @@ public class BluetoothPrinterPlugin extends Plugin {
 
                 try {
                     OutputStream os = socket.getOutputStream();
-                    os.write(bytes);
-                    os.flush();
+                    int CHUNK_SIZE = 1024; // 1KB chunks for small thermal printer buffers
+                    for (int i = 0; i < bytes.length; i += CHUNK_SIZE) {
+                        int length = Math.min(CHUNK_SIZE, bytes.length - i);
+                        os.write(bytes, i, length);
+                        os.flush();
+                        // Add a tiny delay between chunks if payload is large (like an image)
+                        if (bytes.length > CHUNK_SIZE * 2) {
+                            try { Thread.sleep(15); } catch (InterruptedException ignore) {}
+                        }
+                    }
                 } catch (Exception firstWriteError) {
                     // A socket may still report connected after Android resumes. Reopen it once
                     // and retry the same receipt before returning a failure to the POS queue.
@@ -161,8 +169,15 @@ public class BluetoothPrinterPlugin extends Plugin {
                     closeSocket();
                     ensureConnected(targetAddress);
                     OutputStream retryStream = socket.getOutputStream();
-                    retryStream.write(bytes);
-                    retryStream.flush();
+                    int CHUNK_SIZE = 1024;
+                    for (int i = 0; i < bytes.length; i += CHUNK_SIZE) {
+                        int length = Math.min(CHUNK_SIZE, bytes.length - i);
+                        retryStream.write(bytes, i, length);
+                        retryStream.flush();
+                        if (bytes.length > CHUNK_SIZE * 2) {
+                            try { Thread.sleep(15); } catch (InterruptedException ignore) {}
+                        }
+                    }
                 }
 
                 JSObject ret = new JSObject();
