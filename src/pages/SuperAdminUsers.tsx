@@ -368,9 +368,18 @@ const SuperAdminUsers: React.FC = () => {
 
       if (error) throw error;
 
-      // Update state
+      // Update local state immediately
       setRows(prev => prev.map(r => r.profile_id === adminProfileId ? { ...r, client_permissions: updatedPerms } : r));
       setSelectedAdmin(prev => prev && prev.profile_id === adminProfileId ? { ...prev, client_permissions: updatedPerms } : prev);
+
+      // Broadcast to all connected clients instantly (no refresh needed)
+      const bc = supabase.channel(`permissions:${adminProfileId}`);
+      bc.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await bc.send({ type: 'broadcast', event: 'permissions_updated', payload: { client_permissions: updatedPerms } });
+          supabase.removeChannel(bc);
+        }
+      });
 
       toast({
         title: "Permission updated",
@@ -383,6 +392,33 @@ const SuperAdminUsers: React.FC = () => {
         description: err.message || "Failed to update database record",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleSetAllPermissions = async (adminProfileId: string, enabled: boolean) => {
+    const admin = rows.find(r => r.profile_id === adminProfileId);
+    if (!admin) return;
+    const base: Record<string, boolean> = {};
+    ALL_NAV_ITEMS.forEach(item => { base[item.to] = enabled; });
+    base['receipt_qr'] = enabled;
+    base['calci_billing'] = enabled;
+    base['allow_cloud_storage'] = enabled;
+    try {
+      const { error } = await supabase.from('profiles').update({ client_permissions: base }).eq('id', adminProfileId);
+      if (error) throw error;
+      setRows(prev => prev.map(r => r.profile_id === adminProfileId ? { ...r, client_permissions: base } : r));
+      setSelectedAdmin(prev => prev && prev.profile_id === adminProfileId ? { ...prev, client_permissions: base } : prev);
+      // Broadcast instantly
+      const bc = supabase.channel(`permissions:${adminProfileId}`);
+      bc.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await bc.send({ type: 'broadcast', event: 'permissions_updated', payload: { client_permissions: base } });
+          supabase.removeChannel(bc);
+        }
+      });
+      toast({ title: `All permissions ${enabled ? 'enabled' : 'disabled'}`, description: `Updated for ${admin.hotel_name || admin.name}` });
+    } catch (err: any) {
+      toast({ title: 'Update failed', description: err.message, variant: 'destructive' });
     }
   };
 
@@ -861,13 +897,35 @@ const SuperAdminUsers: React.FC = () => {
       <Dialog open={permsDialogOpen} onOpenChange={setPermsDialogOpen}>
         <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-6 rounded-2xl">
           <DialogHeader className="shrink-0 border-b pb-4 mb-4">
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-              <Shield className="w-5 h-5 text-primary" />
-              Client Permissions
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Toggle access to specific modules/pages for <strong>{selectedAdmin?.hotel_name || selectedAdmin?.name}</strong>.
-            </DialogDescription>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                  <Shield className="w-5 h-5 text-primary" />
+                  Client Permissions
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Toggle access to specific modules/pages for <strong>{selectedAdmin?.hotel_name || selectedAdmin?.name}</strong>.
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:border-green-800 dark:text-green-300"
+                  onClick={() => selectedAdmin && handleSetAllPermissions(selectedAdmin.profile_id, true)}
+                >
+                  Enable All
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:border-red-800 dark:text-red-300"
+                  onClick={() => selectedAdmin && handleSetAllPermissions(selectedAdmin.profile_id, false)}
+                >
+                  Disable All
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto space-y-3 pr-2 scroll-smooth">
