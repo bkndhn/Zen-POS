@@ -142,6 +142,7 @@ const PublicMenu = () => {
     const [storeStatus, setStoreStatus] = useState<StoreStatusInfo | null>(null);
     const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('public_menu_dark_mode') === 'true');
     const [showTimingsModal, setShowTimingsModal] = useState(false);
+    const [showClearCartModal, setShowClearCartModal] = useState(false);
 
     // Periodically check store status
     useEffect(() => {
@@ -856,12 +857,10 @@ const PublicMenu = () => {
         setCart(prev => prev.filter(c => c.id !== itemId));
     }, []);
 
-    // Clear whole cart
+    // Clear whole cart — opens beautiful confirmation modal
     const clearCart = useCallback(() => {
-        if (window.confirm(t('menu.confirmClearCart') || "Are you sure you want to clear all items from your cart?")) {
-            setCart([]);
-        }
-    }, [t]);
+        setShowClearCartModal(true);
+    }, []);
 
     // Update quantity
     const updateQuantity = useCallback((itemId: string, delta: number) => {
@@ -2890,6 +2889,93 @@ const PublicMenu = () => {
                     </div>
                 </div>
             )}
+            {/* ─── Clear Cart Confirmation Modal ─── */}
+            {showClearCartModal && (
+                <div
+                    className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center"
+                    onClick={() => setShowClearCartModal(false)}
+                >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+                    {/* Sheet / Card */}
+                    <div
+                        className="relative w-full sm:max-w-sm mx-auto rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+                        style={{ animation: 'slide-up 0.3s cubic-bezier(0.16,1,0.3,1) forwards' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Gradient top strip */}
+                        <div
+                            className="h-1.5 w-full"
+                            style={{
+                                background: shopSettings?.menu_primary_color
+                                    ? `linear-gradient(90deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
+                                    : 'linear-gradient(90deg, #ea580c, #dc2626)'
+                            }}
+                        />
+
+                        <div className="bg-white dark:bg-zinc-900 px-6 pt-6 pb-8">
+                            {/* Icon */}
+                            <div className="flex justify-center mb-4">
+                                <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center shadow-inner">
+                                    <Trash2 className="w-8 h-8 text-red-500" />
+                                </div>
+                            </div>
+
+                            {/* Text */}
+                            <h3 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100 mb-1">
+                                Clear your cart?
+                            </h3>
+                            <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">
+                                {cartItemCount} item{cartItemCount !== 1 ? 's' : ''} will be removed. This cannot be undone.
+                            </p>
+
+                            {/* Item preview pills */}
+                            {cart.length > 0 && (
+                                <div className="flex flex-wrap justify-center gap-1.5 mb-6">
+                                    {cart.slice(0, 4).map(item => (
+                                        <span
+                                            key={item.id}
+                                            className="text-xs bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full border border-gray-200 dark:border-zinc-700"
+                                        >
+                                            {item.quantity}× {item.name}
+                                        </span>
+                                    ))}
+                                    {cart.length > 4 && (
+                                        <span className="text-xs bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-full">
+                                            +{cart.length - 4} more
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowClearCartModal(false)}
+                                    className="flex-1 py-3 rounded-2xl bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 font-semibold text-sm hover:bg-gray-200 dark:hover:bg-zinc-700 active:scale-95 transition-all"
+                                >
+                                    Keep Items
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setCart([]);
+                                        setShowClearCartModal(false);
+                                        setShowCart(false);
+                                    }}
+                                    className="flex-1 py-3 rounded-2xl font-semibold text-sm text-white active:scale-95 transition-all shadow-lg"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #ef4444, #dc2626)'
+                                    }}
+                                >
+                                    Yes, Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Store Timings Modal */}
             {rawShopSettings?.operating_hours && (
                 <StoreTimingsModal
