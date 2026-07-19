@@ -1,4 +1,4 @@
-# Hotel Zen POS - New Supabase Setup Guide
+# ZenPOS - New Supabase Setup Guide
 
 ## Quick Setup (5 Minutes)
 

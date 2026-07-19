@@ -1,4 +1,4 @@
-# Hotel Zen POS
+# ZenPOS
 
 A modern, fast Point of Sale system for restaurants and hotels.
 
@@ -44,8 +44,8 @@ VITE_SUPABASE_ANON_KEY=your_supabase_key
 
 ## Deployment
 
-Deployed on Vercel: https://hotel-zen-pos-tn.vercel.app
+Deployed on Vercel: https://zenpos-tn.vercel.app
 
 ## Author
 
-Hotel Zen POS - Made for Tamil Nadu restaurants
+ZenPOS - Made for Tamil Nadu restaurants

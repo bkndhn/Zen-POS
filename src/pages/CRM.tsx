@@ -965,7 +965,7 @@ const CRM: React.FC = () => {
                           {/* Dotted Receipt Container */}
                           <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 rounded-lg shadow-inner max-w-sm mx-auto font-mono text-[11px] text-slate-700 dark:text-slate-300 leading-normal">
                             <div className="text-center font-bold uppercase text-xs tracking-wider mb-0.5">
-                              {billSettings?.shopName || profile?.hotel_name || 'Hotel Zen'}
+                              {billSettings?.shopName || profile?.hotel_name || 'ZenPOS'}
                             </div>
                             {billSettings?.address && (
                               <div className="text-center text-[10px] text-muted-foreground line-clamp-2 mb-1">
