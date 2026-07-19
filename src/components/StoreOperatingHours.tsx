@@ -131,8 +131,21 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-6 space-y-8">
                 
+                {/* Visibility Toggle */}
+                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border/50">
+                    <div>
+                        <Label className="text-base font-medium">Show Timings on Menu</Label>
+                        <p className="text-sm text-muted-foreground">Allow customers to view store working hours, holidays, and breaks by clicking the logo on the menu page.</p>
+                    </div>
+                    <Switch
+                        checked={hours.showTimingsToCustomers ?? true}
+                        onCheckedChange={(checked) => onUpdateHours({ ...hours, showTimingsToCustomers: checked })}
+                    />
+                </div>
+
+                {/* Schedule Type Selection */}
                 <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-zinc-100 dark:border-zinc-800">
                     <div>
                         <Label className="text-sm font-semibold">Different timings per day</Label>

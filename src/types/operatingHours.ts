@@ -33,6 +33,7 @@ export interface OperatingHours {
   };
   breaks: OperatingHoursBreak[];
   customHolidays?: CustomHoliday[];
+  showTimingsToCustomers?: boolean;
 }
 
 export const defaultOperatingHours: OperatingHours = {
@@ -48,5 +49,6 @@ export const defaultOperatingHours: OperatingHours = {
     sunday: { isOpen: true, openTime: '09:00', closeTime: '22:00' },
   },
   breaks: [],
-  customHolidays: []
+  customHolidays: [],
+  showTimingsToCustomers: true
 };

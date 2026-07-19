@@ -1580,13 +1580,17 @@ const PublicMenu = () => {
                                 <img
                                     src={getCDNUrl(shopSettings.logo_url)}
                                     alt="Logo"
-                                    className="w-12 h-12 rounded-xl object-cover border-2 border-white/40 flex-shrink-0 shadow-lg"
+                                    className="w-10 h-10 rounded-xl object-cover border-2 border-white/40 flex-shrink-0 shadow-lg cursor-pointer transition-transform hover:scale-105"
                                     loading="lazy"
+                                    onClick={() => (shopSettings?.operating_hours as OperatingHours)?.showTimingsToCustomers !== false && setShowTimingsModal(true)}
                                     onError={(e) => handleImageError(e, shopSettings.logo_url)}
                                 />
                             ) : (
-                                <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/20">
-                                    <Utensils className="w-6 h-6" />
+                                <div 
+                                    className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/20 cursor-pointer transition-transform hover:scale-105"
+                                    onClick={() => (shopSettings?.operating_hours as OperatingHours)?.showTimingsToCustomers !== false && setShowTimingsModal(true)}
+                                >
+                                    <Utensils className="w-5 h-5" />
                                 </div>
                             )}
                             <div className="min-w-0 flex-1">
@@ -1594,7 +1598,7 @@ const PublicMenu = () => {
                                     {headerTitle}
                                     {storeStatus && (
                                         <span className={cn(
-                                            "w-2.5 h-2.5 rounded-full inline-block animate-pulse shadow-sm",
+                                            "w-2.5 h-2.5 rounded-full inline-block animate-pulse shadow-sm flex-shrink-0",
                                             storeStatus.status === 'open' ? "bg-green-400" :
                                             storeStatus.status === 'break' ? "bg-amber-400" : "bg-red-400"
                                         )} title={storeStatus.message} />
@@ -1609,17 +1613,6 @@ const PublicMenu = () => {
                                 </Badge>
                             )}
                             <button
-                                onClick={() => {
-                                    const nextLang = i18n.language?.startsWith('ta') ? 'en' : 'ta';
-                                    i18n.changeLanguage(nextLang);
-                                    localStorage.setItem('i18nextLng', nextLang);
-                                }}
-                                className="text-xs font-bold bg-white/20 hover:bg-white/30 text-white border border-white/30 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all h-8"
-                            >
-                                <Languages className="w-3.5 h-3.5" />
-                                {i18n.language?.startsWith('ta') ? 'EN' : 'தமிழ்'}
-                            </button>
-                            <button
                                 onClick={toggleDarkMode}
                                 className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
                             >
@@ -1628,16 +1621,22 @@ const PublicMenu = () => {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9 text-white hover:bg-white/20"
+                                className="h-8 w-8 text-white hover:bg-white/20"
                                 onClick={() => setShowSearch(!showSearch)}
                             >
-                                <Search className="w-5 h-5" />
+                                <Search className="w-4 h-4" />
                             </Button>
-                            {isOnline ? (
-                                <Wifi className="w-4 h-4 text-white/70" />
-                            ) : (
-                                <WifiOff className="w-4 h-4 text-red-300" />
-                            )}
+                            <button
+                                onClick={() => {
+                                    const nextLang = i18n.language?.startsWith('ta') ? 'en' : 'ta';
+                                    i18n.changeLanguage(nextLang);
+                                    localStorage.setItem('i18nextLng', nextLang);
+                                }}
+                                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
+                                title="Change Language"
+                            >
+                                <Languages className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
 
@@ -2878,6 +2877,15 @@ const PublicMenu = () => {
                         </Button>
                     </div>
                 </div>
+            )}
+            {/* Store Timings Modal */}
+            {rawShopSettings?.operating_hours && (
+                <StoreTimingsModal
+                    open={showTimingsModal}
+                    onOpenChange={setShowTimingsModal}
+                    operatingHours={rawShopSettings.operating_hours as OperatingHours}
+                    shopName={rawShopSettings.shop_name}
+                />
             )}
         </div>
     );
