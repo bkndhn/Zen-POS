@@ -1530,6 +1530,7 @@ export type Database = {
           menu_show_shop_name: boolean | null
           menu_slug: string | null
           menu_text_color: string | null
+          operating_hours: Json | null
           printer_width: string | null
           qr_payment_enabled: boolean
           receipt_qr_enabled: boolean
@@ -1541,6 +1542,7 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+          store_status_override: string | null
           telegram: string | null
           updated_at: string | null
           upi_id: string | null
@@ -1584,6 +1586,7 @@ export type Database = {
           menu_show_shop_name?: boolean | null
           menu_slug?: string | null
           menu_text_color?: string | null
+          operating_hours?: Json | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
           receipt_qr_enabled?: boolean
@@ -1595,6 +1598,7 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+          store_status_override?: string | null
           telegram?: string | null
           updated_at?: string | null
           upi_id?: string | null
@@ -1638,6 +1642,7 @@ export type Database = {
           menu_show_shop_name?: boolean | null
           menu_slug?: string | null
           menu_text_color?: string | null
+          operating_hours?: Json | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
           receipt_qr_enabled?: boolean
@@ -1649,6 +1654,7 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+          store_status_override?: string | null
           telegram?: string | null
           updated_at?: string | null
           upi_id?: string | null
@@ -2402,6 +2408,7 @@ export type Database = {
           menu_show_shop_name: boolean | null
           menu_slug: string | null
           menu_text_color: string | null
+          operating_hours: Json | null
           printer_width: string | null
           qr_payment_enabled: boolean
           receipt_qr_enabled: boolean
@@ -2413,6 +2420,7 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+          store_status_override: string | null
           telegram: string | null
           updated_at: string | null
           upi_id: string | null
