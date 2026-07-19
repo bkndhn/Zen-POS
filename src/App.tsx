@@ -302,7 +302,19 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7d — matches gcTime
+          buster: PERSIST_BUSTER,
+          dehydrateOptions: {
+            // Only persist successful queries; skip errored / paused ones so
+            // a bad network moment can't poison IndexedDB.
+            shouldDehydrateQuery: (q) => q.state.status === 'success',
+          },
+        }}
+      >
         <TooltipProvider>
           <Toaster />
           <Sonner />
