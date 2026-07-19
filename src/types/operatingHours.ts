@@ -12,6 +12,13 @@ export interface OperatingHoursBreak {
   days: string[]; // e.g. ['monday', 'tuesday'] or ['all']
 }
 
+export interface CustomHoliday {
+  id: string;
+  startDate: string; // 'YYYY-MM-DD' format
+  endDate?: string; // 'YYYY-MM-DD' format
+  reason?: string;
+}
+
 export interface OperatingHours {
   type: 'same_everyday' | 'custom_daily';
   default: DailyHours;
@@ -25,6 +32,7 @@ export interface OperatingHours {
     sunday: DailyHours;
   };
   breaks: OperatingHoursBreak[];
+  customHolidays?: CustomHoliday[];
 }
 
 export const defaultOperatingHours: OperatingHours = {
@@ -39,5 +47,6 @@ export const defaultOperatingHours: OperatingHours = {
     saturday: { isOpen: true, openTime: '09:00', closeTime: '22:00' },
     sunday: { isOpen: true, openTime: '09:00', closeTime: '22:00' },
   },
-  breaks: []
+  breaks: [],
+  customHolidays: []
 };

@@ -62,6 +62,24 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
         onUpdateHours({ ...hours, breaks: hours.breaks.filter(b => b.id !== id) });
     };
 
+    const handleAddHoliday = () => {
+        const newHoliday = {
+            id: Date.now().toString(),
+            startDate: new Date().toISOString().split('T')[0],
+            reason: ''
+        };
+        onUpdateHours({ ...hours, customHolidays: [...(hours.customHolidays || []), newHoliday] });
+    };
+
+    const handleUpdateHoliday = (id: string, field: 'startDate' | 'endDate' | 'reason', value: string) => {
+        const updatedHolidays = (hours.customHolidays || []).map(h => h.id === id ? { ...h, [field]: value } : h);
+        onUpdateHours({ ...hours, customHolidays: updatedHolidays });
+    };
+
+    const handleRemoveHoliday = (id: string) => {
+        onUpdateHours({ ...hours, customHolidays: (hours.customHolidays || []).filter(h => h.id !== id) });
+    };
+
     const daysOfWeek: (keyof typeof hours.daily)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
     return (
@@ -141,26 +159,32 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                     <div className="space-y-3">
                         {daysOfWeek.map(day => (
                             <div key={day} className="flex items-center gap-4 p-3 border rounded-xl bg-card">
-                                <div className="w-28 flex items-center gap-2">
+                                <div className="w-32 flex items-center gap-2">
                                     <Switch
                                         checked={hours.daily[day].isOpen}
                                         onCheckedChange={(c) => handleDailyTimeChange(day, 'isOpen', c)}
                                     />
                                     <span className="capitalize text-sm font-medium">{day}</span>
                                 </div>
-                                <div className="flex-1 grid grid-cols-2 gap-4">
-                                    <Input 
-                                        type="time" 
-                                        value={hours.daily[day].openTime} 
-                                        onChange={(e) => handleDailyTimeChange(day, 'openTime', e.target.value)}
-                                        disabled={!hours.daily[day].isOpen}
-                                    />
-                                    <Input 
-                                        type="time" 
-                                        value={hours.daily[day].closeTime} 
-                                        onChange={(e) => handleDailyTimeChange(day, 'closeTime', e.target.value)}
-                                        disabled={!hours.daily[day].isOpen}
-                                    />
+                                <div className="flex-1">
+                                    {hours.daily[day].isOpen ? (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Input 
+                                                type="time" 
+                                                value={hours.daily[day].openTime} 
+                                                onChange={(e) => handleDailyTimeChange(day, 'openTime', e.target.value)}
+                                            />
+                                            <Input 
+                                                type="time" 
+                                                value={hours.daily[day].closeTime} 
+                                                onChange={(e) => handleDailyTimeChange(day, 'closeTime', e.target.value)}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="h-10 flex items-center px-3 bg-red-50 dark:bg-red-500/10 text-red-600 border border-red-100 dark:border-red-900/30 rounded-md text-sm font-medium">
+                                            Closed (Weekly Holiday)
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -200,6 +224,46 @@ export const StoreOperatingHours: React.FC<StoreOperatingHoursProps> = ({
                                     <Input type="time" value={b.endTime} onChange={(e) => handleUpdateBreak(b.id, 'endTime', e.target.value)} className="h-8 text-sm" />
                                 </div>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => handleRemoveBreak(b.id)}>
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="pt-4 border-t border-border/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 className="text-sm font-semibold">Custom Holidays</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">Add specific dates when the store will be closed all day.</p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleAddHoliday} className="h-8 gap-1.5">
+                            <Plus className="w-3.5 h-3.5" />
+                            Add Holiday
+                        </Button>
+                    </div>
+
+                    <div className="space-y-3">
+                        {(!hours.customHolidays || hours.customHolidays.length === 0) && (
+                            <div className="text-center py-6 border border-dashed rounded-xl text-muted-foreground text-sm">
+                                No custom holidays configured.
+                            </div>
+                        )}
+                        {hours.customHolidays?.map((h) => (
+                            <div key={h.id} className="flex items-end gap-3 p-3 bg-muted/20 border border-zinc-100 dark:border-zinc-800 rounded-xl relative group">
+                                <div className="w-36 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Start Date</Label>
+                                    <Input type="date" value={h.startDate || ''} onChange={(e) => handleUpdateHoliday(h.id, 'startDate', e.target.value)} className="h-8 text-sm" />
+                                </div>
+                                <div className="w-36 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">End Date (Optional)</Label>
+                                    <Input type="date" value={h.endDate || ''} onChange={(e) => handleUpdateHoliday(h.id, 'endDate', e.target.value)} className="h-8 text-sm" />
+                                </div>
+                                <div className="flex-1 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Reason / Name (Optional)</Label>
+                                    <Input value={h.reason || ''} onChange={(e) => handleUpdateHoliday(h.id, 'reason', e.target.value)} placeholder="e.g. Maintenance / Festival" className="h-8 text-sm" />
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" onClick={() => handleRemoveHoliday(h.id)}>
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>

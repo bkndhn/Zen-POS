@@ -38,6 +38,23 @@ export function getStoreStatus(
     const currentHour = now.getHours().toString().padStart(2, '0');
     const currentMinute = now.getMinutes().toString().padStart(2, '0');
     const currentTimeStr = `${currentHour}:${currentMinute}`;
+    
+    // Check if today is a custom holiday
+    if (operatingHours.customHolidays && operatingHours.customHolidays.length > 0) {
+        // format date as YYYY-MM-DD
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        
+        const holiday = operatingHours.customHolidays.find(h => {
+            if (!h.endDate) return h.startDate === todayStr;
+            return todayStr >= h.startDate && todayStr <= h.endDate;
+        });
+        if (holiday) {
+            return { status: 'closed', message: holiday.reason ? `Closed: ${holiday.reason}` : 'Closed for Holiday' };
+        }
+    }
 
     // 3. Determine today's schedule
     let todaysSchedule;
