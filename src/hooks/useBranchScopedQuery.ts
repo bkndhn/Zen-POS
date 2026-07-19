@@ -63,6 +63,6 @@ export function useBranchScopedQuery(onChange?: () => void) {
  */
 export function applyBranchFilter<T>(query: T, branchFilterId: string | null): T {
   if (!branchFilterId) return query;
-  // @ts-ignore - supabase query builder has chainable .eq
+  // @ts-expect-error - supabase query builder has chainable .eq
   return query.eq('branch_id', branchFilterId);
 }

@@ -357,11 +357,7 @@ const QRCodeSettings = () => {
                     throw err1; // Don't retry if denied
                 }
                 // Try 2: GPS (more accurate, slower)
-                try {
-                    position = await getPosition(true, 20000);
-                } catch (err2: any) {
-                    throw err2;
-                }
+                position = await getPosition(true, 20000);
             }
 
             setShopLatitude(position.coords.latitude);

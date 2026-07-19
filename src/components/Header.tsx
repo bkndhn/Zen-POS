@@ -95,9 +95,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
     await signOut();
   };
 
-  // Super Admin doesn't need navigation - they only see Users page
-  const isSuperAdmin = profile.role === 'super_admin';
-
   // Filter nav items based on permissions (empty for super_admin)
   const navItems = isSuperAdmin ? [] : (permLoading ? [] : ALL_NAV_ITEMS.filter(item => {
     if (!hasAccess(item.page)) return false;
