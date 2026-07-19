@@ -604,6 +604,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   };
 
+  // Listen for real-time permission updates
+  useEffect(() => {
+    if (!profile) return;
+    const targetId = profile.admin_id || profile.id;
+
+    const channel = supabase.channel(`permissions:${targetId}`);
+    
+    channel.on(
+      'broadcast',
+      { event: 'permissions_updated' },
+      (payload) => {
+        if (payload.payload?.client_permissions) {
+          setProfile(prev => {
+            if (!prev) return prev;
+            const updated = {
+              ...prev,
+              client_permissions: payload.payload.client_permissions
+            };
+            // Update cache instantly
+            localStorage.setItem(`profile_${prev.user_id}`, JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }
+    ).subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id, profile?.admin_id]);
+
   const contextValue = {
     user,
     session,
