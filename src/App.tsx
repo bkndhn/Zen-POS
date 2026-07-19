@@ -216,6 +216,9 @@ const queryClient = new QueryClient({
 });
 
 const persister = createIDBPersister();
+// Bump this version any time cached query shapes change, so old IndexedDB
+// snapshots get thrown out on next load instead of hydrating broken data.
+const PERSIST_BUSTER = 'v3-2026-07';
 
 import { InstallPrompt } from './components/InstallPrompt';
 import { DevicePermissions } from './components/DevicePermissions';
