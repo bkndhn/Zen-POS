@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { useTranslation } from 'react-i18next';
 import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
+import { StoreTimingsModal } from '@/components/StoreTimingsModal';
+import { OperatingHours } from '@/types/operatingHours';
 
 // Types
 interface MenuItem {
@@ -139,6 +141,7 @@ const PublicMenu = () => {
     const [rawShopSettings, setShopSettings] = useState<ShopSettings | null>(null);
     const [storeStatus, setStoreStatus] = useState<StoreStatusInfo | null>(null);
     const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('public_menu_dark_mode') === 'true');
+    const [showTimingsModal, setShowTimingsModal] = useState(false);
 
     // Periodically check store status
     useEffect(() => {
