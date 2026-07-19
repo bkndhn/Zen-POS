@@ -1398,7 +1398,7 @@ const Billing = () => {
         for (const bi of (billItems || [])) {
           // Handle calci items (item_id is null)
           if (!bi.item_id || (bi as any).billing_type === 'calci') {
-            const calciName = (bi as any).item_name_override || `Calci Item (${bi.price})`;
+            const calciName = (bi as any).item_name_override || `Item`;
             const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             newCart.push({
               id: tempId,
@@ -1479,7 +1479,7 @@ const Billing = () => {
           const itemData = billItem.items as any;
           // Handle calci items (item_id is null, no joined items data)
           if (!billItem.item_id || !itemData) {
-            const calciName = (billItem as any).item_name_override || `Calci Item (${billItem.price})`;
+            const calciName = (billItem as any).item_name_override || `Item`;
             const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             return {
               id: tempId,
@@ -1843,8 +1843,8 @@ const Billing = () => {
         const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const newItem: CartItem = {
           id: tempId,
-          name: `Calci Item (${price})`,
-          item_name_override: `Calci Item (${price})`,
+          name: `Item`,
+          item_name_override: `Item`,
           price: price,
           quantity: qty,
           is_active: true,
