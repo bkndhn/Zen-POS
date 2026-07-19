@@ -216,6 +216,9 @@ const queryClient = new QueryClient({
 });
 
 const persister = createIDBPersister();
+// Bump this version any time cached query shapes change, so old IndexedDB
+// snapshots get thrown out on next load instead of hydrating broken data.
+const PERSIST_BUSTER = 'v3-2026-07';
 
 import { InstallPrompt } from './components/InstallPrompt';
 import { DevicePermissions } from './components/DevicePermissions';
@@ -299,7 +302,19 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7d — matches gcTime
+          buster: PERSIST_BUSTER,
+          dehydrateOptions: {
+            // Only persist successful queries; skip errored / paused ones so
+            // a bad network moment can't poison IndexedDB.
+            shouldDehydrateQuery: (q) => q.state.status === 'success',
+          },
+        }}
+      >
         <TooltipProvider>
           <Toaster />
           <Sonner />
