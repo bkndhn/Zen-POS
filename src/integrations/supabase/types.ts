@@ -110,6 +110,91 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_insights_log: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          tokens_used: number | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          tokens_used?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          tokens_used?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_limits: {
+        Row: {
+          admin_id: string
+          enabled: boolean
+          last_used_at: string | null
+          lifetime_quota: number | null
+          lifetime_used: number
+          period: string
+          period_started_at: string
+          quota: number
+          updated_at: string
+          used_count: number
+        }
+        Insert: {
+          admin_id: string
+          enabled?: boolean
+          last_used_at?: string | null
+          lifetime_quota?: number | null
+          lifetime_used?: number
+          period?: string
+          period_started_at?: string
+          quota?: number
+          updated_at?: string
+          used_count?: number
+        }
+        Update: {
+          admin_id?: string
+          enabled?: boolean
+          last_used_at?: string | null
+          lifetime_quota?: number | null
+          lifetime_used?: number
+          period?: string
+          period_started_at?: string
+          quota?: number
+          updated_at?: string
+          used_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_limits_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           id: boolean
