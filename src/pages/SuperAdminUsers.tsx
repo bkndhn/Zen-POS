@@ -1054,6 +1054,14 @@ const SuperAdminUsers: React.FC = () => {
           onSaved={fetchUsers}
         />
       )}
+
+      {aiLimitTarget && (
+        <SuperAdminAiLimits
+          adminId={aiLimitTarget.profile_id}
+          adminName={aiLimitTarget.hotel_name || aiLimitTarget.name || aiLimitTarget.email || 'admin'}
+          onClose={() => setAiLimitTarget(null)}
+        />
+      )}
     </div>
   );
 };
