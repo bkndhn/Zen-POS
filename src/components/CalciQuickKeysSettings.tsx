@@ -32,9 +32,25 @@ export const CalciQuickKeysSettings = () => {
 
   useEffect(() => {
     if (!adminId) return;
-    const fetchItems = async () => {
+    const fetchItemsAndSettings = async () => {
       setLoading(true);
       try {
+        // Fetch settings first
+        let settingsQuery = supabase.from('shop_settings').select('calci_shortcodes').eq('user_id', adminId);
+        if (operatingBranchId) {
+          settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
+        } else {
+          settingsQuery = settingsQuery.is('branch_id', null);
+        }
+        
+        const { data: settingsData, error: settingsError } = await settingsQuery.maybeSingle();
+        
+        if (!settingsError && settingsData?.calci_shortcodes) {
+            setShortcodes(settingsData.calci_shortcodes);
+            // Also sync it to local storage
+            localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(settingsData.calci_shortcodes));
+        }
+
         let q = supabase.from('items').select('id, name, price').eq('admin_id', adminId).eq('is_active', true);
         if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
         const { data, error } = await q;
@@ -45,16 +61,18 @@ export const CalciQuickKeysSettings = () => {
         // Try to load from cached items in IndexedDB
         try {
           const { offlineManager } = await import('@/utils/offlineManager');
-          const cached = await offlineManager.getCachedItems();
+          const cached = await offlineManager.getCachedItems(adminId || '', operatingBranchId);
           if (cached.length > 0) {
             setItems(cached.map((i: any) => ({ id: i.id, name: i.name, price: i.price })));
           }
-        } catch { /* ignore */ }
+        } catch (e) {
+          console.error('Offline fallback failed:', e);
+        }
       } finally {
         setLoading(false);
       }
     };
-    fetchItems();
+    fetchItemsAndSettings();
   }, [adminId, operatingBranchId]);
 
   const handleAdd = () => {
@@ -75,17 +93,49 @@ export const CalciQuickKeysSettings = () => {
     
     const updated = { ...shortcodes, [cleanCode]: newItemId };
     setShortcodes(updated);
-    localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(updated));
+    handleSave(updated);
     setNewCode('');
     setNewItemId('');
     toast({ title: "Quick Key Added", description: `Code '${cleanCode}' is now active on this device.` });
+  };
+
+  const handleSave = async (newCodes: Record<string, string>) => {
+    if (!adminId) return;
+
+    try {
+      // Save locally as a fallback
+      localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(newCodes));
+      
+      // Save to Supabase shop_settings
+      let updateQuery = supabase.from('shop_settings').update({ calci_shortcodes: newCodes }).eq('user_id', adminId);
+      if (operatingBranchId) {
+        updateQuery = updateQuery.eq('branch_id', operatingBranchId);
+      } else {
+        updateQuery = updateQuery.is('branch_id', null);
+      }
+      
+      // Attempt to save to cloud, ignore errors if column doesn't exist yet
+      const { error } = await updateQuery;
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Could not save shortcodes to cloud (schema might not be updated):', error);
+      } else {
+        // Broadcast to other active clients
+        supabase.channel('pos-global-sync').send({ 
+          type: 'broadcast', 
+          event: 'sync-calci-keys', 
+          payload: newCodes 
+        });
+      }
+    } catch (err) {
+      console.error('Error saving shortcodes:', err);
+    }
   };
 
   const handleRemove = (code: string) => {
     const updated = { ...shortcodes };
     delete updated[code];
     setShortcodes(updated);
-    localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(updated));
+    handleSave(updated);
     toast({ title: "Quick Key Removed" });
   };
 

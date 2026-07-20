@@ -1504,6 +1504,7 @@ export type Database = {
           address: string | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
+          calci_shortcodes: Json | null
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
@@ -1549,6 +1550,11 @@ export type Database = {
           upi_name: string | null
           user_id: string
           visible_nav_pages: string[] | null
+          quick_bill_enabled: boolean | null
+          bill_bottom_text: string | null
+          low_stock_notification_enabled: boolean | null
+          auto_report_time: string | null
+          auto_report_enabled: boolean | null
           whatsapp: string | null
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
@@ -1560,6 +1566,7 @@ export type Database = {
           address?: string | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
+          calci_shortcodes?: Json | null
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
@@ -1616,6 +1623,7 @@ export type Database = {
           address?: string | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
+          calci_shortcodes?: Json | null
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null

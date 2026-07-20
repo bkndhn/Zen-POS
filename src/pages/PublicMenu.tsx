@@ -65,6 +65,14 @@ interface ShopSettings {
     menu_glassmorphism?: boolean;
     menu_ai_features_enabled?: boolean;
     
+    // Social Links
+    facebook?: string;
+    instagram?: string;
+    whatsapp?: string;
+    show_facebook?: boolean;
+    show_instagram?: boolean;
+    show_whatsapp?: boolean;
+    
     // Location settings
     shop_latitude?: number;
     shop_longitude?: number;
@@ -2779,7 +2787,7 @@ const PublicMenu = () => {
             )}
 
             {/* Footer with Contact Info */}
-            {(showPhone || showAddress || shopSettings?.shop_latitude) && (
+            {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram) && (
                 <footer
                     className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]"
                     style={{
@@ -2791,7 +2799,7 @@ const PublicMenu = () => {
                     <div className="max-w-2xl mx-auto px-4 py-2.5">
                         <div className="flex items-center justify-center gap-3">
                             {/* Call Button */}
-                            {showPhone && shopSettings?.contact_number && (
+                            {shopSettings?.menu_show_phone !== false && shopSettings?.contact_number && (
                                 <a
                                     href={`tel:${shopSettings.contact_number}`}
                                     className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 backdrop-blur-sm border border-white/20"
@@ -2803,9 +2811,9 @@ const PublicMenu = () => {
                             )}
 
                             {/* WhatsApp Button */}
-                            {showPhone && shopSettings?.contact_number && (
+                            {shopSettings?.show_whatsapp && shopSettings?.whatsapp && (
                                 <a
-                                    href={`https://wa.me/${shopSettings.contact_number.replace(/[^0-9]/g, '')}?text=Hi! I visited your ${shopSettings.shop_name || 'restaurant'} and have a query.`}
+                                    href={`https://wa.me/${shopSettings.whatsapp.replace(/[^0-9]/g, '')}?text=Hi! I visited your ${shopSettings.shop_name || 'restaurant'} and have a query.`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 border border-[#25D366]/40 shadow-sm"

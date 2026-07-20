@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ const Items: React.FC = () => {
     }
   });
   const [items, setItems] = useState<Item[]>([]);
-  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -109,9 +109,7 @@ const Items: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [searchTerm, selectedCategory, items, isAllBranchesView]);
+  
 
   const fetchItems = async () => {
     if (!adminId) return;
@@ -252,54 +250,31 @@ const Items: React.FC = () => {
     }
   };
 
-  const applyFilters = () => {
+  const filteredItems = useMemo(() => {
     let filtered = items;
-
-    // Search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.name.toLowerCase().includes(searchLower) ||
-        (item.category && item.category.toLowerCase().includes(searchLower)) ||
-        item.price.toString().includes(searchTerm)
+    
+    // Filter by branch view unless it's All Branches
+    if (!isAllBranchesView && operatingBranchId) {
+      filtered = filtered.filter(item => item.branch_id === operatingBranchId);
+    }
+    
+    // Search
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => 
+        (item.name && item.name.toLowerCase().includes(lowerSearch)) ||
+        (item.category && item.category.toLowerCase().includes(lowerSearch)) ||
+        (item.barcode && item.barcode.toLowerCase().includes(lowerSearch))
       );
     }
 
     // Category filter
-    if (selectedCategory !== 'all') {
+    if (selectedCategory && selectedCategory !== 'all') {
       filtered = filtered.filter(item => item.category === selectedCategory);
     }
-
-    // Smart deduplication when in All-Branches view: group by name+category+price.
-    // Aggregate stock and remember per-branch breakdown so the user sees one card per item.
-    if (isAllBranchesView) {
-      const groups = new Map<string, Item>();
-      for (const it of filtered) {
-        const key = `${(it.name || '').trim().toLowerCase()}|${(it.category || '').toLowerCase()}|${Number(it.price).toFixed(2)}`;
-        const existing = groups.get(key);
-        if (!existing) {
-          groups.set(key, {
-            ...it,
-            stock_quantity: it.stock_quantity ?? 0,
-            __branchCount: 1,
-            __branchBreakdown: [{ branch_id: it.branch_id ?? null, stock: it.stock_quantity ?? 0 }],
-          });
-        } else {
-          existing.stock_quantity = (existing.stock_quantity ?? 0) + (it.stock_quantity ?? 0);
-          existing.__branchCount = (existing.__branchCount ?? 1) + 1;
-          existing.__branchBreakdown = [
-            ...(existing.__branchBreakdown ?? []),
-            { branch_id: it.branch_id ?? null, stock: it.stock_quantity ?? 0 },
-          ];
-          // Keep is_active true if any branch has it active
-          existing.is_active = existing.is_active || it.is_active;
-        }
-      }
-      filtered = Array.from(groups.values());
-    }
-
-    setFilteredItems(filtered);
-  };
+    
+    return filtered;
+  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId]);
 
   const handleItemAdded = () => {
     fetchItems();

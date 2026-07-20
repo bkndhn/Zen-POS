@@ -412,15 +412,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(ALIGN_LEFT);
     const hideBillNumber = isBillNumberHidden();
     if (!hideBillNumber) {
-      commands.push(textToBytes(fmtLine(`#${data.billNo}`, data.date)));
+      commands.push(textToBytes(fmtLine(`#${data.billNo}`, `${data.date} ${data.time}`)));
       commands.push(FEED_LINE);
     } else {
-      commands.push(textToBytes(fmtLine('Date:', data.date)));
+      commands.push(textToBytes(fmtLine('Date:', `${data.date} ${data.time}`)));
       commands.push(FEED_LINE);
     }
-    commands.push(FEED_LINE);
-    commands.push(textToBytes(fmtLine('Time:', data.time)));
-    commands.push(FEED_LINE);
 
     if (data.orderType) {
       commands.push(BOLD_ON);
@@ -594,7 +591,11 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Footer - minimal
   commands.push(ALIGN_CENTER);
-  commands.push(textToBytes('Thank you!'));
+  if (data.billBottomText) {
+    commands.push(textToBytes(data.billBottomText));
+  } else {
+    commands.push(textToBytes('Thank you!'));
+  }
   commands.push(FEED_LINE);
 
   // Check if autoCut is enabled in localStorage

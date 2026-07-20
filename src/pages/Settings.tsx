@@ -26,6 +26,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
 import { CalciBillingSettings } from '@/components/CalciBillingSettings';
 import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
+import { QuickBillSettings } from '@/components/QuickBillSettings';
 
 interface AdditionalCharge {
   id: string;
@@ -384,6 +385,11 @@ const Settings = () => {
           {/* Calci Billing Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Calci Billing Settings failed to load. Try refreshing.</div>}>
             <CalciBillingSettings />
+          </ErrorBoundary>
+
+          {/* Quick Bill Settings */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Quick Bill Settings failed to load. Try refreshing.</div>}>
+            <QuickBillSettings />
           </ErrorBoundary>
 
           {/* WhatsApp Bill Share Settings */}

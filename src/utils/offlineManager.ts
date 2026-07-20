@@ -235,9 +235,13 @@ class OfflineManager {
         });
     }
 
+    
     private setupAuthListeners(): void {
         supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
+            if (!session?.user) {
+                console.log('[Sync] User logged out. Wiping offline cache...');
+                await this.clearCache().catch(console.error);
+            } else if (session?.user) {
                 console.log(`[Sync] Auth state changed: ${event}. Resetting retries and syncing...`);
                 try {
                     await this.resetSyncRetries();
@@ -249,6 +253,23 @@ class OfflineManager {
             }
         });
     }
+
+    async clearCache(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            if (!this.db) { resolve(); return; }
+            const tx = this.db.transaction([STORES.ITEMS, STORES.BILLS, STORES.CATEGORIES, STORES.SYNC_QUEUE, STORES.SETTINGS, STORES.PENDING_BILLS], 'readwrite');
+            tx.oncomplete = () => { console.log('Offline cache cleared successfully'); resolve(); };
+            tx.onerror = () => { console.error('Error clearing offline cache'); reject(tx.error); };
+            
+            tx.objectStore(STORES.ITEMS).clear();
+            tx.objectStore(STORES.BILLS).clear();
+            tx.objectStore(STORES.CATEGORIES).clear();
+            tx.objectStore(STORES.SYNC_QUEUE).clear();
+            tx.objectStore(STORES.SETTINGS).clear();
+            tx.objectStore(STORES.PENDING_BILLS).clear();
+        });
+    }
+
 
     // Subscribe to network status changes
     onNetworkChange(callback: (isOnline: boolean) => void): () => void {
@@ -1019,24 +1040,39 @@ class OfflineManager {
         await this.storeMany(STORES.ITEMS, items);
     }
 
-    async getCachedItems(): Promise<any[]> {
-        return this.getAll(STORES.ITEMS);
+    
+    async getCachedItems(adminId: string, branchId?: string | null): Promise<any[]> {
+        const items = await this.getAll<any>(STORES.ITEMS);
+        return items.filter(item => 
+            item.admin_id === adminId && 
+            (branchId ? item.branch_id === branchId : (item.branch_id === null || item.branch_id === undefined))
+        );
     }
 
     async cacheCategories(categories: any[]): Promise<void> {
         await this.storeMany(STORES.CATEGORIES, categories);
     }
 
-    async getCachedCategories(): Promise<any[]> {
-        return this.getAll(STORES.CATEGORIES);
+    
+    async getCachedCategories(adminId: string, branchId?: string | null): Promise<any[]> {
+        const categories = await this.getAll<any>(STORES.CATEGORIES);
+        return categories.filter(cat => 
+            cat.admin_id === adminId && 
+            (branchId ? cat.branch_id === branchId : (cat.branch_id === null || cat.branch_id === undefined))
+        );
     }
 
     async cacheBill(bill: any): Promise<void> {
         await this.store(STORES.BILLS, { ...bill, synced: this.isOnline });
     }
 
-    async getCachedBills(): Promise<any[]> {
-        return this.getAll(STORES.BILLS);
+    
+    async getCachedBills(adminId: string, branchId?: string | null): Promise<any[]> {
+        const bills = await this.getAll<any>(STORES.BILLS);
+        return bills.filter(bill => 
+            bill.admin_id === adminId && 
+            (branchId ? bill.branch_id === branchId : (bill.branch_id === null || bill.branch_id === undefined))
+        );
     }
 
     async getPendingBillsCount(): Promise<number> {

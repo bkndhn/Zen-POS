@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,29 +84,37 @@ interface ItemCategory {
   print_station?: string | null;
 }
 
-const CategoryScrollBar: React.FC<{
+const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCategory, categoryOrder, items }: {
   categories: ItemCategory[];
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
   categoryOrder: string[];
   items: Item[];
-}> = ({ categories, selectedCategory, onSelectCategory, categoryOrder, items }) => {
+}) => {
   // Sort categories based on saved order
-  const sortedCategories = [...categories].sort((a, b) => {
+  const sortedCategories = useMemo(() => [...categories].sort((a, b) => {
     const indexA = categoryOrder.indexOf(a.name);
     const indexB = categoryOrder.indexOf(b.name);
     if (indexA === -1 && indexB === -1) return a.name.localeCompare(b.name);
     if (indexA === -1) return 1;
     if (indexB === -1) return -1;
     return indexA - indexB;
-  });
+  }), [categories, categoryOrder]);
 
-  // Calculate item counts per category
-  const getCategoryCount = (categoryName: string) => {
-    return items.filter(item => item.category === categoryName && item.is_active).length;
-  };
+  // Calculate item counts per category in a single O(N) pass
+  const { categoryCounts, totalActiveItems } = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let total = 0;
+    items.forEach(item => {
+      if (item.is_active) {
+        total++;
+        if (item.category) counts[item.category] = (counts[item.category] || 0) + 1;
+      }
+    });
+    return { categoryCounts: counts, totalActiveItems: total };
+  }, [items]);
 
-  const totalActiveItems = items.filter(item => item.is_active).length;
+  const getCategoryCount = (categoryName: string) => categoryCounts[categoryName] || 0;
 
   return (
     <div className="mb-3 w-full overflow-hidden">
@@ -139,7 +147,7 @@ const CategoryScrollBar: React.FC<{
       </div>
     </div>
   );
-};
+});
 interface Bill {
   id: string;
   bill_no: string;
@@ -968,7 +976,7 @@ const Billing = () => {
     try {
       // 1. FAST PATH: Load from cache instantly for zero lag
       const { offlineManager } = await import('@/utils/offlineManager');
-      const cachedItems = await offlineManager.getCachedItems();
+      const cachedItems = await offlineManager.getCachedItems(adminId, operatingBranchId);
       
       let loadedFromCache = false;
       if (cachedItems && cachedItems.length > 0) {
@@ -1520,14 +1528,17 @@ const Billing = () => {
       });
     }
   };
-  const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    // Hide out-of-stock items (items with stock_quantity of 0 or less)
-    // Items without stock tracking (null/undefined) are still shown
-    const isInStock = item.stock_quantity === null || item.stock_quantity === undefined || item.stock_quantity > 0;
-    return matchesSearch && matchesCategory && isInStock;
-  });
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return items.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(query);
+      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+      // Hide out-of-stock items (items with stock_quantity of 0 or less)
+      // Items without stock tracking (null/undefined) are still shown
+      const isInStock = item.stock_quantity === null || item.stock_quantity === undefined || item.stock_quantity > 0;
+      return matchesSearch && matchesCategory && isInStock;
+    });
+  }, [items, searchQuery, selectedCategory]);
   const addToCart = (item: Item) => {
     const existing = cart.find(cartItem => cartItem.id === item.id);
     const step = item.quantity_step || 1;

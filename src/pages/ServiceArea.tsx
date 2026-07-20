@@ -233,10 +233,10 @@ const ServiceArea = () => {
 
     // === LAYER 1: Supabase Broadcast (Cross-device, <100ms) ===
     useEffect(() => {
-        const channel = supabase.channel('pos-global-broadcast', {
+        const channel = supabase.channel('pos-global-sync', {
             config: { broadcast: { self: true } }
         })
-            .on('broadcast', { event: 'bills-sync' }, (payload) => {
+            .on('broadcast', { event: 'bills-updated' }, (payload) => {
                 console.log('[ServiceArea] Instant broadcast received:', payload);
                 debouncedFetch(true);
             })
@@ -563,7 +563,7 @@ const ServiceArea = () => {
             // Layer 2: Supabase Broadcast (<100ms cross-device)
             broadcastChannelRef.current?.send({
                 type: 'broadcast',
-                event: 'bills-sync',
+                event: 'bills-updated',
                 payload: { bill_id: billId, status, action: 'undo', timestamp: Date.now() }
             });
 

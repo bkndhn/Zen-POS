@@ -211,9 +211,8 @@ export const printBrowserReceipt = async (data: PrintData) => {
   
   <table>
     ${isBillNumberHidden() 
-      ? `<tr><td><b>Date:</b></td><td style="text-align:right">${data.date}</td></tr>` 
-      : `<tr><td>#${data.billNo}</td><td style="text-align:right">${data.date}</td></tr>`}
-    <tr><td>Time:</td><td style="text-align:right">${data.time}</td></tr>
+      ? `<tr><td><b>Date:</b></td><td style="text-align:right">${data.date} ${data.time}</td></tr>` 
+      : `<tr><td>#${data.billNo}</td><td style="text-align:right">${data.date} ${data.time}</td></tr>`}
     ${(data as any).orderType ? `<tr><td><b>Type:</b></td><td style="text-align:right"><b>${(data as any).orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}</b></td></tr>` : ''}
     ${data.customerMobile && !paperSaving ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}
     ${data.customerGstin && !paperSaving ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.customerGstin}</td></tr>` : ''}
@@ -246,7 +245,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
   
   <div class="footer center">
     ${qrCodeDataUrl ? `<div style="margin-top: 10px; margin-bottom: 5px;"><img src="${qrCodeDataUrl}" alt="QR Code" style="display:block;margin:0 auto;max-width:140px;" /></div>` : ''}
-    <div>Thank you!</div>
+    <div></div>
     ${(data.facebook || data.instagram || data.whatsapp) && !paperSaving ? '<hr>' : ''}
     ${data.facebook && !paperSaving ? `<div>FB: ${data.facebook}</div>` : ''}
     ${data.instagram && !paperSaving ? `<div>IG: ${data.instagram}</div>` : ''}
