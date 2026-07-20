@@ -110,11 +110,11 @@ export const useAutomation = () => {
   };
 
   const checkLowStock = async () => {
-    let query = supabase
-      .from('menu_items')
-      .select('name, current_stock, low_stock_threshold')
+    let query = (supabase as any)
+      .from('items')
+      .select('name, stock_quantity, minimum_stock_alert')
       .eq('admin_id', adminId)
-      .eq('track_stock', true);
+      .eq('unlimited_stock', false);
       
     if (operatingBranchId) {
         query = query.eq('branch_id', operatingBranchId);
@@ -123,14 +123,14 @@ export const useAutomation = () => {
     const { data: items } = await query;
     if (!items) return;
 
-    const lowItems = items.filter(item => 
-      item.current_stock !== null && 
-      item.low_stock_threshold !== null && 
-      item.current_stock <= item.low_stock_threshold
+    const lowItems = (items as any[]).filter((item: any) => 
+      item.stock_quantity !== null && 
+      item.minimum_stock_alert !== null && 
+      Number(item.stock_quantity) <= Number(item.minimum_stock_alert)
     );
 
     if (lowItems.length > 0 && Capacitor.isNativePlatform()) {
-      const names = lowItems.map(i => i.name).slice(0, 3).join(', ');
+      const names = lowItems.map((i: any) => i.name).slice(0, 3).join(', ');
       const more = lowItems.length > 3 ? ` +${lowItems.length - 3} more` : '';
       
       await LocalNotifications.schedule({

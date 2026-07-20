@@ -1041,8 +1041,9 @@ class OfflineManager {
     }
 
     
-    async getCachedItems(adminId: string, branchId?: string | null): Promise<any[]> {
+    async getCachedItems(adminId?: string, branchId?: string | null): Promise<any[]> {
         const items = await this.getAll<any>(STORES.ITEMS);
+        if (!adminId) return items;
         return items.filter(item => 
             item.admin_id === adminId && 
             (branchId ? item.branch_id === branchId : (item.branch_id === null || item.branch_id === undefined))
@@ -1054,8 +1055,9 @@ class OfflineManager {
     }
 
     
-    async getCachedCategories(adminId: string, branchId?: string | null): Promise<any[]> {
+    async getCachedCategories(adminId?: string, branchId?: string | null): Promise<any[]> {
         const categories = await this.getAll<any>(STORES.CATEGORIES);
+        if (!adminId) return categories;
         return categories.filter(cat => 
             cat.admin_id === adminId && 
             (branchId ? cat.branch_id === branchId : (cat.branch_id === null || cat.branch_id === undefined))
@@ -1067,8 +1069,9 @@ class OfflineManager {
     }
 
     
-    async getCachedBills(adminId: string, branchId?: string | null): Promise<any[]> {
+    async getCachedBills(adminId?: string, branchId?: string | null): Promise<any[]> {
         const bills = await this.getAll<any>(STORES.BILLS);
+        if (!adminId) return bills;
         return bills.filter(bill => 
             bill.admin_id === adminId && 
             (branchId ? bill.branch_id === branchId : (bill.branch_id === null || bill.branch_id === undefined))

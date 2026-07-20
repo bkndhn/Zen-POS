@@ -63,7 +63,7 @@ export const CalciQuickKeysSettings = () => {
         const { data: settingsData, error: settingsError } = await settingsQuery.maybeSingle();
         
         if (!settingsError && settingsData?.calci_shortcodes) {
-            setShortcodes(settingsData.calci_shortcodes);
+            setShortcodes(settingsData.calci_shortcodes as any);
             // Also sync it to local storage
             localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(settingsData.calci_shortcodes));
         }

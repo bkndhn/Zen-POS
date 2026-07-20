@@ -264,7 +264,7 @@ const Items: React.FC = () => {
       filtered = filtered.filter(item => 
         (item.name && item.name.toLowerCase().includes(lowerSearch)) ||
         (item.category && item.category.toLowerCase().includes(lowerSearch)) ||
-        (item.barcode && item.barcode.toLowerCase().includes(lowerSearch))
+        ((item as any).barcode && (item as any).barcode.toLowerCase().includes(lowerSearch))
       );
     }
 
