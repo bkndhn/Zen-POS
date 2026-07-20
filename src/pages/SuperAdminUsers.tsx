@@ -16,7 +16,8 @@ import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
-import { Pencil } from 'lucide-react';
+import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
+import { Pencil, Sparkles } from 'lucide-react';
 
 interface Row {
   profile_id: string;
@@ -50,6 +51,7 @@ const SuperAdminUsers: React.FC = () => {
   const [permsDialogOpen, setPermsDialogOpen] = useState(false);
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
   const [contactTarget, setContactTarget] = useState<Row | null>(null);
+  const [aiLimitTarget, setAiLimitTarget] = useState<Row | null>(null);
 
   // Backup & Restore State
   const [activeTab, setActiveTab] = useState('users');
@@ -546,6 +548,15 @@ const SuperAdminUsers: React.FC = () => {
                               title="Reset password"
                             >
                               <KeyRound className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAiLimitTarget(r)}
+                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                              title="AI Insights limits"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="outline"
