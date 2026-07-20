@@ -302,12 +302,12 @@ export type Database = {
           id: string
           is_deleted: boolean | null
           is_edited: boolean | null
-          kitchen_status: Database["public"]["Enums"]["service_status"] | null
+          kitchen_status: string | null
           order_type: string | null
           payment_details: Json | null
           payment_mode: Database["public"]["Enums"]["payment_method"]
           round_off: number | null
-          service_status: Database["public"]["Enums"]["service_status"] | null
+          service_status: string | null
           status_updated_at: string | null
           table_no: string | null
           tax_summary: Json | null
@@ -333,12 +333,12 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
-          kitchen_status?: Database["public"]["Enums"]["service_status"] | null
+          kitchen_status?: string | null
           order_type?: string | null
           payment_details?: Json | null
           payment_mode: Database["public"]["Enums"]["payment_method"]
           round_off?: number | null
-          service_status?: Database["public"]["Enums"]["service_status"] | null
+          service_status?: string | null
           status_updated_at?: string | null
           table_no?: string | null
           tax_summary?: Json | null
@@ -364,12 +364,12 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
-          kitchen_status?: Database["public"]["Enums"]["service_status"] | null
+          kitchen_status?: string | null
           order_type?: string | null
           payment_details?: Json | null
           payment_mode?: Database["public"]["Enums"]["payment_method"]
           round_off?: number | null
-          service_status?: Database["public"]["Enums"]["service_status"] | null
+          service_status?: string | null
           status_updated_at?: string | null
           table_no?: string | null
           tax_summary?: Json | null
