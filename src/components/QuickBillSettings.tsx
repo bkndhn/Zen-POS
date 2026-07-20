@@ -14,18 +14,34 @@ export const QuickBillSettings = () => {
   
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
 
   useEffect(() => {
+    const resolveAuthUid = async () => {
+      if (!profile) return;
+      if (profile.role === 'admin') {
+        setAdminAuthUid(profile.user_id);
+      } else if (profile.admin_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .maybeSingle();
+        if (data?.user_id) setAdminAuthUid(data.user_id);
+      }
+    };
+    resolveAuthUid();
+  }, [profile]);
+  useEffect(() => {
     const loadSettings = async () => {
-      if (isAllBranchesView || !adminId) {
+      if (isAllBranchesView || !adminAuthUid) {
         setLoading(false);
         return;
       }
       
       try {
         setLoading(true);
-        let query = supabase.from('shop_settings').select('quick_bill_enabled').eq('user_id', adminId);
+        let query = supabase.from('shop_settings').select('quick_bill_enabled').eq('user_id', adminAuthUid);
         
         if (operatingBranchId) {
           query = query.eq('branch_id', operatingBranchId);
@@ -47,24 +63,51 @@ export const QuickBillSettings = () => {
     };
 
     loadSettings();
-  }, [operatingBranchId, isAllBranchesView, adminId]);
+  }, [operatingBranchId, isAllBranchesView, adminAuthUid]);
 
   const handleToggle = async (checked: boolean) => {
-    if (isAllBranchesView || !adminId) return;
+    if (isAllBranchesView || !adminAuthUid) return;
     
     try {
       setEnabled(checked);
-      
-      let query = supabase.from('shop_settings').update({ quick_bill_enabled: checked }).eq('user_id', adminId);
+      if (!adminAuthUid) return;
+
+      let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid);
       if (operatingBranchId) {
-        query = query.eq('branch_id', operatingBranchId);
+        existingQuery = existingQuery.eq('branch_id', operatingBranchId);
       } else {
-        query = query.is('branch_id', null);
+        existingQuery = existingQuery.is('branch_id', null);
+      }
+      
+      const { data: existing } = await existingQuery.maybeSingle();
+      const payload = { quick_bill_enabled: checked };
+      
+      let error;
+      if (existing?.id) {
+        const { error: updateError } = await supabase.from('shop_settings').update(payload).eq('id', existing.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase.from('shop_settings').insert({
+          ...payload,
+          user_id: adminAuthUid,
+          branch_id: operatingBranchId || null
+        });
+        error = insertError;
       }
 
-      const { error } = await query;
-
       if (error) throw error;
+
+      // Update local cache
+      const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+      const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+      if (existingCache) {
+        const parsed = JSON.parse(existingCache);
+        parsed.quickBillEnabled = checked;
+        localStorage.setItem(headerKey, JSON.stringify(parsed));
+      } else {
+        localStorage.setItem(headerKey, JSON.stringify({ quickBillEnabled: checked }));
+      }
+
       toast({
         title: "Settings Updated",
         description: `Quick Bill mode has been ${checked ? 'enabled' : 'disabled'} for this branch.`
@@ -80,7 +123,7 @@ export const QuickBillSettings = () => {
     }
   };
 
-  if (!adminId) return null;
+  if (!adminAuthUid) return null;
 
   return (
     <Card className="shadow-sm border-zinc-200/50 dark:border-zinc-800/50">

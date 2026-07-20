@@ -260,7 +260,7 @@ const QRCodeSettings = () => {
     }, [tableMode, fetchTables]);
 
     // Save settings when changed (branch-scoped)
-    const saveSettings = async () => {
+    const saveSettings = async (overrideLat?: number | null, overrideLng?: number | null) => {
         if (!adminAuthUid) return;
         // Save to localStorage immediately
         const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
@@ -280,8 +280,8 @@ const QRCodeSettings = () => {
             menu_show_shop_name: menuShowShopName,
             menu_show_address: menuShowAddress,
             menu_show_phone: menuShowPhone,
-            shop_latitude: shopLatitude,
-            shop_longitude: shopLongitude,
+            shop_latitude: overrideLat !== undefined ? overrideLat : shopLatitude,
+            shop_longitude: overrideLng !== undefined ? overrideLng : shopLongitude,
             store_status_override: storeStatusOverride,
             operating_hours: operatingHours
         };
@@ -389,7 +389,7 @@ const QRCodeSettings = () => {
                 title: '📍 Location Pinned!',
                 description: `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`
             });
-            setTimeout(() => saveSettings(), 500);
+            saveSettings(lat, lng);
 
         } catch (error: any) {
             setLocationLoading(false);
@@ -415,7 +415,7 @@ const QRCodeSettings = () => {
         setShopLatitude(null);
         setShopLongitude(null);
         toast({ title: 'Location Cleared', description: 'Shop location has been removed' });
-        setTimeout(() => saveSettings(), 500);
+        saveSettings(null, null);
     };
 
     // Debounced slug availability check
@@ -1257,8 +1257,9 @@ const QRCodeSettings = () => {
                                 />
                             </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
-                            Toggle what customers see on your public menu page
+                        <p className="text-xs text-muted-foreground mt-2">
+                            Toggle what customers see on your public menu page. <br />
+                            <strong className="text-amber-600/80">Note:</strong> Make sure you have entered your actual Address and Phone Number in the <b>Shop Details</b> tab!
                         </p>
                     </div>
 

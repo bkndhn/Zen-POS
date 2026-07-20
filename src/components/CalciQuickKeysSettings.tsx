@@ -13,7 +13,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export const CalciQuickKeysSettings = () => {
   const { profile } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveAuthUid = async () => {
+      if (!profile) return;
+      if (profile.role === 'admin') {
+        setAdminAuthUid(profile.user_id);
+      } else if (profile.admin_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .maybeSingle();
+        if (data?.user_id) setAdminAuthUid(data.user_id);
+      }
+    };
+    resolveAuthUid();
+  }, [profile]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -31,12 +48,12 @@ export const CalciQuickKeysSettings = () => {
   const [newItemId, setNewItemId] = useState('');
 
   useEffect(() => {
-    if (!adminId) return;
+    if (!adminAuthUid) return;
     const fetchItemsAndSettings = async () => {
       setLoading(true);
       try {
         // Fetch settings first
-        let settingsQuery = supabase.from('shop_settings').select('calci_shortcodes').eq('user_id', adminId);
+        let settingsQuery = supabase.from('shop_settings').select('calci_shortcodes').eq('user_id', adminAuthUid);
         if (operatingBranchId) {
           settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
         } else {
@@ -51,7 +68,7 @@ export const CalciQuickKeysSettings = () => {
             localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(settingsData.calci_shortcodes));
         }
 
-        let q = supabase.from('items').select('id, name, price').eq('admin_id', adminId).eq('is_active', true);
+        let q = supabase.from('items').select('id, name, price').eq('admin_id', adminAuthUid).eq('is_active', true);
         if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
         const { data, error } = await q;
         if (error) throw error;
@@ -61,7 +78,7 @@ export const CalciQuickKeysSettings = () => {
         // Try to load from cached items in IndexedDB
         try {
           const { offlineManager } = await import('@/utils/offlineManager');
-          const cached = await offlineManager.getCachedItems(adminId || '', operatingBranchId);
+          const cached = await offlineManager.getCachedItems(adminAuthUid || '', operatingBranchId);
           if (cached.length > 0) {
             setItems(cached.map((i: any) => ({ id: i.id, name: i.name, price: i.price })));
           }
@@ -73,7 +90,7 @@ export const CalciQuickKeysSettings = () => {
       }
     };
     fetchItemsAndSettings();
-  }, [adminId, operatingBranchId]);
+  }, [adminAuthUid, operatingBranchId]);
 
   const handleAdd = () => {
     if (!newCode.trim() || !newItemId) {
@@ -100,22 +117,34 @@ export const CalciQuickKeysSettings = () => {
   };
 
   const handleSave = async (newCodes: Record<string, string>) => {
-    if (!adminId) return;
+    if (!adminAuthUid) return;
 
     try {
       // Save locally as a fallback
       localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(newCodes));
       
       // Save to Supabase shop_settings
-      let updateQuery = supabase.from('shop_settings').update({ calci_shortcodes: newCodes }).eq('user_id', adminId);
+      let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid);
       if (operatingBranchId) {
-        updateQuery = updateQuery.eq('branch_id', operatingBranchId);
+        existingQuery = existingQuery.eq('branch_id', operatingBranchId);
       } else {
-        updateQuery = updateQuery.is('branch_id', null);
+        existingQuery = existingQuery.is('branch_id', null);
       }
       
-      // Attempt to save to cloud, ignore errors if column doesn't exist yet
-      const { error } = await updateQuery;
+      const { data: existing } = await existingQuery.maybeSingle();
+      
+      let error;
+      if (existing?.id) {
+        const { error: updateError } = await supabase.from('shop_settings').update({ calci_shortcodes: newCodes }).eq('id', existing.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase.from('shop_settings').insert({
+          calci_shortcodes: newCodes,
+          user_id: adminAuthUid,
+          branch_id: operatingBranchId || null
+        });
+        error = insertError;
+      }
       if (error && error.code !== 'PGRST116') {
         console.warn('Could not save shortcodes to cloud (schema might not be updated):', error);
       } else {

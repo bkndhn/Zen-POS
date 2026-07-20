@@ -14,7 +14,24 @@ import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanne
 export const AdvancedFeaturesSettings = () => {
   const { profile } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveAuthUid = async () => {
+      if (!profile) return;
+      if (profile.role === 'admin') {
+        setAdminAuthUid(profile.user_id);
+      } else if (profile.admin_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .maybeSingle();
+        if (data?.user_id) setAdminAuthUid(data.user_id);
+      }
+    };
+    resolveAuthUid();
+  }, [profile]);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,14 +48,14 @@ export const AdvancedFeaturesSettings = () => {
   }, [operatingBranchId]);
 
   const fetchSettings = async () => {
-    if (!adminId || isAllBranchesView) {
+    if (!adminAuthUid || isAllBranchesView) {
         setLoading(false);
         return;
     }
     
     setLoading(true);
     try {
-      let query = supabase.from('shop_settings').select('quick_bill_enabled, bill_bottom_text, low_stock_notification_enabled, auto_report_enabled, auto_report_time').eq('user_id', adminId);
+      let query = supabase.from('shop_settings').select('quick_bill_enabled, bill_bottom_text, low_stock_notification_enabled, auto_report_enabled, auto_report_time').eq('user_id', adminAuthUid);
       
       if (operatingBranchId) {
           query = query.eq('branch_id', operatingBranchId);
@@ -67,25 +84,38 @@ export const AdvancedFeaturesSettings = () => {
   };
 
   const handleSave = async () => {
-    if (!adminId || isAllBranchesView) return;
+    if (!adminAuthUid || isAllBranchesView) return;
     
     setSaving(true);
     try {
-      const matchQuery = { user_id: adminId };
+      const matchQuery = { user_id: adminAuthUid };
       if (operatingBranchId) {
           (matchQuery as any).branch_id = operatingBranchId;
       } else {
           // This requires special handling in supabase if branch_id is null, but we'll use match
       }
 
-      let query = supabase.from('shop_settings').update(settings as any).eq('user_id', adminId);
+      let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid);
       if (operatingBranchId) {
-          query = query.eq('branch_id', operatingBranchId);
+        existingQuery = existingQuery.eq('branch_id', operatingBranchId);
       } else {
-          query = query.is('branch_id', null);
+        existingQuery = existingQuery.is('branch_id', null);
       }
       
-      const { error } = await query;
+      const { data: existing } = await existingQuery.maybeSingle();
+      
+      let error;
+      if (existing?.id) {
+        const { error: updateError } = await supabase.from('shop_settings').update(settings as any).eq('id', existing.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase.from('shop_settings').insert({
+          ...(settings as any),
+          user_id: adminAuthUid,
+          branch_id: operatingBranchId || null
+        });
+        error = insertError;
+      }
       
       if (error) throw error;
       

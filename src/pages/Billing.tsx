@@ -829,6 +829,7 @@ const Billing = () => {
   }, [profile, operatingBranchId]);
 
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [quickBillEnabled, setQuickBillEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
   const [showOrderType, setShowOrderType] = useState(false);
   const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
@@ -1177,6 +1178,7 @@ const Billing = () => {
           upiName: parsed.upiName || ''
         });
         setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
+        setQuickBillEnabled(parsed.quickBillEnabled || false);
         setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
         setShowOrderType(parsed.showOrderType || false);
         if (parsed.defaultOrderType === 'dine_in' || parsed.defaultOrderType === 'parcel') {
@@ -1271,10 +1273,12 @@ const Billing = () => {
           receiptQrEnabled: data.receipt_qr_enabled || false,
           receiptQrType: data.receipt_qr_type || 'payment',
           upiId: data.upi_id || '',
-          upiName: data.upi_name || ''
+          upiName: data.upi_name || '',
+          quickBillEnabled: data.quick_bill_enabled || false
         };
         setBillSettings(settings);
         setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
+        setQuickBillEnabled(data.quick_bill_enabled || false);
         setWhatsappShareMode((data as any).whatsapp_share_mode === 'image' ? 'image' : 'text');
         setShowOrderType((data as any).show_order_type || false);
         const dot = (data as any).default_order_type;
@@ -1924,7 +1928,11 @@ const Billing = () => {
         if (cart.length === 0) {
           toast({ title: 'Cart is empty', variant: 'destructive' });
         } else {
-          setPaymentDialogOpen(true);
+          if (quickBillEnabled) {
+            executeFastCash();
+          } else {
+            setPaymentDialogOpen(true);
+          }
         }
         break;
       case 'set_payment': {
@@ -3273,7 +3281,11 @@ const Billing = () => {
               <Button 
                 onClick={() => {
                   setPaymentDialogOpen(false);
-                  setTimeout(() => setPaymentDialogOpen(true), 30);
+                  if (quickBillEnabled) {
+                    setTimeout(() => executeFastCash(), 30);
+                  } else {
+                    setTimeout(() => setPaymentDialogOpen(true), 30);
+                  }
                 }} 
                 className="h-9 px-5 bg-white text-primary hover:bg-gray-100 font-bold rounded-full shadow-md"
               >
@@ -3304,7 +3316,11 @@ const Billing = () => {
           <Button 
             onClick={() => {
               setPaymentDialogOpen(false);
-              setTimeout(() => setPaymentDialogOpen(true), 30);
+              if (quickBillEnabled) {
+                setTimeout(() => executeFastCash(), 30);
+              } else {
+                setTimeout(() => setPaymentDialogOpen(true), 30);
+              }
             }} 
             className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-white" 
             size="sm"
