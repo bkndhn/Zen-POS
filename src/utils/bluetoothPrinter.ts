@@ -591,8 +591,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Footer - minimal
   commands.push(ALIGN_CENTER);
-  if (data.billBottomText) {
-    commands.push(textToBytes(data.billBottomText));
+  if ((data as any).billBottomText) {
+    commands.push(textToBytes((data as any).billBottomText));
   } else {
     commands.push(textToBytes('Thank you!'));
   }
