@@ -5,6 +5,7 @@ import {
   Receipt,
   BarChart3,
   TrendingUp,
+  Sparkles,
   Users,
   Settings,
   ClipboardList,
@@ -45,6 +46,7 @@ export interface NavItem {
 export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/dashboard',        icon: LayoutDashboard, label: 'Dashboard',        page: 'dashboard',     bottomNav: true },
   { to: '/analytics',        icon: TrendingUp,      label: 'Analytics',        page: 'analytics',     bottomNav: true },
+  { to: '/ai-insights',      icon: Sparkles,        label: 'AI Insights',      shortLabel: 'AI',      page: 'analytics',     bottomNav: true },
   { to: '/billing',          icon: ShoppingCart,    label: 'Billing',          page: 'billing',       bottomNav: true },
   { to: '/kitchen',          icon: ChefHat,         label: 'Kitchen Display',  shortLabel: 'Kitchen', page: 'kitchen',     bottomNav: true },
   { to: '/waiter',           icon: ClipboardList,   label: 'Waiter Companion', shortLabel: 'Waiter',  page: 'waiterCompanion', bottomNav: true },
