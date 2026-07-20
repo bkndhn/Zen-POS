@@ -1502,6 +1502,9 @@ export type Database = {
       shop_settings: {
         Row: {
           address: string | null
+          auto_report_enabled: boolean | null
+          auto_report_time: string | null
+          bill_bottom_text: string | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
@@ -1516,6 +1519,7 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           logo_url: string | null
+          low_stock_notification_enabled: boolean | null
           menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
           menu_border_radius: string | null
@@ -1534,6 +1538,7 @@ export type Database = {
           operating_hours: Json | null
           printer_width: string | null
           qr_payment_enabled: boolean
+          quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
           receipt_qr_type: string | null
           shop_latitude: number | null
@@ -1550,11 +1555,6 @@ export type Database = {
           upi_name: string | null
           user_id: string
           visible_nav_pages: string[] | null
-          quick_bill_enabled: boolean | null
-          bill_bottom_text: string | null
-          low_stock_notification_enabled: boolean | null
-          auto_report_time: string | null
-          auto_report_enabled: boolean | null
           whatsapp: string | null
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
@@ -1564,6 +1564,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auto_report_enabled?: boolean | null
+          auto_report_time?: string | null
+          bill_bottom_text?: string | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
@@ -1578,6 +1581,7 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           logo_url?: string | null
+          low_stock_notification_enabled?: boolean | null
           menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
           menu_border_radius?: string | null
@@ -1596,6 +1600,7 @@ export type Database = {
           operating_hours?: Json | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
+          quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
           receipt_qr_type?: string | null
           shop_latitude?: number | null
@@ -1621,6 +1626,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auto_report_enabled?: boolean | null
+          auto_report_time?: string | null
+          bill_bottom_text?: string | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
@@ -1635,6 +1643,7 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           logo_url?: string | null
+          low_stock_notification_enabled?: boolean | null
           menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
           menu_border_radius?: string | null
@@ -1653,6 +1662,7 @@ export type Database = {
           operating_hours?: Json | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
+          quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
           receipt_qr_type?: string | null
           shop_latitude?: number | null
@@ -2388,8 +2398,12 @@ export type Database = {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {
           address: string | null
+          auto_report_enabled: boolean | null
+          auto_report_time: string | null
+          bill_bottom_text: string | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
+          calci_shortcodes: Json | null
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
@@ -2401,6 +2415,7 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           logo_url: string | null
+          low_stock_notification_enabled: boolean | null
           menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
           menu_border_radius: string | null
@@ -2419,6 +2434,7 @@ export type Database = {
           operating_hours: Json | null
           printer_width: string | null
           qr_payment_enabled: boolean
+          quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
           receipt_qr_type: string | null
           shop_latitude: number | null
@@ -2569,10 +2585,31 @@ export type Database = {
           branch_id: string
         }[]
       }
-      secure_create_bill: {
-        Args: { p_bill_payload: Json; p_cart_items: Json }
-        Returns: Json
-      }
+      secure_create_bill:
+        | {
+            Args: {
+              p_additional_charges?: Json
+              p_admin_id: string
+              p_bill_no?: string
+              p_billing_type?: string
+              p_branch_id?: string
+              p_customer_name?: string
+              p_customer_phone?: string
+              p_discount?: number
+              p_gst_amount?: number
+              p_gst_details?: Json
+              p_items?: Json
+              p_kitchen_status?: string
+              p_notes?: string
+              p_order_type?: string
+              p_payment_mode?: string
+              p_service_status?: string
+              p_subtotal?: number
+              p_total?: number
+            }
+            Returns: Json
+          }
+        | { Args: { p_bill_payload: Json; p_cart_items: Json }; Returns: Json }
       seed_branch_defaults: {
         Args: { p_source_branch_id?: string; p_target_branch_id: string }
         Returns: Json
