@@ -608,8 +608,9 @@ class OfflineManager {
      */
     async pruneSyncedBills(retentionDays: number = 30): Promise<void> {
         try {
-            const db = await this.initDB();
-            const transaction = db.transaction(STORES.BILLS, 'readwrite');
+            if (!this.db) await this.initializeDB();
+            if (!this.db) return;
+            const transaction = this.db.transaction(STORES.BILLS, 'readwrite');
             const store = transaction.objectStore(STORES.BILLS);
             const request = store.getAll();
 
