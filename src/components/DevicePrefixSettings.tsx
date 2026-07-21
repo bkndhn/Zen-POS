@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { useBranch } from '@/contexts/BranchContext';
 
 export function DevicePrefixSettings() {
-    const { branchId } = useBranch();
+    const { operatingBranchId: branchId } = useBranch();
     const [prefix, setPrefix] = useState('');
 
     useEffect(() => {
