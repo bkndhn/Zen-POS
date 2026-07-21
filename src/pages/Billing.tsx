@@ -833,13 +833,19 @@ const Billing = () => {
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
   const [showOrderType, setShowOrderType] = useState(false);
   const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
+  const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
+  
   const [calciEnabled, setCalciEnabled] = useState(false);
-  const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>('pos');
+  const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>(() => {
+    return (localStorage.getItem(branchKey('hotel_pos_default_billing_mode')) as 'pos' | 'calci') || 'pos';
+  });
   const [calciInput, setCalciInput] = useState('');
   const [isCalciStretched, setIsCalciStretched] = useState(() => {
-    return localStorage.getItem('hotel_pos_calci_stretched') === 'true';
+    return localStorage.getItem(branchKey('hotel_pos_calci_stretched')) === 'true';
   });
-  const [calciMode, setCalciMode] = useState<'num' | 'quick'>('num');
+  const [calciMode, setCalciMode] = useState<'num' | 'quick'>(() => {
+    return (localStorage.getItem(branchKey('hotel_pos_default_calci_mode')) as 'num' | 'quick') || 'num';
+  });
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
@@ -3198,7 +3204,7 @@ const Billing = () => {
                 onClick={() => {
                   const newVal = !isCalciStretched;
                   setIsCalciStretched(newVal);
-                  localStorage.setItem('hotel_pos_calci_stretched', String(newVal));
+                  localStorage.setItem(branchKey('hotel_pos_calci_stretched'), String(newVal));
                 }}
                 className="text-zinc-400 p-2 -ml-2 rounded-lg active:bg-white/10"
               >

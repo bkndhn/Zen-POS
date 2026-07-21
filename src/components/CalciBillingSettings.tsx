@@ -148,6 +148,92 @@ export const CalciBillingSettings = () => {
             disabled={loading || isAllBranchesView}
           />
         </div>
+
+        {enabled && (
+          <div className="space-y-4 pt-4 border-t">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Default Mode</Label>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs text-muted-foreground mb-2">Overall Default POS View</p>
+                  <div className="flex bg-muted/50 p-1 rounded-lg border">
+                    <button
+                      onClick={() => {
+                        localStorage.setItem(operatingBranchId ? `hotel_pos_default_billing_mode_${operatingBranchId}` : 'hotel_pos_default_billing_mode', 'pos');
+                        toast({ title: 'Default updated', description: 'POS Mode will be the default view.' });
+                      }}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        (localStorage.getItem(operatingBranchId ? `hotel_pos_default_billing_mode_${operatingBranchId}` : 'hotel_pos_default_billing_mode') || 'pos') === 'pos'
+                          ? 'bg-white dark:bg-zinc-800 shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Image POS
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem(operatingBranchId ? `hotel_pos_default_billing_mode_${operatingBranchId}` : 'hotel_pos_default_billing_mode', 'calci');
+                        toast({ title: 'Default updated', description: 'Calci Mode will be the default view.' });
+                      }}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        (localStorage.getItem(operatingBranchId ? `hotel_pos_default_billing_mode_${operatingBranchId}` : 'hotel_pos_default_billing_mode') || 'pos') === 'calci'
+                          ? 'bg-white dark:bg-zinc-800 shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Calci
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs text-muted-foreground mb-2">Default Calci Behavior</p>
+                  <div className="flex bg-muted/50 p-1 rounded-lg border">
+                    <button
+                      onClick={() => {
+                        localStorage.setItem(operatingBranchId ? `hotel_pos_default_calci_mode_${operatingBranchId}` : 'hotel_pos_default_calci_mode', 'num');
+                        toast({ title: 'Default updated', description: 'Num Mode will be default inside Calci.' });
+                      }}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        (localStorage.getItem(operatingBranchId ? `hotel_pos_default_calci_mode_${operatingBranchId}` : 'hotel_pos_default_calci_mode') || 'num') === 'num'
+                          ? 'bg-white dark:bg-zinc-800 shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Num Mode
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.setItem(operatingBranchId ? `hotel_pos_default_calci_mode_${operatingBranchId}` : 'hotel_pos_default_calci_mode', 'quick');
+                        toast({ title: 'Default updated', description: 'Quick Mode will be default inside Calci.' });
+                      }}
+                      className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        (localStorage.getItem(operatingBranchId ? `hotel_pos_default_calci_mode_${operatingBranchId}` : 'hotel_pos_default_calci_mode') || 'num') === 'quick'
+                          ? 'bg-white dark:bg-zinc-800 shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Quick Mode
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Auto-Stretch Mobile Calculator</Label>
+                <p className="text-xs text-muted-foreground">Keep the calculator keyboard permanently expanded on mobile devices by default.</p>
+              </div>
+              <Switch
+                checked={localStorage.getItem(operatingBranchId ? `hotel_pos_calci_stretched_${operatingBranchId}` : 'hotel_pos_calci_stretched') === 'true'}
+                onCheckedChange={(checked) => {
+                  localStorage.setItem(operatingBranchId ? `hotel_pos_calci_stretched_${operatingBranchId}` : 'hotel_pos_calci_stretched', String(checked));
+                  // force re-render
+                  setEnabled(e => !e);
+                  setTimeout(() => setEnabled(e => !e), 0);
+                  toast({ title: "Updated", description: "Default stretch mode updated." });
+                }}
+              />
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
