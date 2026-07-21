@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound } from 'lucide-react';
+import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound, Activity } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
