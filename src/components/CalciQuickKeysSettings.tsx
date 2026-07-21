@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Calculator, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Calculator, Plus, Trash2, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,17 +33,21 @@ export const CalciQuickKeysSettings = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Format: { "1": "item-uuid" }
-  const [shortcodes, setShortcodes] = useState<Record<string, string>>(() => {
+  const [orderedItemIds, setOrderedItemIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('hotel_pos_calci_shortcodes');
-      return saved ? JSON.parse(saved) : {};
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Object.keys(parsed)
+          .sort((a, b) => parseInt(a) - parseInt(b))
+          .map(k => parsed[k]);
+      }
+      return [];
     } catch {
-      return {};
+      return [];
     }
   });
 
-  const [newCode, setNewCode] = useState('');
   const [newItemId, setNewItemId] = useState('');
 
   useEffect(() => {
@@ -52,7 +55,6 @@ export const CalciQuickKeysSettings = () => {
     const fetchItemsAndSettings = async () => {
       setLoading(true);
       try {
-        // Fetch settings first
         let settingsQuery = supabase.from('shop_settings').select('calci_shortcodes').eq('user_id', adminAuthUid);
         if (operatingBranchId) {
           settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
@@ -63,9 +65,12 @@ export const CalciQuickKeysSettings = () => {
         const { data: settingsData, error: settingsError } = await settingsQuery.maybeSingle();
         
         if (!settingsError && settingsData?.calci_shortcodes) {
-            setShortcodes(settingsData.calci_shortcodes as any);
-            // Also sync it to local storage
-            localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(settingsData.calci_shortcodes));
+            const shortcodes = settingsData.calci_shortcodes as Record<string, string>;
+            const ordered = Object.keys(shortcodes)
+              .sort((a, b) => parseInt(a) - parseInt(b))
+              .map(k => shortcodes[k]);
+            setOrderedItemIds(ordered);
+            localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(shortcodes));
         }
 
         let q = supabase.from('items').select('id, name, price').eq('admin_id', adminProfileId).eq('is_active', true);
@@ -75,7 +80,6 @@ export const CalciQuickKeysSettings = () => {
         if (data) setItems(data);
       } catch (err) {
         console.error('Failed to load items for quick keys:', err);
-        // Try to load from cached items in IndexedDB
         try {
           const { offlineManager } = await import('@/utils/offlineManager');
           const cached = await offlineManager.getCachedItems(adminAuthUid || '', operatingBranchId);
@@ -92,38 +96,17 @@ export const CalciQuickKeysSettings = () => {
     fetchItemsAndSettings();
   }, [adminAuthUid, operatingBranchId]);
 
-  const handleAdd = () => {
-    if (!newCode.trim() || !newItemId) {
-      toast({ title: "Incomplete", description: "Please enter a code and select an item.", variant: "destructive" });
-      return;
-    }
-    const cleanCode = newCode.trim().toLowerCase();
-    
-    // Warn if overwriting
-    if (shortcodes[cleanCode]) {
-      const existingItem = items.find(i => i.id === shortcodes[cleanCode]);
-      if (existingItem) {
-        // Silent overwrite with notification
-        toast({ title: "Quick Key Updated", description: `Code '${cleanCode}' changed from ${existingItem.name} to new item.` });
-      }
-    }
-    
-    const updated = { ...shortcodes, [cleanCode]: newItemId };
-    setShortcodes(updated);
-    handleSave(updated);
-    setNewCode('');
-    setNewItemId('');
-    toast({ title: "Quick Key Added", description: `Code '${cleanCode}' is now active on this device.` });
-  };
+  const saveOrder = async (ordered: string[]) => {
+    const newCodes: Record<string, string> = {};
+    ordered.forEach((id, index) => {
+      newCodes[(index + 1).toString()] = id;
+    });
 
-  const handleSave = async (newCodes: Record<string, string>) => {
     if (!adminAuthUid) return;
 
     try {
-      // Save locally as a fallback
       localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(newCodes));
       
-      // Save to Supabase shop_settings
       let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid);
       if (operatingBranchId) {
         existingQuery = existingQuery.eq('branch_id', operatingBranchId);
@@ -146,9 +129,8 @@ export const CalciQuickKeysSettings = () => {
         error = insertError;
       }
       if (error && error.code !== 'PGRST116') {
-        console.warn('Could not save shortcodes to cloud (schema might not be updated):', error);
+        console.warn('Could not save shortcodes to cloud:', error);
       } else {
-        // Broadcast to other active clients
         supabase.channel('pos-global-sync').send({ 
           type: 'broadcast', 
           event: 'sync-calci-keys', 
@@ -160,15 +142,44 @@ export const CalciQuickKeysSettings = () => {
     }
   };
 
-  const handleRemove = (code: string) => {
-    const updated = { ...shortcodes };
-    delete updated[code];
-    setShortcodes(updated);
-    handleSave(updated);
-    toast({ title: "Quick Key Removed" });
+  const handleAdd = () => {
+    if (!newItemId) {
+      toast({ title: "Incomplete", description: "Please select an item.", variant: "destructive" });
+      return;
+    }
+    const newOrdered = [...orderedItemIds, newItemId];
+    setOrderedItemIds(newOrdered);
+    saveOrder(newOrdered);
+    setNewItemId('');
+    toast({ title: "Quick Key Added", description: `Item assigned code ${newOrdered.length}.` });
+  };
+
+  const handleRemove = (indexToRemove: number) => {
+    const newOrdered = orderedItemIds.filter((_, index) => index !== indexToRemove);
+    setOrderedItemIds(newOrdered);
+    saveOrder(newOrdered);
+    toast({ title: "Quick Key Removed", description: "Codes have been updated." });
+  };
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    const newOrdered = [...orderedItemIds];
+    [newOrdered[index - 1], newOrdered[index]] = [newOrdered[index], newOrdered[index - 1]];
+    setOrderedItemIds(newOrdered);
+    saveOrder(newOrdered);
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index === orderedItemIds.length - 1) return;
+    const newOrdered = [...orderedItemIds];
+    [newOrdered[index + 1], newOrdered[index]] = [newOrdered[index], newOrdered[index + 1]];
+    setOrderedItemIds(newOrdered);
+    saveOrder(newOrdered);
   };
 
   if (isAllBranchesView) return null;
+
+  const availableItems = items.filter(item => !orderedItemIds.includes(item.id));
 
   return (
     <Card>
@@ -180,14 +191,10 @@ export const CalciQuickKeysSettings = () => {
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-2">
         <p className="text-xs text-muted-foreground mb-4">
-          Map short codes (like "1" or "T") to specific items. In Calci mode, typing <code className="bg-muted px-1 rounded">*1</code> or <code className="bg-muted px-1 rounded">#1</code> will instantly add that item. (Saved only on this device).
+          Add items to assign them sequential numbers (1, 2, 3...). In Calci mode, typing <code className="bg-muted px-1 rounded">*1</code> or <code className="bg-muted px-1 rounded">#1</code> will instantly add the first item. Use arrows to reorder.
         </p>
 
         <div className="flex gap-2 items-end mb-4">
-          <div className="w-24">
-            <Label className="text-xs mb-1 block">Code</Label>
-            <Input placeholder="e.g. 1" value={newCode} onChange={e => setNewCode(e.target.value)} className="h-9" />
-          </div>
           <div className="flex-1">
             <Label className="text-xs mb-1 block">Select Item</Label>
             <Select value={newItemId} onValueChange={setNewItemId}>
@@ -195,13 +202,13 @@ export const CalciQuickKeysSettings = () => {
                 <SelectValue placeholder={loading ? "Loading..." : "Choose item..."} />
               </SelectTrigger>
               <SelectContent>
-                {items.length === 0 && !loading && (
+                {availableItems.length === 0 && !loading && (
                   <div className="px-2 py-3 text-xs text-muted-foreground flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    No items found. Add items in the Items page first.
+                    {items.length === 0 ? "No items found. Add items in the Items page first." : "All items have been assigned."}
                   </div>
                 )}
-                {items.map(item => (
+                {availableItems.map(item => (
                   <SelectItem key={item.id} value={item.id}>{item.name} (₹{item.price})</SelectItem>
                 ))}
               </SelectContent>
@@ -213,23 +220,49 @@ export const CalciQuickKeysSettings = () => {
         </div>
 
         <div className="space-y-2">
-          {Object.entries(shortcodes).map(([code, itemId]) => {
+          {orderedItemIds.map((itemId, index) => {
             const item = items.find(i => i.id === itemId);
+            const code = (index + 1).toString();
             return (
-              <div key={code} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border p-2 rounded-lg text-sm">
+              <div key={itemId} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border p-2 rounded-lg text-sm">
                 <div>
                   <span className="font-mono bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-xs font-bold mr-2">
                     {code}
                   </span>
                   <span>{item ? item.name : <span className="text-muted-foreground italic">Unknown Item</span>}</span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleRemove(code)} className="h-7 w-7 p-0 text-rose-500">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleMoveUp(index)} 
+                    disabled={index === 0}
+                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleMoveDown(index)} 
+                    disabled={index === orderedItemIds.length - 1}
+                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleRemove(index)} 
+                    className="h-7 w-7 p-0 text-rose-500 ml-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
-          {Object.keys(shortcodes).length === 0 && (
+          {orderedItemIds.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-2">No quick keys configured.</p>
           )}
         </div>
@@ -237,3 +270,4 @@ export const CalciQuickKeysSettings = () => {
     </Card>
   );
 };
+
