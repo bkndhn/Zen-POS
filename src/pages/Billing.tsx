@@ -3193,20 +3193,7 @@ const Billing = () => {
                 {calciInput || <span className="text-zinc-500">0</span>}
               </div>
             </div>
-            {/* Mobile Quick Keys Strip */}
-            {quickKeyItems.length > 0 && (
-              <div className="flex overflow-x-auto gap-2 px-3 py-2 bg-zinc-800 dark:bg-zinc-900 border-x border-zinc-700 scrollbar-none items-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
-                {quickKeyItems.map(qk => (
-                  <button 
-                    key={qk.id} 
-                    onClick={() => handleCalciSubmit(`*${qk.shortcode}`)}
-                    className="shrink-0 bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap border border-zinc-600"
-                  >
-                    {qk.name}
-                  </button>
-                ))}
-              </div>
-            )}
+
             {/* Numpad Grid */}
             <div className={cn("grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700", isCalciStretched ? "h-[60vh]" : "")}>
               {/* Row 1: C, ×, +, ⌫ */}
