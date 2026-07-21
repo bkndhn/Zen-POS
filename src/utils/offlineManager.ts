@@ -433,6 +433,22 @@ class OfflineManager {
 
         await this.store(STORES.SYNC_QUEUE, queueItem);
         console.log('Added to sync queue:', queueItem.type, queueItem.action);
+        
+        // Attempt Background Sync Registration
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                // @ts-expect-error - TS doesn't know about sync property sometimes
+                if (registration.sync) {
+                    // @ts-expect-error - sync property might be missing in TS types
+                    await registration.sync.register('hotel_pos_sync');
+                    console.log('[Background Sync] Registered sync event.');
+                }
+            } catch (err) {
+                console.warn('[Background Sync] Could not register sync:', err);
+            }
+        }
+
     }
 
     async getSyncQueue(): Promise<SyncQueueItem[]> {
@@ -579,9 +595,47 @@ class OfflineManager {
             console.error('[Sync] Error processing sync queue:', error);
         } finally {
             console.log(`[Sync] Complete. Synced: ${synced}, Failed: ${failed}`);
+            // Fire and forget pruning
+            this.pruneSyncedBills(30).catch(e => console.warn('[Cloud Pruning] Failed:', e));
         }
 
         return { synced, failed };
+    }
+
+    /**
+     * Automatically deletes old synced bills from local storage (IndexedDB)
+     * to prevent browser storage quota bloat. Keeps local-only bills untouched.
+     */
+    async pruneSyncedBills(retentionDays: number = 30): Promise<void> {
+        try {
+            const db = await this.initDB();
+            const transaction = db.transaction(STORES.BILLS, 'readwrite');
+            const store = transaction.objectStore(STORES.BILLS);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const bills = request.result;
+                const cutoffTime = new Date();
+                cutoffTime.setDate(cutoffTime.getDate() - retentionDays);
+                const cutoffMs = cutoffTime.getTime();
+
+                let prunedCount = 0;
+                for (const bill of bills) {
+                    if (bill.synced === true && bill.created_at) {
+                        const billTime = new Date(bill.created_at).getTime();
+                        if (billTime < cutoffMs) {
+                            store.delete(bill.id);
+                            prunedCount++;
+                        }
+                    }
+                }
+                if (prunedCount > 0) {
+                    console.log(`[Cloud Pruning] Deleted ${prunedCount} old synced bills from local cache.`);
+                }
+            };
+        } catch (error) {
+            console.error('[Cloud Pruning] Error pruning bills:', error);
+        }
     }
 
     private async generateNextBillNumberForSync(adminId: string, branchId: string | null): Promise<string> {
@@ -1066,6 +1120,21 @@ class OfflineManager {
 
     async cacheBill(bill: any): Promise<void> {
         await this.store(STORES.BILLS, { ...bill, synced: this.isOnline });
+    }
+
+    /**
+     * Batch-caches bills in a single IDB transaction for performance.
+     * Preserves the original synced status from the backup data.
+     */
+    async cacheBillsBatch(bills: any[]): Promise<void> {
+        await this.storeMany(STORES.BILLS, bills);
+    }
+
+    /**
+     * Batch-caches pending bills in a single IDB transaction for performance.
+     */
+    async cachePendingBillsBatch(pendingBills: any[]): Promise<void> {
+        await this.storeMany(STORES.PENDING_BILLS, pendingBills);
     }
 
     

@@ -52,9 +52,9 @@ export const syncBillCounter = async (adminId: string | null | undefined, branch
                 
                 let match;
                 if (continueBillFromYesterday) {
-                    match = row.bill_no.match(/BILL-(\d+)$/);
+                    match = row.bill_no.match(/BILL-(?:[A-Za-z0-9]+-)?(\d+)$/);
                 } else {
-                    match = row.bill_no.match(/-(\d+)$/);
+                    match = row.bill_no.match(/-(?:[A-Za-z0-9]+-)?(\d+)$/);
                 }
                 
                 if (match) {
@@ -98,11 +98,15 @@ export const getInstantBillNumber = (adminId: string | null | undefined, branchI
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const savedDate = localStorage.getItem(dateKey);
 
+    const devicePrefixKey = branchId ? `hotel_pos_device_prefix_${branchId}` : 'hotel_pos_device_prefix';
+    const devicePrefixRaw = localStorage.getItem(devicePrefixKey) || localStorage.getItem('hotel_pos_device_prefix') || '';
+    const devicePrefix = devicePrefixRaw ? `${devicePrefixRaw}-` : '';
+
     if (continueBillFromYesterday) {
         // Sequential numbering - increment forever
         const counter = parseInt(localStorage.getItem(counterKey) || '0') + 1;
         localStorage.setItem(counterKey, counter.toString());
-        return `BILL-${String(counter).padStart(6, '0')}`;
+        return `BILL-${devicePrefix}${String(counter).padStart(6, '0')}`;
     } else {
         // Daily reset numbering
         let counter: number;
@@ -115,7 +119,7 @@ export const getInstantBillNumber = (adminId: string | null | undefined, branchI
         }
         localStorage.setItem(counterKey, counter.toString());
         const datePrefix = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getFullYear()).slice(-2)}`;
-        return `${datePrefix}-${String(counter).padStart(3, '0')}`;
+        return `${datePrefix}-${devicePrefix}${String(counter).padStart(3, '0')}`;
     }
 };
 

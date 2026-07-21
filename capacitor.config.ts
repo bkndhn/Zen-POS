@@ -4,6 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.zenpos.app',
   appName: 'ZenPOS',
   webDir: 'dist',
+  server: {
+    url: 'https://zen-pos.vercel.app',
+    cleartext: true
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 5000,

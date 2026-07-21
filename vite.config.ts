@@ -42,20 +42,9 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
+
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              },
-              networkTimeoutSeconds: 10
-            }
-          },
-          {
-            urlPattern: /^https:\/\/(images\.weserv\.nl|.*\.cloudfront\.net|.*\.imgix\.net|.*\.cloudflare\.com)\/.*/i,
+            urlPattern: /^https:\/\/(.*\.supabase\.co|images\.weserv\.nl|.*\.cloudfront\.net|.*\.imgix\.net|.*\.cloudflare\.com)\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'cdn-images-cache',
