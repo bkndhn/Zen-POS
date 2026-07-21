@@ -537,7 +537,7 @@ const Items: React.FC = () => {
             <>
               <ItemCategoryManagement onCategoriesUpdated={handleCategoriesUpdated} />
               <CopyMenuToBranchDialog sourceBranchId={branchFilterId} onCopied={fetchItems} />
-              <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} onItemsAdded={handleItemAdded} />
+              <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
               <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
             </>
           )}
