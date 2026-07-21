@@ -283,6 +283,14 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
         const row = item.data;
         const rawStock = row.stock_quantity;
         
+        const chipsMode = ['qty', 'amount'].includes(row.quick_chips_mode?.toLowerCase()) ? row.quick_chips_mode.toLowerCase() : 'qty';
+        const rawChips = row.quick_chips || '';
+        const processedChips = chipsMode === 'amount'
+          ? rawChips.split(',').map((c: string) => c.trim()).map((c: string) => c ? (c.startsWith('₹') ? c : `₹${c}`) : '').join(', ')
+          : rawChips;
+        
+        const { normalized: parsedChips } = validateAndNormalizeQuickChips(processedChips, row.selling_unit);
+
         return {
           admin_id: adminId,
           branch_id: branchId,
@@ -307,8 +315,7 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
           price_zomato: row.price_zomato ? parseFloat(row.price_zomato) : null,
           price_swiggy: row.price_swiggy ? parseFloat(row.price_swiggy) : null,
           expiry_mode: ['none', 'optional', 'mandatory'].includes(row.expiry_mode?.toLowerCase()) ? row.expiry_mode.toLowerCase() : 'none',
-          quick_chips_mode: ['qty', 'amount'].includes(row.quick_chips_mode?.toLowerCase()) ? row.quick_chips_mode.toLowerCase() : 'qty',
-          quick_chips: row.quick_chips ? validateAndNormalizeQuickChips(row.quick_chips) : [],
+          quick_chips: parsedChips || [],
           is_active: true,
           is_saleable: true,
           unlimited_stock: (rawStock === undefined || rawStock === null || rawStock === '')
