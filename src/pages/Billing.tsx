@@ -1826,14 +1826,10 @@ const Billing = () => {
           trimmed = multMatch[2].trim();
         }
         
-        // 1. Check if it's a shortcode (e.g., *1, #tea, or just matched directly in dictionary)
+        // 1. Check if it's a shortcode (MUST have * or # prefix to avoid overlapping with unrated cash amounts)
         let matchedItemId: string | undefined = undefined;
         
-        // Exact match first
-        if (shortcodes[trimmed]) {
-          matchedItemId = shortcodes[trimmed];
-        } else if (trimmed.startsWith('*') || trimmed.startsWith('#')) {
-           // Also try without the prefix
+        if (trimmed.startsWith('*') || trimmed.startsWith('#')) {
            const withoutPrefix = trimmed.substring(1);
            if (shortcodes[withoutPrefix]) {
              matchedItemId = shortcodes[withoutPrefix];
@@ -1843,7 +1839,7 @@ const Billing = () => {
         if (matchedItemId) {
           const actualItem = items.find(i => i.id === matchedItemId);
           if (actualItem && !isNaN(qty) && qty > 0) {
-            const safeQty = Math.max(1, Math.round(qty)); // Ensure whole positive quantity
+            const safeQty = qty; // Allow decimal quantities for grams, ml, etc.
             const existingIdx = localCart.findIndex(ci => ci.id === actualItem.id);
             if (existingIdx >= 0) {
               localCart[existingIdx] = { ...localCart[existingIdx], quantity: localCart[existingIdx].quantity + safeQty };
