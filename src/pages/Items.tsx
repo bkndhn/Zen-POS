@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Package, Search, Plus, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
+import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EditItemDialog } from '@/components/EditItemDialog';
 import { ItemCategoryManagement } from '@/components/ItemCategoryManagement';
@@ -532,10 +533,11 @@ const Items: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {profile?.role === 'admin' && !isAllBranchesView && (
+          {profile?.role === 'admin' && !isAllBranchesView && adminId && (
             <>
               <ItemCategoryManagement onCategoriesUpdated={handleCategoriesUpdated} />
               <CopyMenuToBranchDialog sourceBranchId={branchFilterId} onCopied={fetchItems} />
+              <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} onItemsAdded={handleItemAdded} />
               <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
             </>
           )}
