@@ -1565,6 +1565,27 @@ const Billing = () => {
     });
   }, [items, searchQuery, selectedCategory]);
   const addToCart = (item: Item) => {
+    if (appBillingMode === 'calci') {
+      const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
+      let shortcodes: Record<string, string> = {};
+      try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch {}
+      
+      const shortcodeKey = Object.keys(shortcodes).find(key => shortcodes[key] === item.id);
+      
+      let newAddition = '';
+      if (shortcodeKey) {
+        newAddition = calciMode === 'quick' ? shortcodeKey : `*${shortcodeKey}`;
+      } else {
+        toast({ title: 'Item needs Quick Key', description: 'Assign a quick key to this item to use it in Calci Mode.', variant: 'destructive' });
+        return;
+      }
+
+      const newInput = calciInput ? `${calciInput}+${newAddition}` : newAddition;
+      setCalciInput(newInput);
+      handleCalciSubmit(newInput);
+      return;
+    }
+
     const existing = cart.find(cartItem => cartItem.id === item.id);
     const step = item.quantity_step || 1;
     const baseValue = item.base_value || 1;
@@ -1789,6 +1810,7 @@ const Billing = () => {
   };
   const clearCart = () => {
     setCart([]);
+    setCalciInput('');
     setDiscount(0);
     setIsEditMode(false);
     setEditingBill(null);
@@ -1801,12 +1823,15 @@ const Billing = () => {
   // Voice command handler
   // --- Calci Billing Logic ---
   const handleCalciSubmit = (expression: string): boolean => {
-    if (!expression.trim()) return false;
+    if (!expression.trim()) {
+      setCart([]);
+      return true;
+    }
     
     try {
       // Split by +
       const parts = expression.split('+');
-      const localCart = [...cart];
+      const localCart: CartItem[] = [];
       
       const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
       let shortcodes: Record<string, string> = {};
@@ -1901,15 +1926,8 @@ const Billing = () => {
         itemsAdded++;
       }
       
-      if (itemsAdded > 0) {
-        setCart(localCart);
-        setCalciInput('');
-        toast({ title: "Added from Calculator", description: expression });
-        return true;
-      } else {
-        toast({ title: "Invalid expression", description: "Please enter a valid amount or shortcode", variant: "destructive" });
-        return false;
-      }
+      setCart(localCart);
+      return true;
     } catch (err) {
       toast({ title: "Error parsing expression", variant: "destructive" });
       return false;
