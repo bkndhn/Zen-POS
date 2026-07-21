@@ -839,6 +839,7 @@ const Billing = () => {
   const [isCalciStretched, setIsCalciStretched] = useState(() => {
     return localStorage.getItem('hotel_pos_calci_stretched') === 'true';
   });
+  const [calciMode, setCalciMode] = useState<'num' | 'quick'>('num');
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
@@ -1834,12 +1835,16 @@ const Billing = () => {
            if (shortcodes[withoutPrefix]) {
              matchedItemId = shortcodes[withoutPrefix];
            }
+        } else if (calciMode === 'quick') {
+           if (shortcodes[trimmed]) {
+             matchedItemId = shortcodes[trimmed];
+           }
         }
 
         if (matchedItemId) {
           const actualItem = items.find(i => i.id === matchedItemId);
           if (actualItem && !isNaN(qty) && qty > 0) {
-            const safeQty = qty; // Allow decimal quantities for grams, ml, etc.
+            const safeQty = qty * (actualItem.base_value || 1); // Allow decimal quantities for grams, ml, etc.
             const existingIdx = localCart.findIndex(ci => ci.id === actualItem.id);
             if (existingIdx >= 0) {
               localCart[existingIdx] = { ...localCart[existingIdx], quantity: localCart[existingIdx].quantity + safeQty };
@@ -3130,6 +3135,23 @@ const Billing = () => {
       {/* Search and Layout Toggle OR Calci Input */}
       {appBillingMode === 'calci' ? (
         <div className="mb-4">
+          <div className="flex justify-center mb-3">
+            <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-lg flex items-center shadow-inner">
+              <button 
+                onClick={() => setCalciMode('num')} 
+                className={cn("px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-all", calciMode === 'num' ? "bg-white dark:bg-zinc-700 shadow text-primary" : "text-muted-foreground hover:text-foreground")}
+              >
+                Num Mode
+              </button>
+              <button 
+                onClick={() => setCalciMode('quick')} 
+                className={cn("px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-all", calciMode === 'quick' ? "bg-white dark:bg-zinc-700 shadow text-primary" : "text-muted-foreground hover:text-foreground")}
+              >
+                Quick Mode
+              </button>
+            </div>
+          </div>
+
           {/* Desktop: text input with keyboard */}
           <div className="hidden md:block">
             <div className="relative flex items-center">
@@ -3151,20 +3173,6 @@ const Billing = () => {
                 Add
               </Button>
             </div>
-            {/* Desktop Quick Keys Strip */}
-            {quickKeyItems.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {quickKeyItems.map(qk => (
-                  <button 
-                    key={qk.id} 
-                    onClick={() => handleCalciSubmit(`*${qk.shortcode}`)}
-                    className="shrink-0 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 active:bg-zinc-200 dark:active:bg-zinc-600 text-foreground px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-colors"
-                  >
-                    {qk.name}
-                  </button>
-                ))}
-              </div>
-            )}
             <p className="text-xs text-muted-foreground mt-2 px-1 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               Press <kbd className="bg-muted px-1.5 rounded text-[10px] mx-1 border shadow-sm font-mono">Enter</kbd> to add to cart.
