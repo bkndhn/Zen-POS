@@ -44,6 +44,31 @@
 
 <body>
   <div id="root"></div>
+  <script>
+    // Service Worker Cache Buster v2 — forces old broken SW to be replaced
+    // Increment SW_VERSION when you need to force-clear all users' caches
+    (function() {
+      var SW_VERSION = '2';
+      var key = 'zenpos_sw_version';
+      if (localStorage.getItem(key) !== SW_VERSION) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            registrations.forEach(function(reg) { reg.unregister(); });
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            names.forEach(function(name) { caches.delete(name); });
+          });
+        }
+        localStorage.setItem(key, SW_VERSION);
+        // Reload once to start fresh without old SW
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          location.reload();
+        }
+      }
+    })();
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 
 </body>
