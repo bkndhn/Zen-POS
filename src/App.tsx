@@ -202,6 +202,7 @@ const StockAdjustment = lazy(() => import("./pages/StockAdjustment"));
 const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuTV })));
 const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
+const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
