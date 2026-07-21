@@ -1584,6 +1584,45 @@ export type Database = {
           },
         ]
       }
+      rum_events: {
+        Row: {
+          admin_id: string | null
+          created_at: string
+          id: string
+          meta: Json | null
+          metric_name: string
+          metric_type: string
+          route: string | null
+          user_agent: string | null
+          user_id: string | null
+          value_ms: number | null
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          metric_name: string
+          metric_type: string
+          route?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          value_ms?: number | null
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          metric_name?: string
+          metric_type?: string
+          route?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          value_ms?: number | null
+        }
+        Relationships: []
+      }
       shop_settings: {
         Row: {
           address: string | null
