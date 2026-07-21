@@ -1842,27 +1842,35 @@ const Billing = () => {
       for (const part of parts) {
         let trimmed = part.trim().toLowerCase();
         if (!trimmed) continue;
-        
         let qty = 1;
+        let itemIdentifier = trimmed;
         
-        // Extract leading quantity multiplier if it exists (e.g., "2*T1" or "3x#12")
-        const multMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*[*x×]\s*(.+)$/);
-        if (multMatch) {
-          qty = parseFloat(multMatch[1]);
-          trimmed = multMatch[2].trim();
+        // Extract quantity multiplier
+        // Support both "Item * Qty" (e.g. "1*3" -> Item 1, Qty 3) and "Qty * Item" formats
+        const endsWithQtyMatch = trimmed.match(/^(.+?)\s*[*xA-]\s*(\d+(?:\.\d+)?)$/i);
+        if (endsWithQtyMatch) {
+          itemIdentifier = endsWithQtyMatch[1].trim();
+          qty = parseFloat(endsWithQtyMatch[2]);
+        } else {
+          // Fallback to "Qty * Item" (e.g. "3 * *1")
+          const startsWithQtyMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*[*xA-]\s*(.+)$/i);
+          if (startsWithQtyMatch) {
+            qty = parseFloat(startsWithQtyMatch[1]);
+            itemIdentifier = startsWithQtyMatch[2].trim();
+          }
         }
         
         // 1. Check if it's a shortcode (MUST have * or # prefix to avoid overlapping with unrated cash amounts)
         let matchedItemId: string | undefined = undefined;
         
-        if (trimmed.startsWith('*') || trimmed.startsWith('#')) {
-           const withoutPrefix = trimmed.substring(1);
+        if (itemIdentifier.startsWith('*') || itemIdentifier.startsWith('#')) {
+           const withoutPrefix = itemIdentifier.substring(1);
            if (shortcodes[withoutPrefix]) {
              matchedItemId = shortcodes[withoutPrefix];
            }
         } else if (calciMode === 'quick') {
-           if (shortcodes[trimmed]) {
-             matchedItemId = shortcodes[trimmed];
+           if (shortcodes[itemIdentifier]) {
+             matchedItemId = shortcodes[itemIdentifier];
            }
         }
 
@@ -1882,22 +1890,7 @@ const Billing = () => {
         }
         
         // 2. If no shortcode matched, process as a standard price entry
-        let price = 0;
-        
-        // If there was no leading multiplier, maybe it's in the middle (e.g., "15*2" -> qty=15, price=2 or vice versa)
-        // By convention let's assume the larger number is price, smaller is qty if ambiguous, or just first is qty.
-        // Actually, we'll just parse whatever is left.
-        if (!multMatch && (trimmed.includes('*') || trimmed.includes('x') || trimmed.includes('×'))) {
-          const splitParts = trimmed.split(/[*x×]/);
-          if (splitParts.length === 2) {
-            qty = parseFloat(splitParts[0]);
-            price = parseFloat(splitParts[1]);
-          } else {
-            price = parseFloat(trimmed);
-          }
-        } else {
-          price = parseFloat(trimmed);
-        }
+        const price = parseFloat(itemIdentifier);
         
         if (isNaN(price) || isNaN(qty) || price <= 0 || qty <= 0) continue;
         
