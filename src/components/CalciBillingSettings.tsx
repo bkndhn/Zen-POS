@@ -16,6 +16,24 @@ export const CalciBillingSettings = () => {
   
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveAuthUid = async () => {
+      if (!profile) return;
+      if (profile.role === 'admin') {
+        setAdminAuthUid(profile.user_id);
+      } else if (profile.admin_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', profile.admin_id)
+          .maybeSingle();
+        if (data?.user_id) setAdminAuthUid(data.user_id);
+      }
+    };
+    resolveAuthUid();
+  }, [profile]);
 
   // If the client doesn't have the feature unlocked by Super Admin, don't show it.
   const hasCalciAccess = hasAccess('calci_billing') || profile?.client_permissions?.['calci_billing'] === true;
@@ -56,10 +74,35 @@ export const CalciBillingSettings = () => {
     
     try {
       setEnabled(checked);
-      const { error } = await supabase
-        .from('shop_settings')
-        .update({ calci_billing_enabled: checked })
-        .eq('branch_id', operatingBranchId);
+      
+      if (!adminAuthUid) throw new Error('Could not resolve admin ID');
+
+      let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid);
+      if (operatingBranchId) {
+        existingQuery = existingQuery.eq('branch_id', operatingBranchId);
+      } else {
+        existingQuery = existingQuery.is('branch_id', null);
+      }
+      
+      const { data: existing } = await existingQuery.maybeSingle();
+      
+      let error;
+      if (existing?.id) {
+        const { error: updateError } = await supabase
+          .from('shop_settings')
+          .update({ calci_billing_enabled: checked })
+          .eq('id', existing.id);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('shop_settings')
+          .insert({
+            calci_billing_enabled: checked,
+            user_id: adminAuthUid,
+            branch_id: operatingBranchId || null
+          });
+        error = insertError;
+      }
 
       if (error) throw error;
       toast({

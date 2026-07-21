@@ -15,8 +15,8 @@ interface DashboardStats {
 }
 
 const Dashboard = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery(() => fetchDashboardStats());
   const [stats, setStats] = useState<DashboardStats>({
     todaySales: 0,

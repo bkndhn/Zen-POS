@@ -63,9 +63,9 @@ interface RecipeRow {
 }
 
 const StockManagement: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { branches, operatingBranchId } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const [activeTab, setActiveTab] = useState<string>('stock');
   const [items, setItems] = useState<ItemRow[]>([]);

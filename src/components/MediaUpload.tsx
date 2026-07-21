@@ -44,9 +44,9 @@ export const MediaUpload: React.FC<MediaUploadProps> = ({
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
-    const { profile } = useAuth();
+    const { profile , adminProfileId } = useAuth();
 
-    const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    const adminId = adminProfileId;
 
     // Request camera permission and handle denial
     const handleCameraClick = async () => {

@@ -31,9 +31,9 @@ const downloadCsv = (name: string, csv: string) => {
 };
 
 const StockReports: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { branches } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const [from, setFrom] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [to, setTo] = useState(format(new Date(), 'yyyy-MM-dd'));

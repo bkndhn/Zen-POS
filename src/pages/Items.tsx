@@ -50,8 +50,8 @@ interface Item {
 }
 
 const Items: React.FC = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { branchFilterId, isAllBranchesView, operatingBranchId, activeBranch } = useBranchScopedQuery(() => {
     if (adminId) {
       fetchItems();

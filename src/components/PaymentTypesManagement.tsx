@@ -21,9 +21,9 @@ interface PaymentType {
 }
 
 export const PaymentTypesManagement: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const [open, setOpen] = useState(false);
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [newPaymentType, setNewPaymentType] = useState('');

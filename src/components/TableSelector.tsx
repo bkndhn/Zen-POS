@@ -36,9 +36,9 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
   selectedTableId,
   onSelectTable,
 }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const [tables, setTables] = useState<Table[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);

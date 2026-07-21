@@ -23,7 +23,7 @@ interface CategoryManagementProps {
 }
 
 export const CategoryManagement: React.FC<CategoryManagementProps> = ({ onCategoriesUpdated }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -89,7 +89,7 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({ onCatego
     setLoading(true);
     try {
       // Get admin_id for data isolation
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
 
       const { error } = await supabase
         .from('expense_categories')

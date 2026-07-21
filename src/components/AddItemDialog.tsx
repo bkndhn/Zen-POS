@@ -61,7 +61,7 @@ interface AddItemDialogProps {
 }
 
 export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, existingItems }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -194,7 +194,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 
   const fetchCategories = async () => {
     try {
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
       if (!adminId) { setCategories([]); return; }
       let q = supabase
         .from('item_categories')

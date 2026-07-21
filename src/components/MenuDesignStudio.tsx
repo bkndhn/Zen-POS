@@ -257,8 +257,8 @@ const FONT_OPTIONS: { value: string; label: string; group: string }[] = [
 ];
 
 export const MenuDesignStudio = () => {
-    const { profile } = useAuth();
-    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+    const { profile , adminProfileId } = useAuth();
+    const adminId = adminProfileId;
     const { operatingBranchId, branches } = useBranch();
     const isMainBranch = branches.find(b => b.id === operatingBranchId)?.is_main;
 

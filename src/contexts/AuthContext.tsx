@@ -14,6 +14,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  adminProfileId: string | null;
+  adminAuthUid: string | null;
   signUp: (
     email: string,
     password: string,
@@ -42,6 +44,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminProfileId, setAdminProfileId] = useState<string | null>(null);
+  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+
+  const resolveAdminIds = async (userProfile: Profile | null) => {
+    if (!userProfile) return { adminProfileId: null, adminAuthUid: null };
+    
+    let resolvedAdminProfileId: string | null = null;
+    let resolvedAdminAuthUid: string | null = null;
+
+    if (userProfile.role === 'admin') {
+      resolvedAdminProfileId = userProfile.id;
+      resolvedAdminAuthUid = userProfile.user_id;
+    } else {
+      resolvedAdminProfileId = userProfile.admin_id || null;
+      if (userProfile.admin_id) {
+        try {
+          const cachedAdminStr = localStorage.getItem(`adminAuthUid_${userProfile.admin_id}`);
+          if (cachedAdminStr) {
+            resolvedAdminAuthUid = cachedAdminStr;
+          } else {
+            const { data } = await supabase.from('profiles').select('user_id').eq('id', userProfile.admin_id).maybeSingle();
+            if (data?.user_id) {
+              resolvedAdminAuthUid = data.user_id;
+              localStorage.setItem(`adminAuthUid_${userProfile.admin_id}`, data.user_id);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to resolve adminAuthUid', e);
+        }
+      }
+    }
+    return { adminProfileId: resolvedAdminProfileId, adminAuthUid: resolvedAdminAuthUid };
+  };
 
   const createBasicProfile = (user: User): Profile => {
     // SECURITY: Never trust user_metadata for role — always default to 'user'
@@ -263,14 +298,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const userProfile = await fetchOrCreateProfile(newSession.user);
 
               if (mounted) {
-                setProfile(userProfile);
-                devLog('Profile set');
+                const { adminProfileId: pId, adminAuthUid: aId } = await resolveAdminIds(userProfile);
+                if (mounted) {
+                  setAdminProfileId(pId);
+                  setAdminAuthUid(aId);
+                  setProfile(userProfile);
+                  devLog('Profile and Admin IDs set');
+                }
               }
             } catch (profileError) {
               devLog('Profile handling error');
               if (mounted) {
                 // Set a basic profile if all else fails
-                setProfile(createBasicProfile(newSession.user));
+                const basicProfile = createBasicProfile(newSession.user);
+                const { adminProfileId: pId, adminAuthUid: aId } = await resolveAdminIds(basicProfile);
+                if (mounted) {
+                  setAdminProfileId(pId);
+                  setAdminAuthUid(aId);
+                  setProfile(basicProfile);
+                }
               }
             } finally {
               if (mounted) {
@@ -281,6 +327,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }, 50); // Reduced from 100ms
         } else {
           if (mounted) {
+            setAdminProfileId(null);
+            setAdminAuthUid(null);
             setProfile(null);
             setLoading(false);
             clearTimeout(failsafeTimeout);
@@ -289,6 +337,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         devLog('Error in auth state change handler');
         if (mounted) {
+          setAdminProfileId(null);
+          setAdminAuthUid(null);
           setProfile(null);
           setLoading(false);
           clearTimeout(failsafeTimeout);
@@ -396,6 +446,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await supabase.auth.signOut();
               setUser(null);
               setSession(null);
+              setAdminProfileId(null);
+              setAdminAuthUid(null);
               setProfile(null);
               return;
             }
@@ -419,6 +471,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await supabase.auth.signOut();
               setUser(null);
               setSession(null);
+              setAdminProfileId(null);
+              setAdminAuthUid(null);
               setProfile(null);
               return;
             }
@@ -600,6 +654,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    setAdminProfileId(null);
+    setAdminAuthUid(null);
     setProfile(null);
     setLoading(false);
   };
@@ -640,6 +696,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     loading,
+    adminProfileId,
+    adminAuthUid,
     signUp,
     signIn,
     signOut,

@@ -76,8 +76,8 @@ function timerColor(ms: number): string {
 }
 
 const TableManagement: React.FC = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { branchFilterId, isAllBranchesView } = useBranchScopedQuery(() => { fetchTables(); fetchTableOrderCounts(); });
   const { operatingBranchId } = useBranch();
   const navigate = useNavigate();
@@ -367,7 +367,7 @@ const TableManagement: React.FC = () => {
         table_number: tableNumber.trim(),
         table_name: tableName.trim() || null,
         capacity: parseInt(capacity) || 4,
-        admin_id: profile?.role === 'admin' ? profile.id : null,
+        admin_id: adminProfileId || null,
         branch_id: operatingBranchId || null,
         has_seats: hasSeats,
         seat_count: hasSeats ? parseInt(seatCount) : 0,

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, TrendingUp, AlertTriangle, CheckCircle2, Info, Package, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 interface Highlight { title: string; detail: string; type: 'good' | 'warning' | 'info' }
 interface Improvement { action: string; why: string; impact: 'high' | 'medium' | 'low' }
 interface Overview {
@@ -35,13 +35,14 @@ const AiInsights: React.FC = () => {
   const [loading, setLoading] = useState<null | 'overview' | 'stock_forecast'>(null);
   const [error, setError] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
+  const [periodDays, setPeriodDays] = useState('30');
 
   const run = async (kind: 'overview' | 'stock_forecast') => {
     if (!session) return;
     setLoading(kind); setError(null);
     try {
       const { data, error } = await supabase.functions.invoke<Response>('ai-insights', {
-        body: { kind, branch_id: operatingBranchId ?? null },
+        body: { kind, branch_id: operatingBranchId ?? null, days: parseInt(periodDays) },
       });
       if (error) {
         const msg = (error as any)?.context?.body ? await (error as any).context.text() : error.message;
@@ -63,9 +64,10 @@ const AiInsights: React.FC = () => {
   };
 
   useEffect(() => {
-    if (session) run('overview');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, operatingBranchId]);
+    // Reset data when branch changes so we don't show old branch data
+    setOverview(null);
+    setForecast(null);
+  }, [operatingBranchId]);
 
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-4 animate-fadeInUp">
@@ -74,7 +76,7 @@ const AiInsights: React.FC = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-primary" /> AI Business Insights
           </h1>
-          <p className="text-sm text-muted-foreground">Powered by Gemini · analysing your last 30 days</p>
+          <p className="text-sm text-muted-foreground">Powered by Gemini · analysing your last {periodDays} days</p>
         </div>
         {quota && (
           <Badge variant="outline" className="text-xs">
@@ -101,8 +103,21 @@ const AiInsights: React.FC = () => {
         </Card>
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        <Button onClick={() => run('overview')} disabled={loading !== null || disabled}>
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="w-40">
+          <Select value={periodDays} onValueChange={setPeriodDays} disabled={loading !== null || disabled}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Past 7 days</SelectItem>
+              <SelectItem value="30">Past 30 days</SelectItem>
+              <SelectItem value="90">Past 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => run('overview')} disabled={loading !== null || disabled}>
           {loading === 'overview' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <TrendingUp className="w-4 h-4 mr-2" />}
           Business Overview
         </Button>
@@ -110,6 +125,7 @@ const AiInsights: React.FC = () => {
           {loading === 'stock_forecast' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Package className="w-4 h-4 mr-2" />}
           Stock Forecast
         </Button>
+        </div>
       </div>
 
       {overview && (

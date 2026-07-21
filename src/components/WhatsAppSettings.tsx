@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { MessageCircle, Settings2, Zap, Info, Image as ImageIcon, FileText } from 'lucide-react';
 
 export const WhatsAppSettings: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export const WhatsAppSettings: React.FC = () => {
     };
     resolveAuthUid();
   }, [profile]);
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const { operatingBranchId, branches, isAllBranchesView } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [loading, setLoading] = useState(true);

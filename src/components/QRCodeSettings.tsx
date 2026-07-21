@@ -45,7 +45,7 @@ const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '
 };
 
 const QRCodeSettings = () => {
-    const { profile } = useAuth();
+    const { profile , adminProfileId } = useAuth();
     const { operatingBranchId, branches } = useBranch();
     const operatingBranch = branches.find(b => b.id === operatingBranchId) || null;
     const isMainBranch = !!operatingBranch?.is_main;
@@ -92,7 +92,7 @@ const QRCodeSettings = () => {
     const [operatingHours, setOperatingHours] = useState<OperatingHours>(defaultOperatingHours);
 
     // Determine the admin ID to use for the menu URL
-    const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    const adminId = adminProfileId;
 
     // Resolve the admin's Auth UID (user_id) for loading/saving shop_settings
     const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
@@ -1310,6 +1310,30 @@ const QRCodeSettings = () => {
                                     )}
                                     {locationLoading ? 'Getting Location...' : 'Pin Current Location'}
                                 </Button>
+
+                                {/* Smart Google Maps URL Paste */}
+                                <div className="mt-3">
+                                    <p className="text-xs font-medium text-gray-700 mb-1">Or paste Google Maps Link (or lat,lng):</p>
+                                    <Input
+                                        type="url"
+                                        placeholder="https://www.google.com/maps/..."
+                                        className="h-8 text-xs w-full"
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const match = val.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || val.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/) || val.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+                                            if (match) {
+                                                const lat = parseFloat(match[1]);
+                                                const lng = parseFloat(match[2]);
+                                                setShopLatitude(lat);
+                                                setShopLongitude(lng);
+                                                setLocationError(null);
+                                                toast({ title: 'Location Detected', description: 'Coordinates extracted successfully!' });
+                                                setTimeout(() => saveSettings(lat, lng), 500);
+                                                e.target.value = '';
+                                            }
+                                        }}
+                                    />
+                                </div>
 
                                 {/* Location Error Display */}
                                 {locationError && (

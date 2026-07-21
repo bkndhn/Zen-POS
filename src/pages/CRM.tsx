@@ -28,9 +28,9 @@ interface Customer {
 }
 
 const CRM: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const navigate = useNavigate();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const { branchFilterId } = useBranchScopedQuery(() => fetchCustomers());
   const { isAllBranchesView } = useBranch();
   const [customers, setCustomers] = useState<Customer[]>([]);

@@ -18,7 +18,7 @@ import { sanitizeString } from '@/utils/sanitization';
 
 
 export const ShopSettingsForm = () => {
-    const { profile } = useAuth();
+    const { profile , adminProfileId } = useAuth();
     const { operatingBranchId, branches, activeBranch, isAllBranchesView } = useBranch();
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const { hasAccess, loading: permissionsLoading } = useUserPermissions();
@@ -271,7 +271,7 @@ export const ShopSettingsForm = () => {
                 supabase.from('branches').select('id, admin_id').eq('menu_slug', slug),
             ]);
 
-            const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+            const adminId = adminProfileId;
             const ssTaken = (ssRows || []).some(
                 (r: any) => !(r.user_id === profile?.user_id && r.branch_id === operatingBranchId)
             );
@@ -526,7 +526,7 @@ export const ShopSettingsForm = () => {
     if (loading) return <div>Loading settings...</div>;
 
     // Get the admin ID for menu URL
-    const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    const adminId = adminProfileId;
     const menuUrl = menuSlug
         ? `${getAppBaseUrl()}/menu/${menuSlug}`
         : `${getAppBaseUrl()}/menu/${adminId}`;

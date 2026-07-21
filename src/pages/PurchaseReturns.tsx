@@ -19,9 +19,9 @@ import { formatStoredQuantity, getShortUnit } from '@/utils/timeUtils';
 interface Line { item_id: string; branch_id: string; item_name: string; unit: string; quantity: number; rate: number; }
 
 const PurchaseReturns: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { branches } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);

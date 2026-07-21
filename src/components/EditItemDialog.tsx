@@ -65,7 +65,7 @@ interface EditItemDialogProps {
 }
 
 export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpdated }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId , adminAuthUid } = useAuth();
   const { operatingBranchId } = useBranch();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -181,7 +181,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   const fetchCategories = async () => {
     try {
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
       if (!adminId) { setCategories([]); return; }
       let q = supabase
         .from('item_categories')
@@ -199,12 +199,12 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   const checkPremiumAccess = async () => {
     // Check if current user's admin has QR Menu access
-    const adminId = profile?.role === 'admin' ? profile.user_id : profile?.admin_id;
+    const adminId = adminAuthUid;
     if (!adminId) return;
 
     try {
       // For admin, check their own profile
-      const targetUserId = profile?.role === 'admin' ? profile.user_id : null;
+      const targetUserId = adminAuthUid || null;
 
       if (targetUserId) {
         const { data } = await supabase

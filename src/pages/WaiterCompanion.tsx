@@ -64,10 +64,10 @@ interface CartItem {
 }
 
 const WaiterCompanion: React.FC = () => {
-    const { profile } = useAuth();
+    const { profile , adminProfileId } = useAuth();
     const { operatingBranchId } = useBranch();
     const isOnline = useNetworkStatus();
-    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+    const adminId = adminProfileId;
 
     // State
     const [tables, setTables] = useState<Table[]>([]);

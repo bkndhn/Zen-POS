@@ -28,7 +28,7 @@ interface ItemCategoryManagementProps {
 }
 
 export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ onCategoriesUpdated }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, activeBranch, isAllBranchesView } = useBranch();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<ItemCategory[]>([]);
@@ -37,7 +37,7 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
   const [editingCategory, setEditingCategory] = useState<ItemCategory | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   useEffect(() => {
     if (open) fetchCategories();

@@ -32,9 +32,9 @@ const toCsv = (rows: any[]) => {
 };
 
 const StockLedger: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { branches } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const [rows, setRows] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);

@@ -37,14 +37,14 @@ const BranchContext = createContext<BranchContextType | undefined>(undefined);
 const STORAGE_KEY_PREFIX = 'hotel_pos_active_branch_';
 
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeBranch, setActiveBranch] = useState<Branch | null>(null);
   const [isAllBranchesView, setIsAllBranchesView] = useState(false);
   const [loading, setLoading] = useState(true);
   const [maxBranches, setMaxBranches] = useState(1);
 
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const fetchBranches = useCallback(async () => {
     if (!profile || !adminId) {

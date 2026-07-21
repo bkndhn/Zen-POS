@@ -24,9 +24,9 @@ interface CategorySelectorProps {
 }
 
 export const CategorySelector: React.FC<CategorySelectorProps> = ({ onCategoriesUpdated }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');

@@ -20,9 +20,9 @@ interface ItemRow { id: string; name: string; branch_id: string; stock_quantity:
 interface Line { from_item_id: string; to_item_id: string; item_name: string; quantity: number; }
 
 const StockTransfers: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { branches } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const [items, setItems] = useState<ItemRow[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);

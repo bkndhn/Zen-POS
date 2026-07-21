@@ -88,8 +88,8 @@ const statusConfig: Record<string, { label: string; color: string; icon: string 
 };
 
 const TableOrderBilling: React.FC = () => {
-    const { profile } = useAuth();
-    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+    const { profile , adminProfileId , adminAuthUid } = useAuth();
+    const adminId = adminProfileId;
     const { operatingBranchId, activeBranch } = useBranch();
     const isOnline = useNetworkStatus();
     const [loading, setLoading] = useState(true);
@@ -332,7 +332,7 @@ const TableOrderBilling: React.FC = () => {
 
                 // Load GST settings
                 if ((data as any).gst_enabled) {
-                    let adminAuthId = profile?.role === 'admin' ? profile.user_id : null;
+                    let adminAuthId = adminAuthUid || null;
                     if (profile?.role === 'user' && profile.admin_id) {
                         const { data: parentProfile } = await supabase
                             .from('profiles')

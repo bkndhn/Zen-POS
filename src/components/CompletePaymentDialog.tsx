@@ -69,6 +69,7 @@ interface CompletePaymentDialogProps {
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
+    printAction?: 'print' | 'no-print';
   }) => void;
   whatsappEnabled?: boolean;
   whatsappShareMode?: 'text' | 'image';
@@ -76,6 +77,7 @@ interface CompletePaymentDialogProps {
   showOrderType?: boolean;
   defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
+  autoPrintEnabled?: boolean;
 }
 
 // Strong name validation logic (excludes dummy words, repetitive/sequential characters)
@@ -123,7 +125,8 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   gstEnabled = false,
   showOrderType = false,
   defaultOrderType,
-  taxRatesMap = {}
+  taxRatesMap = {},
+  autoPrintEnabled = false
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState(0);
@@ -292,7 +295,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     setPaymentAmounts(prev => ({ ...prev, [paymentType]: amount || 0 }));
   };
 
-  const handleCompletePayment = () => {
+  const handleCompletePayment = (printAction: 'print' | 'no-print' = 'print') => {
     const totalQuantity = getSmartTotalQuantity();
 
     const selectedAdditionalCharges = additionalCharges
@@ -383,7 +386,8 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       customerName: customerName.trim() || undefined,
       sendWhatsApp: whatsappShareMode === 'image' ? whatsappEnabled : (sendWhatsApp && customerMobile.trim().length > 0),
       customerGstin: customerGstin.trim() || undefined,
-      orderType: showOrderType ? orderType : undefined
+      orderType: showOrderType ? orderType : undefined,
+      printAction
     });
   };
 
@@ -822,13 +826,33 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10 text-sm font-semibold">
               Cancel
             </Button>
-            <Button
-              onClick={handleCompletePayment}
-              disabled={remaining !== 0}
-              className="flex-1 h-10 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
-            >
-              Complete Payment
-            </Button>
+            {autoPrintEnabled ? (
+              <>
+                <Button
+                  onClick={() => handleCompletePayment('no-print')}
+                  disabled={remaining !== 0}
+                  variant="secondary"
+                  className="flex-1 h-10 text-xs sm:text-sm font-semibold shadow-sm border border-zinc-200 dark:border-zinc-800"
+                >
+                  Complete
+                </Button>
+                <Button
+                  onClick={() => handleCompletePayment('print')}
+                  disabled={remaining !== 0}
+                  className="flex-[1.3] h-10 text-xs sm:text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+                >
+                  Complete & Print
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => handleCompletePayment('no-print')}
+                disabled={remaining !== 0}
+                className="flex-1 h-10 text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+              >
+                Complete Payment
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

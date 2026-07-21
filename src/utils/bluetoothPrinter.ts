@@ -282,6 +282,7 @@ interface PrintData {
   roundOff?: number;
   // Order type
   orderType?: 'dine_in' | 'parcel';
+  showOrderType?: boolean;
 }
 
 const textToBytes = (text: string): Uint8Array => {
@@ -400,9 +401,10 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     const now = new Date();
     const compactDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
     const hideBillNumber = isBillNumberHidden();
+    const isDailyReset = /^\d{2}\/\d{2}\/\d{2}-\d+$/.test(data.billNo);
     const compactInfo = hideBillNumber 
-      ? `${compactDate} | ${data.time} | ${typeAbbr}`
-      : `#${shortBillNo} | ${compactDate} | ${data.time} | ${typeAbbr}`;
+      ? `${compactDate} | ${data.time}` + (data.showOrderType !== false && data.orderType ? ` | ${typeAbbr}` : '')
+      : `#${shortBillNo}` + (isDailyReset ? '' : ` | ${compactDate}`) + ` | ${data.time}` + (data.showOrderType !== false && data.orderType ? ` | ${typeAbbr}` : '');
     commands.push(textToBytes(compactInfo.substring(0, LINE_WIDTH)));
     commands.push(FEED_LINE);
   } else {
@@ -412,14 +414,19 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
     commands.push(ALIGN_LEFT);
     const hideBillNumber = isBillNumberHidden();
     if (!hideBillNumber) {
-      commands.push(textToBytes(fmtLine(`#${data.billNo}`, `${data.date} ${data.time}`)));
+      const isDailyReset = /^\d{2}\/\d{2}\/\d{2}-\d+$/.test(data.billNo);
+      if (isDailyReset) {
+        commands.push(textToBytes(fmtLine(`#${data.billNo.replace('BILL-', '')}`, `${data.time}`)));
+      } else {
+        commands.push(textToBytes(fmtLine(`#${data.billNo.replace('BILL-', '')}`, `${data.date} ${data.time}`)));
+      }
       commands.push(FEED_LINE);
     } else {
       commands.push(textToBytes(fmtLine('Date:', `${data.date} ${data.time}`)));
       commands.push(FEED_LINE);
     }
 
-    if (data.orderType) {
+    if (data.showOrderType !== false && data.orderType) {
       commands.push(BOLD_ON);
       commands.push(textToBytes(fmtLine('Type:', data.orderType === 'parcel' ? 'PARCEL' : 'DINE IN')));
       commands.push(FEED_LINE);

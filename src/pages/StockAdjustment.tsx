@@ -48,9 +48,9 @@ const REASONS = [
 ];
 
 const StockAdjustment: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { branchFilterId, operatingBranchId, readOnly } = useBranchScopedQuery(() => fetchAll());
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const [items, setItems] = useState<ItemRow[]>([]);
   const [history, setHistory] = useState<AdjustmentRow[]>([]);

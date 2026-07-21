@@ -11,7 +11,7 @@ import { useBranch } from '@/contexts/BranchContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const CalciQuickKeysSettings = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
   const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
 
@@ -68,7 +68,7 @@ export const CalciQuickKeysSettings = () => {
             localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(settingsData.calci_shortcodes));
         }
 
-        let q = supabase.from('items').select('id, name, price').eq('admin_id', adminAuthUid).eq('is_active', true);
+        let q = supabase.from('items').select('id, name, price').eq('admin_id', adminProfileId).eq('is_active', true);
         if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
         const { data, error } = await q;
         if (error) throw error;

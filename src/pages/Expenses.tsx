@@ -30,8 +30,8 @@ interface Expense {
 }
 
 const Expenses: React.FC = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { branchFilterId, readOnly: branchReadOnly, isAllBranchesView } = useBranchScopedQuery(() => fetchExpenses());
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);

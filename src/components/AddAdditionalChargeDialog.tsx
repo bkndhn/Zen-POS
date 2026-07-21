@@ -35,7 +35,7 @@ export const AddAdditionalChargeDialog: React.FC<AddAdditionalChargeDialogProps>
   onSuccess,
   branchId
 }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     charge_type: 'fixed',
@@ -63,7 +63,7 @@ export const AddAdditionalChargeDialog: React.FC<AddAdditionalChargeDialogProps>
       setIsSubmitting(true);
       
       // Get admin_id for data isolation
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
       
       const { error } = await (supabase as any)
         .from('additional_charges')

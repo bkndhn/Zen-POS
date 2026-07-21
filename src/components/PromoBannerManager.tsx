@@ -29,7 +29,7 @@ interface Banner {
 }
 
 export const PromoBannerManager = () => {
-    const { profile } = useAuth();
+    const { profile , adminProfileId } = useAuth();
     const { operatingBranchId, isAllBranchesView } = useBranch();
     const [banners, setBanners] = useState<Banner[]>([]);
     const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ export const PromoBannerManager = () => {
         bg_color: '#22c55e'
     });
 
-    const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    const adminId = adminProfileId;
 
     useEffect(() => {
         fetchBanners();

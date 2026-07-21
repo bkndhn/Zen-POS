@@ -1532,6 +1532,26 @@ const Billing = () => {
       });
     }
   };
+
+  // Memoized Quick Keys
+  const quickKeyItems = useMemo(() => {
+    try {
+      const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
+      if (!shortcodesStr) return [];
+      const shortcodes = JSON.parse(shortcodesStr);
+      const qkArray = [];
+      for (const [code, itemId] of Object.entries(shortcodes)) {
+        const item = items.find(i => i.id === itemId);
+        if (item) {
+          qkArray.push({ id: item.id, shortcode: code, name: item.name });
+        }
+      }
+      return qkArray;
+    } catch {
+      return [];
+    }
+  }, [items]);
+
   const filteredItems = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return items.filter(item => {
@@ -2520,6 +2540,7 @@ const Billing = () => {
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
+    printAction?: 'print' | 'no-print';
   }) => {
     setPaymentDialogOpen(false);
 
@@ -2856,7 +2877,8 @@ const Billing = () => {
       };
 
       // Check auto-print setting
-      const autoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
+      const autoPrintSetting = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
+      const shouldPrint = paymentData.printAction ? paymentData.printAction === 'print' : autoPrintSetting;
 
       // =========== ZERO LATENCY: FIRE-AND-FORGET ===========
       // Show success immediately, run all operations in background
@@ -2884,7 +2906,7 @@ const Billing = () => {
         const postSaveTasks = async () => {
           // 1. Always prioritize the customer bill on the active printer.
           // Station KOTs are only needed when the owner explicitly mapped stations.
-          if (autoPrintEnabled) {
+          if (shouldPrint) {
             const receiptPrinted = await printReceipt(printData).catch(err => {
               console.error('Receipt print failed:', err);
               return false;
@@ -3133,6 +3155,20 @@ const Billing = () => {
                 Add
               </Button>
             </div>
+            {/* Desktop Quick Keys Strip */}
+            {quickKeyItems.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {quickKeyItems.map(qk => (
+                  <button 
+                    key={qk.id} 
+                    onClick={() => handleCalciSubmit(`*${qk.shortcode}`)}
+                    className="shrink-0 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 active:bg-zinc-200 dark:active:bg-zinc-600 text-foreground px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-colors"
+                  >
+                    {qk.name}
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-2 px-1 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               Press <kbd className="bg-muted px-1.5 rounded text-[10px] mx-1 border shadow-sm font-mono">Enter</kbd> to add to cart.
@@ -3157,6 +3193,20 @@ const Billing = () => {
                 {calciInput || <span className="text-zinc-500">0</span>}
               </div>
             </div>
+            {/* Mobile Quick Keys Strip */}
+            {quickKeyItems.length > 0 && (
+              <div className="flex overflow-x-auto gap-2 px-3 py-2 bg-zinc-800 dark:bg-zinc-900 border-x border-zinc-700 scrollbar-none items-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]">
+                {quickKeyItems.map(qk => (
+                  <button 
+                    key={qk.id} 
+                    onClick={() => handleCalciSubmit(`*${qk.shortcode}`)}
+                    className="shrink-0 bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap border border-zinc-600"
+                  >
+                    {qk.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Numpad Grid */}
             <div className={cn("grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700", isCalciStretched ? "h-[60vh]" : "")}>
               {/* Row 1: C, ×, +, ⌫ */}
@@ -3432,7 +3482,7 @@ const Billing = () => {
     </div>
 
     {/* Payment Dialog */}
-    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} defaultOrderType={defaultOrderType} />
+    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} defaultOrderType={defaultOrderType} autoPrintEnabled={(localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false'} />
 
     {/* Printer Error Dialog */}
     <PrinterErrorDialog

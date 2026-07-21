@@ -22,7 +22,7 @@ interface AddExpenseDialogProps {
 }
 
 export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdded }) => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,7 +43,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdd
 
   const fetchCategories = async () => {
     try {
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
       if (!adminId) return;
 
       const cacheKey = `${CACHE_KEYS.CATEGORIES}_${adminId}_${operatingBranchId || 'all'}`;
@@ -86,7 +86,7 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdd
     setLoading(true);
     try {
       // Get admin_id for data isolation
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
 
       const expenseData = {
         expense_name: formData.expense_name.trim() || null,

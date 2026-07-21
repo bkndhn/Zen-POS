@@ -43,8 +43,8 @@ type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly';
 type ComparisonMode = 'day' | 'week' | 'month' | 'year';
 
 const DashboardAnalytics = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('today');
   const [salesData, setSalesData] = useState<SalesData[]>([]);
@@ -498,10 +498,20 @@ const DashboardAnalytics = () => {
     if (!adminId) return;
     try {
       setPlLoading(true);
+      let brsQ = supabase.from('branches').select('id,name').eq('admin_id', adminId).eq('is_active', true);
+      let billsQ = supabase.from('bills').select('branch_id,total_amount,is_deleted').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate).or('is_deleted.is.null,is_deleted.eq.false');
+      let expsQ = supabase.from('expenses').select('branch_id,amount').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate);
+      
+      if (branchFilterId) {
+        brsQ = brsQ.eq('id', branchFilterId);
+        billsQ = billsQ.eq('branch_id', branchFilterId);
+        expsQ = expsQ.eq('branch_id', branchFilterId);
+      }
+      
       const [{ data: brs }, { data: bills }, { data: exps }] = await Promise.all([
-        supabase.from('branches').select('id,name').eq('admin_id', adminId).eq('is_active', true),
-        supabase.from('bills').select('branch_id,total_amount,is_deleted').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate).or('is_deleted.is.null,is_deleted.eq.false'),
-        supabase.from('expenses').select('branch_id,amount').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate),
+        brsQ,
+        billsQ,
+        expsQ
       ]);
       const map = new Map<string, { sales: number; expenses: number; bills: number }>();
       (brs || []).forEach(b => map.set(b.id, { sales: 0, expenses: 0, bills: 0 }));
@@ -524,7 +534,7 @@ const DashboardAnalytics = () => {
     } finally { setPlLoading(false); }
   };
 
-  useEffect(() => { fetchBranchPL(); }, [adminId, plFromDate, plToDate]);
+  useEffect(() => { fetchBranchPL(); }, [adminId, plFromDate, plToDate, branchFilterId]);
 
   // Deep Insights fetch
   const fetchDeepInsights = async () => {

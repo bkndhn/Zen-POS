@@ -81,8 +81,9 @@ Deno.serve(async (req) => {
     return json({ error: 'lifetime_exceeded', message: 'Lifetime AI quota reached. Contact Super Admin.' }, 429);
   }
 
-  // === Aggregate business data (30d) ===
-  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  // === Aggregate business data ===
+  const periodDays = Math.min(Math.max(Number(body.days) || 30, 1), 90);
+  const since = new Date(Date.now() - periodDays * 24 * 3600 * 1000).toISOString();
   let billsQuery = svc.from('bills')
     .select('id, date, total_amount, discount, order_type, created_at, branch_id, bill_items(quantity, price, total, items(name, category, unit))')
     .eq('admin_id', adminId)
@@ -141,7 +142,7 @@ Deno.serve(async (req) => {
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const summary = {
-    period_days: 30,
+    period_days: periodDays,
     total_orders: orderCount,
     total_revenue_inr: Math.round(totalRevenue),
     total_discount_inr: Math.round(totalDiscount),
@@ -152,8 +153,8 @@ Deno.serve(async (req) => {
     top_items: topItems.map(i => ({
       name: i.name,
       unit: i.unit,
-      qty_sold_30d: Math.round(i.qty * 100) / 100,
-      revenue_30d: Math.round(i.revenue),
+      [`qty_sold_${periodDays}d`]: Math.round(i.qty * 100) / 100,
+      [`revenue_${periodDays}d`]: Math.round(i.revenue),
       by_day_of_week: daysOfWeek.reduce((acc, d, idx) => ({ ...acc, [d]: Math.round(i.byDow[idx] * 100) / 100 }), {}),
       current_stock: stockMap[i.name]?.unlimited ? 'unlimited' : (stockMap[i.name]?.stock ?? 'unknown'),
       stock_unit: stockMap[i.name]?.unit ?? i.unit,
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
   if (!LOVABLE_KEY) return json({ error: 'ai_not_configured' }, 500);
 
   const prompt = kind === 'stock_forecast'
-    ? `You are a restaurant/retail inventory advisor for an Indian business. Based on this 30-day sales summary, output ONLY valid JSON with:
+    ? `You are a restaurant/retail inventory advisor for an Indian business. Based on this ${periodDays}-day sales summary, output ONLY valid JSON with:
 {
   "recommendations": [
     { "item": string, "day": "Mon"|"Tue"|..., "keep_stock": number, "unit": string, "reason": string }
@@ -175,7 +176,7 @@ Deno.serve(async (req) => {
 Rules: recommend keep_stock per top day per top item; cite the day-of-week pattern in reason briefly; give practical INR-friendly advice. Max 15 recommendations, max 5 warnings.
 DATA:
 ${JSON.stringify(summary)}`
-    : `You are a business intelligence advisor for an Indian POS user. Analyse this 30-day summary and reply as ONLY valid JSON:
+    : `You are a business intelligence advisor for an Indian POS user. Analyse this ${periodDays}-day summary and reply as ONLY valid JSON:
 {
   "highlights": [ { "title": string, "detail": string, "type": "good"|"warning"|"info" } ],
   "improvements": [ { "action": string, "why": string, "impact": "high"|"medium"|"low" } ],

@@ -18,8 +18,8 @@ interface DisplaySettingsProps {
 }
 
 export const DisplaySettings: React.FC<DisplaySettingsProps> = ({ userId }) => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { operatingBranchId, branches, isAllBranchesView } = useBranch();
   const mainBranchId = branches.find(b => b.is_main)?.id || null;
   const [settings, setSettings] = useState({

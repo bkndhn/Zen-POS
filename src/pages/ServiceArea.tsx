@@ -95,8 +95,8 @@ const REQUEST_LABELS: Record<string, { label: string; emoji: string; color: stri
 };
 
 const ServiceArea = () => {
-    const { profile } = useAuth();
-    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+    const { profile , adminProfileId } = useAuth();
+    const adminId = adminProfileId;
     const { branchFilterId } = useBranchScopedQuery(() => { fetchBills(true); fetchTableOrders(); fetchServiceRequests(); });
     const [bills, setBills] = useState<ServiceBill[]>([]);
     const [recentBills, setRecentBills] = useState<ServiceBill[]>([]);

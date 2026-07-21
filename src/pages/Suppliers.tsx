@@ -24,7 +24,7 @@ interface Supplier {
 const emptyForm = { name: '', phone: '', email: '', gstin: '', address: '', notes: '' };
 
 const Suppliers: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile , adminProfileId } = useAuth();
   const [list, setList] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ const Suppliers: React.FC = () => {
   const [form, setForm] = useState(emptyForm);
   const [q, setQ] = useState('');
 
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
 
   const load = async () => {
     if (!adminId) return;

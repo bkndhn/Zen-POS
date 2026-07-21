@@ -81,8 +81,8 @@ interface ItemReport {
 }
 
 const Reports: React.FC = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const { profile , adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery(() => fetchReports());
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('today');
