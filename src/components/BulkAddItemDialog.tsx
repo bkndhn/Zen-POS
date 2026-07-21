@@ -11,9 +11,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { FileUp, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import Papa from 'papaparse';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { validateAndNormalizeQuickChips } from '@/utils/timeUtils';
 
 interface BulkAddItemDialogProps {
   branchId: string | null;
@@ -30,6 +32,23 @@ interface ParsedItem {
   errors: string[];
 }
 
+const UNIT_CATEGORIES: Record<string, string> = {
+  'Piece (pc)': 'piece',
+  'Box': 'piece',
+  'Pack': 'piece',
+  'Cup': 'piece',
+  'Glass': 'piece',
+  'Plate': 'piece',
+  'Kilogram (kg)': 'weight',
+  'Gram (g)': 'weight',
+  'Liter (l)': 'volume',
+  'Milliliter (ml)': 'volume'
+};
+const ALLOWED_UNITS = Object.keys(UNIT_CATEGORIES);
+
+const EXPIRY_MODES = ['none', 'optional', 'mandatory'];
+const QUICK_CHIPS_MODES = ['qty', 'amount'];
+
 export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, adminId, onItemsAdded, disabled }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -37,64 +56,188 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const EXPECTED_HEADERS = [
-    'name', 'price', 'category', 'description', 
-    'purchase_rate', 'unit', 'inventory_unit', 'base_value', 
-    'stock_quantity', 'minimum_stock_alert', 'quantity_step', 
-    'price_zomato', 'price_swiggy'
+    { header: 'NAME*', key: 'name', width: 25 },
+    { header: 'PRICE*', key: 'price', width: 12 },
+    { header: 'CATEGORY', key: 'category', width: 20 },
+    { header: 'UNIT', key: 'unit', width: 15 },
+    { header: 'INVENTORY UNIT', key: 'inventory_unit', width: 20 },
+    { header: 'STOCK (Leave blank for Unlimited)', key: 'stock_quantity', width: 35 },
+    { header: 'MIN STOCK ALERT', key: 'minimum_stock_alert', width: 20 },
+    { header: 'BASE VALUE (e.g. 100 for 100g)', key: 'base_value', width: 32 },
+    { header: 'QTY STEP (e.g. 1)', key: 'quantity_step', width: 20 },
+    { header: 'EXPIRY MODE', key: 'expiry_mode', width: 15 },
+    { header: 'QUICK CHIPS MODE', key: 'quick_chips_mode', width: 22 },
+    { header: 'QUICK CHIPS (Comma separated)', key: 'quick_chips', width: 35 },
+    { header: 'ZOMATO PRICE', key: 'price_zomato', width: 18 },
+    { header: 'SWIGGY PRICE', key: 'price_swiggy', width: 18 },
+    { header: 'PURCHASE RATE', key: 'purchase_rate', width: 18 },
+    { header: 'DESCRIPTION', key: 'description', width: 30 }
   ];
 
-  const handleDownloadTemplate = () => {
-    const csvContent = EXPECTED_HEADERS.join(',') + '\n' +
-      '"Sample Item",100,"Main Course","Delicious meal",80,"piece","piece",1,50,5,1,120,130\n';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'bulk_item_template.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadTemplate = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Bulk Items Template');
+
+      // Setup Headers
+      sheet.columns = EXPECTED_HEADERS.map(h => ({
+        header: h.header,
+        key: h.key,
+        width: h.width
+      }));
+
+      // Style Header Row
+      const headerRow = sheet.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4F46E5' } // Indigo-600
+        };
+        cell.font = {
+          color: { argb: 'FFFFFFFF' },
+          bold: true,
+          size: 11
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      });
+      headerRow.height = 30;
+
+      // Add Data Validation (Dropdowns) up to 1000 rows
+      for (let i = 2; i <= 1000; i++) {
+        // Unit
+        sheet.getCell(`D${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${ALLOWED_UNITS.join(',')}"`]
+        };
+        // Inventory Unit
+        sheet.getCell(`E${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${ALLOWED_UNITS.join(',')}"`]
+        };
+        // Expiry Mode
+        sheet.getCell(`J${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${EXPIRY_MODES.join(',')}"`]
+        };
+        // Quick Chips Mode
+        sheet.getCell(`K${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${QUICK_CHIPS_MODES.join(',')}"`]
+        };
+      }
+
+      // Add a sample row
+      sheet.addRow({
+        name: 'Sample Item',
+        price: 150,
+        category: 'Main Course',
+        unit: 'Piece (pc)',
+        inventory_unit: 'Piece (pc)',
+        stock_quantity: '',
+        minimum_stock_alert: 5,
+        base_value: 1,
+        quantity_step: 1,
+        expiry_mode: 'none',
+        quick_chips_mode: 'qty',
+        quick_chips: '100g, 250g, 500g',
+        price_zomato: 180,
+        price_swiggy: 180,
+        purchase_rate: 100,
+        description: 'A delicious sample item.'
+      });
+
+      // Generate file and trigger download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, 'bulk_item_template.xlsx');
+
+    } catch (error) {
+      console.error("Error generating template:", error);
+      toast({ title: "Template Error", description: "Could not generate Excel template.", variant: "destructive" });
+    }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const items: ParsedItem[] = results.data.map((row: any, index: number) => {
-          const errors: string[] = [];
-          
-          // Validation
-          if (!row.name || row.name.trim() === '') errors.push("Name is required");
-          
-          const price = parseFloat(row.price);
-          if (isNaN(price) || price < 0) errors.push("Valid price is required");
-
-          const isValid = errors.length === 0;
-
-          return {
-            id: index,
-            rowNumber: index + 2, // Excel rows are 1-indexed and header is row 1
-            data: row,
-            isValid,
-            errors
-          };
-        });
-
-        setParsedItems(items);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      },
-      error: (error: any) => {
-        toast({
-          title: "Error Parsing File",
-          description: error.message,
-          variant: "destructive"
-        });
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+      const sheet = workbook.getWorksheet(1);
+      
+      if (!sheet) {
+        throw new Error("No worksheet found in Excel file.");
       }
-    });
+
+      const items: ParsedItem[] = [];
+      const keys = EXPECTED_HEADERS.map(h => h.key);
+
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+
+        const rowData: any = {};
+        let hasAnyData = false;
+
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          if (colNumber <= keys.length) {
+            const val = cell.value?.toString().trim() || '';
+            rowData[keys[colNumber - 1]] = val;
+            if (val) hasAnyData = true;
+          }
+        });
+
+        if (!hasAnyData) return; // Skip completely empty rows
+
+        const errors: string[] = [];
+        
+        // Validation: Required
+        if (!rowData.name) errors.push("NAME* is required");
+        const price = parseFloat(rowData.price);
+        if (isNaN(price) || price < 0) errors.push("Valid PRICE* is required");
+
+        // Validation: Unit Compatibility
+        const unit = rowData.unit || 'Piece (pc)';
+        const invUnit = rowData.inventory_unit || unit;
+        
+        const unitCat = UNIT_CATEGORIES[unit];
+        const invUnitCat = UNIT_CATEGORIES[invUnit];
+
+        if (!unitCat) {
+          errors.push(`Invalid UNIT: ${unit}`);
+        } else if (!invUnitCat) {
+          errors.push(`Invalid INVENTORY UNIT: ${invUnit}`);
+        } else if (unitCat !== invUnitCat) {
+          errors.push(`Unit mismatch! ${unit} is ${unitCat}, but ${invUnit} is ${invUnitCat}. They must be of the same type.`);
+        }
+
+        const isValid = errors.length === 0;
+
+        items.push({
+          id: rowNumber,
+          rowNumber,
+          data: { ...rowData, unit, inventory_unit: invUnit },
+          isValid,
+          errors
+        });
+      });
+
+      setParsedItems(items);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+
+    } catch (error: any) {
+      toast({
+        title: "Error Parsing File",
+        description: error.message || "Failed to read Excel file.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleUploadToDB = async () => {
@@ -109,6 +252,8 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
     try {
       const recordsToInsert = validItems.map(item => {
         const row = item.data;
+        const rawStock = row.stock_quantity;
+        
         return {
           admin_id: adminId,
           branch_id: branchId,
@@ -117,19 +262,22 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
           category: row.category?.trim() || null,
           description: row.description?.trim() || null,
           purchase_rate: row.purchase_rate ? parseFloat(row.purchase_rate) : null,
-          unit: row.unit?.trim() || 'piece',
-          inventory_unit: row.inventory_unit?.trim() || row.unit?.trim() || 'piece',
+          unit: row.unit, // Defaulted in validation
+          inventory_unit: row.inventory_unit, // Defaulted in validation
           base_value: row.base_value ? parseFloat(row.base_value) : 1,
-          stock_quantity: row.stock_quantity ? parseFloat(row.stock_quantity) : null,
+          stock_quantity: (rawStock === undefined || rawStock === null || rawStock === '') ? null : parseFloat(rawStock),
           minimum_stock_alert: row.minimum_stock_alert ? parseFloat(row.minimum_stock_alert) : null,
           quantity_step: row.quantity_step ? parseFloat(row.quantity_step) : 1,
           price_zomato: row.price_zomato ? parseFloat(row.price_zomato) : null,
           price_swiggy: row.price_swiggy ? parseFloat(row.price_swiggy) : null,
+          expiry_mode: ['none', 'optional', 'mandatory'].includes(row.expiry_mode?.toLowerCase()) ? row.expiry_mode.toLowerCase() : 'none',
+          quick_chips_mode: ['qty', 'amount'].includes(row.quick_chips_mode?.toLowerCase()) ? row.quick_chips_mode.toLowerCase() : 'qty',
+          quick_chips: row.quick_chips ? validateAndNormalizeQuickChips(row.quick_chips) : [],
           is_active: true
         };
       });
 
-      // Supabase has a limit on inserts, batching 100 at a time is safe.
+      // Supabase batch insert limit
       const BATCH_SIZE = 100;
       for (let i = 0; i < recordsToInsert.length; i += BATCH_SIZE) {
         const batch = recordsToInsert.slice(i, i + BATCH_SIZE);
@@ -177,9 +325,9 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Bulk Add Items (Excel / CSV)</DialogTitle>
+          <DialogTitle>Bulk Add Items (Excel / XLSX)</DialogTitle>
           <DialogDescription>
-            Download the template, fill it out, and upload it back here.
+            Download the styled Excel template, fill it out, and upload it back here.
           </DialogDescription>
         </DialogHeader>
 
@@ -189,22 +337,22 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
               <div className="flex gap-4">
                 <Button variant="outline" onClick={handleDownloadTemplate} className="gap-2">
                   <Download className="w-4 h-4" />
-                  Download Template
+                  Download Excel Template
                 </Button>
                 <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
                   <FileUp className="w-4 h-4" />
-                  Upload Filled CSV
+                  Upload Filled Excel
                 </Button>
               </div>
               <input
                 type="file"
-                accept=".csv"
+                accept=".xlsx"
                 className="hidden"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
               />
               <p className="text-xs text-muted-foreground max-w-sm text-center">
-                Only CSV files are supported. You can save your Excel file as a CSV (Comma Delimited) file.
+                Only .xlsx files generated from the template are supported.
               </p>
             </div>
           ) : (
@@ -232,7 +380,7 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
                       <TableHead className="w-[100px]">Status</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Category</TableHead>
+                      <TableHead>Units</TableHead>
                       <TableHead>Errors</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -249,9 +397,13 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
                         </TableCell>
                         <TableCell className="font-medium">{item.data.name || '-'}</TableCell>
                         <TableCell>₹{item.data.price || '-'}</TableCell>
-                        <TableCell>{item.data.category || '-'}</TableCell>
-                        <TableCell className="text-xs text-red-600 font-medium">
-                          {item.errors.join(', ')}
+                        <TableCell>
+                          <div className="text-xs text-muted-foreground">
+                            {item.data.unit} / {item.data.inventory_unit}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-red-600 font-medium whitespace-pre-wrap">
+                          {item.errors.join('\n')}
                         </TableCell>
                       </TableRow>
                     ))}
