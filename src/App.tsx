@@ -202,6 +202,7 @@ const StockAdjustment = lazy(() => import("./pages/StockAdjustment"));
 const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuTV })));
 const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
+const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -356,6 +357,7 @@ const App = () => {
                   <Route path="/stock-ledger" element={<Layout><ProtectedRoute requiredPermission="stock"><StockLedger /></ProtectedRoute></Layout>} />
                   <Route path="/stock-adjustment" element={<Layout><ProtectedRoute requiredPermission="stock"><StockAdjustment /></ProtectedRoute></Layout>} />
                   <Route path="/super-admin/users" element={<Layout><SuperAdminUsers /></Layout>} />
+                  <Route path="/super-admin/rum" element={<Layout><SuperAdminRum /></Layout>} />
                   <Route path="/diagnostics/images" element={<Layout><ProtectedRoute requiredPermission="settings"><ImageDiagnostics /></ProtectedRoute></Layout>} />
                   <Route path="/ai-insights" element={<Layout><ProtectedRoute requiredPermission="analytics"><AiInsights /></ProtectedRoute></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />

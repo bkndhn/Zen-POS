@@ -147,6 +147,7 @@ export async function cachedFetch<T>(
     const cached = dataCache.get<T>(key);
     if (cached) {
       console.log(`Cache hit for key: ${key}`);
+      import('@/utils/rum').then(m => m.rum.cacheHit(key)).catch(() => {});
 
       // Background refresh if data is stale
       if (dataCache.isStale(key)) {
@@ -163,7 +164,11 @@ export async function cachedFetch<T>(
   }
 
   console.log(`Cache miss for key: ${key}, fetching...`);
+  import('@/utils/rum').then(m => m.rum.cacheMiss(key)).catch(() => {});
+  const start = performance.now();
   const data = await fetchFn();
+  const elapsed = performance.now() - start;
+  import('@/utils/rum').then(m => m.rum.query(key, elapsed)).catch(() => {});
   dataCache.set(key, data, ttl);
   return data;
 }
