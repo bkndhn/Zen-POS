@@ -456,7 +456,12 @@ const SuperAdminUsers: React.FC = () => {
             <Shield className="w-6 h-6 text-primary" />
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">Super Admin Portal</h1>
           </div>
-          <Badge className="px-3 py-1 font-bold text-xs uppercase tracking-wider bg-primary/10 border-primary/20 text-primary">System Overlord</Badge>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => window.location.assign('/super-admin/rum')}>
+              <Activity className="w-3.5 h-3.5 mr-1" /> RUM Dashboard
+            </Button>
+            <Badge className="px-3 py-1 font-bold text-xs uppercase tracking-wider bg-primary/10 border-primary/20 text-primary">System Overlord</Badge>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
