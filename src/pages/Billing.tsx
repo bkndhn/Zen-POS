@@ -3150,7 +3150,7 @@ const Billing = () => {
       </div>
 
       {/* Search and Layout Toggle OR Calci Input */}
-      {appBillingMode === 'calci' ? (
+      {calciEnabled && appBillingMode === 'calci' ? (
         <div className="mb-4">
           <div className="flex justify-center mb-3">
             <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-lg flex items-center shadow-inner">
@@ -3260,7 +3260,7 @@ const Billing = () => {
       )}
 
       {/* Category Horizontal Scroll */}
-      {!isCalciStretched && (
+      {!(calciEnabled && appBillingMode === 'calci' && isCalciStretched) && (
         <CategoryScrollBar
           categories={itemCategories}
           selectedCategory={selectedCategory}
@@ -3271,7 +3271,7 @@ const Billing = () => {
       )}
 
       {/* Items Grid - Scrollable */}
-      {!isCalciStretched && (
+      {!(calciEnabled && appBillingMode === 'calci' && isCalciStretched) && (
       <div
         className="flex-1 overflow-y-auto scroll-smooth min-h-0 relative"
         style={{
