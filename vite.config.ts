@@ -42,15 +42,33 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
-
+          // Supabase Storage images only (NOT REST API)
           {
-            urlPattern: /^https:\/\/(.*\.supabase\.co|images\.weserv\.nl|.*\.cloudfront\.net|.*\.imgix\.net|.*\.cloudflare\.com)\/.*/i,
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/storage\/v1\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'supabase-images-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Other CDN image hosts
+          {
+            urlPattern: /^https:\/\/(images\.weserv\.nl|.*\.cloudfront\.net|.*\.imgix\.net|.*\.cloudflare\.com)\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'cdn-images-cache',
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
               }
             }
           }
