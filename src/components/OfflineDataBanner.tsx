@@ -24,6 +24,12 @@ export const OfflineDataBanner: React.FC<Props> = ({
   onRetry,
   message,
 }) => {
+  React.useEffect(() => {
+    if (isStale || hasNoData) {
+      import('@/utils/rum').then(m => m.rum.offlineFallback(hasNoData ? 'no_data' : 'stale')).catch(() => {});
+    }
+  }, [isStale, hasNoData]);
+
   if (!isStale && !hasNoData) return null;
 
   if (hasNoData) {
