@@ -151,7 +151,10 @@ const Settings = () => {
   }, [profile, operatingBranchId]);
 
   const fetchAdditionalCharges = async () => {
-    if (!adminId) return;
+    if (!adminId) {
+      setLoading(false);
+      return;
+    }
     try {
       // Fetch charges scoped to admin + branch, with legacy fallback
       let query = (supabase as any)
@@ -629,7 +632,7 @@ const Settings = () => {
                     🔒 Local Only
                   </Button>
                 </div>
-                
+
                 {(profile?.client_permissions as any)?.allow_cloud_storage === false && (
                   <div className="mt-2 p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 rounded-lg text-xs flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">⚠️</span>
