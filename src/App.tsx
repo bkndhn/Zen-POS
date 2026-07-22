@@ -203,6 +203,7 @@ const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuT
 const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
+const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
