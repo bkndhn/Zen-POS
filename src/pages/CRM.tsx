@@ -1251,6 +1251,11 @@ const CRM: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+        <TabsContent value="feedback" className="mt-3">
+          <CRMFeedbackTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
