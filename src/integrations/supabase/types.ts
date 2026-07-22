@@ -776,6 +776,214 @@ export type Database = {
           },
         ]
       }
+      feedback_form_fields: {
+        Row: {
+          admin_id: string
+          branch_id: string
+          created_at: string
+          display_order: number
+          field_key: string
+          field_type: string
+          form_id: string
+          helper_text: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          options: Json
+          placeholder: string | null
+          updated_at: string
+          validation: Json
+        }
+        Insert: {
+          admin_id: string
+          branch_id: string
+          created_at?: string
+          display_order?: number
+          field_key: string
+          field_type: string
+          form_id: string
+          helper_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          options?: Json
+          placeholder?: string | null
+          updated_at?: string
+          validation?: Json
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string
+          created_at?: string
+          display_order?: number
+          field_key?: string
+          field_type?: string
+          form_id?: string
+          helper_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          options?: Json
+          placeholder?: string | null
+          updated_at?: string
+          validation?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_form_fields_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_forms: {
+        Row: {
+          admin_id: string
+          background_color: string
+          border_radius: string
+          branch_id: string
+          cooldown_days: number
+          created_at: string
+          font_family: string
+          header_logo_url: string | null
+          id: string
+          is_active: boolean
+          layout_style: string
+          primary_color: string
+          show_shop_header: boolean
+          slug: string
+          submit_button_label: string
+          subtitle: string | null
+          text_color: string
+          thank_you_message: string
+          title: string
+          updated_at: string
+          whatsapp_reply_templates: Json
+        }
+        Insert: {
+          admin_id: string
+          background_color?: string
+          border_radius?: string
+          branch_id: string
+          cooldown_days?: number
+          created_at?: string
+          font_family?: string
+          header_logo_url?: string | null
+          id?: string
+          is_active?: boolean
+          layout_style?: string
+          primary_color?: string
+          show_shop_header?: boolean
+          slug: string
+          submit_button_label?: string
+          subtitle?: string | null
+          text_color?: string
+          thank_you_message?: string
+          title?: string
+          updated_at?: string
+          whatsapp_reply_templates?: Json
+        }
+        Update: {
+          admin_id?: string
+          background_color?: string
+          border_radius?: string
+          branch_id?: string
+          cooldown_days?: number
+          created_at?: string
+          font_family?: string
+          header_logo_url?: string | null
+          id?: string
+          is_active?: boolean
+          layout_style?: string
+          primary_color?: string
+          show_shop_header?: boolean
+          slug?: string
+          submit_button_label?: string
+          subtitle?: string | null
+          text_color?: string
+          thank_you_message?: string
+          title?: string
+          updated_at?: string
+          whatsapp_reply_templates?: Json
+        }
+        Relationships: []
+      }
+      feedback_submissions: {
+        Row: {
+          admin_id: string
+          branch_id: string
+          created_at: string
+          customer_mobile: string
+          customer_name: string | null
+          form_id: string
+          id: string
+          ip_hash: string | null
+          overall_rating: number | null
+          replied_at: string | null
+          replied_by: string | null
+          reply_notes: string | null
+          responses: Json
+          session_id: string | null
+          status: string
+          submitted_at: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_id: string
+          branch_id: string
+          created_at?: string
+          customer_mobile: string
+          customer_name?: string | null
+          form_id: string
+          id?: string
+          ip_hash?: string | null
+          overall_rating?: number | null
+          replied_at?: string | null
+          replied_by?: string | null
+          reply_notes?: string | null
+          responses?: Json
+          session_id?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string
+          created_at?: string
+          customer_mobile?: string
+          customer_name?: string | null
+          form_id?: string
+          id?: string
+          ip_hash?: string | null
+          overall_rating?: number | null
+          replied_at?: string | null
+          replied_by?: string | null
+          reply_notes?: string | null
+          responses?: Json
+          session_id?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           admin_id: string
@@ -2599,6 +2807,7 @@ export type Database = {
       }
       get_my_profile_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
+      get_public_feedback_form: { Args: { p_slug: string }; Returns: Json }
       get_public_item_categories: {
         Args: { p_admin_id: string }
         Returns: {
@@ -2736,6 +2945,17 @@ export type Database = {
         | { Args: { p_bill_payload: Json; p_cart_items: Json }; Returns: Json }
       seed_branch_defaults: {
         Args: { p_source_branch_id?: string; p_target_branch_id: string }
+        Returns: Json
+      }
+      submit_public_feedback: {
+        Args: {
+          p_customer_name: string
+          p_mobile: string
+          p_responses: Json
+          p_session_id: string
+          p_slug: string
+          p_user_agent: string
+        }
         Returns: Json
       }
       user_has_branch_access: {

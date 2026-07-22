@@ -1030,6 +1030,26 @@ const SuperAdminUsers: React.FC = () => {
                 }}
               />
             </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-pink-50/50 dark:bg-pink-900/20 hover:bg-pink-50 dark:hover:bg-pink-900/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center dark:bg-pink-900/60">
+                  <span className="text-sm">💬</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-pink-800 dark:text-pink-300">Feedback Module (QR + CRM)</span>
+                  <span className="text-[10px] text-pink-600 dark:text-pink-400 font-mono">allow_feedback_module</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.client_permissions?.['allow_feedback_module'] === true}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) {
+                    handleTogglePermission(selectedAdmin.profile_id, 'allow_feedback_module', checked);
+                  }
+                }}
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>

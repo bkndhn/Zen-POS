@@ -9,13 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2, Eye, RotateCcw, Loader2, Sparkles, Share2, Printer, TrendingUp, ChevronDown, ChevronUp, Utensils } from 'lucide-react';
+import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2, Eye, RotateCcw, Loader2, Sparkles, Share2, Printer, TrendingUp, ChevronDown, ChevronUp, Utensils, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 // xlsx removed for security; using CSV export instead
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
 import { getShortUnit } from '@/utils/timeUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CRMFeedbackTab from '@/components/CRMFeedbackTab';
 
 interface Customer {
   id: string;
@@ -668,6 +670,12 @@ const CRM: React.FC = () => {
         </div>
       </div>
 
+      <Tabs defaultValue="customers" className="w-full">
+        <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsTrigger value="customers" className="text-xs"><Users className="w-3.5 h-3.5 mr-1.5" />Customers</TabsTrigger>
+          <TabsTrigger value="feedback" className="text-xs"><MessageSquare className="w-3.5 h-3.5 mr-1.5" />Feedback</TabsTrigger>
+        </TabsList>
+        <TabsContent value="customers" className="mt-3 space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-3">
@@ -1243,6 +1251,11 @@ const CRM: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+        <TabsContent value="feedback" className="mt-3">
+          <CRMFeedbackTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

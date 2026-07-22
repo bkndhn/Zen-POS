@@ -203,6 +203,7 @@ const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuT
 const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
+const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -362,6 +363,7 @@ const App = () => {
                   <Route path="/ai-insights" element={<Layout><ProtectedRoute requiredPermission="analytics"><AiInsights /></ProtectedRoute></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
+                  <Route path="/feedback/:slug" element={<PublicFeedback />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/demo" element={<DemoBilling />} />
                   <Route path="/menu-tv/:adminId" element={<MenuTV />} />
