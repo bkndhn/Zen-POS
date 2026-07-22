@@ -670,6 +670,12 @@ const CRM: React.FC = () => {
         </div>
       </div>
 
+      <Tabs defaultValue="customers" className="w-full">
+        <TabsList className="grid grid-cols-2 w-full max-w-md">
+          <TabsTrigger value="customers" className="text-xs"><Users className="w-3.5 h-3.5 mr-1.5" />Customers</TabsTrigger>
+          <TabsTrigger value="feedback" className="text-xs"><MessageSquare className="w-3.5 h-3.5 mr-1.5" />Feedback</TabsTrigger>
+        </TabsList>
+        <TabsContent value="customers" className="mt-3 space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-3">
