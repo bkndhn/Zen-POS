@@ -9,13 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2, Eye, RotateCcw, Loader2, Sparkles, Share2, Printer, TrendingUp, ChevronDown, ChevronUp, Utensils } from 'lucide-react';
+import { Users, Search, Phone, Calendar, DollarSign, Download, FileSpreadsheet, Edit, Trash2, Eye, RotateCcw, Loader2, Sparkles, Share2, Printer, TrendingUp, ChevronDown, ChevronUp, Utensils, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 // xlsx removed for security; using CSV export instead
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
 import { getShortUnit } from '@/utils/timeUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CRMFeedbackTab from '@/components/CRMFeedbackTab';
 
 interface Customer {
   id: string;
