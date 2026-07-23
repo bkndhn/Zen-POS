@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Package, Search, Plus, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
+import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EditItemDialog } from '@/components/EditItemDialog';
 import { ItemCategoryManagement } from '@/components/ItemCategoryManagement';
@@ -537,6 +538,7 @@ const Items: React.FC = () => {
             <>
               <ItemCategoryManagement onCategoriesUpdated={handleCategoriesUpdated} />
               <CopyMenuToBranchDialog sourceBranchId={branchFilterId} onCopied={fetchItems} />
+              <AiMenuImportDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
               <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
               <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
             </>

@@ -84,6 +84,22 @@ const FeedbackQRSettings: React.FC = () => {
                 Preview
               </Button>
             </div>
+            <div className="space-y-1 pt-1">
+              <Label className="text-xs">Custom link slug</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground shrink-0">/feedback/</span>
+                <Input
+                  value={form.slug}
+                  onChange={e => {
+                    const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').slice(0, 40);
+                    saveForm({ slug: v });
+                  }}
+                  className="text-xs"
+                  placeholder="my-shop-feedback"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">Like your Menu URL. Lowercase letters, numbers, and hyphens only.</p>
+            </div>
             <div className="flex items-center justify-between pt-2">
               <Label className="text-xs">Form Active</Label>
               <Switch checked={form.is_active} onCheckedChange={v => persistPatch({ is_active: v })} disabled={savingSettings} />
