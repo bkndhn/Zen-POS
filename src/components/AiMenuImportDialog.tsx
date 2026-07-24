@@ -471,12 +471,36 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                             {issues.length === 0 ? (
                               <span className="text-[10px] text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> OK</span>
                             ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {issues.map((iss, i) => (
-                                  <Badge key={i} variant={iss === 'Price is 0' ? 'outline' : 'destructive'} className="text-[9px] px-1 py-0">
-                                    {iss}
-                                  </Badge>
-                                ))}
+                              <div className="flex flex-wrap gap-1 items-center">
+                                {issues.map((iss, i) => {
+                                  const fixable = AUTO_FIXABLE.has(iss);
+                                  return fixable ? (
+                                    <button
+                                      key={i}
+                                      type="button"
+                                      onClick={() => fixIssue(r.id, iss)}
+                                      title="Click to auto-fix"
+                                      className="text-[9px] px-1.5 py-0.5 rounded border border-destructive/40 bg-destructive/10 text-destructive hover:bg-primary/10 hover:border-primary hover:text-primary transition-colors flex items-center gap-1"
+                                    >
+                                      <Sparkles className="w-2.5 h-2.5" /> {iss}
+                                    </button>
+                                  ) : (
+                                    <Badge key={i} variant={iss === 'Price is 0' ? 'outline' : 'destructive'} className="text-[9px] px-1 py-0">
+                                      {iss}
+                                    </Badge>
+                                  );
+                                })}
+                                {issues.some(i => AUTO_FIXABLE.has(i)) && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => fixRow(r.id)}
+                                    className="h-5 px-1.5 text-[9px] text-primary hover:bg-primary/10"
+                                  >
+                                    Fix row
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </TableCell>
