@@ -54,6 +54,33 @@ function validateRow(r: Parsed, allCategories: string[]): string[] {
   return issues;
 }
 
+// Which issues can be auto-fixed inline
+const AUTO_FIXABLE = new Set([
+  'Name >100 chars',
+  'Invalid price',
+  'Category missing',
+  'Unknown unit',
+  'Qty must be > 0',
+]);
+
+function applyFix(r: Parsed, issue: string, opts: { hintCategory: string; defaultUnit: string; categories: string[] }): Partial<Parsed> {
+  switch (issue) {
+    case 'Name >100 chars':
+      return { name: (r.name || '').slice(0, 100).trim() };
+    case 'Invalid price':
+      return { price: 0 };
+    case 'Category missing':
+      return { category: (opts.hintCategory || opts.categories[0] || 'General').trim() };
+    case 'Unknown unit':
+      return { selling_unit: opts.defaultUnit };
+    case 'Qty must be > 0':
+      return { selling_quantity: 1 };
+    default:
+      return {};
+  }
+}
+
+
 export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categories, onItemsAdded, disabled }) => {
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
