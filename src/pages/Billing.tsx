@@ -1571,7 +1571,7 @@ const Billing = () => {
     });
   }, [items, searchQuery, selectedCategory]);
   const addToCart = (item: Item) => {
-    if (appBillingMode === 'calci') {
+    if (calciEnabled && appBillingMode === 'calci') {
       const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
       let shortcodes: Record<string, string> = {};
       try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch {}
