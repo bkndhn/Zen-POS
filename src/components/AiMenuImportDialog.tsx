@@ -385,6 +385,11 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                   <Badge variant="outline" className="text-[10px]">{totalIssues} issue(s) total</Badge>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                  {autoFixableCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={autoFixAll} className="gap-1 border-primary/40 text-primary">
+                      <Sparkles className="w-3.5 h-3.5" /> Auto-fix all ({autoFixableCount})
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={mergeDuplicatesInPreview} className="gap-1"><Merge className="w-3.5 h-3.5" /> Merge dupes</Button>
                   <Button variant="outline" size="sm" onClick={() => setParsed([])}>Back</Button>
                   <Button size="sm" onClick={saveAll} disabled={saving || !validRows.length}>
