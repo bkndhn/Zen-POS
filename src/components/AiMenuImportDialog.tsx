@@ -188,11 +188,47 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
     setParsed(prev => prev.map(r => ({ ...r, selling_unit: unit })));
   };
 
+  const fixOptsRef = () => ({ hintCategory, defaultUnit, categories });
+
+  const fixIssue = (rowId: number, issue: string) => {
+    setParsed(prev => prev.map(r => r.id === rowId ? { ...r, ...applyFix(r, issue, fixOptsRef()) } : r));
+  };
+
+  const fixRow = (rowId: number) => {
+    setParsed(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      let patched = { ...r };
+      for (const iss of validateRow(patched, categories)) {
+        if (AUTO_FIXABLE.has(iss)) patched = { ...patched, ...applyFix(patched, iss, fixOptsRef()) };
+      }
+      return patched;
+    }));
+  };
+
+  const autoFixAll = () => {
+    let fixedCount = 0;
+    setParsed(prev => prev.map(r => {
+      let patched = { ...r };
+      let changed = false;
+      for (const iss of validateRow(patched, categories)) {
+        if (AUTO_FIXABLE.has(iss)) {
+          patched = { ...patched, ...applyFix(patched, iss, fixOptsRef()) };
+          changed = true;
+        }
+      }
+      if (changed) fixedCount++;
+      return patched;
+    }));
+    setTimeout(() => toast({ title: 'Auto-fix done', description: `${fixedCount} row(s) updated. Review any remaining issues manually.` }), 0);
+  };
+
   // Row validation report
   const rowIssues = useMemo(() => parsed.map(r => ({ id: r.id, issues: validateRow(r, categories) })), [parsed, categories]);
   const validRows = parsed.filter(r => validateRow(r, categories).filter(i => i !== 'Price is 0').length === 0);
   const errorRows = parsed.length - validRows.length;
   const totalIssues = rowIssues.reduce((s, r) => s + r.issues.length, 0);
+  const autoFixableCount = rowIssues.reduce((s, r) => s + r.issues.filter(i => AUTO_FIXABLE.has(i)).length, 0);
+
 
   const saveAll = async () => {
     if (!validRows.length) return;
