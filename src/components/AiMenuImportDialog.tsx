@@ -54,6 +54,33 @@ function validateRow(r: Parsed, allCategories: string[]): string[] {
   return issues;
 }
 
+// Which issues can be auto-fixed inline
+const AUTO_FIXABLE = new Set([
+  'Name >100 chars',
+  'Invalid price',
+  'Category missing',
+  'Unknown unit',
+  'Qty must be > 0',
+]);
+
+function applyFix(r: Parsed, issue: string, opts: { hintCategory: string; defaultUnit: string; categories: string[] }): Partial<Parsed> {
+  switch (issue) {
+    case 'Name >100 chars':
+      return { name: (r.name || '').slice(0, 100).trim() };
+    case 'Invalid price':
+      return { price: 0 };
+    case 'Category missing':
+      return { category: (opts.hintCategory || opts.categories[0] || 'General').trim() };
+    case 'Unknown unit':
+      return { selling_unit: opts.defaultUnit };
+    case 'Qty must be > 0':
+      return { selling_quantity: 1 };
+    default:
+      return {};
+  }
+}
+
+
 export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categories, onItemsAdded, disabled }) => {
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
@@ -161,11 +188,47 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
     setParsed(prev => prev.map(r => ({ ...r, selling_unit: unit })));
   };
 
+  const fixOptsRef = () => ({ hintCategory, defaultUnit, categories });
+
+  const fixIssue = (rowId: number, issue: string) => {
+    setParsed(prev => prev.map(r => r.id === rowId ? { ...r, ...applyFix(r, issue, fixOptsRef()) } : r));
+  };
+
+  const fixRow = (rowId: number) => {
+    setParsed(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      let patched = { ...r };
+      for (const iss of validateRow(patched, categories)) {
+        if (AUTO_FIXABLE.has(iss)) patched = { ...patched, ...applyFix(patched, iss, fixOptsRef()) };
+      }
+      return patched;
+    }));
+  };
+
+  const autoFixAll = () => {
+    let fixedCount = 0;
+    setParsed(prev => prev.map(r => {
+      let patched = { ...r };
+      let changed = false;
+      for (const iss of validateRow(patched, categories)) {
+        if (AUTO_FIXABLE.has(iss)) {
+          patched = { ...patched, ...applyFix(patched, iss, fixOptsRef()) };
+          changed = true;
+        }
+      }
+      if (changed) fixedCount++;
+      return patched;
+    }));
+    setTimeout(() => toast({ title: 'Auto-fix done', description: `${fixedCount} row(s) updated. Review any remaining issues manually.` }), 0);
+  };
+
   // Row validation report
   const rowIssues = useMemo(() => parsed.map(r => ({ id: r.id, issues: validateRow(r, categories) })), [parsed, categories]);
   const validRows = parsed.filter(r => validateRow(r, categories).filter(i => i !== 'Price is 0').length === 0);
   const errorRows = parsed.length - validRows.length;
   const totalIssues = rowIssues.reduce((s, r) => s + r.issues.length, 0);
+  const autoFixableCount = rowIssues.reduce((s, r) => s + r.issues.filter(i => AUTO_FIXABLE.has(i)).length, 0);
+
 
   const saveAll = async () => {
     if (!validRows.length) return;
@@ -322,6 +385,11 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                   <Badge variant="outline" className="text-[10px]">{totalIssues} issue(s) total</Badge>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                  {autoFixableCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={autoFixAll} className="gap-1 border-primary/40 text-primary">
+                      <Sparkles className="w-3.5 h-3.5" /> Auto-fix all ({autoFixableCount})
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={mergeDuplicatesInPreview} className="gap-1"><Merge className="w-3.5 h-3.5" /> Merge dupes</Button>
                   <Button variant="outline" size="sm" onClick={() => setParsed([])}>Back</Button>
                   <Button size="sm" onClick={saveAll} disabled={saving || !validRows.length}>
@@ -403,12 +471,36 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                             {issues.length === 0 ? (
                               <span className="text-[10px] text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> OK</span>
                             ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {issues.map((iss, i) => (
-                                  <Badge key={i} variant={iss === 'Price is 0' ? 'outline' : 'destructive'} className="text-[9px] px-1 py-0">
-                                    {iss}
-                                  </Badge>
-                                ))}
+                              <div className="flex flex-wrap gap-1 items-center">
+                                {issues.map((iss, i) => {
+                                  const fixable = AUTO_FIXABLE.has(iss);
+                                  return fixable ? (
+                                    <button
+                                      key={i}
+                                      type="button"
+                                      onClick={() => fixIssue(r.id, iss)}
+                                      title="Click to auto-fix"
+                                      className="text-[9px] px-1.5 py-0.5 rounded border border-destructive/40 bg-destructive/10 text-destructive hover:bg-primary/10 hover:border-primary hover:text-primary transition-colors flex items-center gap-1"
+                                    >
+                                      <Sparkles className="w-2.5 h-2.5" /> {iss}
+                                    </button>
+                                  ) : (
+                                    <Badge key={i} variant={iss === 'Price is 0' ? 'outline' : 'destructive'} className="text-[9px] px-1 py-0">
+                                      {iss}
+                                    </Badge>
+                                  );
+                                })}
+                                {issues.some(i => AUTO_FIXABLE.has(i)) && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => fixRow(r.id)}
+                                    className="h-5 px-1.5 text-[9px] text-primary hover:bg-primary/10"
+                                  >
+                                    Fix row
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </TableCell>
