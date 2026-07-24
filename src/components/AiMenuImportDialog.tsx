@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sparkles, Upload, X, Loader2, Trash2, CheckCircle2, AlertCircle, ImagePlus } from 'lucide-react';
+import { Sparkles, Upload, X, Loader2, Trash2, CheckCircle2, AlertCircle, ImagePlus, Camera, FolderOpen, Merge } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
