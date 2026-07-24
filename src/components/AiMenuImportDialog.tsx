@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sparkles, Upload, X, Loader2, Trash2, CheckCircle2, AlertCircle, ImagePlus, Camera, FolderOpen, Merge } from 'lucide-react';
+import { Sparkles, X, Loader2, Trash2, CheckCircle2, AlertCircle, ImagePlus, Camera, FolderOpen, Merge } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
@@ -41,19 +41,35 @@ const fileToDataUrl = (f: File): Promise<string> =>
     r.readAsDataURL(f);
   });
 
+// Row-level validation → list of issues per row
+function validateRow(r: Parsed, allCategories: string[]): string[] {
+  const issues: string[] = [];
+  if (!r.name || r.name.trim().length < 2) issues.push('Name too short');
+  if (r.name && r.name.length > 100) issues.push('Name >100 chars');
+  if (!(r.price >= 0) || Number.isNaN(r.price)) issues.push('Invalid price');
+  if (r.price === 0) issues.push('Price is 0');
+  if (!r.category || !r.category.trim()) issues.push('Category missing');
+  if (!UNITS.includes(r.selling_unit)) issues.push('Unknown unit');
+  if (!(r.selling_quantity > 0)) issues.push('Qty must be > 0');
+  return issues;
+}
+
 export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categories, onItemsAdded, disabled }) => {
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
   const [text, setText] = useState('');
   const [hintCategory, setHintCategory] = useState('');
+  const [defaultUnit, setDefaultUnit] = useState<string>('Piece (pc)');
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [parsed, setParsed] = useState<Parsed[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setImages([]); setText(''); setParsed([]); setParsing(false); setSaving(false);
-    if (fileRef.current) fileRef.current.value = '';
+    if (cameraRef.current) cameraRef.current.value = '';
+    if (galleryRef.current) galleryRef.current.value = '';
   };
 
   const addFiles = async (files: FileList | null) => {
@@ -67,6 +83,19 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
       next.push({ url, name: f.name });
     }
     setImages(next.slice(0, 6));
+  };
+
+  const dedupeItems = (items: any[]): { deduped: any[]; mergedCount: number } => {
+    const map = new Map<string, any>();
+    let merged = 0;
+    for (const it of items) {
+      const key = `${String(it?.name || '').trim().toLowerCase()}|${Number(it?.price) || 0}`;
+      if (!key.startsWith('|')) {
+        if (map.has(key)) { merged++; continue; }
+        map.set(key, it);
+      }
+    }
+    return { deduped: Array.from(map.values()), mergedCount: merged };
   };
 
   const runParse = async () => {
@@ -84,7 +113,22 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
       if (!items.length) {
         toast({ title: 'No items found', description: 'Try a clearer photo or paste text.', variant: 'destructive' });
       }
-      setParsed(items.map((it: any, i: number) => ({ id: i + 1, ...it })));
+      // Dedupe (same name + price merges)
+      const { deduped, mergedCount } = dedupeItems(items);
+      const mapped: Parsed[] = deduped.map((it: any, i: number) => ({
+        id: i + 1,
+        name: it.name,
+        price: it.price,
+        category: (it.category && it.category.trim()) || hintCategory || 'General',
+        description: it.description ?? null,
+        selling_unit: UNITS.includes(it.selling_unit) ? it.selling_unit : defaultUnit,
+        selling_quantity: it.selling_quantity > 0 ? it.selling_quantity : 1,
+        is_veg: typeof it.is_veg === 'boolean' ? it.is_veg : null,
+      }));
+      setParsed(mapped);
+      if (mergedCount > 0) {
+        toast({ title: 'Duplicates merged', description: `${mergedCount} duplicate item(s) auto-merged.` });
+      }
     } catch (e: any) {
       const msg = e?.context?.message || e?.message || 'AI parse failed';
       toast({ title: 'AI parse failed', description: msg, variant: 'destructive' });
@@ -98,8 +142,30 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
   };
   const removeRow = (id: number) => setParsed(prev => prev.filter(r => r.id !== id));
 
-  const validRows = parsed.filter(r => r.name.trim().length >= 2 && r.price >= 0);
+  const mergeDuplicatesInPreview = () => {
+    const { deduped, mergedCount } = dedupeItems(parsed);
+    if (mergedCount === 0) {
+      toast({ title: 'No duplicates found' });
+      return;
+    }
+    setParsed(deduped.map((r: any, i: number) => ({ ...r, id: i + 1 })));
+    toast({ title: 'Merged', description: `Removed ${mergedCount} duplicate row(s).` });
+  };
+
+  const bulkApplyCategory = (cat: string) => {
+    if (!cat) return;
+    setParsed(prev => prev.map(r => ({ ...r, category: cat })));
+  };
+  const bulkApplyUnit = (unit: string) => {
+    if (!unit) return;
+    setParsed(prev => prev.map(r => ({ ...r, selling_unit: unit })));
+  };
+
+  // Row validation report
+  const rowIssues = useMemo(() => parsed.map(r => ({ id: r.id, issues: validateRow(r, categories) })), [parsed, categories]);
+  const validRows = parsed.filter(r => validateRow(r, categories).filter(i => i !== 'Price is 0').length === 0);
   const errorRows = parsed.length - validRows.length;
+  const totalIssues = rowIssues.reduce((s, r) => s + r.issues.length, 0);
 
   const saveAll = async () => {
     if (!validRows.length) return;
@@ -155,7 +221,7 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
             <Sparkles className="w-5 h-5 text-primary" /> AI Menu Import
           </DialogTitle>
           <DialogDescription>
-            Snap a photo of your printed menu or paste catalogue text — AI extracts items with prices. Preview and edit before saving.
+            Snap a photo of your printed menu or pick one from your gallery — AI extracts items with prices. Preview and edit before saving.
           </DialogDescription>
         </DialogHeader>
 
@@ -177,18 +243,22 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                       </button>
                     </div>
                   ))}
-                  {images.length < 6 && (
-                    <button
-                      onClick={() => fileRef.current?.click()}
-                      className="w-24 h-24 rounded-md border-2 border-dashed flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground hover:bg-muted/30"
-                    >
-                      <ImagePlus className="w-5 h-5" />
-                      Add photo
-                    </button>
-                  )}
                 </div>
+
+                {images.length < 6 && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => cameraRef.current?.click()}>
+                      <Camera className="w-4 h-4" /> Take Photo
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => galleryRef.current?.click()}>
+                      <FolderOpen className="w-4 h-4" /> Choose from Gallery
+                    </Button>
+                    <span className="text-[11px] text-muted-foreground self-center">{images.length}/6 selected</span>
+                  </div>
+                )}
+
                 <input
-                  ref={fileRef}
+                  ref={cameraRef}
                   type="file"
                   accept="image/*"
                   multiple
@@ -196,7 +266,15 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                   className="hidden"
                   onChange={(e) => addFiles(e.target.files)}
                 />
-                <p className="text-[11px] text-muted-foreground">Up to 6 clear photos. Good lighting = better accuracy.</p>
+                <input
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => addFiles(e.target.files)}
+                />
+                <p className="text-[11px] text-muted-foreground">Up to 6 clear photos. Good lighting & flat menu = better accuracy.</p>
               </div>
 
               <div>
@@ -204,9 +282,26 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                 <Textarea rows={4} value={text} onChange={e => setText(e.target.value)} placeholder="Paste catalogue / menu text here..." />
               </div>
 
-              <div>
-                <Label className="text-xs">Default category hint (optional)</Label>
-                <Input value={hintCategory} onChange={e => setHintCategory(e.target.value)} placeholder="e.g. Starters, Beverages" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Default category (optional)</Label>
+                  <Select value={hintCategory || '__none__'} onValueChange={v => setHintCategory(v === '__none__' ? '' : v)}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Choose category" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__" className="text-xs">-- AI decides --</SelectItem>
+                      {categories.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Default unit (fallback)</Label>
+                  <Select value={defaultUnit} onValueChange={setDefaultUnit}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {UNITS.map(u => <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="flex justify-end">
@@ -219,19 +314,37 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 sticky top-0 bg-background z-10 pb-2 border-b">
-                <div className="flex gap-3 text-sm font-medium">
+                <div className="flex gap-3 text-sm font-medium flex-wrap">
                   <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> {validRows.length} ready</span>
                   {errorRows > 0 && (
                     <span className="text-red-600 flex items-center gap-1"><AlertCircle className="w-4 h-4" /> {errorRows} need fix</span>
                   )}
-                  <Badge variant="outline" className="text-[10px]">Editable preview</Badge>
+                  <Badge variant="outline" className="text-[10px]">{totalIssues} issue(s) total</Badge>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={mergeDuplicatesInPreview} className="gap-1"><Merge className="w-3.5 h-3.5" /> Merge dupes</Button>
                   <Button variant="outline" size="sm" onClick={() => setParsed([])}>Back</Button>
                   <Button size="sm" onClick={saveAll} disabled={saving || !validRows.length}>
                     {saving ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Saving…</> : `Save ${validRows.length} items`}
                   </Button>
                 </div>
+              </div>
+
+              {/* Bulk apply toolbar */}
+              <div className="flex flex-wrap items-center gap-2 text-xs bg-muted/30 rounded-md p-2">
+                <span className="text-muted-foreground">Bulk apply →</span>
+                <Select onValueChange={bulkApplyCategory}>
+                  <SelectTrigger className="h-7 text-xs w-[160px]"><SelectValue placeholder="Category to all" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select onValueChange={bulkApplyUnit}>
+                  <SelectTrigger className="h-7 text-xs w-[160px]"><SelectValue placeholder="Unit to all" /></SelectTrigger>
+                  <SelectContent>
+                    {UNITS.map(u => <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="border rounded-md overflow-x-auto">
@@ -244,27 +357,33 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                       <TableHead className="min-w-[140px]">Category</TableHead>
                       <TableHead className="min-w-[140px]">Unit</TableHead>
                       <TableHead className="w-[90px]">Qty</TableHead>
-                      <TableHead className="min-w-[200px]">Description</TableHead>
+                      <TableHead className="min-w-[180px]">Description</TableHead>
+                      <TableHead className="min-w-[140px]">Validation</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {parsed.map((r, idx) => {
-                      const bad = r.name.trim().length < 2;
+                      const issues = rowIssues.find(x => x.id === r.id)?.issues || [];
+                      const blocking = issues.filter(i => i !== 'Price is 0').length > 0;
                       return (
-                        <TableRow key={r.id} className={bad ? 'bg-red-50/40 dark:bg-red-950/20' : ''}>
+                        <TableRow key={r.id} className={blocking ? 'bg-red-50/40 dark:bg-red-950/20' : ''}>
                           <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
                           <TableCell>
                             <Input value={r.name} onChange={e => updateRow(r.id, { name: e.target.value })} className="h-8 text-xs" />
                           </TableCell>
                           <TableCell>
-                            <Input type="number" value={r.price} onChange={e => updateRow(r.id, { price: Number(e.target.value) })} className="h-8 text-xs" />
+                            <Input type="number" step="0.01" value={r.price} onChange={e => updateRow(r.id, { price: Number(e.target.value) })} className="h-8 text-xs" />
                           </TableCell>
                           <TableCell>
-                            <Input list={`cats-${r.id}`} value={r.category} onChange={e => updateRow(r.id, { category: e.target.value })} className="h-8 text-xs" />
-                            <datalist id={`cats-${r.id}`}>
-                              {categories.map(c => <option key={c} value={c} />)}
-                            </datalist>
+                            <Select value={r.category} onValueChange={v => updateRow(r.id, { category: v })}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Pick" /></SelectTrigger>
+                              <SelectContent>
+                                {[r.category, ...categories.filter(c => c !== r.category)].filter(Boolean).map(c => (
+                                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell>
                             <Select value={r.selling_unit} onValueChange={v => updateRow(r.id, { selling_unit: v })}>
@@ -279,6 +398,19 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
                           </TableCell>
                           <TableCell>
                             <Input value={r.description || ''} onChange={e => updateRow(r.id, { description: e.target.value })} className="h-8 text-xs" />
+                          </TableCell>
+                          <TableCell>
+                            {issues.length === 0 ? (
+                              <span className="text-[10px] text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> OK</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {issues.map((iss, i) => (
+                                  <Badge key={i} variant={iss === 'Price is 0' ? 'outline' : 'destructive'} className="text-[9px] px-1 py-0">
+                                    {iss}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600" onClick={() => removeRow(r.id)}>
