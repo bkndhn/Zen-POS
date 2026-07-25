@@ -59,7 +59,7 @@ async function encryptPayload(payload: string, passphrase: string): Promise<Encr
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await deriveKey(passphrase, salt);
     const ct = new Uint8Array(
-        await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(payload))
+        await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, new TextEncoder().encode(payload) as BufferSource)
     );
     return {
         v: 1,
