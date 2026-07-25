@@ -33,8 +33,8 @@ const emptyForm = { name: '', phone: '', email: '', gstin: '', address: '', note
 
 const Suppliers: React.FC = () => {
   const { profile, adminProfileId } = useAuth();
-  const { branches, operatingBranchId, branchFilterId, isAllBranches } = useBranch();
-  const { applyBranchFilter, isReadOnly } = useBranchScopedQuery();
+  const { branches, operatingBranchId } = useBranch();
+  const { branchFilterId, isAllBranchesView: isAllBranches, readOnly: isReadOnly } = useBranchScopedQuery();
 
   const [list, setList] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
