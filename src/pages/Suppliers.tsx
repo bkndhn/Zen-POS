@@ -62,7 +62,7 @@ const Suppliers: React.FC = () => {
         .eq('is_active', true)
         .order('name');
 
-      query = applyBranchFilter(query, { allowAllBranches: true });
+      query = applyBranchFilter(query, branchFilterId);
       const { data: supplierData, error: supplierErr } = await query;
       if (supplierErr) throw supplierErr;
 
@@ -74,7 +74,7 @@ const Suppliers: React.FC = () => {
         .select('supplier_id, total_amount')
         .eq('admin_id', adminId);
 
-      purchasesQuery = applyBranchFilter(purchasesQuery, { allowAllBranches: true });
+      purchasesQuery = applyBranchFilter(purchasesQuery, branchFilterId);
       const { data: purchaseData } = await purchasesQuery;
 
       const statsMap = new Map<string, { count: number; total: number }>();
