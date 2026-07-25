@@ -80,7 +80,7 @@ async function decryptPayload(env: EncryptedEnvelope, passphrase: string): Promi
     const iv = b64d(env.iv);
     const ct = b64d(env.ct);
     const key = await deriveKey(passphrase, salt);
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ct as BufferSource);
     return new TextDecoder().decode(pt);
 }
 
