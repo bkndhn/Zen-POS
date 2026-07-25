@@ -97,6 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
 
   // Filter nav items based on permissions (empty for super_admin)
   const navItems = isSuperAdmin ? [] : (permLoading ? [] : ALL_NAV_ITEMS.filter(item => {
+    if (item.to === '/users' && profile?.role === 'user') return false;
     if (!hasAccess(item.page)) return false;
     if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
       return false;

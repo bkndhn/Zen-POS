@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound } from 'lucide-react';
+import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 
@@ -364,6 +364,28 @@ const Users: React.FC = () => {
     );
   }
 
+  // Branch / Sub-users are strictly restricted from accessing User Management
+  if (!isSuperAdmin && !isAdmin) {
+    return (
+      <div className="min-h-[80vh] p-4 sm:p-6 flex items-center justify-center">
+        <Card className="max-w-md w-full p-6 text-center space-y-4 shadow-xl border-rose-500/20 rounded-2xl bg-card">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+            <Shield className="w-7 h-7 text-rose-500" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-foreground">Access Restricted</h2>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              User & Staff Management is reserved exclusively for Store Admins and Super Admins. Branch staff cannot view or manage user accounts.
+            </p>
+          </div>
+          <Button onClick={() => window.location.href = '/dashboard'} className="w-full rounded-xl">
+            Return to Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   // Get filtered users for permissions view to sync with search
   const usersForPermissions = isSuperAdmin
     ? filteredUsers.flatMap(admin => [admin, ...(admin.subUsers || [])])
@@ -636,9 +658,19 @@ const Users: React.FC = () => {
                               <Card key={subUser.id} className="p-3 bg-background">
                                 <div className="flex items-start justify-between mb-2">
                                   <div>
-                                    <h6 className="font-medium">{subUser.name}</h6>
-                                    {subUser.email && (
-                                      <p className="text-xs text-blue-600 dark:text-blue-400">{subUser.email}</p>
+                                    <h6 className="font-semibold text-sm flex items-center gap-1.5">
+                                      <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                                      {subUser.name}
+                                    </h6>
+                                    <p className="text-xs font-mono text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
+                                      <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                                      {subUser.email || (subUser.name.includes('@') ? subUser.name : 'Email: Not Registered')}
+                                    </p>
+                                    {subUser.mobile_number && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                        <Phone className="w-3 h-3 text-muted-foreground shrink-0" />
+                                        {subUser.mobile_number}
+                                      </p>
                                     )}
                                     <Badge
                                       variant={subUser.status === 'active' ? 'outline' : subUser.status === 'paused' ? 'secondary' : 'destructive'}
@@ -677,15 +709,22 @@ const Users: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="font-medium text-base">{user.name}</h4>
-                        {user.email && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400">{user.email}</p>
-                        )}
+                        <h4 className="font-bold text-base flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-primary shrink-0" />
+                          {user.name}
+                        </h4>
+                        <p className="text-xs font-mono text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
+                          <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          {user.email || (user.name.includes('@') ? user.name : 'Email: Not Registered')}
+                        </p>
                         {user.hotel_name && (
-                          <p className="text-sm text-muted-foreground">{user.hotel_name}</p>
+                          <p className="text-xs text-muted-foreground font-medium mt-0.5">{user.hotel_name}</p>
                         )}
                         {user.mobile_number && (
-                          <p className="text-xs text-muted-foreground">📱 {user.mobile_number}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3 text-muted-foreground shrink-0" />
+                            {user.mobile_number}
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center gap-1">

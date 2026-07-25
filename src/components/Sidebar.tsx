@@ -90,6 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
   // Filter nav items based on permissions
   const navItems = allNavItems.filter(item => {
+    if (item.to === '/users' && profile?.role === 'user') return false;
     if (!hasAccess(item.page)) return false;
     if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
       return false;
