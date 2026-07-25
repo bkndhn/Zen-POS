@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { MessageSquare, Star, Loader2, Search, Download, RefreshCw, Trash2, Lock } from 'lucide-react';
+import { MessageSquare, Star, Loader2, Search, Download, RefreshCw, Trash2, Lock, Smile, Meh, Frown, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { exportFeedbackToCsv } from '@/utils/feedbackExport';
 
@@ -58,7 +58,6 @@ const CRMFeedbackTab: React.FC = () => {
     if (!adminProfileId) return;
     setLoading(true);
     try {
-      // Fetch forms (for field labels + templates) for the current scope
       let formsQuery = (supabase as any).from('feedback_forms').select('*').eq('admin_id', adminProfileId);
       if (!isAllBranchesView && operatingBranchId) formsQuery = formsQuery.eq('branch_id', operatingBranchId);
       const { data: forms } = await formsQuery;
@@ -73,7 +72,6 @@ const CRMFeedbackTab: React.FC = () => {
           .order('display_order', { ascending: true });
         allFields = fs || [];
       }
-      // Deduplicate field labels across forms (by field_key)
       const seen = new Set<string>();
       const merged: FieldMeta[] = [];
       allFields.forEach((f: any) => {
@@ -81,16 +79,13 @@ const CRMFeedbackTab: React.FC = () => {
       });
       setFields(merged);
 
-      // Reply templates union
       const templates = new Set<string>();
       (forms || []).forEach((f: any) => (f.whatsapp_reply_templates || []).forEach((t: string) => templates.add(t)));
       setReplyTemplates(Array.from(templates));
 
-      // Shop name for reply template
       const b = branches.find(x => x.id === operatingBranchId);
       setShopName(b?.name || '');
 
-      // Submissions
       let q = (supabase as any).from('feedback_submissions').select('*').eq('admin_id', adminProfileId).order('submitted_at', { ascending: false }).limit(500);
       if (!isAllBranchesView && operatingBranchId) q = q.eq('branch_id', operatingBranchId);
       const { data: rows, error } = await q;
@@ -105,7 +100,6 @@ const CRMFeedbackTab: React.FC = () => {
 
   useEffect(() => { if (allowFeedback) fetchAll(); }, [fetchAll, allowFeedback]);
 
-  // Realtime updates
   useEffect(() => {
     if (!allowFeedback || !adminProfileId) return;
     const channel = supabase
@@ -138,7 +132,21 @@ const CRMFeedbackTab: React.FC = () => {
     const replied = subs.filter(s => s.status === 'replied' || s.status === 'resolved').length;
     const respRate = total ? Math.round((replied / total) * 100) : 0;
     const unread = subs.filter(s => s.status === 'new' || s.status === 'needs_attention').length;
-    return { total, avg, respRate, unread };
+
+    // Sentiment breakdown
+    let positive = 0, neutral = 0, negative = 0;
+    withRating.forEach(s => {
+      const r = s.overall_rating || 0;
+      if (r >= 4) positive++;
+      else if (r === 3) neutral++;
+      else negative++;
+    });
+
+    const posPct = total ? Math.round((positive / total) * 100) : 0;
+    const neuPct = total ? Math.round((neutral / total) * 100) : 0;
+    const negPct = total ? Math.round((negative / total) * 100) : 0;
+
+    return { total, avg, respRate, unread, positive, neutral, negative, posPct, neuPct, negPct };
   }, [subs]);
 
   const updateStatus = async (id: string, status: string, extra: Partial<Submission> = {}) => {
@@ -190,13 +198,47 @@ const CRMFeedbackTab: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      {/* Stats */}
+      {/* Overview Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Total</p><p className="text-lg font-bold">{stats.total}</p></Card>
-        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Avg Rating</p><p className="text-lg font-bold flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />{stats.avg.toFixed(1)}</p></Card>
-        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Response Rate</p><p className="text-lg font-bold">{stats.respRate}%</p></Card>
-        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Unread</p><p className="text-lg font-bold text-primary">{stats.unread}</p></Card>
+        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Total Feedback</p><p className="text-lg font-bold">{stats.total}</p></Card>
+        <Card className="p-3"><p className="text-[10px] text-muted-foreground">CSAT Score</p><p className="text-lg font-bold flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />{stats.avg.toFixed(1)} / 5.0</p></Card>
+        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Response Rate</p><p className="text-lg font-bold text-emerald-600">{stats.respRate}%</p></Card>
+        <Card className="p-3"><p className="text-[10px] text-muted-foreground">Action Required</p><p className="text-lg font-bold text-rose-500">{stats.unread}</p></Card>
       </div>
+
+      {/* Sentiment Analysis Bar */}
+      <Card className="p-3 bg-gradient-to-r from-emerald-500/5 via-amber-500/5 to-rose-500/5 border border-border/50">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span className="text-xs font-bold">Feedback Sentiment Analysis</span>
+          </div>
+          <span className="text-[11px] text-muted-foreground font-medium">{stats.total} total responses</span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+            <div className="flex items-center justify-center gap-1 text-emerald-600 font-bold text-xs">
+              <Smile className="w-3.5 h-3.5" /> Positive ({stats.posPct}%)
+            </div>
+            <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400 mt-0.5 block">{stats.positive}</span>
+          </div>
+
+          <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20">
+            <div className="flex items-center justify-center gap-1 text-amber-600 font-bold text-xs">
+              <Meh className="w-3.5 h-3.5" /> Neutral ({stats.neuPct}%)
+            </div>
+            <span className="text-base font-extrabold text-amber-700 dark:text-amber-400 mt-0.5 block">{stats.neutral}</span>
+          </div>
+
+          <div className="p-2 bg-rose-500/10 rounded-xl border border-rose-500/20">
+            <div className="flex items-center justify-center gap-1 text-rose-600 font-bold text-xs">
+              <Frown className="w-3.5 h-3.5" /> Negative ({stats.negPct}%)
+            </div>
+            <span className="text-base font-extrabold text-rose-700 dark:text-rose-400 mt-0.5 block">{stats.negative}</span>
+          </div>
+        </div>
+      </Card>
 
       {/* Filters */}
       <Card className="p-3 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
@@ -223,8 +265,8 @@ const CRMFeedbackTab: React.FC = () => {
             <SelectItem value="1">≥ 1★</SelectItem>
             <SelectItem value="2">≥ 2★</SelectItem>
             <SelectItem value="3">≥ 3★</SelectItem>
-            <SelectItem value="4">≥ 4★</SelectItem>
-            <SelectItem value="5">= 5★</SelectItem>
+            <SelectItem value="4">≥ 4★ (Positive)</SelectItem>
+            <SelectItem value="5">= 5★ (Delighted)</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={fetchAll} className="h-9"><RefreshCw className="w-3.5 h-3.5" /></Button>
@@ -234,7 +276,7 @@ const CRMFeedbackTab: React.FC = () => {
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
       ) : filtered.length === 0 ? (
-        <Card className="p-8 text-center text-xs text-muted-foreground">No feedback yet. Share your Feedback QR to start collecting responses.</Card>
+        <Card className="p-8 text-center text-xs text-muted-foreground">No feedback matches your filter. Share your Feedback QR to collect customer responses.</Card>
       ) : (
         <div className="space-y-2">
           {filtered.map(s => {
@@ -255,7 +297,6 @@ const CRMFeedbackTab: React.FC = () => {
                       {isAllBranchesView && branch && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{branch.name}</span>}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1">{new Date(s.submitted_at).toLocaleString()}</p>
-                    {/* First two responses */}
                     <div className="mt-1 text-xs text-foreground/80 line-clamp-2">
                       {fields.slice(0, 2).map(f => s.responses?.[f.field_key] != null && (
                         <span key={f.field_key} className="mr-2">

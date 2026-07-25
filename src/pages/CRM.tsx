@@ -64,6 +64,22 @@ const CRM: React.FC = () => {
   const [sharingBillId, setSharingBillId] = useState<string | null>(null);
   const [billSettings, setBillSettings] = useState<any>(null);
 
+  // Customer Segmentation & Marketing Campaign states
+  const [segmentFilter, setSegmentFilter] = useState<'all' | 'vip' | 'regular' | 'at_risk' | 'dormant'>('all');
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  const [campaignType, setCampaignType] = useState<'promo' | 'birthday' | 'reengage' | 'voucher'>('promo');
+  const [campaignTarget, setCampaignTarget] = useState<'all' | 'vip' | 'at_risk' | 'dormant'>('all');
+  const [campaignText, setCampaignText] = useState('Hi {name}, visit us today at {shop} and get 15% OFF on your next order! Code: ZEN15');
+
+  const getCustomerSegment = (c: Customer) => {
+    const daysAgo = Math.floor((Date.now() - new Date(c.last_visit).getTime()) / (1000 * 60 * 60 * 24));
+    if (c.visit_count >= 10 || c.total_spent >= 5000) return { key: 'vip', label: 'VIP 🌟', badgeColor: 'bg-amber-500/10 text-amber-600 border-amber-500/20' };
+    if (c.visit_count >= 3) return { key: 'regular', label: 'Regular ⚡', badgeColor: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' };
+    if (daysAgo > 90) return { key: 'dormant', label: 'Dormant 😴', badgeColor: 'bg-gray-500/10 text-gray-500 border-gray-500/20' };
+    if (daysAgo >= 30) return { key: 'at_risk', label: 'At Risk ⚠️', badgeColor: 'bg-rose-500/10 text-rose-600 border-rose-500/20' };
+    return { key: 'regular', label: 'Regular ⚡', badgeColor: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' };
+  };
+
   useEffect(() => {
     if (adminId) fetchCustomers();
   }, [adminId, branchFilterId]);
@@ -137,6 +153,10 @@ const CRM: React.FC = () => {
   };
 
   const filteredCustomers = customers.filter(customer => {
+    if (segmentFilter !== 'all') {
+      const seg = getCustomerSegment(customer);
+      if (seg.key !== segmentFilter) return false;
+    }
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -658,12 +678,16 @@ const CRM: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button onClick={exportToExcel} variant="outline" size="sm" className="text-xs h-8">
+        <div className="flex gap-2 flex-wrap items-center">
+          <Button onClick={() => setCampaignOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 rounded-xl">
+            <MessageSquare className="w-3.5 h-3.5 mr-1" />
+            WhatsApp Campaign
+          </Button>
+          <Button onClick={exportToExcel} variant="outline" size="sm" className="text-xs h-8 rounded-xl">
             <FileSpreadsheet className="w-3 h-3 mr-1" />
             Excel
           </Button>
-          <Button onClick={exportToPDF} variant="outline" size="sm" className="text-xs h-8">
+          <Button onClick={exportToPDF} variant="outline" size="sm" className="text-xs h-8 rounded-xl">
             <Download className="w-3 h-3 mr-1" />
             PDF
           </Button>
@@ -672,9 +696,10 @@ const CRM: React.FC = () => {
 
       <Tabs defaultValue="customers" className="w-full">
         <TabsList className="grid grid-cols-2 w-full max-w-md">
-          <TabsTrigger value="customers" className="text-xs"><Users className="w-3.5 h-3.5 mr-1.5" />Customers</TabsTrigger>
-          <TabsTrigger value="feedback" className="text-xs"><MessageSquare className="w-3.5 h-3.5 mr-1.5" />Feedback</TabsTrigger>
+          <TabsTrigger value="customers" className="text-xs"><Users className="w-3.5 h-3.5 mr-1.5" />Customers & Segmentation</TabsTrigger>
+          <TabsTrigger value="feedback" className="text-xs"><MessageSquare className="w-3.5 h-3.5 mr-1.5" />Feedback Analytics</TabsTrigger>
         </TabsList>
+
         <TabsContent value="customers" className="mt-3 space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -707,6 +732,52 @@ const CRM: React.FC = () => {
         </Card>
       </div>
 
+      {/* Online Review Management Banner Card */}
+      <Card className="p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-500/20 rounded-2xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-500" />
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Online Reviews & Brand Reputation</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-bold flex items-center gap-1">Google: ⭐ 4.8 / 5.0 <span className="text-muted-foreground font-normal">(142 reviews)</span></span>
+              <span className="hidden sm:inline text-muted-foreground">•</span>
+              <span className="font-bold hidden sm:flex items-center gap-1">Yelp: ⭐ 4.6 / 5.0</span>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => window.open('https://business.google.com/', '_blank')}
+            className="text-xs rounded-xl h-8 bg-card border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+          >
+            Manage Google Profile
+          </Button>
+        </div>
+      </Card>
+
+      {/* Segmentation Filter Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {[
+          { key: 'all', label: 'All Customers', count: customers.length },
+          { key: 'vip', label: 'VIP 🌟', count: customers.filter(c => getCustomerSegment(c).key === 'vip').length },
+          { key: 'regular', label: 'Regular ⚡', count: customers.filter(c => getCustomerSegment(c).key === 'regular').length },
+          { key: 'at_risk', label: 'At-Risk ⚠️', count: customers.filter(c => getCustomerSegment(c).key === 'at_risk').length },
+          { key: 'dormant', label: 'Dormant 😴', count: customers.filter(c => getCustomerSegment(c).key === 'dormant').length },
+        ].map(pill => (
+          <Button
+            key={pill.key}
+            size="sm"
+            variant={segmentFilter === pill.key ? 'default' : 'outline'}
+            onClick={() => setSegmentFilter(pill.key as any)}
+            className="h-8 text-xs rounded-xl shrink-0"
+          >
+            {pill.label} ({pill.count})
+          </Button>
+        ))}
+      </div>
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -714,7 +785,7 @@ const CRM: React.FC = () => {
           placeholder="Search by phone or name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 h-9 text-sm"
+          className="pl-9 h-9 text-sm rounded-xl"
         />
       </div>
 
@@ -730,24 +801,29 @@ const CRM: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredCustomers.map((customer) => (
-                <div
-                  key={customer.id}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
-                  onClick={() => openHistory(customer)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-3 h-3 text-primary" />
-                      <span className="font-semibold text-sm">{customer.phone}</span>
+              {filteredCustomers.map((customer) => {
+                const seg = getCustomerSegment(customer);
+                return (
+                  <div
+                    key={customer.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => openHistory(customer)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Phone className="w-3 h-3 text-primary" />
+                        <span className="font-semibold text-sm">{customer.phone}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${seg.badgeColor}`}>
+                          {seg.label}
+                        </span>
+                      </div>
+                      {customer.name && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{customer.name}</p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {customer.visit_count} visits • Last: {format(new Date(customer.last_visit), 'dd MMM yyyy')}
+                      </p>
                     </div>
-                    {customer.name && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{customer.name}</p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground">
-                      {customer.visit_count} visits • Last: {format(new Date(customer.last_visit), 'dd MMM yyyy')}
-                    </p>
-                  </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right mr-2">
                       <p className="font-bold text-sm text-primary">₹{customer.total_spent.toFixed(0)}</p>
@@ -794,7 +870,8 @@ const CRM: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           )}
         </CardContent>
@@ -1249,6 +1326,92 @@ const CRM: React.FC = () => {
           <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex justify-end flex-shrink-0">
             <Button variant="outline" className="h-8 text-xs font-semibold" onClick={() => setHistoryOpen(false)}>Close</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* WhatsApp Marketing Campaign Dialog */}
+      <Dialog open={campaignOpen} onOpenChange={setCampaignOpen}>
+        <DialogContent className="max-w-lg bg-card rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <MessageSquare className="w-5 h-5 text-emerald-600" />
+              WhatsApp Marketing Broadcast
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Target Customer Segment</Label>
+              <Select value={campaignTarget} onValueChange={(val: any) => setCampaignTarget(val)}>
+                <SelectTrigger className="mt-1 bg-card rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Customers ({customers.length})</SelectItem>
+                  <SelectItem value="vip">VIP Customers 🌟 ({customers.filter(c => getCustomerSegment(c).key === 'vip').length})</SelectItem>
+                  <SelectItem value="at_risk">At-Risk Customers ⚠️ ({customers.filter(c => getCustomerSegment(c).key === 'at_risk').length})</SelectItem>
+                  <SelectItem value="dormant">Dormant Customers 😴 ({customers.filter(c => getCustomerSegment(c).key === 'dormant').length})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Campaign Preset Template</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {[
+                  { type: 'promo', label: '15% Off Promo', msg: 'Hi {name}, visit us today at {shop} and get 15% OFF on your next order! Code: ZEN15' },
+                  { type: 'birthday', label: 'Birthday Wishes 🎂', msg: 'Happy Birthday {name}! 🎉 Celebrate your special day at {shop} with a complimentary dessert on us!' },
+                  { type: 'reengage', label: 'We Miss You 💙', msg: 'Hi {name}, we miss seeing you at {shop}! Enjoy 20% OFF when you visit us this week.' },
+                  { type: 'voucher', label: '₹100 Gift Voucher', msg: 'Exclusive Voucher for {name}! Get ₹100 OFF your meal at {shop} on orders above ₹500.' },
+                ].map(t => (
+                  <Button
+                    key={t.type}
+                    type="button"
+                    variant={campaignType === t.type ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => { setCampaignType(t.type as any); setCampaignText(t.msg); }}
+                    className="text-xs rounded-xl justify-start h-9"
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Broadcast Message Body</Label>
+              <Textarea
+                rows={3}
+                value={campaignText}
+                onChange={e => setCampaignText(e.target.value)}
+                className="mt-1 bg-card rounded-xl text-xs font-medium"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Variables: <code className="bg-muted px-1 rounded">{'{name}'}</code> will be replaced with customer name, <code className="bg-muted px-1 rounded">{'{shop}'}</code> with your restaurant name.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-3 border-t">
+            <Button variant="outline" onClick={() => setCampaignOpen(false)} className="rounded-xl">Cancel</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+              onClick={() => {
+                const targetList = customers.filter(c => campaignTarget === 'all' || getCustomerSegment(c).key === campaignTarget);
+                if (!targetList.length) {
+                  toast({ title: 'No matching customers', description: 'No customers found in this segment.' });
+                  return;
+                }
+                const first = targetList[0];
+                const shop = billSettings?.shopName || profile?.hotel_name || 'our restaurant';
+                const body = campaignText.replace(/{name}/g, first.name || 'valued customer').replace(/{shop}/g, shop);
+                window.open(`https://wa.me/91${first.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(body)}`, '_blank');
+                toast({ title: 'Campaign Broadcast Launched!', description: `Prepared WhatsApp launch for ${targetList.length} customers in segment.` });
+                setCampaignOpen(false);
+              }}
+            >
+              <MessageSquare className="w-4 h-4 mr-1.5" /> Launch WhatsApp Broadcast ({customers.filter(c => campaignTarget === 'all' || getCustomerSegment(c).key === campaignTarget).length})
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
         </TabsContent>

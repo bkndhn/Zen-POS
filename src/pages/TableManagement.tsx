@@ -105,6 +105,15 @@ const TableManagement: React.FC = () => {
   const [hasSeats, setHasSeats] = useState(false);
   const [seatCount, setSeatCount] = useState('2');
   const [seatLabels, setSeatLabels] = useState<string[]>([]);
+  const [coverCountInput, setCoverCountInput] = useState('4');
+
+  // Section/Floor Filter & Table Merge states
+  const [selectedSection, setSelectedSection] = useState<string>('all');
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergePrimaryId, setMergePrimaryId] = useState<string>('');
+  const [mergeSecondaryIds, setMergeSecondaryIds] = useState<string[]>([]);
+  const [mergedGroups, setMergedGroups] = useState<Record<string, string[]>>({}); // Primary Table ID -> Merged Table IDs
+  const [tableCovers, setTableCovers] = useState<Record<string, number>>({}); // Table ID -> Cover count
 
   // Floor plan visual editor states
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
@@ -469,10 +478,21 @@ const TableManagement: React.FC = () => {
               <p className="text-xs text-muted-foreground">Manage dine-in tables</p>
             </div>
           </div>
-          <Button onClick={() => handleOpenDialog()} size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Table
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMergeDialogOpen(true)}
+              className="rounded-xl h-8 text-xs font-semibold"
+            >
+              <Users className="w-3.5 h-3.5 mr-1 text-primary" />
+              Merge / Split Tables
+            </Button>
+            <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs">
+              <Plus className="w-4 h-4 mr-1" />
+              Add Table
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -496,26 +516,44 @@ const TableManagement: React.FC = () => {
           })}
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex justify-end gap-2 mb-4 bg-muted/30 p-1.5 rounded-xl border max-w-xs ml-auto">
-          <Button
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('grid')}
-            className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'grid' && "bg-background shadow-sm")}
-          >
-            <LayoutGrid className="w-3.5 h-3.5 mr-1" />
-            Grid View
-          </Button>
-          <Button
-            variant={viewMode === 'map' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('map')}
-            className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'map' && "bg-background shadow-sm")}
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />
-            Floor Map
-          </Button>
+        {/* Section Filter & View Mode Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+          {/* Section Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1">
+            {['all', 'Main Floor', 'AC Section', 'Terrace', 'Outdoor Garden'].map(sec => (
+              <Button
+                key={sec}
+                size="sm"
+                variant={selectedSection === sec ? 'default' : 'outline'}
+                onClick={() => setSelectedSection(sec)}
+                className="h-8 text-xs rounded-xl shrink-0"
+              >
+                {sec === 'all' ? 'All Sections' : sec}
+              </Button>
+            ))}
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex gap-2 bg-muted/30 p-1.5 rounded-xl border w-full sm:w-auto">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'grid' && "bg-background shadow-sm")}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 mr-1" />
+              Grid View
+            </Button>
+            <Button
+              variant={viewMode === 'map' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('map')}
+              className={cn("h-8 rounded-lg text-xs font-semibold flex-1", viewMode === 'map' && "bg-background shadow-sm")}
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" />
+              Floor Map
+            </Button>
+          </div>
         </div>
 
         {/* Tables Content */}
@@ -901,23 +939,133 @@ const TableManagement: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation */}
+        {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Table?</AlertDialogTitle>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove the table from your list. You can add it back later if needed.
+                This will remove the table from your layout. You can add it back anytime.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Table Merge / Split Dialog */}
+        <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
+          <DialogContent className="max-w-md bg-card rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                <Users className="w-5 h-5 text-primary" />
+                Merge or Split Tables
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Primary Table (Group Head)</Label>
+                <Select value={mergePrimaryId} onValueChange={setMergePrimaryId}>
+                  <SelectTrigger className="mt-1 bg-card rounded-xl">
+                    <SelectValue placeholder="Select primary table..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tables.map(t => (
+                      <SelectItem key={t.id} value={t.id}>Table {t.table_number} ({t.floor_name || 'Main Floor'})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tables to Combine / Merge Into Primary</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1.5 max-h-40 overflow-y-auto p-2 border rounded-xl bg-muted/20">
+                  {tables.filter(t => t.id !== mergePrimaryId).map(t => {
+                    const isChecked = mergeSecondaryIds.includes(t.id);
+                    return (
+                      <Button
+                        key={t.id}
+                        type="button"
+                        variant={isChecked ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          if (isChecked) setMergeSecondaryIds(prev => prev.filter(id => id !== t.id));
+                          else setMergeSecondaryIds(prev => [...prev, t.id]);
+                        }}
+                        className="text-xs rounded-lg justify-start h-8"
+                      >
+                        Table {t.table_number}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Currently Merged Groups */}
+              {Object.keys(mergedGroups).length > 0 && (
+                <div className="border-t pt-3 space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active Merged Groups</Label>
+                  <div className="space-y-1.5">
+                    {Object.entries(mergedGroups).map(([primaryId, secondaries]) => {
+                      const primTable = tables.find(t => t.id === primaryId);
+                      const secTables = secondaries.map(id => tables.find(t => t.id === id)?.table_number).filter(Boolean);
+                      return (
+                        <div key={primaryId} className="flex items-center justify-between p-2 bg-muted/50 rounded-xl text-xs">
+                          <span className="font-semibold">Table {primTable?.table_number} + ({secTables.join(', ')})</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setMergedGroups(prev => {
+                                const copy = { ...prev };
+                                delete copy[primaryId];
+                                return copy;
+                              });
+                              toast({ title: 'Split complete', description: `Table ${primTable?.table_number} group split into standalone tables.` });
+                            }}
+                            className="h-7 text-xs text-destructive hover:bg-destructive/10 rounded-lg"
+                          >
+                            Split Group
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="gap-2 pt-3 border-t">
+              <Button variant="outline" onClick={() => setMergeDialogOpen(false)} className="rounded-xl">Cancel</Button>
+              <Button
+                disabled={!mergePrimaryId || mergeSecondaryIds.length === 0}
+                onClick={() => {
+                  const primTable = tables.find(t => t.id === mergePrimaryId);
+                  setMergedGroups(prev => ({
+                    ...prev,
+                    [mergePrimaryId]: mergeSecondaryIds
+                  }));
+                  handleStatusChange(mergePrimaryId, 'occupied');
+                  mergeSecondaryIds.forEach(id => handleStatusChange(id, 'occupied'));
+                  toast({
+                    title: 'Tables Merged Successfully!',
+                    description: `Combined Table ${primTable?.table_number} with ${mergeSecondaryIds.length} other tables.`
+                  });
+                  setMergeDialogOpen(false);
+                  setMergeSecondaryIds([]);
+                }}
+                className="rounded-xl"
+              >
+                Merge {mergeSecondaryIds.length + (mergePrimaryId ? 1 : 0)} Tables
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
