@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
-import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { useBranchScopedQuery, applyBranchFilter } from '@/hooks/useBranchScopedQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,8 @@ const emptyForm = { name: '', phone: '', email: '', gstin: '', address: '', note
 
 const Suppliers: React.FC = () => {
   const { profile, adminProfileId } = useAuth();
-  const { branches, operatingBranchId, branchFilterId, isAllBranches } = useBranch();
-  const { applyBranchFilter, isReadOnly } = useBranchScopedQuery();
+  const { branches, operatingBranchId } = useBranch();
+  const { branchFilterId, isAllBranchesView: isAllBranches, readOnly: isReadOnly } = useBranchScopedQuery();
 
   const [list, setList] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ const Suppliers: React.FC = () => {
         .eq('is_active', true)
         .order('name');
 
-      query = applyBranchFilter(query, { allowAllBranches: true });
+      query = applyBranchFilter(query, branchFilterId);
       const { data: supplierData, error: supplierErr } = await query;
       if (supplierErr) throw supplierErr;
 
@@ -74,7 +74,7 @@ const Suppliers: React.FC = () => {
         .select('supplier_id, total_amount')
         .eq('admin_id', adminId);
 
-      purchasesQuery = applyBranchFilter(purchasesQuery, { allowAllBranches: true });
+      purchasesQuery = applyBranchFilter(purchasesQuery, branchFilterId);
       const { data: purchaseData } = await purchasesQuery;
 
       const statsMap = new Map<string, { count: number; total: number }>();
