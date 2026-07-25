@@ -5,7 +5,7 @@
  */
 
 const isDevelopment = import.meta.env.DEV;
-const isDebugMode = localStorage.getItem('debug_mode') === 'true';
+const isDebugMode = import.meta.env.DEV && localStorage.getItem('debug_mode') === 'true';
 
 // Sensitive keys that should never be logged
 const SENSITIVE_KEYS = [

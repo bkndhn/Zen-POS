@@ -5,6 +5,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile, UserStatus, UserRole } from '@/types/user';
 import { seedAdminDefaults } from '@/utils/seedAdminDefaults';
 
+// Simple obfuscation for cached profile data (defense-in-depth against casual tampering)
+const encodeProfileCache = (profile: Profile): string => {
+  try {
+    return btoa(encodeURIComponent(JSON.stringify(profile)));
+  } catch {
+    return JSON.stringify(profile);
+  }
+};
+
+const decodeProfileCache = (cached: string): Profile | null => {
+  try {
+    // Try obfuscated format first
+    return JSON.parse(decodeURIComponent(atob(cached)));
+  } catch {
+    try {
+      // Fallback: try plain JSON (for backward compat with existing caches)
+      return JSON.parse(cached);
+    } catch {
+      return null;
+    }
+  }
+};
+
 const isDev = import.meta.env.DEV;
 const devLog = (...args: any[]) => { if (isDev) console.log(...args); };
 
@@ -102,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (cachedProfileStr) {
         try {
-          cachedProfile = JSON.parse(cachedProfileStr);
+          cachedProfile = decodeProfileCache(cachedProfileStr);
           // If we have a cached profile, we can return it immediately if we're offline
           // or we can use it as a fallback if the network request fails
           if (!navigator.onLine && cachedProfile) {
@@ -195,7 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           client_permissions: clientPermissions
         };
         // Update cache
-        localStorage.setItem(`profile_${user.id}`, JSON.stringify(profile));
+        localStorage.setItem(`profile_${user.id}`, encodeProfileCache(profile));
         
         // Seed default data for new admins (fire and forget)
         if (profile.role === 'admin' && profile.status === 'active') {
@@ -244,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: data.status as UserStatus,
             admin_id: data.admin_id || undefined
           };
-          localStorage.setItem(`profile_${user.id}`, JSON.stringify(newProfile));
+          localStorage.setItem(`profile_${user.id}`, encodeProfileCache(newProfile));
           return newProfile;
         }
       } catch (createError) {
@@ -255,7 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       devLog('Returning basic profile from metadata');
       const basicProfile = createBasicProfile(user);
       // Even cache this basic profile so next time we load faster
-      localStorage.setItem(`profile_${user.id}`, JSON.stringify(basicProfile));
+      localStorage.setItem(`profile_${user.id}`, encodeProfileCache(basicProfile));
       return basicProfile;
 
     } catch (error) {
@@ -584,7 +607,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
-      console.log('Sign in error:', error.message);
+      import.meta.env.DEV && console.log('Sign in error:', error.message);
       return { error };
     }
 
@@ -679,7 +702,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               client_permissions: payload.payload.client_permissions
             };
             // Update cache instantly
-            localStorage.setItem(`profile_${prev.user_id}`, JSON.stringify(updated));
+            localStorage.setItem(`profile_${prev.user_id}`, encodeProfileCache(updated));
             return updated;
           });
         }

@@ -1291,7 +1291,8 @@ const Billing = () => {
         const dot = (data as any).default_order_type;
         if (dot === 'dine_in' || dot === 'parcel') setDefaultOrderType(dot); else setDefaultOrderType(undefined);
         const calciFromShopSettings = !!(data as any).calci_billing_enabled;
-        const isCalciAvailable = calciFromShopSettings;
+        const hasPermission = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.client_permissions?.['calci_billing'] === true || profile?.client_permissions?.['calci_billing_enabled'] === true;
+        const isCalciAvailable = calciFromShopSettings && hasPermission;
         setCalciEnabled(isCalciAvailable);
         if (!isCalciAvailable) setAppBillingMode('pos');
         // Update cache
@@ -1854,8 +1855,9 @@ const Billing = () => {
     });
   };
 
-  // Voice command handler
-  // --- Calci Billing Logic ---
+  // Dialog state for unassigned Quick Key in Quick Mode
+  const [unassignedQuickKeyOpen, setUnassignedQuickKeyOpen] = useState(false);
+  const [unassignedCodeInfo, setUnassignedCodeInfo] = useState<{ code: string; price: number; qty: number } | null>(null);
   const handleCalciSubmit = (expression: string): boolean => {
     if (!expression.trim()) {
       setCart([]);
@@ -1872,6 +1874,7 @@ const Billing = () => {
       try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch { /* corrupted data, ignore */ }
       
       let itemsAdded = 0;
+      let pendingUnassigned: { code: string; price: number; qty: number } | null = null;
 
       for (const part of parts) {
         let trimmed = part.trim().toLowerCase();
@@ -1905,6 +1908,14 @@ const Billing = () => {
         } else if (calciMode === 'quick') {
            if (shortcodes[itemIdentifier]) {
              matchedItemId = shortcodes[itemIdentifier];
+           } else {
+             // Quick Mode Unassigned Code Handler:
+             // Track the first unassigned code for dialog prompt after processing all parts
+             const attemptedPrice = parseFloat(itemIdentifier);
+             if (!isNaN(attemptedPrice) && attemptedPrice > 0 && !pendingUnassigned) {
+               pendingUnassigned = { code: itemIdentifier, price: attemptedPrice, qty: qty };
+             }
+             continue;
            }
         }
 
@@ -1953,7 +1964,16 @@ const Billing = () => {
         itemsAdded++;
       }
       
+      // Always update cart with valid items first
       setCart(localCart);
+
+      // If there was an unassigned code in Quick Mode, show the dialog after setting valid items
+      if (pendingUnassigned) {
+        setUnassignedCodeInfo(pendingUnassigned);
+        setUnassignedQuickKeyOpen(true);
+        return false;
+      }
+
       return true;
     } catch (err) {
       toast({ title: "Error parsing expression", variant: "destructive" });
@@ -3516,6 +3536,103 @@ const Billing = () => {
         </div>}
       </div>
     </div>
+
+    {/* Unassigned Quick Key Dialog for Quick Mode */}
+    <Dialog open={unassignedQuickKeyOpen} onOpenChange={setUnassignedQuickKeyOpen}>
+      <DialogContent className="max-w-md bg-card border shadow-xl rounded-2xl p-6">
+        <DialogHeader className="pb-2 border-b">
+          <DialogTitle className="text-lg font-bold flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            ⚠️ Code #{unassignedCodeInfo?.code} Unassigned
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-1">
+            No item is assigned to Quick Code #{unassignedCodeInfo?.code}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-4 space-y-3">
+          <p className="text-sm text-foreground">
+            Do you want to proceed with <span className="font-bold text-primary">₹{unassignedCodeInfo?.price}</span> as a Custom Item?
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setUnassignedQuickKeyOpen(false);
+              setUnassignedCodeInfo(null);
+            }}
+            className="text-xs"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              const code = unassignedCodeInfo?.code;
+              setUnassignedQuickKeyOpen(false);
+              setUnassignedCodeInfo(null);
+              navigate('/settings');
+              toast({
+                title: `Assign Code #${code}`,
+                description: 'You can assign item shortcodes in Shop Settings.'
+              });
+            }}
+            className="text-xs border border-blue-300 text-blue-700 dark:text-blue-300"
+          >
+            Assign Key #{unassignedCodeInfo?.code}
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => {
+              if (unassignedCodeInfo) {
+                const price = unassignedCodeInfo.price;
+                const qty = unassignedCodeInfo.qty || 1;
+                setCart(prev => {
+                  // Consolidate: if a calci item with the same price exists, increment qty
+                  const existingIdx = prev.findIndex(ci => String(ci.id).startsWith('calci-') && ci.price === price);
+                  if (existingIdx >= 0) {
+                    return prev.map((item, idx) => idx === existingIdx
+                      ? { ...item, quantity: item.quantity + qty }
+                      : item
+                    );
+                  }
+                  // Otherwise create a new calci item
+                  const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  const newItem: CartItem = {
+                    id: tempId,
+                    name: `Item`,
+                    item_name_override: `Item`,
+                    price: price,
+                    quantity: qty,
+                    is_active: true,
+                    unit: 'pcs',
+                    base_value: 1,
+                    is_tax_inclusive: true,
+                    tax_rate_id: null,
+                    store_price: price
+                  };
+                  return [...prev, newItem];
+                });
+                toast({
+                  title: 'Added Custom Item',
+                  description: `Added ₹${unassignedCodeInfo.price} to cart.`
+                });
+              }
+              setUnassignedQuickKeyOpen(false);
+              setUnassignedCodeInfo(null);
+            }}
+            className="bg-primary text-white text-xs font-bold"
+          >
+            Yes, Add ₹{unassignedCodeInfo?.price}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
 
     {/* Payment Dialog */}
     <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} defaultOrderType={defaultOrderType} autoPrintEnabled={(localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false'} />

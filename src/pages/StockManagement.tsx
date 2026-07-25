@@ -53,6 +53,7 @@ interface RecipeRow {
   item_id: string;
   ingredient_id: string;
   quantity: number;
+  recipe_unit: string | null;
   created_at: string;
   updated_at: string;
   ingredient?: {
@@ -103,7 +104,7 @@ const StockManagement: React.FC = () => {
   // Recipe edit modal state
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [recipeItem, setRecipeItem] = useState<ItemRow | null>(null);
-  const [recipeRows, setRecipeRows] = useState<{ ingredientId: string; quantity: number }[]>([]);
+  const [recipeRows, setRecipeRows] = useState<{ ingredientId: string; quantity: number; recipeUnit: string | null }[]>([]);
 
   // Selected item in Recipes view split screen
   const [selectedRecipeItem, setSelectedRecipeItem] = useState<ItemRow | null>(null);
@@ -449,7 +450,8 @@ const StockManagement: React.FC = () => {
     setRecipeRows(
       currentRecipes.map(r => ({
         ingredientId: r.ingredient_id,
-        quantity: r.quantity
+        quantity: r.quantity,
+        recipeUnit: r.recipe_unit || null
       }))
     );
     setRecipeDialogOpen(true);
@@ -476,7 +478,8 @@ const StockManagement: React.FC = () => {
           branch_id: recipeItem.branch_id,
           item_id: recipeItem.id,
           ingredient_id: r.ingredientId,
-          quantity: Number(r.quantity)
+          quantity: Number(r.quantity),
+          recipe_unit: r.recipeUnit || null
         }));
         const { error: insErr } = await supabase
           .from('recipes')
@@ -504,7 +507,15 @@ const StockManagement: React.FC = () => {
     recipeRows.forEach(row => {
       const ing = ingredients.find(i => i.id === row.ingredientId);
       if (ing) {
-        totalCost += Number(ing.cost_per_unit) * Number(row.quantity);
+        let qty = Number(row.quantity);
+        // Apply unit conversion for cost calculation
+        const rUnit = (row.recipeUnit || ing.unit || '').toLowerCase();
+        const iUnit = (ing.unit || '').toLowerCase();
+        if (rUnit !== iUnit) {
+          if ((rUnit === 'g' && iUnit === 'kg') || (rUnit === 'ml' && iUnit === 'l')) qty = qty / 1000;
+          else if ((rUnit === 'kg' && iUnit === 'g') || (rUnit === 'l' && iUnit === 'ml')) qty = qty * 1000;
+        }
+        totalCost += Number(ing.cost_per_unit) * qty;
       }
     });
     const percentage = recipeItem.price > 0 ? (totalCost / recipeItem.price) * 100 : 0;
@@ -1177,7 +1188,7 @@ const StockManagement: React.FC = () => {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setRecipeRows([...recipeRows, { ingredientId: '', quantity: 0 }])}
+                onClick={() => setRecipeRows([...recipeRows, { ingredientId: '', quantity: 0, recipeUnit: null }])}
                 className="h-8 rounded-lg flex items-center gap-1 border-primary/20 text-primary hover:bg-primary/5"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Ingredient Row
@@ -1234,9 +1245,29 @@ const StockManagement: React.FC = () => {
                           }}
                           className="border-0 focus-visible:ring-0 p-0 text-center font-semibold h-full w-full bg-transparent"
                         />
-                        <span className="text-xs text-muted-foreground font-medium pr-1">
-                          {getShortUnit(selectedIngInfo?.unit || '')}
-                        </span>
+                      </div>
+
+                      {/* Unit Override */}
+                      <div className="w-[80px]">
+                        <Select
+                          value={row.recipeUnit || selectedIngInfo?.unit || ''}
+                          onValueChange={val => {
+                            const newRows = [...recipeRows];
+                            newRows[index].recipeUnit = val === selectedIngInfo?.unit ? null : val;
+                            setRecipeRows(newRows);
+                          }}
+                        >
+                          <SelectTrigger className="bg-card h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="g">g</SelectItem>
+                            <SelectItem value="kg">kg</SelectItem>
+                            <SelectItem value="ml">ml</SelectItem>
+                            <SelectItem value="l">l</SelectItem>
+                            <SelectItem value="pcs">pcs</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Row Cost */}

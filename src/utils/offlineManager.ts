@@ -8,9 +8,11 @@ import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
 
+import { initStoragePersistence, secondaryVault } from './nativeStorage';
+
 // Database configuration
 const DB_NAME = 'HotelPOS_OfflineDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 // Store names
 const STORES = {
@@ -19,7 +21,11 @@ const STORES = {
     CATEGORIES: 'categories',
     SYNC_QUEUE: 'syncQueue',
     SETTINGS: 'settings',
-    PENDING_BILLS: 'pendingBills'
+    PENDING_BILLS: 'pendingBills',
+    EXPENSES: 'expenses',
+    TABLES: 'tables',
+    TABLE_ORDERS: 'tableOrders',
+    CUSTOMERS: 'customers'
 };
 
 export interface PendingBill {
@@ -94,6 +100,10 @@ class OfflineManager {
             request.onsuccess = () => {
                 this.db = request.result;
                 console.log('IndexedDB initialized successfully');
+
+                // Perform cold boot vault recovery if needed
+                this.verifyAndRestoreVaultMirror().catch(err => console.warn('[Vault] Cold boot recovery check error:', err));
+
                 if (this.isOnline) {
                     this.processSyncQueue().catch(err => {
                         console.error('[Sync] Auto-sync on startup failed:', err);
@@ -142,9 +152,30 @@ class OfflineManager {
                     pendingStore.createIndex('synced', 'synced');
                 }
 
-                console.log('IndexedDB stores created/upgraded');
+                if (!db.objectStoreNames.contains(STORES.EXPENSES)) {
+                    const expenseStore = db.createObjectStore(STORES.EXPENSES, { keyPath: 'id' });
+                    expenseStore.createIndex('date', 'date');
+                }
+
+                if (!db.objectStoreNames.contains(STORES.TABLES)) {
+                    db.createObjectStore(STORES.TABLES, { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains(STORES.TABLE_ORDERS)) {
+                    db.createObjectStore(STORES.TABLE_ORDERS, { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains(STORES.CUSTOMERS)) {
+                    const custStore = db.createObjectStore(STORES.CUSTOMERS, { keyPath: 'id' });
+                    custStore.createIndex('phone', 'phone');
+                }
+
+                console.log('IndexedDB stores created/upgraded to v3');
             };
         });
+        
+        // Request OS-level storage persistence to prevent auto-eviction
+        initStoragePersistence().catch(err => console.warn('[Storage] Persist init error:', err));
     }
 
     private async performAutoWipe(): Promise<void> {
@@ -385,6 +416,15 @@ class OfflineManager {
         };
 
         await this.store(STORES.PENDING_BILLS, pendingBill);
+        
+        // Fail-safe secondary vault mirror for Android cold reboot protection
+        try {
+            const allPending = await this.getPendingBills();
+            await secondaryVault.saveMirror('pending_bills', allPending);
+        } catch (err) {
+            console.warn('[Vault] Failed to mirror pending bill:', err);
+        }
+
         await this.notifyPendingBillsListeners();
 
         console.log('[Offline] Saved pending bill:', bill.bill_no);
@@ -1151,6 +1191,96 @@ class OfflineManager {
     async getPendingBillsCount(): Promise<number> {
         const bills = await this.getPendingBills();
         return bills.length;
+    }
+
+    // Extended local store handlers for 100% local operation
+    async cacheExpenses(expenses: any[]): Promise<void> {
+        await this.storeMany(STORES.EXPENSES, expenses);
+    }
+
+    async getCachedExpenses(adminId?: string, branchId?: string | null): Promise<any[]> {
+        const expenses = await this.getAll<any>(STORES.EXPENSES);
+        if (!adminId) return expenses;
+        return expenses.filter(exp => 
+            exp.admin_id === adminId && 
+            (branchId ? exp.branch_id === branchId : (exp.branch_id === null || exp.branch_id === undefined))
+        );
+    }
+
+    async cacheTables(tables: any[]): Promise<void> {
+        await this.storeMany(STORES.TABLES, tables);
+    }
+
+    async getCachedTables(adminId?: string, branchId?: string | null): Promise<any[]> {
+        const tables = await this.getAll<any>(STORES.TABLES);
+        if (!adminId) return tables;
+        return tables.filter(t => 
+            t.admin_id === adminId && 
+            (branchId ? t.branch_id === branchId : (t.branch_id === null || t.branch_id === undefined))
+        );
+    }
+
+    async cacheCustomers(customers: any[]): Promise<void> {
+        await this.storeMany(STORES.CUSTOMERS, customers);
+    }
+
+    async getCachedCustomers(adminId?: string, branchId?: string | null): Promise<any[]> {
+        const customers = await this.getAll<any>(STORES.CUSTOMERS);
+        if (!adminId) return customers;
+        return customers.filter(c => 
+            c.admin_id === adminId && 
+            (branchId ? c.branch_id === branchId : (c.branch_id === null || c.branch_id === undefined))
+        );
+    }
+
+    async getLocalDatabaseSummary(adminId?: string, branchId?: string | null): Promise<{
+        itemsCount: number;
+        categoriesCount: number;
+        billsCount: number;
+        pendingBillsCount: number;
+        expensesCount: number;
+        tablesCount: number;
+        customersCount: number;
+    }> {
+        const [items, categories, bills, pendingBills, expenses, tables, customers] = await Promise.all([
+            this.getCachedItems(adminId, branchId),
+            this.getCachedCategories(adminId, branchId),
+            this.getCachedBills(adminId, branchId),
+            this.getPendingBills(),
+            this.getCachedExpenses(adminId, branchId),
+            this.getCachedTables(adminId, branchId),
+            this.getCachedCustomers(adminId, branchId),
+        ]);
+
+        return {
+            itemsCount: items.length,
+            categoriesCount: categories.length,
+            billsCount: bills.length,
+            pendingBillsCount: pendingBills.length,
+            expensesCount: expenses.length,
+            tablesCount: tables.length,
+            customersCount: customers.length,
+        };
+    }
+
+    /**
+     * Cold boot vault recovery. Reconstructs pending bills from secondaryVault
+     * if IndexedDB was cleared by Android OS during shutdown/restart.
+     */
+    private async verifyAndRestoreVaultMirror(): Promise<void> {
+        try {
+            const currentPending = await this.getAll<PendingBill>(STORES.PENDING_BILLS);
+            if (currentPending.length === 0) {
+                const mirroredBills = await secondaryVault.getMirror<PendingBill[]>('pending_bills');
+                if (mirroredBills && mirroredBills.length > 0) {
+                    console.log(`[VaultRecovery] Restoring ${mirroredBills.length} pending bills from fail-safe vault mirror!`);
+                    await this.storeMany(STORES.PENDING_BILLS, mirroredBills);
+                    await this.notifyPendingBillsListeners();
+                }
+            }
+        } catch (err) {
+            console.warn('[VaultRecovery] Failed to restore from vault mirror:', err);
+        }
     }
 }
 

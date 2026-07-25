@@ -17,6 +17,7 @@ export const CalciBillingSettings = () => {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+  const [, forceUpdate] = useState(0); // used for re-rendering localStorage-driven UI
 
   useEffect(() => {
     const resolveAuthUid = async () => {
@@ -35,27 +36,46 @@ export const CalciBillingSettings = () => {
     resolveAuthUid();
   }, [profile]);
 
-  // If the client doesn't have the feature unlocked by Super Admin, don't show it.
-  const hasCalciAccess = hasAccess('calci_billing') || profile?.client_permissions?.['calci_billing'] === true;
+  // Super Admin / Admin or explicit client_permission unlocks Calci Mode access
+  const hasCalciAccess = 
+    profile?.role === 'super_admin' || 
+    profile?.role === 'admin' ||
+    hasAccess('calci_billing') || 
+    profile?.client_permissions?.['calci_billing'] === true || 
+    profile?.client_permissions?.['calci_billing_enabled'] === true;
 
   useEffect(() => {
     const loadSettings = async () => {
       if (isAllBranchesView) {
+        setEnabled(false);
+        setLoading(false);
+        return;
+      }
+      if (!adminAuthUid) {
         setLoading(false);
         return;
       }
       
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        let query = supabase
           .from('shop_settings')
           .select('calci_billing_enabled')
-          .eq('branch_id', operatingBranchId)
-          .maybeSingle();
+          .eq('user_id', adminAuthUid);
+
+        if (operatingBranchId) {
+          query = query.eq('branch_id', operatingBranchId);
+        } else {
+          query = query.is('branch_id', null);
+        }
+
+        const { data, error } = await query.maybeSingle();
           
         if (error && error.code !== 'PGRST116') throw error;
         if (data) {
           setEnabled(!!data.calci_billing_enabled);
+        } else {
+          setEnabled(false);
         }
       } catch (error) {
         console.error('Error loading calci billing settings:', error);
@@ -64,18 +84,23 @@ export const CalciBillingSettings = () => {
       }
     };
 
-    if (operatingBranchId && hasCalciAccess) {
+    if (hasCalciAccess) {
       loadSettings();
+    } else {
+      setLoading(false);
     }
-  }, [operatingBranchId, hasCalciAccess, isAllBranchesView]);
+  }, [adminAuthUid, operatingBranchId, hasCalciAccess, isAllBranchesView]);
 
   const handleToggle = async (checked: boolean) => {
     if (isAllBranchesView) return;
+    if (!adminAuthUid) {
+      toast({ title: 'Error', description: 'Admin ID not resolved yet. Please wait a moment and try again.', variant: 'destructive' });
+      return;
+    }
     
+    const previousState = enabled;
     try {
       setEnabled(checked);
-      
-      if (!adminAuthUid) throw new Error('Could not resolve admin ID');
 
       let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid);
       if (operatingBranchId) {
@@ -111,7 +136,7 @@ export const CalciBillingSettings = () => {
       });
     } catch (error) {
       console.error('Error updating calci settings:', error);
-      setEnabled(!checked);
+      setEnabled(previousState);
       toast({
         title: "Error",
         description: "Failed to update settings. Please try again.",
@@ -225,9 +250,7 @@ export const CalciBillingSettings = () => {
                 checked={localStorage.getItem(operatingBranchId ? `hotel_pos_calci_stretched_${operatingBranchId}` : 'hotel_pos_calci_stretched') === 'true'}
                 onCheckedChange={(checked) => {
                   localStorage.setItem(operatingBranchId ? `hotel_pos_calci_stretched_${operatingBranchId}` : 'hotel_pos_calci_stretched', String(checked));
-                  // force re-render
-                  setEnabled(e => !e);
-                  setTimeout(() => setEnabled(e => !e), 0);
+                  forceUpdate(n => n + 1);
                   toast({ title: "Updated", description: "Default stretch mode updated." });
                 }}
               />

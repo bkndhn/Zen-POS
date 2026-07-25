@@ -1753,6 +1753,7 @@ export type Database = {
           ingredient_id: string
           item_id: string
           quantity: number
+          recipe_unit: string | null
           updated_at: string
         }
         Insert: {
@@ -1763,6 +1764,7 @@ export type Database = {
           ingredient_id: string
           item_id: string
           quantity: number
+          recipe_unit?: string | null
           updated_at?: string
         }
         Update: {
@@ -1773,6 +1775,7 @@ export type Database = {
           ingredient_id?: string
           item_id?: string
           quantity?: number
+          recipe_unit?: string | null
           updated_at?: string
         }
         Relationships: [

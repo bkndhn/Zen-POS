@@ -34,7 +34,13 @@ const Auth = () => {
   React.useEffect(() => {
     const savedEmail = localStorage.getItem('hotel_pos_saved_email');
     if (savedEmail) {
-      setFormData(prev => ({ ...prev, email: savedEmail }));
+      try {
+        const decoded = decodeURIComponent(atob(savedEmail));
+        setFormData(prev => ({ ...prev, email: decoded }));
+      } catch {
+        // Fallback for old plaintext format
+        setFormData(prev => ({ ...prev, email: savedEmail }));
+      }
       setRememberMe(true);
     }
     (async () => {
@@ -157,7 +163,7 @@ const Auth = () => {
       });
       setIsForgotPassword(false);
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      import.meta.env.DEV && console.error('Password reset error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to send password reset email.",
@@ -228,7 +234,7 @@ const Auth = () => {
         clearRateLimit('login_attempt');
         
         if (rememberMe) {
-          localStorage.setItem('hotel_pos_saved_email', formData.email);
+          localStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
         } else {
           localStorage.removeItem('hotel_pos_saved_email');
         }

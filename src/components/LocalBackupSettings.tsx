@@ -1,12 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Download, Upload, HardDrive, AlertTriangle, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Download, Upload, HardDrive, AlertTriangle, Lock, Eye, EyeOff, ShieldCheck, Database, Server, Smartphone, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { exportLocalDatabase, importLocalDatabase } from '@/utils/backupUtils';
+import { getStorageEstimate, StorageStatus, initStoragePersistence, universalStorage } from '@/utils/nativeStorage';
+import { offlineManager } from '@/utils/offlineManager';
 
 export function LocalBackupSettings() {
     const [isExporting, setIsExporting] = useState(false);
@@ -18,6 +21,66 @@ export function LocalBackupSettings() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pendingFileRef = useRef<File | null>(null);
     const [needPass, setNeedPass] = useState(false);
+
+    // Storage mode and metrics
+    const [isLocalMode, setIsLocalMode] = useState<boolean>(() => {
+        return localStorage.getItem('privacy_storage_mode') === 'local';
+    });
+    const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null);
+    const [dbMetrics, setDbMetrics] = useState<{
+        itemsCount: number;
+        categoriesCount: number;
+        billsCount: number;
+        pendingBillsCount: number;
+        expensesCount: number;
+        tablesCount: number;
+        customersCount: number;
+    } | null>(null);
+
+    useEffect(() => {
+        loadMetrics();
+    }, []);
+
+    const loadMetrics = async () => {
+        const est = await getStorageEstimate();
+        setStorageStatus(est);
+
+        try {
+            const summary = await offlineManager.getLocalDatabaseSummary();
+            setDbMetrics(summary);
+        } catch (e) {
+            console.warn('Failed to load local DB metrics:', e);
+        }
+    };
+
+    const handleStorageModeChange = async (checked: boolean) => {
+        const mode = checked ? 'local' : 'cloud';
+        setIsLocalMode(checked);
+        await universalStorage.setItem('privacy_storage_mode', mode);
+        toast({
+            title: checked ? '100% Local Storage Active' : 'Cloud Sync Mode Active',
+            description: checked
+                ? 'All new bills, inventory edits, and customer data will remain strictly on-device in local IndexedDB.'
+                : 'Data will auto-sync with Supabase cloud when online.',
+        });
+    };
+
+    const handleEnablePersistence = async () => {
+        const granted = await initStoragePersistence();
+        await loadMetrics();
+        if (granted) {
+            toast({
+                title: 'Storage Protection Enabled',
+                description: 'Operating system will preserve your local POS database against automatic disk eviction.',
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Persistence Request Pending',
+                description: 'Storage persistence check complete. Ensure browser site permissions allow persistent storage.',
+            });
+        }
+    };
 
     const handleExport = async () => {
         if (encrypt && passphrase.length < 6) {
@@ -33,6 +96,7 @@ export function LocalBackupSettings() {
                     ? 'AES-256 encrypted .zpbenc file downloaded. Store the passphrase safely — it cannot be recovered.'
                     : 'Plain-text .json backup downloaded.',
             });
+            await loadMetrics();
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Backup Failed', description: e.message });
         } finally {
@@ -69,23 +133,83 @@ export function LocalBackupSettings() {
         const file = e.target.files?.[0];
         if (!file) return;
         pendingFileRef.current = file;
-        // Auto-detect: try without passphrase first; if encrypted, prompt.
         await runImport(file);
     };
 
     return (
         <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10">
             <CardHeader className="p-4 sm:p-6 pb-2">
-                <CardTitle className="flex items-center space-x-2 text-base sm:text-lg text-blue-800 dark:text-blue-300">
-                    <HardDrive className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Local Backup & Restore</span>
-                </CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <CardTitle className="flex items-center space-x-2 text-base sm:text-lg text-blue-800 dark:text-blue-300">
+                        <HardDrive className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                        <span>Local Storage & Backup Engine</span>
+                    </CardTitle>
+                    {storageStatus?.isPersistent ? (
+                        <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 flex items-center gap-1 w-fit">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Storage Eviction Shield Active
+                        </Badge>
+                    ) : (
+                        <Button size="sm" variant="outline" onClick={handleEnablePersistence} className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100">
+                            Enable Storage Eviction Shield
+                        </Button>
+                    )}
+                </div>
                 <CardDescription className="text-blue-600/80 dark:text-blue-400/80">
-                    Download a full snapshot of your on-device data (bills, pending bills, items, categories, and preferences).
-                    Enable end-to-end encryption before sharing the file via Drive, WhatsApp, or email.
+                    World-class local-first engine. Keeps your POS operational 100% offline with on-device IndexedDB storage.
+                    Works seamlessly on Web PWA and Android (Capacitor webview sync).
                 </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-2 space-y-4">
+
+                {/* Storage Mode Selector */}
+                <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-white/80 dark:bg-blue-950/40 p-3.5">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 font-medium text-sm text-foreground">
+                                {isLocalMode ? <Smartphone className="w-4 h-4 text-purple-600" /> : <Server className="w-4 h-4 text-blue-600" />}
+                                <span>{isLocalMode ? '100% Local Storage Mode' : 'Cloud Sync & Hybrid Mode'}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {isLocalMode
+                                    ? 'All billing, stock changes, and customer records remain strictly on this device.'
+                                    : 'Local-first with automatic background sync to Supabase cloud when online.'}
+                            </p>
+                        </div>
+                        <Switch id="storage-mode-toggle" checked={isLocalMode} onCheckedChange={handleStorageModeChange} />
+                    </div>
+                </div>
+
+                {/* Local Database Metrics Breakdown */}
+                {dbMetrics && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="rounded-lg border bg-white/60 dark:bg-blue-950/20 p-2.5 text-center">
+                            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                <Database className="w-3 h-3 text-blue-500" /> Local Bills
+                            </div>
+                            <div className="text-base font-semibold mt-0.5">{dbMetrics.billsCount + dbMetrics.pendingBillsCount}</div>
+                        </div>
+                        <div className="rounded-lg border bg-white/60 dark:bg-blue-950/20 p-2.5 text-center">
+                            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                <Database className="w-3 h-3 text-emerald-500" /> Items / Cats
+                            </div>
+                            <div className="text-base font-semibold mt-0.5">{dbMetrics.itemsCount} / {dbMetrics.categoriesCount}</div>
+                        </div>
+                        <div className="rounded-lg border bg-white/60 dark:bg-blue-950/20 p-2.5 text-center">
+                            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                <Database className="w-3 h-3 text-amber-500" /> Expenses / Tables
+                            </div>
+                            <div className="text-base font-semibold mt-0.5">{dbMetrics.expensesCount} / {dbMetrics.tablesCount}</div>
+                        </div>
+                        <div className="rounded-lg border bg-white/60 dark:bg-blue-950/20 p-2.5 text-center">
+                            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                <HardDrive className="w-3 h-3 text-purple-500" /> Storage Used
+                            </div>
+                            <div className="text-base font-semibold mt-0.5">{storageStatus?.usageMB || '0'} MB</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Encryption Settings */}
                 <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-white/60 dark:bg-blue-950/30 p-3">
                     <div className="flex items-center justify-between mb-2">
                         <Label htmlFor="encrypt-toggle" className="flex items-center gap-2 text-sm font-medium">
@@ -176,11 +300,12 @@ export function LocalBackupSettings() {
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     <p>
                         Restoring merges records by ID — safe to run multiple times. Encrypted backups (.zpbenc)
-                        use AES-256-GCM with PBKDF2/SHA-256 (210,000 iterations). If you lose the passphrase,
-                        the file <strong>cannot</strong> be recovered — this is by design.
+                        use AES-256-GCM with PBKDF2/SHA-256 (210,000 iterations). Restoring works across both PWA and
+                        Android Capacitor webviews without needing native APK rebuilds.
                     </p>
                 </div>
             </CardContent>
         </Card>
     );
 }
+

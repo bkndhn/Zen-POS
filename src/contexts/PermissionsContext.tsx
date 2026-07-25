@@ -311,7 +311,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
             return;
         }
 
-        console.log('[Permissions] Setting up realtime subscriptions for user:', profile.user_id, 'role:', profile.role);
+        import.meta.env.DEV && console.log('[Permissions] Setting up realtime subscriptions for user:', profile.user_id, 'role:', profile.role);
 
         const pageToRoute: Record<string, string> = {
             dashboard: '/dashboard',
@@ -338,11 +338,11 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
         const handlePermissionChange = (userId: string, pageName: string, hasAccess: boolean) => {
             // Only process if this is for the current user
             if (userId !== profile.user_id) {
-                console.log('[Permissions] Ignoring update for different user:', userId);
+                import.meta.env.DEV && console.log('[Permissions] Ignoring update for different user:', userId);
                 return;
             }
 
-            console.log(`[Permissions] Page ${pageName} access changed to:`, hasAccess);
+            import.meta.env.DEV && console.log(`[Permissions] Page ${pageName} access changed to:`, hasAccess);
 
             setPermissions(prev => {
                 const updated = { ...prev };
@@ -355,7 +355,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                         const blockedPath = pageToRoute[pageName];
 
                         if (blockedPath && currentPath === blockedPath) {
-                            console.log('[Permissions] User on blocked page, redirecting...');
+                            import.meta.env.DEV && console.log('[Permissions] User on blocked page, redirecting...');
                             // Find first allowed page to redirect to
                             const firstAllowedPage = Object.entries(updated).find(([_, allowed]) => allowed);
                             if (firstAllowedPage) {
@@ -376,18 +376,18 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
         const handleAdminPermissionChange = (childUserId: string, pageName: string, adminHasAccess: boolean) => {
             // Only process if this is for the current user (child user)
             if (childUserId !== profile.user_id) {
-                console.log('[Permissions] Admin change not for this user:', childUserId);
+                import.meta.env.DEV && console.log('[Permissions] Admin change not for this user:', childUserId);
                 return;
             }
 
-            console.log(`[Permissions] Parent admin permission changed for ${pageName}:`, adminHasAccess);
+            import.meta.env.DEV && console.log(`[Permissions] Parent admin permission changed for ${pageName}:`, adminHasAccess);
 
             // If admin lost access, child also loses access (regardless of child's own permission)
             if (adminHasAccess === false) {
                 setPermissions(prev => {
                     const updated = { ...prev };
                     if (pageName in updated && (updated as any)[pageName] === true) {
-                        console.log(`[Permissions] Revoking ${pageName} access due to admin block`);
+                        import.meta.env.DEV && console.log(`[Permissions] Revoking ${pageName} access due to admin block`);
                         (updated as any)[pageName] = false;
 
                         // Check if user is on that page and redirect
@@ -395,7 +395,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                         const blockedPath = pageToRoute[pageName];
 
                         if (blockedPath && currentPath === blockedPath) {
-                            console.log('[Permissions] User on admin-blocked page, redirecting...');
+                            import.meta.env.DEV && console.log('[Permissions] User on admin-blocked page, redirecting...');
                             const firstAllowedPage = Object.entries(updated).find(([_, allowed]) => allowed);
                             if (firstAllowedPage) {
                                 const redirectPath = pageToRoute[firstAllowedPage[0]] || '/';
@@ -409,7 +409,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                 });
             } else {
                 // Admin regained access - refetch permissions to see if child also has access
-                console.log('[Permissions] Admin regained access, refetching permissions...');
+                import.meta.env.DEV && console.log('[Permissions] Admin regained access, refetching permissions...');
                 fetchedForUserRef.current = null;
                 fetchPermissions();
             }
@@ -419,21 +419,21 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
         const broadcastChannel = supabase
             .channel('permissions-broadcast')
             .on('broadcast', { event: 'permission-changed' }, (payload) => {
-                console.log('[Permissions] Broadcast received:', payload);
+                import.meta.env.DEV && console.log('[Permissions] Broadcast received:', payload);
                 const { user_id, page_name, has_access } = payload.payload || {};
                 if (user_id && page_name !== undefined) {
                     handlePermissionChange(user_id, page_name, has_access);
                 }
             })
             .on('broadcast', { event: 'admin-permission-changed' }, (payload) => {
-                console.log('[Permissions] Admin permission cascade received:', payload);
+                import.meta.env.DEV && console.log('[Permissions] Admin permission cascade received:', payload);
                 const { child_user_id, page_name, admin_has_access } = payload.payload || {};
                 if (child_user_id && page_name !== undefined) {
                     handleAdminPermissionChange(child_user_id, page_name, admin_has_access);
                 }
             })
             .subscribe((status) => {
-                console.log('[Permissions] Broadcast subscription status:', status);
+                import.meta.env.DEV && console.log('[Permissions] Broadcast subscription status:', status);
             });
 
         // postgres_changes (backup, ~2-5s)
@@ -448,7 +448,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                     filter: `user_id=eq.${profile.user_id}`
                 },
                 (payload) => {
-                    console.log('[Permissions] DB change received:', payload);
+                    import.meta.env.DEV && console.log('[Permissions] DB change received:', payload);
                     const { eventType, new: newRow, old: oldRow } = payload;
 
                     if (eventType === 'UPDATE' || eventType === 'INSERT') {
@@ -465,11 +465,11 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                 }
             )
             .subscribe((status) => {
-                console.log('[Permissions] DB subscription status:', status);
+                import.meta.env.DEV && console.log('[Permissions] DB subscription status:', status);
             });
 
         return () => {
-            console.log('[Permissions] Cleaning up realtime subscriptions');
+            import.meta.env.DEV && console.log('[Permissions] Cleaning up realtime subscriptions');
             supabase.removeChannel(broadcastChannel);
             supabase.removeChannel(dbChannel);
         };

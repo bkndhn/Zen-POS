@@ -21,22 +21,24 @@ export const deductStockForItems = async (items: StockDeductionItem[]) => {
       // Query if there is a recipe defined for this item
       const { data: recipeParts, error: recipeErr } = await supabase
         .from('recipes')
-        .select('ingredient_id, quantity')
+        .select('ingredient_id, quantity, recipe_unit, ingredient:ingredients(unit, stock_quantity, cost_per_unit)')
         .eq('item_id', item.id);
 
       if (!recipeErr && recipeParts && recipeParts.length > 0) {
         // Recipe exists: Deduct each ingredient's stock
         for (const part of recipeParts) {
           try {
-            const { data: currentIng } = await supabase
-              .from('ingredients')
-              .select('stock_quantity')
-              .eq('id', part.ingredient_id)
-              .single();
-
-            if (currentIng) {
-              const totalDeduction = Number(part.quantity) * Number(item.quantity);
-              const newStock = toStoredQuantity2(Math.max(0, (Number(currentIng.stock_quantity) || 0) - totalDeduction));
+            const ingData = part.ingredient as any;
+            if (ingData) {
+              let deduction = Number(part.quantity) * Number(item.quantity);
+              // Apply unit conversion if recipe_unit differs from ingredient unit
+              const rUnit = (part.recipe_unit || ingData.unit || '').toLowerCase();
+              const iUnit = (ingData.unit || '').toLowerCase();
+              if (rUnit !== iUnit) {
+                if ((rUnit === 'g' && iUnit === 'kg') || (rUnit === 'ml' && iUnit === 'l')) deduction = deduction / 1000;
+                else if ((rUnit === 'kg' && iUnit === 'g') || (rUnit === 'l' && iUnit === 'ml')) deduction = deduction * 1000;
+              }
+              const newStock = toStoredQuantity2(Math.max(0, (Number(ingData.stock_quantity) || 0) - deduction));
               await supabase
                 .from('ingredients')
                 .update({ stock_quantity: newStock })

@@ -345,7 +345,7 @@ const App = () => {
                   <Route path="/service-area" element={<Layout><ProtectedRoute requiredPermission="serviceArea"><ServiceArea /></ProtectedRoute></Layout>} />
                   <Route path="/kitchen" element={<Layout><ProtectedRoute requiredPermission="kitchen"><KitchenDisplay /></ProtectedRoute></Layout>} />
                   <Route path="/tables" element={<Layout><ProtectedRoute requiredPermission="tables"><TableManagement /></ProtectedRoute></Layout>} />
-                  <Route path="/crm" element={<Layout><ProtectedRoute requiredPermission="settings"><CRM /></ProtectedRoute></Layout>} />
+                  <Route path="/crm" element={<Layout><ProtectedRoute requiredPermission="customers"><CRM /></ProtectedRoute></Layout>} />
                   <Route path="/qr-menu" element={<Layout><ProtectedRoute requiredPermission="qrMenu"><QRMenu /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />
                   <Route path="/waiter" element={<Layout><ProtectedRoute requiredPermission="waiterCompanion"><WaiterCompanion /></ProtectedRoute></Layout>} />
@@ -357,8 +357,8 @@ const App = () => {
                   <Route path="/purchase-returns" element={<Layout><ProtectedRoute requiredPermission="purchases"><PurchaseReturns /></ProtectedRoute></Layout>} />
                   <Route path="/stock-ledger" element={<Layout><ProtectedRoute requiredPermission="stock"><StockLedger /></ProtectedRoute></Layout>} />
                   <Route path="/stock-adjustment" element={<Layout><ProtectedRoute requiredPermission="stock"><StockAdjustment /></ProtectedRoute></Layout>} />
-                  <Route path="/super-admin/users" element={<Layout><SuperAdminUsers /></Layout>} />
-                  <Route path="/super-admin/rum" element={<Layout><SuperAdminRum /></Layout>} />
+                  <Route path="/super-admin/users" element={<Layout><ProtectedRoute requiredPermission="users"><SuperAdminUsers /></ProtectedRoute></Layout>} />
+                  <Route path="/super-admin/rum" element={<Layout><ProtectedRoute requiredPermission="users"><SuperAdminRum /></ProtectedRoute></Layout>} />
                   <Route path="/diagnostics/images" element={<Layout><ProtectedRoute requiredPermission="settings"><ImageDiagnostics /></ProtectedRoute></Layout>} />
                   <Route path="/ai-insights" element={<Layout><ProtectedRoute requiredPermission="analytics"><AiInsights /></ProtectedRoute></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
