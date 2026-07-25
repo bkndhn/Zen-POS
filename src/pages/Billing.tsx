@@ -1576,16 +1576,44 @@ const Billing = () => {
       let shortcodes: Record<string, string> = {};
       try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch {}
       
-      const shortcodeKey = Object.keys(shortcodes).find(key => shortcodes[key] === item.id);
+      let shortcodeKey = Object.keys(shortcodes).find(key => shortcodes[key] === item.id);
       
-      let newAddition = '';
-      if (shortcodeKey) {
-        newAddition = calciMode === 'quick' ? shortcodeKey : `*${shortcodeKey}`;
-      } else {
-        toast({ title: 'Item needs Quick Key', description: 'Assign a quick key to this item to use it in Calci Mode.', variant: 'destructive' });
-        return;
+      // Auto-assign next sequential quick key if item has none (override still possible in Settings)
+      if (!shortcodeKey) {
+        const usedNums = Object.keys(shortcodes).map(k => parseInt(k)).filter(n => !isNaN(n));
+        const nextNum = (usedNums.length ? Math.max(...usedNums) : 0) + 1;
+        shortcodeKey = nextNum.toString();
+        shortcodes[shortcodeKey] = item.id;
+        try {
+          localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(shortcodes));
+        } catch {}
+        // Best-effort cloud persist (non-blocking)
+        (async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            let targetAuthId = user.id;
+            if (profile?.role === 'user' && profile.admin_id) {
+              const { data: parentProfile } = await supabase.from('profiles').select('user_id').eq('id', profile.admin_id).maybeSingle();
+              if (parentProfile?.user_id) targetAuthId = parentProfile.user_id;
+            }
+            let existingQuery = supabase.from('shop_settings').select('id').eq('user_id', targetAuthId);
+            existingQuery = operatingBranchId ? existingQuery.eq('branch_id', operatingBranchId) : existingQuery.is('branch_id', null);
+            const { data: existing } = await existingQuery.maybeSingle();
+            if (existing?.id) {
+              await supabase.from('shop_settings').update({ calci_shortcodes: shortcodes }).eq('id', existing.id);
+            } else {
+              await supabase.from('shop_settings').insert({ calci_shortcodes: shortcodes, user_id: targetAuthId, branch_id: operatingBranchId || null });
+            }
+            syncChannelRef.current?.send({ type: 'broadcast', event: 'sync-calci-keys', payload: shortcodes });
+          } catch (err) {
+            console.warn('Auto quick-key cloud sync failed:', err);
+          }
+        })();
+        toast({ title: `Quick Key ${shortcodeKey} assigned`, description: `${item.name} → code ${shortcodeKey}. Change it anytime in Settings.` });
       }
-
+      
+      const newAddition = calciMode === 'quick' ? shortcodeKey : `*${shortcodeKey}`;
       const newInput = calciInput ? `${calciInput}+${newAddition}` : newAddition;
       setCalciInput(newInput);
       handleCalciSubmit(newInput);
