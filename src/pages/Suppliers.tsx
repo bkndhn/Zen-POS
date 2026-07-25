@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
-import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { useBranchScopedQuery, applyBranchFilter } from '@/hooks/useBranchScopedQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
