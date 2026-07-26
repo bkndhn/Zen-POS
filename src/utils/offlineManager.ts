@@ -1266,11 +1266,64 @@ class OfflineManager {
     
     async getCachedBills(adminId?: string, branchId?: string | null): Promise<any[]> {
         const bills = await this.getAll<any>(STORES.BILLS);
+        if (!bills || bills.length === 0) return [];
         if (!adminId) return bills;
         return bills.filter(bill => 
-            bill.admin_id === adminId && 
-            (branchId ? bill.branch_id === branchId : (bill.branch_id === null || bill.branch_id === undefined))
+            (!bill.admin_id || bill.admin_id === adminId) && 
+            (!branchId || !bill.branch_id || bill.branch_id === branchId)
         );
+    }
+
+    /**
+     * Merges online Supabase bills with offline pending & local-only bills from IndexedDB.
+     * Deduplicates by id and bill_no so offline bills appear across Dashboard, Analytics, and Reports.
+     */
+    async mergeOfflineBills(supabaseBills: any[], adminId?: string, branchId?: string | null): Promise<any[]> {
+        try {
+            const [cachedBills, pendingBills] = await Promise.all([
+                this.getCachedBills(adminId, branchId),
+                this.getPendingBills()
+            ]);
+
+            const existingIds = new Set((supabaseBills || []).map((b: any) => b.id));
+            const existingBillNos = new Set((supabaseBills || []).map((b: any) => b.bill_no));
+
+            const offlineMerged: any[] = [];
+
+            const matchesScope = (b: any) => {
+                const bAdminId = b.admin_id;
+                const bBranchId = b.branch_id;
+                const adminMatch = !adminId || !bAdminId || bAdminId === adminId;
+                const branchMatch = !branchId || !bBranchId || bBranchId === branchId;
+                return adminMatch && branchMatch && !b.is_deleted;
+            };
+
+            // Pending bills (created while offline)
+            (pendingBills || []).forEach((pb: any) => {
+                if (matchesScope(pb) && !existingIds.has(pb.id) && (!pb.bill_no || !existingBillNos.has(pb.bill_no))) {
+                    existingIds.add(pb.id);
+                    if (pb.bill_no) existingBillNos.add(pb.bill_no);
+                    offlineMerged.push({
+                        ...pb,
+                        is_offline_pending: true
+                    });
+                }
+            });
+
+            // Local-only/cached bills
+            (cachedBills || []).forEach((cb: any) => {
+                if (matchesScope(cb) && !existingIds.has(cb.id) && (!cb.bill_no || !existingBillNos.has(cb.bill_no))) {
+                    existingIds.add(cb.id);
+                    if (cb.bill_no) existingBillNos.add(cb.bill_no);
+                    offlineMerged.push(cb);
+                }
+            });
+
+            return [...(supabaseBills || []), ...offlineMerged];
+        } catch (err) {
+            console.warn('[OfflineManager] Failed to merge offline bills:', err);
+            return supabaseBills || [];
+        }
     }
 
     async getPendingBillsCount(): Promise<number> {

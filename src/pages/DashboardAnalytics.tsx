@@ -279,8 +279,9 @@ const DashboardAnalytics = () => {
       const fetchRangeData = async (start: Date, end: Date, label: string): Promise<PeriodStat> => {
         const startStr = toLocalDateString(start);
         const endStr = toLocalDateString(end);
+        const { offlineManager } = await import('@/utils/offlineManager');
 
-        let billsQ = supabase.from('bills').select('total_amount, is_deleted').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false');
+        let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false');
         let expensesQ = supabase.from('expenses').select('amount').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr);
         let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
         if (branchFilterId) {
@@ -288,11 +289,18 @@ const DashboardAnalytics = () => {
           expensesQ = expensesQ.eq('branch_id', branchFilterId);
           billItemsQ = billItemsQ.eq('bills.branch_id', branchFilterId);
         }
-        const { data: bills } = await billsQ;
+        const { data: rawBills } = await billsQ;
         const { data: expenses } = await expensesQ;
         const { data: billItems } = await billItemsQ;
 
-        const revenue = bills?.reduce((sum, b) => sum + Number(b.total_amount), 0) || 0;
+        // Merge offline/pending bills from IndexedDB
+        const mergedBills = await offlineManager.mergeOfflineBills(rawBills || [], adminId, branchFilterId);
+        const bills = mergedBills.filter((b: any) => {
+          const bDate = b.date || b.created_at?.split('T')[0];
+          return bDate >= startStr && bDate <= endStr && !b.is_deleted;
+        });
+
+        const revenue = bills.reduce((sum, b) => sum + Number(b.total_amount || 0), 0);
         const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
 
         const itemsMap = new Map<string, { quantity: number; revenue: number; unit: string }>();
@@ -304,9 +312,22 @@ const DashboardAnalytics = () => {
           itemsMap.set(name, { quantity: current.quantity + Number(item.quantity), revenue: current.revenue + Number(item.total), unit });
         });
 
+        // Also aggregate items from offline/pending bills
+        bills.forEach((b: any) => {
+          const bItems = b.items || b.bill_items;
+          if (Array.isArray(bItems)) {
+            bItems.forEach((item: any) => {
+              const name = item.name || item.items?.name || 'Unknown';
+              const unit = item.unit || item.items?.unit || 'pcs';
+              const current = itemsMap.get(name) || { quantity: 0, revenue: 0, unit };
+              itemsMap.set(name, { quantity: current.quantity + Number(item.quantity || 0), revenue: current.revenue + Number(item.total || 0), unit });
+            });
+          }
+        });
+
         const topItems = Array.from(itemsMap.entries()).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
-        return { revenue, expenses: totalExpenses, profit: revenue - totalExpenses, bills: bills?.length || 0, topItems, label, startDate: startStr, endDate: endStr };
+        return { revenue, expenses: totalExpenses, profit: revenue - totalExpenses, bills: bills.length, topItems, label, startDate: startStr, endDate: endStr };
       };
 
       const [currentData, pastData] = await Promise.all([
@@ -324,10 +345,9 @@ const DashboardAnalytics = () => {
   const fetchAndProcessData = async (start: Date, end: Date, setSales: any, setItems: any, setSt: any) => {
     const startStr = start.toISOString().split('T')[0];
     const endStr = end.toISOString().split('T')[0];
+    const { offlineManager } = await import('@/utils/offlineManager');
 
-    // ... (This logic is largely same as original fetchAnalyticsData, reused here or kept inside)
-    // To keep file clean, I'll essentially paste the logic from original component here
-    let billsQ = supabase.from('bills').select('total_amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
+    let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
     let expensesQ = supabase.from('expenses').select('amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).order('date');
     let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
     if (branchFilterId) {
@@ -335,14 +355,23 @@ const DashboardAnalytics = () => {
       expensesQ = expensesQ.eq('branch_id', branchFilterId);
       billItemsQ = billItemsQ.eq('bills.branch_id', branchFilterId);
     }
-    const { data: billsData } = await billsQ;
+    const { data: rawBillsData } = await billsQ;
     const { data: expensesData } = await expensesQ;
     const { data: billItemsData } = await billItemsQ;
 
+    // Merge offline/pending bills from IndexedDB
+    const mergedBills = await offlineManager.mergeOfflineBills(rawBillsData || [], adminId, branchFilterId);
+    const billsData = mergedBills.filter((b: any) => {
+      const bDate = b.date || b.created_at?.split('T')[0];
+      return bDate >= startStr && bDate <= endStr && !b.is_deleted;
+    });
+
     // Process Sales Chart
     const salesMap = new Map<string, { sales: number; expenses: number }>();
-    billsData?.forEach(b => {
-      const d = b.date; const c = salesMap.get(d) || { sales: 0, expenses: 0 }; salesMap.set(d, { ...c, sales: (c.sales || 0) + Number(b.total_amount) });
+    billsData.forEach((b: any) => {
+      const d = b.date || b.created_at?.split('T')[0] || startStr;
+      const c = salesMap.get(d) || { sales: 0, expenses: 0 };
+      salesMap.set(d, { ...c, sales: (c.sales || 0) + Number(b.total_amount || 0) });
     });
     expensesData?.forEach(e => {
       const d = e.date; const c = salesMap.get(d) || { sales: 0, expenses: 0 }; salesMap.set(d, { ...c, expenses: (c.expenses || 0) + Number(e.amount) });
@@ -363,13 +392,26 @@ const DashboardAnalytics = () => {
       const c = iMap.get(name) || { q: 0, r: 0, unit };
       iMap.set(name, { q: c.q + Number(item.quantity), r: c.r + Number(item.total), unit });
     });
+    // Also include items from offline bills
+    billsData.forEach((b: any) => {
+      const bItems = b.items || b.bill_items;
+      if (Array.isArray(bItems)) {
+        bItems.forEach((item: any) => {
+          const name = item.name || item.items?.name || 'Unknown';
+          const unit = item.unit || item.items?.unit || 'pcs';
+          const c = iMap.get(name) || { q: 0, r: 0, unit };
+          iMap.set(name, { q: c.q + Number(item.quantity || 0), r: c.r + Number(item.total || 0), unit });
+        });
+      }
+    });
+
     setItems(Array.from(iMap.entries()).map(([n, d]) => ({ name: n, quantity: d.q, revenue: d.r, unit: d.unit })).sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 10));
 
     // Stats
-    const tRev = billsData?.reduce((s, b) => s + Number(b.total_amount), 0) || 0;
+    const tRev = billsData.reduce((s: number, b: any) => s + Number(b.total_amount || 0), 0);
     const tExp = expensesData?.reduce((s, e) => s + Number(e.amount), 0) || 0;
     setSt({
-      totalRevenue: tRev, totalExpenses: tExp, totalProfit: tRev - tExp, totalBills: billsData?.length || 0
+      totalRevenue: tRev, totalExpenses: tExp, totalProfit: tRev - tExp, totalBills: billsData.length
     });
   };
 

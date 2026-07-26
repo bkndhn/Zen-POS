@@ -58,18 +58,27 @@ const Dashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
 
+      const { offlineManager } = await import('@/utils/offlineManager');
+
       // Fetch today's sales (exclude deleted bills) — branch-scoped
       let billsQuery: any = supabase
         .from('bills')
-        .select('total_amount')
+        .select('*')
         .eq('admin_id', adminId)
         .eq('date', today)
         .or('is_deleted.is.null,is_deleted.eq.false');
       if (branchFilterId) billsQuery = billsQuery.eq('branch_id', branchFilterId);
       const { data: billsData } = await billsQuery;
 
-      const todaySales = billsData?.reduce((sum: number, bill: any) => sum + Number(bill.total_amount), 0) || 0;
-      const todayBills = billsData?.length || 0;
+      // Merge offline & pending bills from IndexedDB so stats match Reports
+      const allBills = await offlineManager.mergeOfflineBills(billsData || [], adminId, branchFilterId);
+      const todayFilteredBills = allBills.filter((b: any) => {
+        const bDate = b.date || b.created_at?.split('T')[0];
+        return bDate === today && !b.is_deleted;
+      });
+
+      const todaySales = todayFilteredBills.reduce((sum: number, bill: any) => sum + Number(bill.total_amount || 0), 0);
+      const todayBills = todayFilteredBills.length;
 
       // Fetch today's expenses — branch-scoped
       let expensesQuery: any = supabase
