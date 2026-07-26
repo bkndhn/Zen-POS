@@ -453,6 +453,9 @@ const WaiterCompanion: React.FC = () => {
                     table_number: selectedTable.table_number,
                     session_id: sessionId,
                     seat_id: currentSeatId,
+                    seat_label: currentSeatId,
+                    order_scope: currentSeatId ? 'seat' : 'table',
+
                     order_number: nextOrderNo,
                     items: itemsInSeat.map(item => {
                         const baseValue = item.base_value || 1;
