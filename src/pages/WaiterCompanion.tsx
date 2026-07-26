@@ -32,7 +32,9 @@ interface Table {
     status: 'available' | 'occupied' | 'reserved' | 'cleaning';
     has_seats: boolean;
     seat_count: number;
-    seat_configuration: Array<{ id: string; label: string }> | null;
+    seat_configuration: any;
+    seat_order_mode?: string | null;
+
 }
 
 interface MenuItem {
