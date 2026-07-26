@@ -83,7 +83,15 @@ interface ItemReport {
 const Reports: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
   const adminId = adminProfileId;
-  const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery(() => fetchReports());
+  const { branchFilterId, activeBranch, isAllBranchesView, branches } = useBranchScopedQuery(() => fetchReports());
+
+  const branchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (branches || []).forEach(b => {
+      map.set(b.id, b.name);
+    });
+    return map;
+  }, [branches]);
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('today');
   const [hourRange, setHourRange] = useState(12);
