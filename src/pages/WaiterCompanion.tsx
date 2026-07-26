@@ -65,6 +65,19 @@ interface CartItem {
     seatId: string | null; // null represents whole table or no seat assignment
 }
 
+/** Resolve seat labels for a table: custom labels from seat_configuration, else S1..Sn */
+const getSeatLabels = (table: Pick<Table, 'seat_count' | 'seat_configuration'>): string[] => {
+    const cfg = table.seat_configuration;
+    if (Array.isArray(cfg) && cfg.length > 0) {
+        const labels = cfg
+            .map((s: any) => (typeof s === 'string' ? s : s?.label || s?.id))
+            .filter((s: any): s is string => typeof s === 'string' && s.trim().length > 0);
+        if (labels.length > 0) return labels;
+    }
+    return Array.from({ length: table.seat_count || 0 }).map((_, idx) => `S${idx + 1}`);
+};
+
+
 const WaiterCompanion: React.FC = () => {
     const { profile , adminProfileId } = useAuth();
     const { operatingBranchId } = useBranch();
