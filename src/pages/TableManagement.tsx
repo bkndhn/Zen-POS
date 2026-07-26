@@ -107,6 +107,9 @@ const TableManagement: React.FC = () => {
   const [hasSeats, setHasSeats] = useState(false);
   const [seatCount, setSeatCount] = useState('2');
   const [seatLabels, setSeatLabels] = useState<string[]>([]);
+  // 'table' = whole-table orders only, 'seat' = seat-wise only, 'both' = allow either
+  const [seatOrderMode, setSeatOrderMode] = useState<'table' | 'seat' | 'both'>('both');
+
   const [coverCountInput, setCoverCountInput] = useState('4');
 
   // Section/Floor Filter & Table Merge states
