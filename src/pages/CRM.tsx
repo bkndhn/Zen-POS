@@ -35,7 +35,7 @@ const CRM: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
   const navigate = useNavigate();
   const adminId = adminProfileId;
-  const { branchFilterId } = useBranchScopedQuery(() => fetchCustomers());
+  const { branchFilterId, operatingBranchId } = useBranchScopedQuery(() => fetchCustomers());
   const { isAllBranchesView } = useBranch();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -202,12 +202,12 @@ const CRM: React.FC = () => {
         }
       }
 
+      setCustomers(mappedCustomers);
       if (mappedCustomers.length > 0) {
-        setCustomers(mappedCustomers);
         await offlineManager.cacheCustomers(mappedCustomers);
       }
     } catch (error) {
-      console.warn('[CRM] Error fetching customers (offline fallback active):', error);
+      console.warn('[CRM] Error fetching customers:', error);
       if (!navigator.onLine && !loadedFromCache) {
         toast({
           title: "Offline Mode",
