@@ -469,7 +469,10 @@ const WaiterCompanion: React.FC = () => {
                             base_value: item.base_value,
                             selling_unit: item.selling_unit,
                             selling_quantity: item.selling_quantity,
-                            instructions: item.instructions
+                            instructions: item.instructions,
+                            seat_id: item.seatId || null,
+                            seat_label: item.seatId || null,
+
                         };
                     }),
                     total_amount: seatTotal,
