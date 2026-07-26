@@ -2278,7 +2278,9 @@ export type Database = {
           is_billed: boolean | null
           items: Json
           order_number: number
+          order_scope: string
           seat_id: string | null
+          seat_label: string | null
           session_id: string
           status: string
           table_number: string
@@ -2295,7 +2297,9 @@ export type Database = {
           is_billed?: boolean | null
           items?: Json
           order_number?: number
+          order_scope?: string
           seat_id?: string | null
+          seat_label?: string | null
           session_id: string
           status?: string
           table_number: string
@@ -2312,7 +2316,9 @@ export type Database = {
           is_billed?: boolean | null
           items?: Json
           order_number?: number
+          order_scope?: string
           seat_id?: string | null
+          seat_label?: string | null
           session_id?: string
           status?: string
           table_number?: string
@@ -2354,6 +2360,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           seat_id: string | null
+          seat_label: string | null
           session_id: string
           status: string
           table_number: string
@@ -2368,6 +2375,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           seat_id?: string | null
+          seat_label?: string | null
           session_id: string
           status?: string
           table_number: string
@@ -2382,6 +2390,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           seat_id?: string | null
+          seat_label?: string | null
           session_id?: string
           status?: string
           table_number?: string
@@ -2411,6 +2420,7 @@ export type Database = {
           is_active: boolean
           seat_configuration: Json | null
           seat_count: number | null
+          seat_order_mode: string
           shape: string | null
           status: string
           table_name: string | null
@@ -2434,6 +2444,7 @@ export type Database = {
           is_active?: boolean
           seat_configuration?: Json | null
           seat_count?: number | null
+          seat_order_mode?: string
           shape?: string | null
           status?: string
           table_name?: string | null
@@ -2457,6 +2468,7 @@ export type Database = {
           is_active?: boolean
           seat_configuration?: Json | null
           seat_count?: number | null
+          seat_order_mode?: string
           shape?: string | null
           status?: string
           table_name?: string | null
