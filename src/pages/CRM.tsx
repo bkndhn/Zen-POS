@@ -144,12 +144,21 @@ const CRM: React.FC = () => {
       let query: any = supabase
         .from('customers')
         .select('*')
-        .eq('admin_id', adminId)
-        .order('last_visit', { ascending: false });
-      if (branchFilterId) query = query.eq('branch_id', branchFilterId);
+        .eq('admin_id', adminId);
+
+      if (branchFilterId) {
+        query = query.or(`branch_id.eq.${branchFilterId},branch_id.is.null`);
+      }
+      query = query.order('last_visit', { ascending: false });
+
       const { data, error } = await query;
 
-      if (!error && data) {
+      if (error) {
+        console.error('[CRM] Error fetching customers from Supabase:', error);
+        throw error;
+      }
+
+      if (data && data.length > 0) {
         const mapped = data.map(c => ({
           ...c,
           visit_count: c.visit_count ?? 0,
@@ -158,10 +167,46 @@ const CRM: React.FC = () => {
         }));
         setCustomers(mapped);
         await offlineManager.cacheCustomers(mapped);
+      } else {
+        // Fallback: Aggregate customer records from bills if customers table is empty
+        let billsQ: any = supabase
+          .from('bills')
+          .select('customer_name, customer_mobile, total_amount, created_at')
+          .eq('admin_id', adminId)
+          .not('customer_mobile', 'is', null);
+        if (branchFilterId) billsQ = billsQ.eq('branch_id', branchFilterId);
+        const { data: billsData } = await billsQ;
+
+        if (billsData && billsData.length > 0) {
+          const custMap = new Map<string, any>();
+          billsData.forEach((b: any) => {
+            const phone = b.customer_mobile?.replace(/[\s\-\(\)\+]/g, '') || '';
+            if (phone.length >= 10) {
+              const existing = custMap.get(phone) || {
+                id: `bill-cust-${phone}`,
+                phone,
+                name: b.customer_name || `Customer (${phone.slice(-4)})`,
+                visit_count: 0,
+                total_spent: 0,
+                last_visit: b.created_at,
+                created_at: b.created_at
+              };
+              existing.visit_count += 1;
+              existing.total_spent += Number(b.total_amount || 0);
+              if (b.created_at > existing.last_visit) existing.last_visit = b.created_at;
+              custMap.set(phone, existing);
+            }
+          });
+          const billCustomers = Array.from(custMap.values()).sort((a, b) => new Date(b.last_visit).getTime() - new Date(a.last_visit).getTime());
+          if (billCustomers.length > 0) {
+            setCustomers(billCustomers);
+            await offlineManager.cacheCustomers(billCustomers);
+          }
+        }
       }
     } catch (error) {
-      console.warn('Error fetching customers from network (offline fallback active):', error);
-      if (!loadedFromCache) {
+      console.warn('[CRM] Error fetching customers (offline fallback active):', error);
+      if (!navigator.onLine && !loadedFromCache) {
         toast({
           title: "Offline Mode",
           description: "Connect to internet to refresh customers list",
