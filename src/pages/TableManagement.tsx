@@ -375,6 +375,8 @@ const TableManagement: React.FC = () => {
       setHasSeats(false);
       setSeatCount('2');
       setSeatLabels(getDefaultSeatLabels(2));
+      setSeatOrderMode('both');
+
       setShape('rectangle');
       setWidth('100');
       setHeight('100');
