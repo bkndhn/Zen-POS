@@ -550,13 +550,28 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(textToBytes(SEP_DOUBLE));
   commands.push(FEED_LINE);
 
-  // TOTAL - big text and bold amount
-  commands.push(BOLD_ON);
-  commands.push(DOUBLE_SIZE);
-  commands.push(textToBytes(fmtLine('TOTAL', `Rs.${data.total.toFixed(0)}`)));
-  commands.push(FEED_LINE);
-  commands.push(NORMAL_SIZE);
-  commands.push(BOLD_OFF);
+  // TOTAL - keep label + amount on ONE line.
+  // Double-width chars occupy 2 columns each, so the usable width is halved.
+  {
+    const amountText = `Rs.${data.total.toFixed(0)}`;
+    const halfWidth = Math.floor(LINE_WIDTH / 2);
+    const fitsDoubleWidth = ('TOTAL'.length + 1 + amountText.length) <= halfWidth;
+
+    commands.push(BOLD_ON);
+    if (fitsDoubleWidth) {
+      // Double width + double height, padded to the halved column count
+      commands.push(DOUBLE_SIZE);
+      commands.push(textToBytes(formatLine('TOTAL', amountText, halfWidth)));
+    } else {
+      // Fallback: double HEIGHT only (normal width) so it always stays on one line
+      commands.push(new Uint8Array([GS, 0x21, 0x01]));
+      commands.push(textToBytes(formatLine('TOTAL', amountText, LINE_WIDTH)));
+    }
+    commands.push(FEED_LINE);
+    commands.push(NORMAL_SIZE);
+    commands.push(BOLD_OFF);
+  }
+
 
   // Payment - if multiple methods, show breakdown; otherwise single line
   const pdEntries = data.paymentDetails
