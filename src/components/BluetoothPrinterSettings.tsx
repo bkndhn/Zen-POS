@@ -379,10 +379,10 @@ export const BluetoothPrinterSettings: React.FC = () => {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-none shadow-sm">
-      <CardContent className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-full ${isConnected ? 'bg-green-100/50 text-green-600 dark:bg-green-900/30' : connectionState === 'connecting' ? 'bg-blue-100/50 text-blue-600 dark:bg-blue-900/30' : 'bg-slate-200/50 text-slate-500 dark:bg-slate-800'}`}>
+    <Card className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-none shadow-sm max-w-full overflow-hidden">
+      <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0 max-w-full overflow-hidden">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className={`p-2.5 rounded-full shrink-0 ${isConnected ? 'bg-green-100/50 text-green-600 dark:bg-green-900/30' : connectionState === 'connecting' ? 'bg-blue-100/50 text-blue-600 dark:bg-blue-900/30' : 'bg-slate-200/50 text-slate-500 dark:bg-slate-800'}`}>
             {connectionState === 'connecting' ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : isConnected ? (
@@ -391,13 +391,13 @@ export const BluetoothPrinterSettings: React.FC = () => {
               <Printer className="w-5 h-5" />
             )}
           </div>
-          <div>
-            <h3 className="font-semibold text-sm">{printerType === 'usb' ? 'USB Printer' : 'Bluetooth Printer'}</h3>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-sm truncate">{printerType === 'usb' ? 'USB Printer' : 'Bluetooth Printer'}</h3>
+            <p className="text-xs text-muted-foreground truncate max-w-full">
               {connectionState === 'connecting' ? (
                 <span className="text-blue-600 flex items-center gap-1">● Connecting...</span>
               ) : isConnected ? (
-                <span className="text-green-600 flex items-center gap-1">● Connected to {connectedDeviceName || settings.printer_name} ({printerType === 'usb' ? 'USB' : 'Bluetooth'} — Persistent)</span>
+                <span className="text-green-600 flex items-center gap-1 truncate">● Connected to {connectedDeviceName || settings.printer_name}</span>
               ) : connectionState === 'error' ? (
                 <span className="text-red-600 flex items-center gap-1">● Connection error</span>
               ) : (
@@ -405,20 +405,20 @@ export const BluetoothPrinterSettings: React.FC = () => {
               )}
             </p>
             {queueSize > 0 && (
-              <p className="text-xs text-amber-600">📋 {queueSize} print job(s) queued</p>
+              <p className="text-xs text-amber-600 truncate">📋 {queueSize} print job(s) queued</p>
             )}
             {cacheRestored && !isConnected && (
-              <p className="text-xs text-blue-600">🔄 Settings recovered — tap Settings to re-pair</p>
+              <p className="text-xs text-blue-600 truncate">🔄 Settings recovered — tap Settings to re-pair</p>
             )}
           </div>
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-medium rounded-full px-4 border-slate-300 dark:border-slate-700">
+            <Button variant="outline" size="sm" className="h-8 text-xs font-medium rounded-full px-4 border-slate-300 dark:border-slate-700 shrink-0 self-start sm:self-auto">
               {settings.is_enabled ? 'Settings' : 'Pair Device'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md p-0 overflow-hidden sm:rounded-2xl gap-0 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+          <DialogContent className="w-[95vw] max-w-md p-0 overflow-hidden rounded-2xl gap-0 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 max-h-[90vh]">
             <DialogHeader className="p-4 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800/50 sticky top-0 z-10">
               <DialogTitle className="text-base font-medium flex items-center gap-2">
                 <Bluetooth className="w-5 h-5 text-blue-500" />

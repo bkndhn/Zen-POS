@@ -160,27 +160,27 @@ export const PrinterStatusPanel: React.FC<{ inline?: boolean; className?: string
                     </span>
                 </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+            <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col max-w-[100vw] overflow-x-hidden">
                 <SheetHeader className="p-4 border-b">
-                    <SheetTitle className="flex items-center gap-2">
-                        <Printer className="w-5 h-5" /> Printer
+                    <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <Printer className="w-5 h-5 shrink-0" /> Printer Controls
                     </SheetTitle>
                 </SheetHeader>
 
-                <ScrollArea className="flex-1">
-                    <div className="p-4 space-y-4">
+                <ScrollArea className="flex-1 overflow-x-hidden">
+                    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-full overflow-hidden">
                         {/* Status card */}
-                        <Card className="p-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Badge className={stateColor[connectionState]}>
-                                    {connectionState === 'connected' ? <Wifi className="w-3 h-3 mr-1" /> : <WifiOff className="w-3 h-3 mr-1" />}
+                        <Card className="p-3 sm:p-4 space-y-2 max-w-full overflow-hidden">
+                            <div className="flex items-center justify-between gap-2">
+                                <Badge className={cn('text-xs px-2 py-0.5', stateColor[connectionState])}>
+                                    {connectionState === 'connected' ? <Wifi className="w-3 h-3 mr-1 shrink-0" /> : <WifiOff className="w-3 h-3 mr-1 shrink-0" />}
                                     {connectionState.toUpperCase()}
                                 </Badge>
-                                <span className="text-xs text-muted-foreground uppercase">{printerType}</span>
+                                <span className="text-[11px] text-muted-foreground uppercase font-semibold">{printerType}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs">
+                            <div className="flex items-center gap-2 text-xs flex-wrap">
                                 <span className={cn(
-                                    'w-2 h-2 rounded-full',
+                                    'w-2 h-2 rounded-full shrink-0',
                                     autoReconnectState === 'connected' && 'bg-success',
                                     autoReconnectState === 'reconnecting' && 'bg-warning animate-pulse',
                                     autoReconnectState === 'waiting' && 'bg-warning',
@@ -193,20 +193,20 @@ export const PrinterStatusPanel: React.FC<{ inline?: boolean; className?: string
                                     <span className="text-muted-foreground">retrying automatically</span>
                                 )}
                             </div>
-                            <div className="text-sm">
-                                <div className="font-medium truncate">{deviceName || '— not selected —'}</div>
-                                {info.serviceUUID && <div className="text-[11px] text-muted-foreground font-mono truncate">svc {info.serviceUUID}</div>}
-                                {info.characteristicUUID && <div className="text-[11px] text-muted-foreground font-mono truncate">chr {info.characteristicUUID}</div>}
+                            <div className="text-xs sm:text-sm min-w-0">
+                                <div className="font-semibold truncate">{deviceName || '— not selected —'}</div>
+                                {info.serviceUUID && <div className="text-[10px] sm:text-[11px] text-muted-foreground font-mono break-all line-clamp-1">svc {info.serviceUUID}</div>}
+                                {info.characteristicUUID && <div className="text-[10px] sm:text-[11px] text-muted-foreground font-mono break-all line-clamp-1">chr {info.characteristicUUID}</div>}
                                 {lastError && (
                                     <div className="mt-2 text-xs text-destructive break-words">
                                         Last error: {lastError}
                                     </div>
                                 )}
                             </div>
-                            <div className="border-t pt-2 text-xs space-y-1">
-                                <div className="flex items-center gap-1.5 font-medium">
-                                    {hasNativeBridge ? <Smartphone className="w-3.5 h-3.5 text-success" /> : <ShieldCheck className={cn('w-3.5 h-3.5', isTrusted ? 'text-success' : 'text-warning')} />}
-                                    {hasNativeBridge ? 'Native Android printer bridge active' : isTrusted ? 'Printer trusted for silent reconnect' : 'Printer authorization required'}
+                            <div className="border-t pt-2 text-xs space-y-1 min-w-0">
+                                <div className="flex items-center gap-1.5 font-medium flex-wrap">
+                                    {hasNativeBridge ? <Smartphone className="w-3.5 h-3.5 text-success shrink-0" /> : <ShieldCheck className={cn('w-3.5 h-3.5 shrink-0', isTrusted ? 'text-success' : 'text-warning')} />}
+                                    <span className="break-words">{hasNativeBridge ? 'Native Android printer bridge active' : isTrusted ? 'Printer trusted for silent reconnect' : 'Printer authorization required'}</span>
                                 </div>
                                 <div className={cn('break-words', reconnectStatus.reason === 'none' ? 'text-muted-foreground' : 'text-destructive')}>
                                     {reconnectStatus.reason !== 'none' && <span className="font-semibold">{reconnectStatus.reason}: </span>}{reconnectStatus.detail}
@@ -216,47 +216,47 @@ export const PrinterStatusPanel: React.FC<{ inline?: boolean; className?: string
                         </Card>
 
                         {!hasNativeBridge && !isTrusted && (
-                            <Button onClick={doTrust} disabled={running !== null} className="w-full h-11">
-                                {running === 'trust' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />} Trust this printer
+                            <Button onClick={doTrust} disabled={running !== null} className="w-full h-10 sm:h-11 text-xs sm:text-sm">
+                                {running === 'trust' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin shrink-0" /> : <ShieldCheck className="w-4 h-4 mr-2 shrink-0" />} Trust this printer
                             </Button>
                         )}
 
                         {/* Actions */}
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button variant="default" onClick={doTest} disabled={running !== null} className="h-11">
-                                <PlayCircle className="w-4 h-4 mr-2" /> Test Print
+                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                            <Button variant="default" onClick={doTest} disabled={running !== null} className="h-10 sm:h-11 text-xs sm:text-sm px-2">
+                                <PlayCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 shrink-0" /> <span className="truncate">Test Print</span>
                             </Button>
-                            <Button variant="secondary" onClick={doDiag} disabled={running !== null} className="h-11">
-                                <RefreshCw className={cn('w-4 h-4 mr-2', running === 'diag' && 'animate-spin')} /> Run Diagnostics
+                            <Button variant="secondary" onClick={doDiag} disabled={running !== null} className="h-10 sm:h-11 text-xs sm:text-sm px-2">
+                                <RefreshCw className={cn('w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 shrink-0', running === 'diag' && 'animate-spin')} /> <span className="truncate">Diagnostics</span>
                             </Button>
-                            <Button variant="outline" onClick={doRetry} disabled={running !== null} className="h-11">
-                                <Repeat className="w-4 h-4 mr-2" /> Retry Last Bill
+                            <Button variant="outline" onClick={doRetry} disabled={running !== null} className="h-10 sm:h-11 text-xs sm:text-sm px-2">
+                                <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 shrink-0" /> <span className="truncate">Retry Bill</span>
                             </Button>
-                            <Button variant="outline" onClick={doConnect} disabled={running !== null || isConnected} className="h-11">
-                                {running === 'connect' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Link className="w-4 h-4 mr-2" />}
-                                Connect
+                            <Button variant="outline" onClick={doConnect} disabled={running !== null || isConnected} className="h-10 sm:h-11 text-xs sm:text-sm px-2">
+                                {running === 'connect' ? <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin shrink-0" /> : <Link className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 shrink-0" />}
+                                <span className="truncate">Connect</span>
                             </Button>
-                            <Button variant="ghost" onClick={doDisconnect} disabled={!autoReconnectEnabled && !isConnected} className="h-11 text-destructive col-span-2">
-                                <Unlink className="w-4 h-4 mr-2" /> Disconnect
+                            <Button variant="ghost" onClick={doDisconnect} disabled={!autoReconnectEnabled && !isConnected} className="h-10 text-destructive col-span-2 text-xs sm:text-sm">
+                                <Unlink className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Disconnect Printer
                             </Button>
                         </div>
 
                         {/* Diagnostics report */}
                         {diagnostics.length > 0 && (
-                            <Card className="p-3">
-                                <div className="text-sm font-semibold mb-2 flex items-center gap-2">
-                                    <Bug className="w-4 h-4" /> Diagnostics Report
+                            <Card className="p-3 max-w-full overflow-hidden">
+                                <div className="text-xs sm:text-sm font-semibold mb-2 flex items-center gap-2">
+                                    <Bug className="w-4 h-4 text-primary shrink-0" /> Diagnostics Report
                                 </div>
-                                <ul className="space-y-1.5">
+                                <ul className="space-y-1.5 max-w-full">
                                     {diagnostics.map((r, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-xs">
+                                        <li key={i} className="flex items-start gap-2 text-xs min-w-0">
                                             {r.ok
-                                                ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                                                : <XCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                                                ? <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                                                : <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                                             }
-                                            <div className="min-w-0">
-                                                <div className="font-medium">{r.step}</div>
-                                                {r.detail && <div className="text-muted-foreground break-words">{r.detail}</div>}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-medium truncate">{r.step}</div>
+                                                {r.detail && <div className="text-muted-foreground break-all text-[11px]">{r.detail}</div>}
                                             </div>
                                         </li>
                                     ))}
@@ -275,34 +275,34 @@ export const PrinterStatusPanel: React.FC<{ inline?: boolean; className?: string
                         )}
 
                         {/* Print queue log */}
-                        <Card className="p-3">
+                        <Card className="p-3 max-w-full overflow-hidden">
                             <div className="flex items-center justify-between mb-2">
-                                <div className="text-sm font-semibold flex items-center gap-2">
-                                    <Activity className="w-4 h-4" /> Print Log
+                                <div className="text-xs sm:text-sm font-semibold flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-primary shrink-0" /> Print Log
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => printerManager.clearPrintLog()} className="h-7 px-2">
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
                                 </Button>
                             </div>
                             {log.length === 0 ? (
                                 <div className="text-xs text-muted-foreground py-4 text-center">No activity yet.</div>
                             ) : (
-                                <ul className="space-y-1 max-h-64 overflow-auto">
+                                <ul className="space-y-1 max-h-64 overflow-y-auto overflow-x-hidden pr-1">
                                     {log.map((e, i) => (
-                                        <li key={i} className="flex items-center gap-2 text-[11px] font-mono">
+                                        <li key={i} className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 w-full overflow-hidden">
                                             <span className={cn(
-                                                'w-1.5 h-1.5 rounded-full flex-shrink-0',
+                                                'w-1.5 h-1.5 rounded-full shrink-0',
                                                 e.status === 'ok' && 'bg-success',
                                                 e.status === 'fail' && 'bg-destructive',
                                                 e.status === 'info' && 'bg-muted-foreground'
                                             )} />
-                                            <span className="text-muted-foreground">{formatTime(e.ts)}</span>
-                                            <span className="uppercase font-semibold">{e.action}</span>
+                                            <span className="text-muted-foreground shrink-0">{formatTime(e.ts)}</span>
+                                            <span className="uppercase font-semibold shrink-0">{e.action}</span>
                                             {e.billNo && (
-                                                <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">#{e.billNo}</span>
+                                                <span className="px-1 py-0.5 rounded bg-primary/10 text-primary font-semibold shrink-0">#{e.billNo}</span>
                                             )}
-                                            {typeof e.ms === 'number' && <span className="text-muted-foreground">{e.ms}ms</span>}
-                                            <span className="truncate flex-1">{e.detail}</span>
+                                            {typeof e.ms === 'number' && <span className="text-muted-foreground shrink-0">{e.ms}ms</span>}
+                                            <span className="truncate flex-1 min-w-0 text-muted-foreground">{e.detail}</span>
                                         </li>
                                     ))}
                                 </ul>
