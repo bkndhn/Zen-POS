@@ -115,7 +115,22 @@ const Items: React.FC = () => {
 
   const fetchItems = async () => {
     if (!adminId) return;
+    let loadedFromCache = false;
     try {
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cachedItems = await offlineManager.getCachedItems(adminId, operatingBranchId);
+      if (cachedItems && cachedItems.length > 0) {
+        const sortedData = cachedItems.sort((a: any, b: any) => {
+          const orderA = a.display_order ?? 9999;
+          const orderB = b.display_order ?? 9999;
+          if (orderA !== orderB) return orderA - orderB;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        setItems(sortedData as Item[]);
+        loadedFromCache = true;
+        setLoading(false);
+      }
+
       // Branch-scoped fetch: filter by branch_id (null = All Branches view)
       let query = supabase.from('items').select('*').eq('admin_id', adminId);
       if (branchFilterId) {
@@ -124,29 +139,31 @@ const Items: React.FC = () => {
 
       const { data, error } = await query.order('name');
 
-      if (error) throw error;
+      if (!error && data) {
+        const sortedData = data.sort((a: any, b: any) => {
+          const orderA = a.display_order ?? 9999;
+          const orderB = b.display_order ?? 9999;
+          if (orderA !== orderB) return orderA - orderB;
+          return (a.name || '').localeCompare(b.name || '');
+        });
 
-      // Sort by display_order client-side if the field exists
-      const sortedData = (data || []).sort((a: any, b: any) => {
-        const orderA = a.display_order ?? 9999;
-        const orderB = b.display_order ?? 9999;
-        if (orderA !== orderB) return orderA - orderB;
-        return (a.name || '').localeCompare(b.name || '');
-      });
+        const mappedItems = sortedData.map((i: any) => ({
+          ...i,
+          image_url: i.image_url ? getCDNUrl(i.image_url) : i.image_url
+        }));
 
-      const mappedItems = (sortedData || []).map((i: any) => ({
-        ...i,
-        image_url: i.image_url ? getCDNUrl(i.image_url) : i.image_url
-      }));
-
-      setItems(mappedItems as Item[]);
+        setItems(mappedItems as Item[]);
+        await offlineManager.cacheItems(mappedItems);
+      }
     } catch (error) {
-      console.error('Error fetching items:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch items",
-        variant: "destructive",
-      });
+      console.warn('Error fetching items from network (offline fallback active):', error);
+      if (!loadedFromCache) {
+        toast({
+          title: "Offline Mode",
+          description: "Connect to internet to refresh items list",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -170,6 +187,7 @@ const Items: React.FC = () => {
     }
 
     setIsReordering(true);
+    const activeItems = items.filter(i => i.is_active);
     const itemsCopy = [...activeItems];
     const draggedItem = itemsCopy[dragItem.current];
     itemsCopy.splice(dragItem.current, 1);
@@ -211,7 +229,12 @@ const Items: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      // Fetch categories (scoped to active branch when not All-Branches view)
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cachedCats = await offlineManager.getCachedCategories(adminId, operatingBranchId);
+      if (cachedCats && cachedCats.length > 0) {
+        setCategories(cachedCats.map((c: any) => c.name));
+      }
+
       let q = supabase
         .from('item_categories')
         .select('name')
@@ -220,24 +243,29 @@ const Items: React.FC = () => {
       if (branchFilterId) q = q.eq('branch_id', branchFilterId);
       const { data, error } = await q.order('name');
 
-      if (error) throw error;
+      if (!error && data) {
+        let categoryNames = data.map(cat => cat.name);
 
-      let categoryNames = (data || []).map(cat => cat.name);
-
-      // Fetch display settings for category order
-      if (profile?.user_id) {
-        const { data: displayData } = await supabase
-          .from('display_settings')
-          .select('category_order')
-          .eq('user_id', profile.user_id)
-          .maybeSingle();
-
-        if (displayData?.category_order && displayData.category_order.length > 0) {
-          const categoryOrder = displayData.category_order;
-          // Sort categories based on saved order (same logic as Billing page)
-          categoryNames = [...categoryNames].sort((a, b) => {
-            const indexA = categoryOrder.indexOf(a);
-            const indexB = categoryOrder.indexOf(b);
+        if (profile?.user_id) {
+          const cachedDisplay = await offlineManager.getCachedDisplaySettings(profile.user_id);
+          const categoryOrder = cachedDisplay?.category_order;
+          if (categoryOrder && categoryOrder.length > 0) {
+            categoryNames = [...categoryNames].sort((a, b) => {
+              const indexA = categoryOrder.indexOf(a);
+              const indexB = categoryOrder.indexOf(b);
+              if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+              if (indexA === -1) return 1;
+              if (indexB === -1) return -1;
+              return indexA - indexB;
+            });
+          }
+        }
+        setCategories(categoryNames);
+      }
+    } catch (error) {
+      console.warn('Error fetching categories (offline mode):', error);
+    }
+  };
             if (indexA === -1 && indexB === -1) return a.localeCompare(b);
             if (indexA === -1) return 1;
             if (indexB === -1) return -1;

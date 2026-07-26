@@ -51,9 +51,17 @@ const Suppliers: React.FC = () => {
 
   const load = async () => {
     if (!adminId) return;
-    setLoading(true);
-
+    let loadedFromCache = false;
     try {
+      const { dataCache } = await import('@/utils/cacheUtils');
+      const cacheKey = `suppliers_${adminId}_${branchFilterId || 'all'}`;
+      const cached = dataCache.get<Supplier[]>(cacheKey);
+      if (cached && cached.length > 0) {
+        setList(cached);
+        loadedFromCache = true;
+        setLoading(false);
+      }
+
       // Fetch suppliers
       let query = (supabase as any)
         .from('suppliers')
@@ -97,8 +105,12 @@ const Suppliers: React.FC = () => {
       });
 
       setList(enriched);
+      dataCache.set(cacheKey, enriched);
     } catch (err: any) {
-      toast({ title: 'Error loading suppliers', description: err.message, variant: 'destructive' });
+      console.warn('Error loading suppliers from network (offline mode active):', err);
+      if (!loadedFromCache) {
+        toast({ title: 'Offline Mode', description: 'Connect to internet to refresh suppliers', variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
     }

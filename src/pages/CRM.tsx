@@ -126,7 +126,21 @@ const CRM: React.FC = () => {
 
   const fetchCustomers = async () => {
     if (!adminId) return;
+    let loadedFromCache = false;
     try {
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cachedCustomers = await offlineManager.getCachedCustomers(adminId, operatingBranchId);
+      if (cachedCustomers && cachedCustomers.length > 0) {
+        setCustomers(cachedCustomers.map(c => ({
+          ...c,
+          visit_count: c.visit_count ?? 0,
+          total_spent: c.total_spent ?? 0,
+          last_visit: c.last_visit ?? c.created_at
+        })));
+        loadedFromCache = true;
+        setLoading(false);
+      }
+
       let query: any = supabase
         .from('customers')
         .select('*')
@@ -135,20 +149,25 @@ const CRM: React.FC = () => {
       if (branchFilterId) query = query.eq('branch_id', branchFilterId);
       const { data, error } = await query;
 
-      if (error) throw error;
-      setCustomers((data || []).map(c => ({
-        ...c,
-        visit_count: c.visit_count ?? 0,
-        total_spent: c.total_spent ?? 0,
-        last_visit: c.last_visit ?? c.created_at
-      })));
+      if (!error && data) {
+        const mapped = data.map(c => ({
+          ...c,
+          visit_count: c.visit_count ?? 0,
+          total_spent: c.total_spent ?? 0,
+          last_visit: c.last_visit ?? c.created_at
+        }));
+        setCustomers(mapped);
+        await offlineManager.cacheCustomers(mapped);
+      }
     } catch (error) {
-      console.error('Error fetching customers:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch customers",
-        variant: "destructive"
-      });
+      console.warn('Error fetching customers from network (offline fallback active):', error);
+      if (!loadedFromCache) {
+        toast({
+          title: "Offline Mode",
+          description: "Connect to internet to refresh customers list",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }

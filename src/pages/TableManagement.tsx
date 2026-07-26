@@ -180,8 +180,17 @@ const TableManagement: React.FC = () => {
   };
 
   const fetchTables = useCallback(async () => {
+    if (!adminId) return;
+    let loadedFromCache = false;
     try {
-      if (!adminId) return;
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cachedTables = await offlineManager.getCachedTables(adminId, operatingBranchId);
+      if (cachedTables && cachedTables.length > 0) {
+        setTables(cachedTables);
+        loadedFromCache = true;
+        setLoading(false);
+      }
+
       let query: any = (supabase as any)
         .from('tables')
         .select('*')
@@ -191,19 +200,23 @@ const TableManagement: React.FC = () => {
       if (branchFilterId) query = query.eq('branch_id', branchFilterId);
       const { data, error } = await query;
 
-      if (error) throw error;
-      setTables(data || []);
+      if (!error && data) {
+        setTables(data || []);
+        await offlineManager.cacheTables(data || []);
+      }
     } catch (error) {
-      console.error('Error fetching tables:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch tables",
-        variant: "destructive"
-      });
+      console.warn('Error fetching tables from network (offline fallback active):', error);
+      if (!loadedFromCache) {
+        toast({
+          title: "Offline Mode",
+          description: "Connect to internet to refresh tables",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, [adminId, branchFilterId]);
+  }, [adminId, branchFilterId, operatingBranchId]);
 
   useEffect(() => {
     fetchTables();
