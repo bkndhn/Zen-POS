@@ -570,16 +570,28 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Receipt QR Code Generation
   try {
-    if (data.receiptQrEnabled && !paperSaving) {
-      const receiptQrType = data.receiptQrType || 'payment';
+    const cachedHeaderStr = localStorage.getItem('hotel_pos_bill_header')
+      || Object.keys(localStorage).filter(k => k.startsWith('hotel_pos_bill_header_')).map(k => localStorage.getItem(k)).find(v => v);
+    let parsedHeader: any = {};
+    if (cachedHeaderStr) {
+      try { parsedHeader = JSON.parse(cachedHeaderStr); } catch {}
+    }
+
+    const receiptQrEnabled = data.receiptQrEnabled ?? parsedHeader.receiptQrEnabled ?? false;
+    const receiptQrType = data.receiptQrType || parsedHeader.receiptQrType || 'payment';
+    const upiId = data.upiId || parsedHeader.upiId || '';
+    const upiName = data.upiName || parsedHeader.upiName || data.shopName || '';
+    const telegram = data.telegram || parsedHeader.telegram || '';
+
+    if (receiptQrEnabled && !paperSaving) {
       let qrCodeDataUrl = '';
       
-      if (receiptQrType === 'payment' && data.upiId) {
+      if (receiptQrType === 'payment' && upiId) {
         // According to UPI Spec, we can pass &mode=02 for secure QR/Dine-In, which often locks amounts depending on the app.
-        const upiUrl = `upi://pay?pa=${data.upiId}&pn=${encodeURIComponent(data.upiName || data.shopName || '')}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR&mode=02`;
+        const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR&mode=02`;
         qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { margin: 1 });
-      } else if (receiptQrType === 'social' && data.telegram) {
-        qrCodeDataUrl = await QRCode.toDataURL(data.telegram, { margin: 1 });
+      } else if (receiptQrType === 'social' && telegram) {
+        qrCodeDataUrl = await QRCode.toDataURL(telegram, { margin: 1 });
       }
 
       if (qrCodeDataUrl) {

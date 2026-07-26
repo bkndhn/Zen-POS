@@ -767,8 +767,28 @@ export const ShopSettingsForm = () => {
                                 </div>
 
                                 {receiptQrType === 'payment' && (
-                                    <div className="p-3 bg-muted/30 rounded-md border text-sm text-muted-foreground">
-                                        Uses the <strong>Merchant UPI ID</strong> and <strong>Name</strong> from the "Dine-In QR Payments (UPI)" section above to generate a scannable payment code containing the exact bill amount.
+                                    <div className="space-y-3 p-3 bg-muted/30 rounded-md border text-sm">
+                                        <p className="text-xs text-muted-foreground">
+                                            Enter the <strong>Merchant UPI ID</strong> and <strong>Name</strong> below to generate a scannable payment code containing the exact bill amount.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">Merchant UPI ID *</Label>
+                                                <Input
+                                                    placeholder="e.g. merchant@upi or 1234567890@okbizaxis"
+                                                    value={upiId}
+                                                    onChange={e => setUpiId(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">Merchant Name (Business Name) *</Label>
+                                                <Input
+                                                    placeholder="e.g. Zen Cafe"
+                                                    value={upiName}
+                                                    onChange={e => setUpiName(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 

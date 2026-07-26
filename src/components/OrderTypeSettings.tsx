@@ -89,13 +89,11 @@ export const OrderTypeSettings: React.FC = () => {
       // Update local cache
       const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
       const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
-      if (existingCache) {
-        const parsed = JSON.parse(existingCache);
-        parsed.showOrderType = enabled;
-        localStorage.setItem(headerKey, JSON.stringify(parsed));
-      } else {
-        localStorage.setItem(headerKey, JSON.stringify({ showOrderType: enabled }));
-      }
+      const parsed = existingCache ? JSON.parse(existingCache) : {};
+      parsed.showOrderType = enabled;
+      localStorage.setItem(headerKey, JSON.stringify(parsed));
+      localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+      window.dispatchEvent(new Event('shop-settings-updated'));
 
       toast({
         title: enabled ? "Order Type Enabled" : "Order Type Disabled",

@@ -1389,11 +1389,19 @@ const Billing = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminId, branchFilterId]);
 
-  // Re-fetch shop settings whenever the active branch changes so prints/share use branch header
+  // Re-fetch shop settings whenever the active branch changes or settings are updated
   useEffect(() => {
+    const handleSettingsUpdate = () => {
+      loadShopSettingsFromCache();
+      fetchShopSettings();
+    };
+    window.addEventListener('shop-settings-updated', handleSettingsUpdate);
     fetchShopSettings();
+    return () => {
+      window.removeEventListener('shop-settings-updated', handleSettingsUpdate);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBranch?.id]);
+  }, [activeBranch?.id, operatingBranchId]);
 
   useEffect(() => {
 

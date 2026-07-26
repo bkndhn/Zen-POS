@@ -130,6 +130,16 @@ export const CalciBillingSettings = () => {
       }
 
       if (error) throw error;
+
+      // Update local cache & dispatch event
+      const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
+      const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
+      const parsed = existingCache ? JSON.parse(existingCache) : {};
+      parsed.calciBillingEnabled = checked;
+      localStorage.setItem(headerKey, JSON.stringify(parsed));
+      localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+      window.dispatchEvent(new Event('shop-settings-updated'));
+
       toast({
         title: "Settings Updated",
         description: `Calci Billing mode has been ${checked ? 'enabled' : 'disabled'} for this branch.`

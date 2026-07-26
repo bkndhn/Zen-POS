@@ -100,13 +100,11 @@ export const QuickBillSettings = () => {
       // Update local cache
       const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
       const existingCache = localStorage.getItem(headerKey) ?? localStorage.getItem('hotel_pos_bill_header');
-      if (existingCache) {
-        const parsed = JSON.parse(existingCache);
-        parsed.quickBillEnabled = checked;
-        localStorage.setItem(headerKey, JSON.stringify(parsed));
-      } else {
-        localStorage.setItem(headerKey, JSON.stringify({ quickBillEnabled: checked }));
-      }
+      const parsed = existingCache ? JSON.parse(existingCache) : {};
+      parsed.quickBillEnabled = checked;
+      localStorage.setItem(headerKey, JSON.stringify(parsed));
+      localStorage.setItem('hotel_pos_bill_header', JSON.stringify(parsed));
+      window.dispatchEvent(new Event('shop-settings-updated'));
 
       toast({
         title: "Settings Updated",

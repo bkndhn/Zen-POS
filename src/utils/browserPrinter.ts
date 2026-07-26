@@ -15,17 +15,23 @@ export const printBrowserReceipt = async (data: PrintData) => {
   try {
     const cachedHeaderStr = localStorage.getItem('hotel_pos_bill_header')
       || Object.keys(localStorage).filter(k => k.startsWith('hotel_pos_bill_header_')).map(k => localStorage.getItem(k)).find(v => v);
+    let parsedHeader: any = {};
     if (cachedHeaderStr) {
-      const parsedHeader = JSON.parse(cachedHeaderStr);
-      const receiptQrEnabled = parsedHeader.receiptQrEnabled === true;
-      if (receiptQrEnabled && !paperSaving) {
-        const receiptQrType = parsedHeader.receiptQrType || 'payment';
-        if (receiptQrType === 'payment' && parsedHeader.upiId) {
-          const upiUrl = `upi://pay?pa=${parsedHeader.upiId}&pn=${encodeURIComponent(parsedHeader.upiName || data.shopName || '')}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR`;
-          qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { width: 140, margin: 1 });
-        } else if (receiptQrType === 'social' && parsedHeader.telegram) {
-          qrCodeDataUrl = await QRCode.toDataURL(parsedHeader.telegram, { width: 140, margin: 1 });
-        }
+      try { parsedHeader = JSON.parse(cachedHeaderStr); } catch {}
+    }
+
+    const receiptQrEnabled = data.receiptQrEnabled ?? parsedHeader.receiptQrEnabled ?? false;
+    const receiptQrType = data.receiptQrType || parsedHeader.receiptQrType || 'payment';
+    const upiId = data.upiId || parsedHeader.upiId || '';
+    const upiName = data.upiName || parsedHeader.upiName || data.shopName || '';
+    const telegram = data.telegram || parsedHeader.telegram || '';
+
+    if (receiptQrEnabled && !paperSaving) {
+      if (receiptQrType === 'payment' && upiId) {
+        const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR`;
+        qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { width: 140, margin: 1 });
+      } else if (receiptQrType === 'social' && telegram) {
+        qrCodeDataUrl = await QRCode.toDataURL(telegram, { width: 140, margin: 1 });
       }
     }
   } catch (e) {
