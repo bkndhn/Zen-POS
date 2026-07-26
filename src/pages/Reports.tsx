@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -1740,6 +1740,11 @@ const Reports: React.FC = () => {
                         <div className="flex-1 min-w-0 mr-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold text-sm">{bill.bill_no}</h3>
+                            {isAllBranchesView && (
+                              <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-[10px] px-2 py-0.5 font-semibold border border-indigo-200 dark:border-indigo-800">
+                                🏢 {((bill as any).branch_id && branchMap.get((bill as any).branch_id)) || 'Main Branch'}
+                              </Badge>
+                            )}
                             {(bill as any).table_no && (
                               <Badge className="bg-purple-100 text-purple-700 text-[10px] px-1.5">
                                 {(bill as any).table_no}
