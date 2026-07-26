@@ -48,7 +48,16 @@ export const CalciQuickKeysSettings = () => {
     }
   });
 
-  const [newItemId, setNewItemId] = useState('');
+  const autoAssignAllActive = async (itemList = items) => {
+    if (!itemList || itemList.length === 0) return;
+    const { syncAllMissingCalciQuickKeys } = await import('@/utils/calciQuickKeyUtils');
+    const updatedShortcodes = await syncAllMissingCalciQuickKeys(itemList, adminAuthUid, operatingBranchId);
+    const ordered = Object.keys(updatedShortcodes)
+      .sort((a, b) => parseInt(a) - parseInt(b))
+      .map(k => updatedShortcodes[k]);
+    setOrderedItemIds(ordered);
+    toast({ title: 'Quick Keys Auto-Assigned', description: `Assigned codes (1 to ${ordered.length}) to items.` });
+  };
 
   useEffect(() => {
     if (!adminAuthUid) return;
@@ -77,18 +86,30 @@ export const CalciQuickKeysSettings = () => {
         if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
         const { data, error } = await q;
         if (error) throw error;
-        if (data) setItems(data);
-      } catch (err) {
-        console.error('Failed to load items for quick keys:', err);
-        try {
+        
+        let itemList = data || [];
+        if (itemList.length === 0) {
           const { offlineManager } = await import('@/utils/offlineManager');
           const cached = await offlineManager.getCachedItems(adminAuthUid || '', operatingBranchId);
           if (cached.length > 0) {
-            setItems(cached.map((i: any) => ({ id: i.id, name: i.name, price: i.price })));
+            itemList = cached.map((i: any) => ({ id: i.id, name: i.name, price: i.price }));
           }
-        } catch (e) {
-          console.error('Offline fallback failed:', e);
         }
+        setItems(itemList);
+
+        // Auto-assign any active items missing a quick key number
+        if (itemList.length > 0) {
+          const { syncAllMissingCalciQuickKeys } = await import('@/utils/calciQuickKeyUtils');
+          const updatedShortcodes = await syncAllMissingCalciQuickKeys(itemList, adminAuthUid, operatingBranchId);
+          const ordered = Object.keys(updatedShortcodes)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(k => updatedShortcodes[k]);
+          if (ordered.length > 0) {
+            setOrderedItemIds(ordered);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load items for quick keys:', err);
       } finally {
         setLoading(false);
       }
@@ -183,15 +204,25 @@ export const CalciQuickKeysSettings = () => {
 
   return (
     <Card>
-      <CardHeader className="p-4 sm:p-6 pb-2">
+      <CardHeader className="p-4 sm:p-6 pb-2 flex flex-row items-center justify-between">
         <CardTitle className="flex items-center space-x-2">
           <Calculator className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
           <span className="text-base sm:text-lg">Calci Mode Quick Keys</span>
         </CardTitle>
+        {items.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => autoAssignAllActive(items)}
+            className="h-8 px-2.5 text-xs gap-1 border-dashed text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+          >
+            ⚡ Auto-Assign All ({items.length})
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-2">
         <p className="text-xs text-muted-foreground mb-4">
-          Add items to assign them sequential numbers (1, 2, 3...). In Calci mode, typing <code className="bg-muted px-1 rounded">*1</code> or <code className="bg-muted px-1 rounded">#1</code> will instantly add the first item. Use arrows to reorder.
+          Items are automatically assigned sequential numbers (1, 2, 3...). In Calci mode, typing <code className="bg-muted px-1 rounded">*1</code> or <code className="bg-muted px-1 rounded">#1</code> will instantly add the first item. Use arrows to reorder.
         </p>
 
         <div className="flex gap-2 items-end mb-4">

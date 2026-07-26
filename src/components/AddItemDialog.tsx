@@ -330,9 +330,18 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         insertPayload.hsn_code = formData.hsn_code.trim() || null;
       }
 
-      const { error } = await supabase.from('items').insert(insertPayload);
+      const { data: insertedData, error } = await supabase
+        .from('items')
+        .insert(insertPayload)
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      if (insertedData?.id) {
+        const { autoAssignCalciQuickKey } = await import('@/utils/calciQuickKeyUtils');
+        await autoAssignCalciQuickKey(insertedData.id, profile?.user_id, operatingBranchId);
+      }
 
       toast({
         title: "Success",

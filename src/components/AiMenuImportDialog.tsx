@@ -319,8 +319,12 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
       const BATCH = 100;
       for (let i = 0; i < records.length; i += BATCH) {
         const batch = records.slice(i, i + BATCH);
-        const { error } = await supabase.from('items').insert(batch as any);
+        const { data: insertedBatch, error } = await supabase.from('items').insert(batch as any).select('id');
         if (error) throw error;
+        if (insertedBatch && insertedBatch.length > 0) {
+          const { syncAllMissingCalciQuickKeys } = await import('@/utils/calciQuickKeyUtils');
+          await syncAllMissingCalciQuickKeys(insertedBatch, adminId, targetBranchId);
+        }
       }
       toast({ title: 'Items imported', description: `Added ${records.length} items via AI` });
       onItemsAdded();
