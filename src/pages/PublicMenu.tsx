@@ -1284,6 +1284,8 @@ const PublicMenu = () => {
                     table_number: tableNo,
                     session_id: sessionId,
                     seat_id: seatId || null,
+                    seat_label: seatId || null,
+
                     request_type: requestType,
                     message: message || null,
                     status: 'pending'
