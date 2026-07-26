@@ -60,40 +60,48 @@ export const CalciQuickKeysSettings = () => {
   };
 
   useEffect(() => {
-    if (!adminAuthUid) return;
+    if (!adminAuthUid && !adminProfileId) return;
     const fetchItemsAndSettings = async () => {
       setLoading(true);
       try {
-        let settingsQuery = supabase.from('shop_settings').select('calci_shortcodes').eq('user_id', adminAuthUid);
-        if (operatingBranchId) {
-          settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
-        } else {
-          settingsQuery = settingsQuery.is('branch_id', null);
-        }
-        
-        const { data: settingsData, error: settingsError } = await settingsQuery.maybeSingle();
-        
-        if (!settingsError && settingsData?.calci_shortcodes) {
+        if (adminAuthUid) {
+          let settingsQuery = supabase.from('shop_settings').select('calci_shortcodes').eq('user_id', adminAuthUid);
+          if (operatingBranchId) {
+            settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
+          } else {
+            settingsQuery = settingsQuery.is('branch_id', null);
+          }
+          
+          const { data: settingsData } = await settingsQuery.maybeSingle();
+          
+          if (settingsData?.calci_shortcodes && typeof settingsData.calci_shortcodes === 'object') {
             const shortcodes = settingsData.calci_shortcodes as Record<string, string>;
             const ordered = Object.keys(shortcodes)
               .sort((a, b) => parseInt(a) - parseInt(b))
-              .map(k => shortcodes[k]);
+              .map(k => shortcodes[k])
+              .filter(Boolean);
             setOrderedItemIds(ordered);
             localStorage.setItem('hotel_pos_calci_shortcodes', JSON.stringify(shortcodes));
+          }
         }
 
-        let q = supabase.from('items').select('id, name, price').eq('admin_id', adminProfileId).eq('is_active', true);
-        if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
-        const { data, error } = await q;
-        if (error) throw error;
+        let itemList: any[] = [];
+        const effectiveAdminId = adminProfileId || profile?.id || null;
+        if (effectiveAdminId) {
+          let q = supabase.from('items').select('id, name, price').eq('admin_id', effectiveAdminId).eq('is_active', true);
+          if (operatingBranchId) q = q.eq('branch_id', operatingBranchId);
+          const { data } = await q;
+          if (data) itemList = data;
+        }
         
-        let itemList = data || [];
         if (itemList.length === 0) {
-          const { offlineManager } = await import('@/utils/offlineManager');
-          const cached = await offlineManager.getCachedItems(adminAuthUid || '', operatingBranchId);
-          if (cached.length > 0) {
-            itemList = cached.map((i: any) => ({ id: i.id, name: i.name, price: i.price }));
-          }
+          try {
+            const { offlineManager } = await import('@/utils/offlineManager');
+            const cached = await offlineManager.getCachedItems(effectiveAdminId || adminAuthUid || '', operatingBranchId);
+            if (cached && cached.length > 0) {
+              itemList = cached.map((i: any) => ({ id: i.id, name: i.name, price: i.price }));
+            }
+          } catch { /* ignore offline fallback errors */ }
         }
         setItems(itemList);
 
@@ -101,21 +109,24 @@ export const CalciQuickKeysSettings = () => {
         if (itemList.length > 0) {
           const { syncAllMissingCalciQuickKeys } = await import('@/utils/calciQuickKeyUtils');
           const updatedShortcodes = await syncAllMissingCalciQuickKeys(itemList, adminAuthUid, operatingBranchId);
-          const ordered = Object.keys(updatedShortcodes)
-            .sort((a, b) => parseInt(a) - parseInt(b))
-            .map(k => updatedShortcodes[k]);
-          if (ordered.length > 0) {
-            setOrderedItemIds(ordered);
+          if (updatedShortcodes && typeof updatedShortcodes === 'object') {
+            const ordered = Object.keys(updatedShortcodes)
+              .sort((a, b) => parseInt(a) - parseInt(b))
+              .map(k => updatedShortcodes[k])
+              .filter(Boolean);
+            if (ordered.length > 0) {
+              setOrderedItemIds(ordered);
+            }
           }
         }
       } catch (err) {
-        console.error('Failed to load items for quick keys:', err);
+        console.warn('Failed to load items for quick keys:', err);
       } finally {
         setLoading(false);
       }
     };
     fetchItemsAndSettings();
-  }, [adminAuthUid, operatingBranchId]);
+  }, [adminAuthUid, adminProfileId, profile?.id, operatingBranchId]);
 
   const saveOrder = async (ordered: string[]) => {
     const newCodes: Record<string, string> = {};
