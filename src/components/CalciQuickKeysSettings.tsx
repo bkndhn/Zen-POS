@@ -32,6 +32,7 @@ export const CalciQuickKeysSettings = () => {
   }, [profile]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newItemId, setNewItemId] = useState('');
   
   const [orderedItemIds, setOrderedItemIds] = useState<string[]>(() => {
     try {
