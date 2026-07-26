@@ -931,6 +931,35 @@ const TableManagement: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Ordering Mode</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        { v: 'both', label: 'Both', hint: 'Table + seat' },
+                        { v: 'seat', label: 'Seat only', hint: 'Per guest' },
+                        { v: 'table', label: 'Table only', hint: 'One bill' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          onClick={() => setSeatOrderMode(opt.v)}
+                          className={`rounded-md border px-2 py-1.5 text-left transition-colors ${
+                            seatOrderMode === opt.v
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border bg-background text-muted-foreground'
+                          }`}
+                        >
+                          <span className="block text-[11px] font-bold">{opt.label}</span>
+                          <span className="block text-[9px] opacity-80">{opt.hint}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Controls what waiters and QR guests can pick: the whole table, a specific seat, or either.
+                    </p>
+                  </div>
+
+
+                  <div className="space-y-2">
                     <Label className="text-[11px] text-muted-foreground font-semibold">Seat Labels / Custom Names</Label>
                     <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
                       {seatLabels.map((label, idx) => (
