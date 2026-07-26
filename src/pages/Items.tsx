@@ -266,19 +266,6 @@ const Items: React.FC = () => {
       console.warn('Error fetching categories (offline mode):', error);
     }
   };
-            if (indexA === -1 && indexB === -1) return a.localeCompare(b);
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            return indexA - indexB;
-          });
-        }
-      }
-
-      setCategories(categoryNames);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
 
   const filteredItems = useMemo(() => {
     let filtered = items;
