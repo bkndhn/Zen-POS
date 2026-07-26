@@ -81,6 +81,46 @@ function applyFix(r: Parsed, issue: string, opts: { hintCategory: string; defaul
 }
 
 
+function parseTextLocally(rawText: string, hintCategory: string, defaultUnit: string): Parsed[] {
+  if (!rawText || !rawText.trim()) return [];
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const results: Parsed[] = [];
+  let currentCategory = hintCategory || 'General';
+
+  lines.forEach((line) => {
+    // Check if line looks like a category header
+    const isCategoryHeader = /^(?:---|===|\*\*\*|\[)?\s*([A-Za-z\s]{3,30})\s*(?:---|===|\*\*\*|\])?$/i.test(line) &&
+      !/\d/.test(line) &&
+      !/price|rate|rs|inr|₹|qty/i.test(line);
+
+    if (isCategoryHeader && line.length < 35) {
+      currentCategory = line.replace(/[-*=\[\]]/g, '').trim() || currentCategory;
+      return;
+    }
+
+    // Match item format: "Chicken Biryani 150", "Chicken Biryani - Rs. 150", "1. Paneer Tikka ₹ 180"
+    const match = line.match(/^(?:\d+[\.\)]\s*)?(.+?)\s*(?:[-:|\s₹Rs.]+)\s*(\d+(?:\.\d{1,2})?)\s*$/i);
+    if (match) {
+      const name = match[1].replace(/^[-*\s]+/, '').trim();
+      const price = parseFloat(match[2]);
+      if (name.length >= 2 && !isNaN(price)) {
+        results.push({
+          id: results.length + 1,
+          name: name.slice(0, 100),
+          price: Math.max(0, price),
+          category: currentCategory,
+          description: null,
+          selling_unit: defaultUnit || 'Piece (pc)',
+          selling_quantity: 1,
+          is_veg: name.toLowerCase().includes('veg') && !name.toLowerCase().includes('non-veg') ? true : null
+        });
+      }
+    }
+  });
+
+  return results;
+}
+
 export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categories, onItemsAdded, disabled }) => {
   const [open, setOpen] = useState(false);
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
@@ -131,37 +171,60 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
       return;
     }
     setParsing(true);
+    let items: any[] = [];
+    let aiSuccess = false;
+
+    // 1. Try AI Edge Function first
     try {
       const { data, error } = await supabase.functions.invoke('ai-menu-parse', {
         body: { images: images.map(i => i.url), text, hint_category: hintCategory || undefined },
       });
-      if (error) throw error;
-      const items = (data as any)?.items || [];
-      if (!items.length) {
-        toast({ title: 'No items found', description: 'Try a clearer photo or paste text.', variant: 'destructive' });
-      }
-      // Dedupe (same name + price merges)
-      const { deduped, mergedCount } = dedupeItems(items);
-      const mapped: Parsed[] = deduped.map((it: any, i: number) => ({
-        id: i + 1,
-        name: it.name,
-        price: it.price,
-        category: (it.category && it.category.trim()) || hintCategory || 'General',
-        description: it.description ?? null,
-        selling_unit: UNITS.includes(it.selling_unit) ? it.selling_unit : defaultUnit,
-        selling_quantity: it.selling_quantity > 0 ? it.selling_quantity : 1,
-        is_veg: typeof it.is_veg === 'boolean' ? it.is_veg : null,
-      }));
-      setParsed(mapped);
-      if (mergedCount > 0) {
-        toast({ title: 'Duplicates merged', description: `${mergedCount} duplicate item(s) auto-merged.` });
+      if (!error && data?.items && data.items.length > 0) {
+        items = data.items;
+        aiSuccess = true;
       }
     } catch (e: any) {
-      const msg = e?.context?.message || e?.message || 'AI parse failed';
-      toast({ title: 'AI parse failed', description: msg, variant: 'destructive' });
-    } finally {
-      setParsing(false);
+      console.warn('[AiMenuImport] AI Edge function call failed, falling back:', e);
     }
+
+    // 2. Local text parser fallback if AI call failed or returned empty, but text is available
+    if (!aiSuccess && text.trim()) {
+      const localParsed = parseTextLocally(text, hintCategory, defaultUnit);
+      if (localParsed.length > 0) {
+        items = localParsed;
+        toast({ title: 'Fast Text Parser Active', description: `Parsed ${localParsed.length} item(s) locally.` });
+      }
+    }
+
+    if (!items.length) {
+      toast({
+        title: 'Could not parse menu',
+        description: images.length
+          ? 'AI vision service unavailable. You can paste menu text directly in the text area to parse items.'
+          : 'No valid dish names and prices found. Example format: Chicken Biryani 150',
+        variant: 'destructive'
+      });
+      setParsing(false);
+      return;
+    }
+
+    // Dedupe (same name + price merges)
+    const { deduped, mergedCount } = dedupeItems(items);
+    const mapped: Parsed[] = deduped.map((it: any, i: number) => ({
+      id: i + 1,
+      name: it.name,
+      price: it.price,
+      category: (it.category && it.category.trim()) || hintCategory || 'General',
+      description: it.description ?? null,
+      selling_unit: UNITS.includes(it.selling_unit) ? it.selling_unit : defaultUnit,
+      selling_quantity: it.selling_quantity > 0 ? it.selling_quantity : 1,
+      is_veg: typeof it.is_veg === 'boolean' ? it.is_veg : null,
+    }));
+    setParsed(mapped);
+    if (mergedCount > 0) {
+      toast({ title: 'Duplicates merged', description: `${mergedCount} duplicate item(s) auto-merged.` });
+    }
+    setParsing(false);
   };
 
   const updateRow = (id: number, patch: Partial<Parsed>) => {
@@ -232,7 +295,7 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
 
   const saveAll = async () => {
     if (!validRows.length) return;
-    if (!branchId) { toast({ title: 'Select a branch first', variant: 'destructive' }); return; }
+    const targetBranchId = branchId || null;
     setSaving(true);
     try {
       const records = validRows.map(r => ({
