@@ -177,7 +177,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
     hr { border: none; border-top: 1px dashed #000; margin: ${paperSaving ? '4px 0' : '6px 0'}; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     td { padding: ${paperSaving ? '1.5px 1px' : '3px 2px'}; vertical-align: top; font-size: ${paperSaving ? (width === '80mm' ? '14px' : '11px') : fontSize}; }
-    .total { font-size: ${paperSaving ? (width === '80mm' ? '16px' : '12px') : totalFontSize}; font-weight: bold; }
+    .total { font-size: ${width === '80mm' ? '22px' : '16px'}; font-weight: bold; }
     .footer { margin-top: ${paperSaving ? '6px' : '12px'}; font-size: ${paperSaving ? (width === '80mm' ? '13px' : '10px') : fontSize}; margin-bottom: ${paperSaving ? '8px' : '24px'}; }
     @media print {
       @page { 
@@ -237,10 +237,10 @@ export const printBrowserReceipt = async (data: PrintData) => {
   <hr>
   
   <table>
-    <tr><td>Subtotal:</td><td style="text-align:right">₹${data.subtotal.toFixed(2)}</td></tr>
+    <tr><td><b>Subtotal:</b></td><td style="text-align:right"><b>₹${data.subtotal.toFixed(2)}</b></td></tr>
     ${data.additionalCharges?.map(c => `<tr><td>${c.name}:</td><td style="text-align:right">₹${c.amount.toFixed(2)}</td></tr>`).join('') || ''}
     ${data.discount && data.discount > 0 ? `<tr><td>Discount:</td><td style="text-align:right">-₹${data.discount.toFixed(2)}</td></tr>` : ''}
-    <tr class="total"><td>TOTAL:</td><td style="text-align:right">₹${data.total.toFixed(2)}</td></tr>
+    <tr class="total" style="font-size: ${width === '80mm' ? '22px' : '16px'}; font-weight: bold;"><td><b>TOTAL:</b></td><td style="text-align:right"><b>₹${data.total.toFixed(2)}</b></td></tr>
   </table>
   
   <table style="margin-top: ${paperSaving ? '4px' : '8px'}">

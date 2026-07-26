@@ -544,10 +544,10 @@ const KitchenDisplay = () => {
     // Extract unique item categories from all visible orders
     const allCategories = useMemo(() => {
         const names = new Set<string>();
-        filteredBills.forEach(b => b.bill_items.forEach(bi => {
+        filteredBills.forEach(b => (b.bill_items || []).forEach(bi => {
             if (bi.items?.name) names.add(bi.items.name);
         }));
-        filteredTableOrders.forEach(o => o.items.forEach(item => {
+        filteredTableOrders.forEach(o => (o.items || []).forEach(item => {
             if (item.name) names.add(item.name);
         }));
         return Array.from(names).sort();
@@ -854,7 +854,7 @@ const KitchenDisplay = () => {
                                     </Badge>
                                 </div>
                                 <div className="space-y-1.5 mb-3">
-                                    {order.items.map((item, idx) => {
+                                    {(order.items || []).map((item, idx) => {
                                         const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
                                         return (
                                         <div key={idx} className={cn(
@@ -940,7 +940,7 @@ const KitchenDisplay = () => {
                                     </Badge>
                                 </div>
                                 <div className="space-y-1.5 mb-3">
-                                    {order.items.map((item, idx) => {
+                                    {(order.items || []).map((item, idx) => {
                                         const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
                                         return (
                                         <div key={idx} className={cn(
@@ -1162,7 +1162,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
 
             {/* Items List */}
             <div className="space-y-2 mb-3">
-                {bill.bill_items.map((item) => {
+                {(bill.bill_items || []).map((item) => {
                     const itemName = item.items?.name || 'Unknown';
                     const isHighlighted = highlightedCategory !== 'all' && itemName === highlightedCategory;
                     return (

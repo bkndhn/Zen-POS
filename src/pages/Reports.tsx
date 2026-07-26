@@ -253,7 +253,7 @@ const Reports: React.FC = () => {
     }
 
     const settings = await fetchSettingsForBill(bill) || billSettings;
-    const subtotal = bill.bill_items.reduce((sum, item) => sum + item.total, 0);
+    const subtotal = (bill.bill_items || []).reduce((sum, item) => sum + item.total, 0);
     const billDate = new Date(bill.created_at);
 
     if (mode === 'image') {
@@ -265,13 +265,13 @@ const Reports: React.FC = () => {
         address: settings?.address,
         phone: settings?.contactNumber,
         gstin: settings?.gstin,
-        items: bill.bill_items.map(item => ({
-          name: item.items?.name || item.item_name_override || 'Item',
+        items: (bill.bill_items || []).map(item => ({
+          name: item.items?.name || (item as any).item_name_override || (item as any).name || 'Item',
           quantity: item.quantity,
           total: item.total,
-          unit: item.items?.unit,
+          unit: item.items?.unit || (item as any).unit || 'pcs',
           price: item.price,
-          base_value: item.items?.base_value
+          base_value: item.items?.base_value || 1
         })),
         subtotal,
         discount: bill.discount,
@@ -280,8 +280,8 @@ const Reports: React.FC = () => {
         date: format(billDate, 'dd/MM/yyyy'),
         time: format(billDate, 'hh:mm a'),
         paymentMethod: bill.payment_mode,
-        totalItemsCount: bill.bill_items.length,
-        smartQtyCount: calculateSmartQtyCount(bill.bill_items.map(bi => ({ quantity: bi.quantity, unit: bi.items?.unit }))),
+        totalItemsCount: (bill.bill_items || []).length,
+        smartQtyCount: calculateSmartQtyCount((bill.bill_items || []).map(bi => ({ quantity: bi.quantity, unit: bi.items?.unit || (bi as any).unit || 'pcs' }))),
         paymentDetails: bill.payment_details as Record<string, number> | undefined,
         taxSummary: bill.tax_summary ? (typeof bill.tax_summary === 'string' ? bill.tax_summary : JSON.stringify(bill.tax_summary)) : undefined,
         totalTax: bill.total_tax || undefined,
@@ -308,7 +308,7 @@ const Reports: React.FC = () => {
         billNo: bill.bill_no,
         shopName: settings?.shopName || profile?.hotel_name || 'Hotel',
         gstin: settings?.gstin,
-        items: bill.bill_items.map(item => ({
+        items: (bill.bill_items || []).map(item => ({
           name: item.items?.name || item.item_name_override || 'Item',
           quantity: item.quantity,
           total: item.total,
@@ -1332,7 +1332,7 @@ const Reports: React.FC = () => {
         payment_method: method.toUpperCase(),
         total_amount: amount,
         transaction_count: activeBills.filter(b => b.payment_mode === method).length,
-        percentage: ((amount / totalSales) * 100)
+        percentage: totalSales > 0 ? ((amount / totalSales) * 100) : 0
       }));
 
       const profitLossForExport = {
@@ -1403,7 +1403,7 @@ const Reports: React.FC = () => {
         payment_method: method.toUpperCase(),
         total_amount: amount,
         transaction_count: activeBills.filter(b => b.payment_mode === method).length,
-        percentage: ((amount / totalSales) * 100)
+        percentage: totalSales > 0 ? ((amount / totalSales) * 100) : 0
       }));
 
       const profitLossForExport = {
@@ -2462,34 +2462,39 @@ const Reports: React.FC = () => {
                   <div className="col-span-2 text-right">Value</div>
                 </div>
                 <div className="space-y-1.5">
-                  {selectedBill.bill_items?.map((item, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-2 p-2 bg-muted/30 rounded-md items-center">
-                      <div className="col-span-6">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="font-bold text-xs truncate">{item.items?.name}</p>
-                          {item.items?.is_active === false && (
-                            <Badge variant="destructive" className="h-4 text-[8px] px-1 translate-y-[1px]">Deleted</Badge>
-                          )}
+                  {selectedBill.bill_items?.map((item, index) => {
+                    const itemName = item.items?.name || (item as any).item_name_override || (item as any).name || 'Item';
+                    const itemUnit = item.items?.unit || (item as any).unit || 'pcs';
+                    const itemBaseVal = item.items?.base_value || 1;
+                    return (
+                      <div key={index} className="grid grid-cols-12 gap-2 p-2 bg-muted/30 rounded-md items-center">
+                        <div className="col-span-6">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="font-bold text-xs truncate">{itemName}</p>
+                            {item.items?.is_active === false && (
+                              <Badge variant="destructive" className="h-4 text-[8px] px-1 translate-y-[1px]">Deleted</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="col-span-2 text-center font-bold text-primary text-xs">
+                          {formatQuantityWithUnit(item.quantity, itemUnit)}
+                        </div>
+                        <div className="col-span-2 text-right text-[10px] text-muted-foreground">
+                          ₹{item.price.toFixed(0)}/{itemBaseVal > 1 ? `${itemBaseVal}${getShortUnit(itemUnit)}` : getShortUnit(itemUnit)}
+                        </div>
+                        <div className="col-span-2 text-right font-bold text-xs">
+                          ₹{item.total.toFixed(0)}
                         </div>
                       </div>
-                      <div className="col-span-2 text-center font-bold text-primary text-xs">
-                        {formatQuantityWithUnit(item.quantity, item.items?.unit)}
-                      </div>
-                      <div className="col-span-2 text-right text-[10px] text-muted-foreground">
-                        ₹{item.price.toFixed(0)}/{item.items?.base_value && item.items?.base_value > 1 ? `${item.items?.base_value}${getShortUnit(item.items?.unit)}` : getShortUnit(item.items?.unit)}
-                      </div>
-                      <div className="col-span-2 text-right font-bold text-xs">
-                        ₹{item.total.toFixed(0)}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="flex items-center justify-between mt-4 px-2 py-3 bg-primary/5 rounded-xl border border-primary/10 shadow-inner">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Qty Count</span>
                     <span className="text-lg font-black text-primary leading-none mt-1">
-                      {calculateSmartQtyCount(selectedBill.bill_items.map(bi => ({ quantity: bi.quantity, unit: bi.items?.unit })))}
+                      {calculateSmartQtyCount((selectedBill.bill_items || []).map(bi => ({ quantity: bi.quantity, unit: bi.items?.unit || (bi as any).unit || 'pcs' })))}
                     </span>
                   </div>
                   <div className="flex flex-col text-right">
@@ -2629,73 +2634,71 @@ const Reports: React.FC = () => {
               )}
 
               {/* WhatsApp Share Section */}
-              {settingsToUse?.whatsappBillShareEnabled !== false && (
-                <div className="border-t pt-4 mt-4">
-                  {!showWhatsappInput ? (
+              <div className="border-t pt-4 mt-4">
+                {!showWhatsappInput ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowWhatsappInput(true)}
+                    className="w-full gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                  >
+                    <WhatsAppIcon className="w-4 h-4" />
+                    Share via WhatsApp
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Image Bill - no phone needed */}
                     <Button
-                      variant="outline"
-                      onClick={() => setShowWhatsappInput(true)}
-                      className="w-full gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                      onClick={() => handleWhatsAppShareBill(selectedBill, 'image')}
+                      disabled={sharingImage}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white gap-1 h-9"
                     >
-                      <WhatsAppIcon className="w-4 h-4" />
-                      Share via WhatsApp
+                      {sharingImage ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4" />
+                      )}
+                      Image Bill (opens share dialog)
                     </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      {/* Image Bill - no phone needed */}
-                      <Button
-                        onClick={() => handleWhatsAppShareBill(selectedBill, 'image')}
-                        disabled={sharingImage}
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white gap-1 h-9"
-                      >
-                        {sharingImage ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <ImageIcon className="w-4 h-4" />
-                        )}
-                        Image Bill (opens share dialog)
-                      </Button>
-                      {/* Text Bill - needs phone */}
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            placeholder="WhatsApp Number"
-                            className="pl-9 h-9 border-green-200 focus-visible:ring-green-500"
-                            value={whatsappPhone}
-                            onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && whatsappPhone.length >= 10) {
-                                handleWhatsAppShareBill(selectedBill, 'text');
-                              }
-                            }}
-                          />
-                        </div>
-                        <Button
-                          onClick={() => handleWhatsAppShareBill(selectedBill, 'text')}
-                          disabled={!whatsappPhone.trim()}
-                          className="bg-green-600 hover:bg-green-700 text-white h-9 px-3"
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowWhatsappInput(false);
-                            setWhatsappPhone('');
+                    {/* Text Bill - needs phone */}
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="WhatsApp Number"
+                          className="pl-9 h-9 border-green-200 focus-visible:ring-green-500"
+                          value={whatsappPhone}
+                          onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && whatsappPhone.length >= 10) {
+                              handleWhatsAppShareBill(selectedBill, 'text');
+                            }
                           }}
-                          className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Cancel
-                        </Button>
+                        />
                       </div>
+                      <Button
+                        onClick={() => handleWhatsAppShareBill(selectedBill, 'text')}
+                        disabled={!whatsappPhone.trim()}
+                        className="bg-green-600 hover:bg-green-700 text-white h-9 px-3"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowWhatsappInput(false);
+                          setWhatsappPhone('');
+                        }}
+                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* End of Buttons Container */}
             </div>

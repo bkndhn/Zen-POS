@@ -90,7 +90,7 @@ const Expenses: React.FC = () => {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(expense =>
         expense.expense_name?.toLowerCase().includes(searchLower) ||
-        expense.category.toLowerCase().includes(searchLower) ||
+        (expense.category || '').toLowerCase().includes(searchLower) ||
         expense.note?.toLowerCase().includes(searchLower) ||
         expense.amount.toString().includes(searchTerm)
       );

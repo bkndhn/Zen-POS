@@ -413,6 +413,30 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     }
   }, [open]);
 
+  // F5 / F6 / Double-F5 Keyboard Shortcut to Complete Payment & Print
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleDialogKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F5' || e.key === 'F6') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (remaining === 0) {
+          handleCompletePayment('print');
+        } else {
+          toast({
+            title: 'Payment Incomplete',
+            description: `Remaining amount ₹${remaining.toFixed(2)}. Please assign payment before completing.`,
+            variant: 'destructive'
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleDialogKeyDown, true);
+    return () => window.removeEventListener('keydown', handleDialogKeyDown, true);
+  }, [open, remaining, handleCompletePayment]);
+
   React.useEffect(() => {
     if (open && paymentTypes.length > 0 && !hasInitialized.current) {
       hasInitialized.current = true;
@@ -839,9 +863,10 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                 <Button
                   onClick={() => handleCompletePayment('print')}
                   disabled={remaining !== 0}
-                  className="flex-[1.3] h-10 text-xs sm:text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+                  className="flex-[1.3] h-10 text-xs sm:text-sm font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg flex items-center justify-center gap-1.5"
                 >
-                  Complete & Print
+                  <span>Complete & Print</span>
+                  <span className="text-[10px] font-mono font-bold bg-white/25 dark:bg-black/25 px-1.5 py-0.5 rounded border border-white/30">F5</span>
                 </Button>
               </>
             ) : (

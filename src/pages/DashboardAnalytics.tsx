@@ -262,6 +262,7 @@ const DashboardAnalytics = () => {
   };
 
   const fetchComparisonData = async () => {
+    if (!adminId) return;
     try {
       setCompLoading(true);
 
@@ -377,10 +378,12 @@ const DashboardAnalytics = () => {
       const d = e.date; const c = salesMap.get(d) || { sales: 0, expenses: 0 }; salesMap.set(d, { ...c, expenses: (c.expenses || 0) + Number(e.amount) });
     });
 
-    const chartData = Array.from(salesMap.entries()).map(([d, v]) => ({
-      date: new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      sales: v.sales || 0, expenses: v.expenses || 0, profit: (v.sales || 0) - (v.expenses || 0)
-    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const chartData = Array.from(salesMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([d, v]) => ({
+        date: new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        sales: v.sales || 0, expenses: v.expenses || 0, profit: (v.sales || 0) - (v.expenses || 0)
+      }));
     setSales(chartData);
 
     // Process Top Items
@@ -619,11 +622,13 @@ const DashboardAnalytics = () => {
         avgDiscount: billsWithDisc ? totalDiscount / billsWithDisc : 0,
         discountRate: totalRev > 0 ? (totalDiscount / (totalRev + totalDiscount)) * 100 : 0,
       });
-      setAvgBillTrend(Array.from(avgMap.entries()).map(([date, v]) => ({
-        date: new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-        avg: v.bills ? v.total / v.bills : 0,
-        bills: v.bills,
-      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      setAvgBillTrend(Array.from(avgMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, v]) => ({
+          date: new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          avg: v.bills ? v.total / v.bills : 0,
+          bills: v.bills,
+        })));
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       setDowStats(dayNames.map((day, i) => {
         const v = dowMap.get(i) || { total: 0, bills: 0 };
@@ -1096,7 +1101,7 @@ const DashboardAnalytics = () => {
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={paymentMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e: any) => `${e.name}: ${((e.value / insightsRevenue) * 100).toFixed(0)}%`}>
+                          <Pie data={paymentMix} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(e: any) => `${e.name}: ${insightsRevenue > 0 ? ((e.value / insightsRevenue) * 100).toFixed(0) : '0'}%`}>
                             {paymentMix.map((_, i) => (
                               <Cell key={i} fill={['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#06b6d4', '#84cc16'][i % 7]} />
                             ))}

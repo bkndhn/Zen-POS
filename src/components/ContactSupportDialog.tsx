@@ -40,7 +40,7 @@ export const ContactSupportDialog: React.FC<ContactSupportDialogProps> = ({ open
             setIsAdminSupport(true);
             const { data: adminProfile } = await supabase
               .from('profiles')
-              .select('id, user_id, full_name, email, mobile_number')
+              .select('id, user_id, name, mobile_number')
               .eq('id', profile.admin_id)
               .maybeSingle();
 
@@ -58,14 +58,14 @@ export const ContactSupportDialog: React.FC<ContactSupportDialogProps> = ({ open
 
             const phone = shopData?.contact_number || (adminProfile as any)?.mobile_number || undefined;
             const whatsapp = shopData?.whatsapp || phone;
-            const email = adminProfile?.email || undefined;
+            const email = undefined;
             const address = shopData?.address || undefined;
-            const shopName = shopData?.shop_name || adminProfile?.full_name || 'Store Management';
+            const shopName = shopData?.shop_name || (adminProfile as any)?.name || 'Store Management';
 
             setAdminShopDetails({
               shopName,
               address,
-              adminName: adminProfile?.full_name || 'Store Admin'
+              adminName: (adminProfile as any)?.name || 'Store Admin'
             });
 
             setCoords({

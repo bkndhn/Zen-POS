@@ -358,8 +358,8 @@ const CRM: React.FC = () => {
           discount: bill.discount,
           additionalCharges: bill.additional_charges || [],
           total: bill.total_amount,
-          date: format(billDate, 'dd/MM/yyyy'),
-          time: format(billDate, 'hh:mm a'),
+          date: bill.created_at ? format(new Date(bill.created_at), 'dd/MM/yyyy') : 'N/A',
+          time: bill.created_at ? format(new Date(bill.created_at), 'hh:mm a') : 'N/A',
           paymentMethod: bill.payment_mode,
           totalItemsCount: bill.bill_items?.length || 0,
           smartQtyCount: bill.bill_items?.reduce((s: number, i: any) => s + i.quantity, 0) || 0,
@@ -401,8 +401,8 @@ const CRM: React.FC = () => {
           discount: bill.discount,
           additionalCharges: bill.additional_charges || [],
           total: bill.total_amount,
-          date: format(billDate, 'dd/MM/yyyy'),
-          time: format(billDate, 'hh:mm a'),
+          date: bill.created_at ? format(new Date(bill.created_at), 'dd/MM/yyyy') : 'N/A',
+          time: bill.created_at ? format(new Date(bill.created_at), 'hh:mm a') : 'N/A',
           paymentMethod: bill.payment_mode,
           taxSummary: bill.tax_summary ? (typeof bill.tax_summary === 'string' ? bill.tax_summary : JSON.stringify(bill.tax_summary)) : undefined,
           totalTax: bill.total_tax || undefined,
@@ -432,8 +432,8 @@ const CRM: React.FC = () => {
       const billDate = new Date(bill.created_at);
       const printData = {
         billNo: bill.bill_no,
-        date: format(new Date(bill.date || bill.created_at), 'MMM dd, yyyy'),
-        time: format(billDate, 'hh:mm a'),
+        date: (bill.date || bill.created_at) ? format(new Date(bill.date || bill.created_at), 'MMM dd, yyyy') : 'N/A',
+        time: bill.created_at ? format(new Date(bill.created_at), 'hh:mm a') : 'N/A',
         items: bill.bill_items?.map((item: any) => ({
           name: item.items?.name || item.name || 'Unknown Item',
           quantity: item.quantity,
@@ -490,8 +490,8 @@ const CRM: React.FC = () => {
         const { printBrowserReceipt } = await import('@/utils/browserPrinter');
         const printData = {
           billNo: bill.bill_no,
-          date: format(new Date(bill.date || bill.created_at), 'MMM dd, yyyy'),
-          time: format(new Date(bill.created_at), 'hh:mm a'),
+          date: (bill.date || bill.created_at) ? format(new Date(bill.date || bill.created_at), 'MMM dd, yyyy') : 'N/A',
+          time: bill.created_at ? format(new Date(bill.created_at), 'hh:mm a') : 'N/A',
           items: bill.bill_items?.map((item: any) => ({
             name: item.items?.name || item.name || 'Unknown Item',
             quantity: item.quantity,
@@ -613,8 +613,8 @@ const CRM: React.FC = () => {
         'Name': c.name || '-',
         'Total Visits': c.visit_count,
         'Total Spent': `₹${c.total_spent.toFixed(2)}`,
-        'Last Visit': format(new Date(c.last_visit), 'dd/MM/yyyy hh:mm a'),
-        'First Visit': format(new Date(c.created_at), 'dd/MM/yyyy')
+        'Last Visit': c.last_visit ? format(new Date(c.last_visit), 'dd/MM/yyyy hh:mm a') : 'N/A',
+        'First Visit': c.created_at ? format(new Date(c.created_at), 'dd/MM/yyyy') : 'N/A'
       }));
 
       const headers = Object.keys(data[0] || {});
@@ -688,7 +688,7 @@ const CRM: React.FC = () => {
                   <td>${c.name || '-'}</td>
                   <td>${c.visit_count}</td>
                   <td>₹${c.total_spent.toFixed(2)}</td>
-                  <td>${format(new Date(c.last_visit), 'dd/MM/yyyy')}</td>
+                  <td>${c.last_visit ? format(new Date(c.last_visit), 'dd/MM/yyyy') : 'N/A'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -889,7 +889,7 @@ const CRM: React.FC = () => {
                         <p className="text-xs text-muted-foreground mt-0.5">{customer.name}</p>
                       )}
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {customer.visit_count} visits • Last: {format(new Date(customer.last_visit), 'dd MMM yyyy')}
+                        {customer.visit_count} visits • Last: {customer.last_visit ? format(new Date(customer.last_visit), 'dd MMM yyyy') : 'N/A'}
                       </p>
                     </div>
                   <div className="flex items-center gap-2">
@@ -1091,7 +1091,7 @@ const CRM: React.FC = () => {
                             </span>
                           </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
-                            <span>{format(billDate, 'dd MMM yyyy · hh:mm a')}</span>
+                            <span>{b.created_at ? format(new Date(b.created_at), 'dd MMM yyyy · hh:mm a') : 'N/A'}</span>
                             <span>•</span>
                             <span className="capitalize">{b.payment_mode || 'Cash'}</span>
                             <span>•</span>
@@ -1136,8 +1136,8 @@ const CRM: React.FC = () => {
                               <span>Mode: {b.payment_mode?.toUpperCase()}</span>
                             </div>
                             <div className="flex justify-between gap-2 mb-2">
-                              <span>Date: {format(billDate, 'dd/MM/yyyy')}</span>
-                              <span>Time: {format(billDate, 'hh:mm a')}</span>
+                              <span>Date: {b.created_at ? format(new Date(b.created_at), 'dd/MM/yyyy') : 'N/A'}</span>
+                              <span>Time: {b.created_at ? format(new Date(b.created_at), 'hh:mm a') : 'N/A'}</span>
                             </div>
                             
                             <div className="border-t border-dashed border-slate-300 dark:border-slate-700 my-2"></div>

@@ -831,7 +831,7 @@ const ServiceArea = () => {
 
                             {/* Items - no scroll, show all */}
                             <div className="flex-1 mb-3 space-y-1">
-                                {bill.bill_items.map((item) => (
+                                {(bill.bill_items || []).map((item) => (
                                     <div key={item.id} className="flex items-center text-sm">
                                         <span className="font-bold text-primary mr-2">
                                             {formatQuantityWithUnit(item.quantity, item.items?.unit)}
@@ -844,8 +844,8 @@ const ServiceArea = () => {
 
                             {/* Items/Qty Count Footer */}
                             <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground border-t pt-2 mb-3">
-                                <span>Items: {bill.bill_items.length}</span>
-                                <span>Qty: {bill.bill_items.reduce((acc, item) => {
+                                <span>Items: {(bill.bill_items || []).length}</span>
+                                <span>Qty: {(bill.bill_items || []).reduce((acc, item) => {
                                     const unit = item.items?.unit?.toLowerCase() || '';
                                     const isWeightVolume = unit.includes('gram') || unit.includes('kg') ||
                                         unit.includes('liter') || unit.includes('ml') ||
@@ -905,7 +905,7 @@ const ServiceArea = () => {
                             </div>
 
                             <div className="flex-1 mb-3 space-y-1">
-                                {order.items.map((item, idx) => (
+                                {(order.items || []).map((item, idx) => (
                                     <div key={idx}>
                                         <div className="flex items-center text-sm">
                                             <span className="font-bold text-primary mr-2">
@@ -928,7 +928,7 @@ const ServiceArea = () => {
                             )}
 
                             <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground border-t pt-2 mb-3">
-                                <span>Items: {order.items.length}</span>
+                                <span>Items: {(order.items || []).length}</span>
                                 <span>₹{order.total_amount}</span>
                             </div>
 

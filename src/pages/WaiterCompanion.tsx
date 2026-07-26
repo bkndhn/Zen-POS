@@ -236,7 +236,7 @@ const WaiterCompanion: React.FC = () => {
     // Filter menu items
     const filteredMenuItems = useMemo(() => {
         return menuItems.filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
             const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
             return matchesSearch && matchesCategory;
         });
@@ -253,7 +253,8 @@ const WaiterCompanion: React.FC = () => {
         const savedCart = localStorage.getItem(`waiter_cart_${table.id}`);
         if (savedCart) {
             try {
-                setCart(JSON.parse(savedCart));
+                const parsed = JSON.parse(savedCart);
+                setCart(Array.isArray(parsed) ? parsed : []);
             } catch (e) {
                 setCart([]);
             }

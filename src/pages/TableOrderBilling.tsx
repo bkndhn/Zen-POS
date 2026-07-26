@@ -154,7 +154,7 @@ const TableOrderBilling: React.FC = () => {
         const mergedItems: Record<string, CartItem> = {};
 
         table.orders.forEach(order => {
-            order.items.forEach(item => {
+            (order.items || []).forEach(item => {
                 const dbItem = items.find(i => i.id === item.item_id);
                 if (mergedItems[item.item_id]) {
                     mergedItems[item.item_id].quantity += item.quantity;

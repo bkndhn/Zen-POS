@@ -550,10 +550,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(textToBytes(SEP_DOUBLE));
   commands.push(FEED_LINE);
 
-  // TOTAL - bold but NOT double size to save paper
+  // TOTAL - big text and bold amount
   commands.push(BOLD_ON);
+  commands.push(DOUBLE_SIZE);
   commands.push(textToBytes(fmtLine('TOTAL', `Rs.${data.total.toFixed(0)}`)));
   commands.push(FEED_LINE);
+  commands.push(NORMAL_SIZE);
   commands.push(BOLD_OFF);
 
   // Payment - if multiple methods, show breakdown; otherwise single line

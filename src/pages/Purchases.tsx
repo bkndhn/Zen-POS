@@ -394,7 +394,7 @@ const Purchases: React.FC = () => {
           ref: (purchase?.purchase_no || '') + (pay.reference_no ? ` [Ref: ${pay.reference_no}]` : ''),
           invoiced: 0,
           paid: Number(pay.amount),
-          notes: `${pay.payment_mode.toUpperCase()}${pay.notes ? ` - ${pay.notes}` : ''}`
+          notes: `${(pay.payment_mode || '').toUpperCase()}${pay.notes ? ` - ${pay.notes}` : ''}`
         });
       });
 
@@ -609,10 +609,10 @@ const Purchases: React.FC = () => {
                       placeholder="Type or select existing item..."
                       onChange={e => {
                         const val = e.target.value;
-                        const matched = items.find(it => it.name.toLowerCase() === val.toLowerCase());
+                        const matched = items.find(it => (it.name || '').toLowerCase() === val.toLowerCase());
                         if (matched) {
                           const updatedDists = l.distributions.map(d => {
-                            const branchMatch = items.find(it => it.branch_id === d.branch_id && it.name.toLowerCase() === val.toLowerCase());
+                            const branchMatch = items.find(it => it.branch_id === d.branch_id && (it.name || '').toLowerCase() === val.toLowerCase());
                             return branchMatch ? { ...d, item_id: branchMatch.id } : d;
                           });
                           updateLine(idx, {

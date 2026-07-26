@@ -12,7 +12,8 @@ import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Bell, Clipboard, Calculator, AlertCircle, Delete } from 'lucide-react';
+import { Bell, Clipboard, Calculator, AlertCircle, Delete, Printer, Keyboard } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { PrinterStatusPanel } from '@/components/PrinterStatusPanel';
 import { TableSelector } from '@/components/TableSelector';
@@ -614,11 +615,11 @@ const Billing = () => {
 
       parsedItems.forEach(pi => {
         const nameToMatch = pi.name.toLowerCase();
-        let found = items.find(it => it.name.toLowerCase() === nameToMatch);
+        let found = items.find(it => (it.name || '').toLowerCase() === nameToMatch);
         if (!found) {
           found = items.find(it => 
-            it.name.toLowerCase().includes(nameToMatch) || 
-            nameToMatch.includes(it.name.toLowerCase())
+            (it.name || '').toLowerCase().includes(nameToMatch) || 
+            nameToMatch.includes((it.name || '').toLowerCase())
           );
         }
 
@@ -688,9 +689,9 @@ const Billing = () => {
 
       order.items.forEach((oi: any) => {
         const nameLower = oi.name.toLowerCase();
-        let dbItem = items.find(it => it.name.toLowerCase() === nameLower);
+        let dbItem = items.find(it => (it.name || '').toLowerCase() === nameLower);
         if (!dbItem) {
-          dbItem = items.find(it => it.name.toLowerCase().includes(nameLower) || nameLower.includes(it.name.toLowerCase()));
+          dbItem = items.find(it => (it.name || '').toLowerCase().includes(nameLower) || nameLower.includes((it.name || '').toLowerCase()));
         }
 
         if (dbItem) {
@@ -846,6 +847,57 @@ const Billing = () => {
   const [calciMode, setCalciMode] = useState<'num' | 'quick'>(() => {
     return (localStorage.getItem(branchKey('hotel_pos_default_calci_mode')) as 'num' | 'quick') || 'num';
   });
+
+  const [recentCalciPrices, setRecentCalciPrices] = useState<number[]>(() => {
+    try {
+      const p = localStorage.getItem('hotel_pos_recent_calci_prices');
+      return p ? JSON.parse(p) : [40, 60, 100, 150];
+    } catch {
+      return [40, 60, 100, 150];
+    }
+  });
+
+  const [heldBillCount, setHeldBillCount] = useState<number>(() => {
+    const h = localStorage.getItem('hotel_pos_held_bill');
+    return h ? 1 : 0;
+  });
+
+  const [autoPrintEnabledState, setAutoPrintEnabledState] = useState<boolean>(() => {
+    return (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
+  });
+
+  // Web Audio API Chime Synthesizer (Works 100% Offline on All Devices)
+  const playCompletionChime = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(523.25, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.25);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.08);
+      gain2.gain.setValueAtTime(0.2, ctx.currentTime + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.08);
+      osc2.stop(ctx.currentTime + 0.45);
+    } catch (e) {
+      console.warn('Audio chime error:', e);
+    }
+  };
   const [gstSettings, setGstSettings] = useState<{
     enabled: boolean;
     gstin: string;
@@ -898,6 +950,79 @@ const Billing = () => {
       setTimeout(() => executeFastCash(), 0);
     }
   }, [cart]);
+
+  // Desktop & Laptop Fast Billing Keyboard Shortcuts (F1 - F8)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.key.startsWith('F') || e.key.length > 3) return;
+
+      switch (e.key) {
+        case 'F1':
+          e.preventDefault();
+          {
+            const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+            if (searchInput) {
+              searchInput.focus();
+              searchInput.select();
+            }
+          }
+          break;
+        case 'F2':
+          e.preventDefault();
+          setAppBillingMode('pos');
+          toast({ title: '⚡ Mode Switched', description: 'Standard POS Mode (F2)' });
+          break;
+        case 'F3':
+          e.preventDefault();
+          setAppBillingMode('calci');
+          toast({ title: '🧮 Mode Switched', description: 'Calci Mode (F3)' });
+          break;
+        case 'F4':
+          e.preventDefault();
+          if (cart.length > 0) {
+            setCart([]);
+            setDiscount(0);
+            setCustomerMobile('');
+            toast({ title: '🧹 Cart Cleared', description: 'Ready for new bill (F4)' });
+          }
+          break;
+        case 'F5':
+        case 'F6':
+          e.preventDefault();
+          if (cart.filter(i => i.quantity > 0).length > 0) {
+            setPaymentDialogOpen(true);
+          } else {
+            toast({ title: 'Cart Empty', description: 'Add items before checkout', variant: 'destructive' });
+          }
+          break;
+        case 'F8':
+          e.preventDefault();
+          if (cart.length > 0) {
+            localStorage.setItem('hotel_pos_held_bill', JSON.stringify(cart));
+            setCart([]);
+            setHeldBillCount(1);
+            toast({ title: '📌 Bill Held', description: 'Cart saved. Press F8 again to restore.' });
+          } else {
+            const held = localStorage.getItem('hotel_pos_held_bill');
+            if (held) {
+              try {
+                const parsed = JSON.parse(held);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setCart(parsed);
+                  localStorage.removeItem('hotel_pos_held_bill');
+                  setHeldBillCount(0);
+                  toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
+                }
+              } catch {}
+            }
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, toast]);
   const [billSettings, setBillSettings] = useState<{
     shopName: string;
     address: string;
@@ -1599,7 +1724,7 @@ const Billing = () => {
   const filteredItems = useMemo(() => {
     const query = searchQuery.toLowerCase();
     return items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(query);
+      const matchesSearch = (item.name || '').toLowerCase().includes(query);
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       // Hide out-of-stock items (items with stock_quantity of 0 or less)
       // Items without stock tracking (null/undefined) are still shown
@@ -1611,7 +1736,7 @@ const Billing = () => {
     if (calciEnabled && appBillingMode === 'calci') {
       const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
       let shortcodes: Record<string, string> = {};
-      try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch {}
+      try { if (shortcodesStr) { const parsed = JSON.parse(shortcodesStr); shortcodes = (parsed && typeof parsed === 'object') ? parsed : {}; } } catch {}
       
       let shortcodeKey = Object.keys(shortcodes).find(key => shortcodes[key] === item.id);
       
@@ -1907,7 +2032,7 @@ const Billing = () => {
       
       const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
       let shortcodes: Record<string, string> = {};
-      try { if (shortcodesStr) shortcodes = JSON.parse(shortcodesStr); } catch { /* corrupted data, ignore */ }
+      try { if (shortcodesStr) { const parsed = JSON.parse(shortcodesStr); shortcodes = (parsed && typeof parsed === 'object') ? parsed : {}; } } catch {}
       
       let itemsAdded = 0;
       let pendingUnassigned: { code: string; price: number; qty: number } | null = null;
@@ -1974,6 +2099,13 @@ const Billing = () => {
         const price = parseFloat(itemIdentifier);
         
         if (isNaN(price) || isNaN(qty) || price <= 0 || qty <= 0) continue;
+        
+        setRecentCalciPrices(prev => {
+          const filtered = prev.filter(p => p !== price);
+          const next = [price, ...filtered].slice(0, 4);
+          try { localStorage.setItem('hotel_pos_recent_calci_prices', JSON.stringify(next)); } catch {}
+          return next;
+        });
         
         const tempId = `calci-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const newItem: CartItem = {
@@ -2320,6 +2452,7 @@ const Billing = () => {
       description: `Bill ${billNumber} generated!`,
       duration: 2000
     });
+    playCompletionChime();
 
     // === INSTANT 4-LAYER SYNC ===
     // Layer 3: Window custom events - same tab (0ms)
@@ -2357,7 +2490,7 @@ const Billing = () => {
   ) => {
     const catStationMap: Record<string, string> = {};
     for (const c of itemCategories) {
-      catStationMap[c.name.toLowerCase()] = (c.print_station || 'kitchen').toLowerCase();
+      catStationMap[(c.name || '').toLowerCase()] = (c.print_station || 'kitchen').toLowerCase();
     }
     const kotItems = validCart.map((it: any) => ({
       name: it.name,
@@ -2870,6 +3003,7 @@ const Billing = () => {
             : `${billNumber} queued. Will sync when online.`,
           duration: 3000
         });
+        playCompletionChime();
         clearCart();
 
         // Try print in offline mode ONLY if auto-print is enabled
@@ -3175,6 +3309,61 @@ const Billing = () => {
             )}
           </Button>
 
+          {/* Desktop & Laptop Only Header Shortcut Keys Indicator */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm"
+              >
+                <Keyboard className="w-3.5 h-3.5 text-primary" />
+                <span>Keys</span>
+                <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono font-bold bg-primary/10 text-primary border-primary/20">F1-F8</Badge>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl">
+              <div className="text-xs font-bold mb-2 pb-1.5 border-b flex items-center justify-between">
+                <span className="flex items-center gap-1.5"><Keyboard className="w-3.5 h-3.5 text-primary" /> Desktop Shortcuts</span>
+                <span className="text-[10px] text-muted-foreground font-mono">F-Keys</span>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Focus Search:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Standard POS Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Item 3: Desktop/Laptop Only Held Bills Counter Badge */}
+          {heldBillCount > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const held = localStorage.getItem('hotel_pos_held_bill');
+                if (held) {
+                  try {
+                    const parsed = JSON.parse(held);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      setCart(parsed);
+                      localStorage.removeItem('hotel_pos_held_bill');
+                      setHeldBillCount(0);
+                      toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
+                    }
+                  } catch {}
+                }
+              }}
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
+              title="Click to restore held bill (F8)"
+            >
+              <span>📌 Held Bill</span>
+              <span className="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>
+            </button>
+          )}
+
           {calciEnabled && (
             <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
               <button
@@ -3274,6 +3463,26 @@ const Billing = () => {
                 Add
               </Button>
             </div>
+            {/* Recent Price Memory Chips (Last 4 entered prices) */}
+            {recentCalciPrices.length > 0 && (
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap text-xs px-1">
+                <span className="text-muted-foreground text-[11px] font-medium">Recent:</span>
+                {recentCalciPrices.map((price, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setCalciInput(prev => prev ? `${prev}+${price}` : String(price));
+                      calciInputRef.current?.focus();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 hover:bg-primary/10 hover:text-primary border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-semibold transition-all shadow-sm active:scale-95"
+                  >
+                    +₹{price}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground mt-2 px-1 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               Press <kbd className="bg-muted px-1.5 rounded text-[10px] mx-1 border shadow-sm font-mono">Enter</kbd> to add to cart.
@@ -3743,7 +3952,7 @@ const Billing = () => {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-primary">₹{order.total}</span>
+                      <span className="text-sm font-bold text-primary">₹{order.total || 0}</span>
                       <div className="flex gap-2">
                         <Button 
                           size="sm" 
@@ -3751,7 +3960,7 @@ const Billing = () => {
                           onClick={() => {
                             setCart([]);
                             order.items.forEach((oi: any) => {
-                              const dbItem = items.find(it => it.name.toLowerCase() === oi.name.toLowerCase() || it.name.toLowerCase().includes(oi.name.toLowerCase()));
+                              const dbItem = items.find(it => (it.name || '').toLowerCase() === oi.name.toLowerCase() || (it.name || '').toLowerCase().includes(oi.name.toLowerCase()));
                               if (dbItem) {
                                 const storePrice = dbItem.price;
                                 const channelPrice = getChannelPrice(dbItem, order.channel);

@@ -69,10 +69,10 @@ const Users: React.FC = () => {
       const filtered = users.map(user => {
         // Check if Admin matches
         const adminMatches = (
-          user.name.toLowerCase().includes(searchLower) ||
-          user.role.toLowerCase().includes(searchLower) ||
+          (user.name || '').toLowerCase().includes(searchLower) ||
+          (user.role || '').toLowerCase().includes(searchLower) ||
           user.hotel_name?.toLowerCase().includes(searchLower) ||
-          user.status.toLowerCase().includes(searchLower)
+          (user.status || '').toLowerCase().includes(searchLower)
         );
 
         // Check sub-users matches
@@ -664,7 +664,7 @@ const Users: React.FC = () => {
                                     </h6>
                                     <p className="text-xs font-mono text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
                                       <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
-                                      {subUser.email || (subUser.name.includes('@') ? subUser.name : 'Email: Not Registered')}
+                                      {subUser.email || ((subUser.name || '').includes('@') ? subUser.name : 'Email: Not Registered')}
                                     </p>
                                     {subUser.mobile_number && (
                                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -715,7 +715,7 @@ const Users: React.FC = () => {
                         </h4>
                         <p className="text-xs font-mono text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
                           <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          {user.email || (user.name.includes('@') ? user.name : 'Email: Not Registered')}
+                          {user.email || ((user.name || '').includes('@') ? user.name : 'Email: Not Registered')}
                         </p>
                         {user.hotel_name && (
                           <p className="text-xs text-muted-foreground font-medium mt-0.5">{user.hotel_name}</p>
