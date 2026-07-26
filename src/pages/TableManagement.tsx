@@ -30,6 +30,8 @@ interface Table {
   has_seats?: boolean;
   seat_count?: number | null;
   seat_configuration?: any;
+  seat_order_mode?: string | null;
+
   x_pos?: number | null;
   y_pos?: number | null;
   width?: number | null;
@@ -105,6 +107,9 @@ const TableManagement: React.FC = () => {
   const [hasSeats, setHasSeats] = useState(false);
   const [seatCount, setSeatCount] = useState('2');
   const [seatLabels, setSeatLabels] = useState<string[]>([]);
+  // 'table' = whole-table orders only, 'seat' = seat-wise only, 'both' = allow either
+  const [seatOrderMode, setSeatOrderMode] = useState<'table' | 'seat' | 'both'>('both');
+
   const [coverCountInput, setCoverCountInput] = useState('4');
 
   // Section/Floor Filter & Table Merge states
@@ -354,6 +359,8 @@ const TableManagement: React.FC = () => {
       setHasSeats(table.has_seats || false);
       setSeatCount(String(table.seat_count || 2));
       setSeatLabels(Array.isArray(table.seat_configuration) ? (table.seat_configuration as string[]) : getDefaultSeatLabels(table.seat_count || 2));
+      setSeatOrderMode((table.seat_order_mode as 'table' | 'seat' | 'both') || 'both');
+
       setShape(table.shape || 'rectangle');
       setWidth(String(table.width || 100));
       setHeight(String(table.height || 100));
@@ -368,6 +375,8 @@ const TableManagement: React.FC = () => {
       setHasSeats(false);
       setSeatCount('2');
       setSeatLabels(getDefaultSeatLabels(2));
+      setSeatOrderMode('both');
+
       setShape('rectangle');
       setWidth('100');
       setHeight('100');
@@ -394,6 +403,8 @@ const TableManagement: React.FC = () => {
         has_seats: hasSeats,
         seat_count: hasSeats ? parseInt(seatCount) : 0,
         seat_configuration: hasSeats ? seatLabels : [],
+        seat_order_mode: hasSeats ? seatOrderMode : 'table',
+
         shape: shape,
         width: parseInt(width) || 100,
         height: parseInt(height) || 100,
@@ -918,6 +929,35 @@ const TableManagement: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] text-muted-foreground font-semibold">Ordering Mode</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        { v: 'both', label: 'Both', hint: 'Table + seat' },
+                        { v: 'seat', label: 'Seat only', hint: 'Per guest' },
+                        { v: 'table', label: 'Table only', hint: 'One bill' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          onClick={() => setSeatOrderMode(opt.v)}
+                          className={`rounded-md border px-2 py-1.5 text-left transition-colors ${
+                            seatOrderMode === opt.v
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border bg-background text-muted-foreground'
+                          }`}
+                        >
+                          <span className="block text-[11px] font-bold">{opt.label}</span>
+                          <span className="block text-[9px] opacity-80">{opt.hint}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Controls what waiters and QR guests can pick: the whole table, a specific seat, or either.
+                    </p>
+                  </div>
+
 
                   <div className="space-y-2">
                     <Label className="text-[11px] text-muted-foreground font-semibold">Seat Labels / Custom Names</Label>

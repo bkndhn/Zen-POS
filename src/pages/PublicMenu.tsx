@@ -952,6 +952,9 @@ const PublicMenu = () => {
                     table_number: tableNo,
                     session_id: sessionId,
                     seat_id: seatId || null,
+                    seat_label: seatId || null,
+                    order_scope: seatId ? 'seat' : 'table',
+
                     order_number: orderNumber,
                     items: orderItems,
                     total_amount: totalAmount,
@@ -1281,6 +1284,8 @@ const PublicMenu = () => {
                     table_number: tableNo,
                     session_id: sessionId,
                     seat_id: seatId || null,
+                    seat_label: seatId || null,
+
                     request_type: requestType,
                     message: message || null,
                     status: 'pending'

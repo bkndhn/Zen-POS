@@ -32,7 +32,9 @@ interface Table {
     status: 'available' | 'occupied' | 'reserved' | 'cleaning';
     has_seats: boolean;
     seat_count: number;
-    seat_configuration: Array<{ id: string; label: string }> | null;
+    seat_configuration: any;
+    seat_order_mode?: string | null;
+
 }
 
 interface MenuItem {
@@ -62,6 +64,19 @@ interface CartItem {
     instructions: string;
     seatId: string | null; // null represents whole table or no seat assignment
 }
+
+/** Resolve seat labels for a table: custom labels from seat_configuration, else S1..Sn */
+const getSeatLabels = (table: Pick<Table, 'seat_count' | 'seat_configuration'>): string[] => {
+    const cfg = table.seat_configuration;
+    if (Array.isArray(cfg) && cfg.length > 0) {
+        const labels = cfg
+            .map((s: any) => (typeof s === 'string' ? s : s?.label || s?.id))
+            .filter((s: any): s is string => typeof s === 'string' && s.trim().length > 0);
+        if (labels.length > 0) return labels;
+    }
+    return Array.from({ length: table.seat_count || 0 }).map((_, idx) => `S${idx + 1}`);
+};
+
 
 const WaiterCompanion: React.FC = () => {
     const { profile , adminProfileId } = useAuth();
@@ -438,6 +453,9 @@ const WaiterCompanion: React.FC = () => {
                     table_number: selectedTable.table_number,
                     session_id: sessionId,
                     seat_id: currentSeatId,
+                    seat_label: currentSeatId,
+                    order_scope: currentSeatId ? 'seat' : 'table',
+
                     order_number: nextOrderNo,
                     items: itemsInSeat.map(item => {
                         const baseValue = item.base_value || 1;
@@ -451,7 +469,10 @@ const WaiterCompanion: React.FC = () => {
                             base_value: item.base_value,
                             selling_unit: item.selling_unit,
                             selling_quantity: item.selling_quantity,
-                            instructions: item.instructions
+                            instructions: item.instructions,
+                            seat_id: item.seatId || null,
+                            seat_label: item.seatId || null,
+
                         };
                     }),
                     total_amount: seatTotal,
@@ -621,31 +642,31 @@ const WaiterCompanion: React.FC = () => {
                             <div className="bg-card p-3 rounded-xl border border-muted shadow-sm">
                                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Assign Items to Seat</Label>
                                 <div className="flex gap-2 overflow-x-auto pb-1">
-                                    <Button
-                                        variant={selectedSeatId === null ? 'default' : 'outline'}
-                                        size="sm"
-                                        onClick={() => setSelectedSeatId(null)}
-                                        className="h-8 rounded-full text-xs shrink-0"
-                                    >
-                                        Whole Table
-                                    </Button>
-                                    {Array.from({ length: selectedTable.seat_count }).map((_, idx) => {
-                                        const seatLabel = `S${idx + 1}`;
-                                        return (
-                                            <Button
-                                                key={seatLabel}
-                                                variant={selectedSeatId === seatLabel ? 'default' : 'outline'}
-                                                size="sm"
-                                                onClick={() => setSelectedSeatId(seatLabel)}
-                                                className="h-8 rounded-full text-xs shrink-0"
-                                            >
-                                                Seat {seatLabel}
-                                            </Button>
-                                        );
-                                    })}
+                                    {(selectedTable.seat_order_mode || 'both') !== 'seat' && (
+                                        <Button
+                                            variant={selectedSeatId === null ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setSelectedSeatId(null)}
+                                            className="h-8 rounded-full text-xs shrink-0"
+                                        >
+                                            Whole Table
+                                        </Button>
+                                    )}
+                                    {(selectedTable.seat_order_mode || 'both') !== 'table' && getSeatLabels(selectedTable).map((seatLabel) => (
+                                        <Button
+                                            key={seatLabel}
+                                            variant={selectedSeatId === seatLabel ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setSelectedSeatId(seatLabel)}
+                                            className="h-8 rounded-full text-xs shrink-0"
+                                        >
+                                            Seat {seatLabel}
+                                        </Button>
+                                    ))}
                                 </div>
                             </div>
                         )}
+
 
                         {/* Search & Category Filter */}
                         <div className="space-y-2">
