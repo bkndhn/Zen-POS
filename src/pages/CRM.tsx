@@ -134,41 +134,42 @@ const CRM: React.FC = () => {
         setCustomers(cachedCustomers.map(c => ({
           ...c,
           visit_count: c.visit_count ?? 0,
-          total_spent: c.total_spent ?? 0,
+          total_spent: Number(c.total_spent) || 0,
           last_visit: c.last_visit ?? c.created_at
         })));
         loadedFromCache = true;
         setLoading(false);
       }
 
-      let query: any = supabase
+      // Clean, fail-safe query for all admin customers
+      const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .eq('admin_id', adminId);
-
-      if (branchFilterId) {
-        query = query.or(`branch_id.eq.${branchFilterId},branch_id.is.null`);
-      }
-      query = query.order('last_visit', { ascending: false });
-
-      const { data, error } = await query;
+        .eq('admin_id', adminId)
+        .order('last_visit', { ascending: false });
 
       if (error) {
         console.error('[CRM] Error fetching customers from Supabase:', error);
         throw error;
       }
 
+      let mappedCustomers: Customer[] = [];
+
       if (data && data.length > 0) {
-        const mapped = data.map(c => ({
+        let filteredData = data;
+        if (branchFilterId) {
+          filteredData = data.filter((c: any) => !c.branch_id || c.branch_id === branchFilterId);
+        }
+        mappedCustomers = filteredData.map((c: any) => ({
           ...c,
           visit_count: c.visit_count ?? 0,
-          total_spent: c.total_spent ?? 0,
+          total_spent: Number(c.total_spent) || 0,
           last_visit: c.last_visit ?? c.created_at
         }));
-        setCustomers(mapped);
-        await offlineManager.cacheCustomers(mapped);
-      } else {
-        // Fallback: Aggregate customer records from bills if customers table is empty
+      }
+
+      // Fallback: Aggregate customer records from bills if customer list is empty
+      if (mappedCustomers.length === 0) {
         let billsQ: any = supabase
           .from('bills')
           .select('customer_name, customer_mobile, total_amount, created_at')
@@ -197,12 +198,13 @@ const CRM: React.FC = () => {
               custMap.set(phone, existing);
             }
           });
-          const billCustomers = Array.from(custMap.values()).sort((a, b) => new Date(b.last_visit).getTime() - new Date(a.last_visit).getTime());
-          if (billCustomers.length > 0) {
-            setCustomers(billCustomers);
-            await offlineManager.cacheCustomers(billCustomers);
-          }
+          mappedCustomers = Array.from(custMap.values()).sort((a, b) => new Date(b.last_visit).getTime() - new Date(a.last_visit).getTime());
         }
+      }
+
+      if (mappedCustomers.length > 0) {
+        setCustomers(mappedCustomers);
+        await offlineManager.cacheCustomers(mappedCustomers);
       }
     } catch (error) {
       console.warn('[CRM] Error fetching customers (offline fallback active):', error);
