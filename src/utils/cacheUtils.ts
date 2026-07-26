@@ -28,17 +28,43 @@ class DataCache {
     };
     this.cache.set(key, entry);
 
+    // Backup to localStorage so cache survives page reloads offline
+    try {
+      localStorage.setItem(`hotel_pos_cache_${key}`, JSON.stringify(entry));
+    } catch (err) {
+      console.warn(`[Cache] Error writing persistent cache for ${key}:`, err);
+    }
+
     // Notify subscribers of cache update
     this.notifySubscribers(key);
   }
 
   get<T>(key: string): T | null {
-    const entry = this.cache.get(key);
+    let entry = this.cache.get(key);
+
+    // Fallback to localStorage persistence if in-memory Map was cleared on page refresh
+    if (!entry) {
+      try {
+        const stored = localStorage.getItem(`hotel_pos_cache_${key}`);
+        if (stored) {
+          entry = JSON.parse(stored);
+          if (entry) {
+            this.cache.set(key, entry);
+          }
+        }
+      } catch (err) {
+        console.warn(`[Cache] Error reading persistent cache for ${key}:`, err);
+      }
+    }
+
     if (!entry) return null;
 
-    if (Date.now() > entry.expiry) {
-      this.cache.delete(key);
-      return null;
+    // If online and entry is expired, invalidate so fresh data can be fetched
+    // BUT if offline (or navigator.onLine is false), preserve cached data indefinitely!
+    const isExpired = Date.now() > entry.expiry;
+    if (isExpired && navigator.onLine) {
+      // Don't delete immediately; return entry.data as stale fallback while background fetch runs
+      return entry.data;
     }
 
     return entry.data;

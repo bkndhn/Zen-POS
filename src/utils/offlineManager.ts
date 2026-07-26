@@ -12,7 +12,7 @@ import { initStoragePersistence, secondaryVault } from './nativeStorage';
 
 // Database configuration
 const DB_NAME = 'HotelPOS_OfflineDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 // Store names
 const STORES = {
@@ -25,7 +25,12 @@ const STORES = {
     EXPENSES: 'expenses',
     TABLES: 'tables',
     TABLE_ORDERS: 'tableOrders',
-    CUSTOMERS: 'customers'
+    CUSTOMERS: 'customers',
+    ADDITIONAL_CHARGES: 'additionalCharges',
+    PAYMENTS: 'payments',
+    TAX_RATES: 'taxRates',
+    DISPLAY_SETTINGS: 'displaySettings',
+    BRANCHES: 'branches'
 };
 
 export interface PendingBill {
@@ -170,7 +175,27 @@ class OfflineManager {
                     custStore.createIndex('phone', 'phone');
                 }
 
-                console.log('IndexedDB stores created/upgraded to v3');
+                if (!db.objectStoreNames.contains(STORES.ADDITIONAL_CHARGES)) {
+                    db.createObjectStore(STORES.ADDITIONAL_CHARGES, { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains(STORES.PAYMENTS)) {
+                    db.createObjectStore(STORES.PAYMENTS, { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains(STORES.TAX_RATES)) {
+                    db.createObjectStore(STORES.TAX_RATES, { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains(STORES.DISPLAY_SETTINGS)) {
+                    db.createObjectStore(STORES.DISPLAY_SETTINGS, { keyPath: 'user_id' });
+                }
+
+                if (!db.objectStoreNames.contains(STORES.BRANCHES)) {
+                    db.createObjectStore(STORES.BRANCHES, { keyPath: 'id' });
+                }
+
+                console.log('IndexedDB stores created/upgraded to v4');
             };
         });
         
@@ -1135,13 +1160,13 @@ class OfflineManager {
         await this.storeMany(STORES.ITEMS, items);
     }
 
-    
     async getCachedItems(adminId?: string, branchId?: string | null): Promise<any[]> {
         const items = await this.getAll<any>(STORES.ITEMS);
+        if (!items || items.length === 0) return [];
         if (!adminId) return items;
         return items.filter(item => 
-            item.admin_id === adminId && 
-            (branchId ? item.branch_id === branchId : (item.branch_id === null || item.branch_id === undefined))
+            (!item.admin_id || item.admin_id === adminId) && 
+            (!branchId || !item.branch_id || item.branch_id === branchId)
         );
     }
 
@@ -1149,14 +1174,74 @@ class OfflineManager {
         await this.storeMany(STORES.CATEGORIES, categories);
     }
 
-    
     async getCachedCategories(adminId?: string, branchId?: string | null): Promise<any[]> {
         const categories = await this.getAll<any>(STORES.CATEGORIES);
+        if (!categories || categories.length === 0) return [];
         if (!adminId) return categories;
         return categories.filter(cat => 
-            cat.admin_id === adminId && 
-            (branchId ? cat.branch_id === branchId : (cat.branch_id === null || cat.branch_id === undefined))
+            (!cat.admin_id || cat.admin_id === adminId) && 
+            (!branchId || !cat.branch_id || cat.branch_id === branchId)
         );
+    }
+
+    async cacheAdditionalCharges(charges: any[]): Promise<void> {
+        await this.storeMany(STORES.ADDITIONAL_CHARGES, charges);
+    }
+
+    async getCachedAdditionalCharges(adminId?: string, branchId?: string | null): Promise<any[]> {
+        const charges = await this.getAll<any>(STORES.ADDITIONAL_CHARGES);
+        if (!charges || charges.length === 0) return [];
+        if (!adminId) return charges;
+        return charges.filter(c => 
+            (!c.admin_id || c.admin_id === adminId) && 
+            (!branchId || !c.branch_id || c.branch_id === branchId)
+        );
+    }
+
+    async cachePaymentTypes(types: any[]): Promise<void> {
+        await this.storeMany(STORES.PAYMENTS, types);
+    }
+
+    async getCachedPaymentTypes(adminId?: string, branchId?: string | null): Promise<any[]> {
+        const types = await this.getAll<any>(STORES.PAYMENTS);
+        if (!types || types.length === 0) return [];
+        if (!adminId) return types;
+        return types.filter(t => 
+            (!t.admin_id || t.admin_id === adminId) && 
+            (!branchId || !t.branch_id || t.branch_id === branchId)
+        );
+    }
+
+    async cacheTaxRates(rates: any[]): Promise<void> {
+        await this.storeMany(STORES.TAX_RATES, rates);
+    }
+
+    async getCachedTaxRates(adminId?: string): Promise<any[]> {
+        const rates = await this.getAll<any>(STORES.TAX_RATES);
+        if (!rates || rates.length === 0) return [];
+        if (!adminId) return rates;
+        return rates.filter(r => !r.admin_id || r.admin_id === adminId);
+    }
+
+    async cacheDisplaySettings(userId: string, settings: any): Promise<void> {
+        if (!userId) return;
+        await this.store(STORES.DISPLAY_SETTINGS, { user_id: userId, ...settings });
+    }
+
+    async getCachedDisplaySettings(userId?: string): Promise<any | null> {
+        if (!userId) return null;
+        return await this.get<any>(STORES.DISPLAY_SETTINGS, userId);
+    }
+
+    async cacheBranches(branches: any[]): Promise<void> {
+        await this.storeMany(STORES.BRANCHES, branches);
+    }
+
+    async getCachedBranches(adminId?: string): Promise<any[]> {
+        const branches = await this.getAll<any>(STORES.BRANCHES);
+        if (!branches || branches.length === 0) return [];
+        if (!adminId) return branches;
+        return branches.filter(b => !b.admin_id || b.admin_id === adminId);
     }
 
     async cacheBill(bill: any): Promise<void> {

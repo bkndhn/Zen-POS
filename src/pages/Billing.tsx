@@ -981,59 +981,43 @@ const Billing = () => {
   // Fetch functions defined before useEffect
   const fetchItems = async () => {
     if (!adminId) { setLoading(false); return; }
+    let loadedFromCache = false;
     try {
-      // 1. FAST PATH: Load from cache instantly for zero lag
+      // 1. FAST PATH: Load from IndexedDB and DataCache instantly for zero lag
       const { offlineManager } = await import('@/utils/offlineManager');
-      const cachedItems = await offlineManager.getCachedItems(adminId, operatingBranchId);
+      const { dataCache } = await import('@/utils/cacheUtils');
       
-      let loadedFromCache = false;
+      let cachedItems = await offlineManager.getCachedItems(adminId, operatingBranchId);
+      if (!cachedItems || cachedItems.length === 0) {
+        cachedItems = dataCache.get<any[]>('items') || [];
+      }
+      
       if (cachedItems && cachedItems.length > 0) {
         const sortedData = cachedItems
           .filter((i: any) => i.is_active && i.is_saleable !== false)
           .sort((a: any, b: any) => {
-          const orderA = a.display_order ?? 9999;
-          const orderB = b.display_order ?? 9999;
-          if (orderA !== orderB) return orderA - orderB;
-          return (a.name || '').localeCompare(b.name || '');
-        });
+            const orderA = a.display_order ?? 9999;
+            const orderB = b.display_order ?? 9999;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.name || '').localeCompare(b.name || '');
+          });
         setItems(sortedData);
         loadedFromCache = true;
-        // Don't toast if we're online, just silently load it to avoid lag
-        if (!navigator.onLine) {
-           toast({
-            title: "Offline Mode",
-            description: `Loaded ${sortedData.length} items from cache`,
-          });
-        }
-      } else if (!navigator.onLine) {
-        toast({
-          title: "No Cached Data",
-          description: "Connect to internet to load items",
-          variant: "destructive"
-        });
-      }
-
-      // If we got items from cache, we can hide the loading spinner immediately
-      if (loadedFromCache) {
-          setLoading(false);
+        setLoading(false);
       }
 
       // 2. SYNC PATH: Fetch latest from network if online
-      if (navigator.onLine) {
-        let q = supabase
-          .from('items')
-          .select('*, is_saleable')
-          .eq('admin_id', adminId)
-          .eq('is_active', true);
-        if (branchFilterId) q = q.eq('branch_id', branchFilterId);
-        
-        const { data, error } = await q.order('name');
-        if (error) throw error;
-
+      const { data, error } = await supabase
+        .from('items')
+        .select('*, is_saleable')
+        .eq('admin_id', adminId)
+        .eq('is_active', true);
+      
+      if (!error && data) {
         // Filter saleable items client-side (default true)
-        const saleableData = (data || []).filter((item: any) => item.is_saleable !== false);
+        const saleableData = data.filter((item: any) => item.is_saleable !== false);
 
-        // Sort by display_order client-side if the field exists
+        // Sort by display_order client-side
         const sortedData = saleableData.sort((a: any, b: any) => {
           const orderA = a.display_order ?? 9999;
           const orderB = b.display_order ?? 9999;
@@ -1047,23 +1031,38 @@ const Billing = () => {
         }));
 
         setItems(mappedData as Item[]);
+        dataCache.set('items', mappedData);
         await offlineManager.cacheItems(mappedData);
       }
     } catch (error) {
-      console.error('Error fetching items:', error);
-      // If we already loaded from cache, no need to show destructive error, just a warning
-      toast({
-        title: "Sync Error",
-        description: "Could not sync latest items. Using cached data if available.",
-        variant: "destructive"
-      });
+      console.warn('Error fetching items from network (offline fallback active):', error);
+      // Only toast error if we have ZERO items in cache
+      if (!loadedFromCache) {
+        toast({
+          title: "Offline Mode",
+          description: "Could not connect to server. Please connect to internet to load items.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
+
   const fetchPaymentTypes = async () => {
     if (!adminId) return;
     try {
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cached = await offlineManager.getCachedPaymentTypes(adminId, operatingBranchId);
+      if (cached && cached.length > 0) {
+        setPaymentTypes(cached);
+        if (!isEditMode) {
+          const defaultPayment = cached.find(p => p.is_default);
+          if (defaultPayment) setSelectedPayment(defaultPayment.payment_type);
+          else setSelectedPayment(cached[0].payment_type);
+        }
+      }
+
       let query = (supabase as any)
         .from('payments')
         .select('*')
@@ -1075,31 +1074,34 @@ const Billing = () => {
       }
 
       const { data, error } = await query.order('payment_type');
-      if (error) throw error;
-      const types = data || [];
-      setPaymentTypes(types);
+      if (!error && data) {
+        const types = data || [];
+        setPaymentTypes(types);
+        await offlineManager.cachePaymentTypes(types);
 
-      // Set default payment only if not in edit mode
-      if (!isEditMode) {
-        const defaultPayment = types.find(p => p.is_default);
-        if (defaultPayment) {
-          setSelectedPayment(defaultPayment.payment_type);
-        } else if (types.length > 0) {
-          setSelectedPayment(types[0].payment_type);
+        if (!isEditMode) {
+          const defaultPayment = types.find(p => p.is_default);
+          if (defaultPayment) {
+            setSelectedPayment(defaultPayment.payment_type);
+          } else if (types.length > 0) {
+            setSelectedPayment(types[0].payment_type);
+          }
         }
       }
     } catch (error) {
-      console.error('Error fetching payment types:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch payment types",
-        variant: "destructive"
-      });
+      console.warn('Error fetching payment types (offline mode):', error);
     }
   };
+
   const fetchAdditionalCharges = async () => {
     if (!adminId) return;
     try {
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cached = await offlineManager.getCachedAdditionalCharges(adminId, operatingBranchId);
+      if (cached && cached.length > 0) {
+        setAdditionalCharges(cached);
+      }
+
       let query = (supabase as any)
         .from('additional_charges')
         .select('*')
@@ -1111,39 +1113,54 @@ const Billing = () => {
       }
 
       const { data, error } = await query.order('name');
-      if (error) throw error;
-      setAdditionalCharges(data || []);
+      if (!error && data) {
+        setAdditionalCharges(data || []);
+        await offlineManager.cacheAdditionalCharges(data || []);
+      }
     } catch (error) {
-      console.error('Error fetching additional charges:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch additional charges",
-        variant: "destructive"
-      });
+      console.warn('Error fetching additional charges (offline mode):', error);
     }
   };
+
   const fetchDisplaySettings = async () => {
     if (!profile?.user_id) return;
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('display_settings').select('*').eq('user_id', profile.user_id).maybeSingle();
-      if (error && error.code !== 'PGRST116') throw error;
-      if (data) {
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cached = await offlineManager.getCachedDisplaySettings(profile.user_id);
+      if (cached) {
+        setDisplaySettings({
+          items_per_row: cached.items_per_row,
+          category_order: cached.category_order || []
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('display_settings')
+        .select('*')
+        .eq('user_id', profile.user_id)
+        .maybeSingle();
+
+      if (!error && data) {
         setDisplaySettings({
           items_per_row: data.items_per_row,
           category_order: data.category_order || []
         });
+        await offlineManager.cacheDisplaySettings(profile.user_id, data);
       }
     } catch (error) {
-      console.error('Error fetching display settings:', error);
+      console.warn('Error fetching display settings (offline mode):', error);
     }
   };
 
   const fetchItemCategories = async () => {
     if (!adminId) return;
     try {
+      const { offlineManager } = await import('@/utils/offlineManager');
+      const cached = await offlineManager.getCachedCategories(adminId, operatingBranchId);
+      if (cached && cached.length > 0) {
+        setItemCategories(cached);
+      }
+
       let catQ = supabase
         .from('item_categories')
         .select('*')
@@ -1151,10 +1168,12 @@ const Billing = () => {
         .eq('is_deleted', false);
       if (branchFilterId) catQ = catQ.eq('branch_id', branchFilterId);
       const { data, error } = await catQ.order('name');
-      if (error) throw error;
-      setItemCategories(data || []);
+      if (!error && data) {
+        setItemCategories(data || []);
+        await offlineManager.cacheCategories(data || []);
+      }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.warn('Error fetching categories (offline mode):', error);
     }
   };
 

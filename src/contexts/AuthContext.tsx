@@ -62,13 +62,36 @@ export const useAuth = () => {
   return context;
 };
 
+const getInitialProfileState = (): { profile: Profile | null; adminProfileId: string | null; adminAuthUid: string | null } => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('profile_')) {
+        const cachedStr = localStorage.getItem(key);
+        if (cachedStr) {
+          const prof = decodeProfileCache(cachedStr);
+          if (prof && prof.user_id) {
+            const adminPId = prof.role === 'admin' ? prof.id : (prof.admin_id || null);
+            const adminAUid = prof.role === 'admin' ? prof.user_id : (localStorage.getItem(`adminAuthUid_${prof.admin_id}`) || null);
+            return { profile: prof, adminProfileId: adminPId, adminAuthUid: adminAUid };
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Auth] Error restoring initial cached profile:', e);
+  }
+  return { profile: null, adminProfileId: null, adminAuthUid: null };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const initialAuth = getInitialProfileState();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(initialAuth.profile);
   const [loading, setLoading] = useState(true);
-  const [adminProfileId, setAdminProfileId] = useState<string | null>(null);
-  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
+  const [adminProfileId, setAdminProfileId] = useState<string | null>(initialAuth.adminProfileId);
+  const [adminAuthUid, setAdminAuthUid] = useState<string | null>(initialAuth.adminAuthUid);
 
   const resolveAdminIds = async (userProfile: Profile | null) => {
     if (!userProfile) return { adminProfileId: null, adminAuthUid: null };
