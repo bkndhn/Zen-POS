@@ -38,9 +38,12 @@ export const CalciQuickKeysSettings = () => {
       const saved = localStorage.getItem('hotel_pos_calci_shortcodes');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return Object.keys(parsed)
-          .sort((a, b) => parseInt(a) - parseInt(b))
-          .map(k => parsed[k]);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return Object.keys(parsed)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(k => parsed[k])
+            .filter(Boolean);
+        }
       }
       return [];
     } catch {
@@ -49,14 +52,21 @@ export const CalciQuickKeysSettings = () => {
   });
 
   const autoAssignAllActive = async (itemList = items) => {
-    if (!itemList || itemList.length === 0) return;
-    const { syncAllMissingCalciQuickKeys } = await import('@/utils/calciQuickKeyUtils');
-    const updatedShortcodes = await syncAllMissingCalciQuickKeys(itemList, adminAuthUid, operatingBranchId);
-    const ordered = Object.keys(updatedShortcodes)
-      .sort((a, b) => parseInt(a) - parseInt(b))
-      .map(k => updatedShortcodes[k]);
-    setOrderedItemIds(ordered);
-    toast({ title: 'Quick Keys Auto-Assigned', description: `Assigned codes (1 to ${ordered.length}) to items.` });
+    if (!itemList || !Array.isArray(itemList) || itemList.length === 0) return;
+    try {
+      const { syncAllMissingCalciQuickKeys } = await import('@/utils/calciQuickKeyUtils');
+      const updatedShortcodes = await syncAllMissingCalciQuickKeys(itemList, adminAuthUid, operatingBranchId);
+      if (updatedShortcodes && typeof updatedShortcodes === 'object' && !Array.isArray(updatedShortcodes)) {
+        const ordered = Object.keys(updatedShortcodes)
+          .sort((a, b) => parseInt(a) - parseInt(b))
+          .map(k => updatedShortcodes[k])
+          .filter(Boolean);
+        setOrderedItemIds(ordered);
+        toast({ title: 'Quick Keys Auto-Assigned', description: `Assigned codes (1 to ${ordered.length}) to items.` });
+      }
+    } catch (e) {
+      console.warn('Auto-assign failed:', e);
+    }
   };
 
   useEffect(() => {
@@ -211,7 +221,9 @@ export const CalciQuickKeysSettings = () => {
 
   if (isAllBranchesView) return null;
 
-  const availableItems = items.filter(item => !orderedItemIds.includes(item.id));
+  const safeOrderedIds = Array.isArray(orderedItemIds) ? orderedItemIds : [];
+  const safeItems = Array.isArray(items) ? items : [];
+  const availableItems = safeItems.filter(item => item && item.id && !safeOrderedIds.includes(item.id));
 
   return (
     <Card>
@@ -220,14 +232,14 @@ export const CalciQuickKeysSettings = () => {
           <Calculator className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
           <span className="text-base sm:text-lg">Calci Mode Quick Keys</span>
         </CardTitle>
-        {items.length > 0 && (
+        {safeItems.length > 0 && (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => autoAssignAllActive(items)}
+            onClick={() => autoAssignAllActive(safeItems)}
             className="h-8 px-2.5 text-xs gap-1 border-dashed text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
           >
-            ⚡ Auto-Assign All ({items.length})
+            ⚡ Auto-Assign All ({safeItems.length})
           </Button>
         )}
       </CardHeader>
@@ -247,7 +259,7 @@ export const CalciQuickKeysSettings = () => {
                 {availableItems.length === 0 && !loading && (
                   <div className="px-2 py-3 text-xs text-muted-foreground flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    {items.length === 0 ? "No items found. Add items in the Items page first." : "All items have been assigned."}
+                    {safeItems.length === 0 ? "No items found. Add items in the Items page first." : "All items have been assigned."}
                   </div>
                 )}
                 {availableItems.map(item => (
@@ -262,8 +274,8 @@ export const CalciQuickKeysSettings = () => {
         </div>
 
         <div className="space-y-2">
-          {orderedItemIds.map((itemId, index) => {
-            const item = items.find(i => i.id === itemId);
+          {safeOrderedIds.map((itemId, index) => {
+            const item = safeItems.find(i => i.id === itemId);
             const code = (index + 1).toString();
             return (
               <div key={itemId} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border p-2 rounded-lg text-sm">

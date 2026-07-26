@@ -14,7 +14,12 @@ export async function autoAssignCalciQuickKey(
     const cachedStr = localStorage.getItem(key) || localStorage.getItem('hotel_pos_calci_shortcodes');
     let shortcodes: Record<string, string> = {};
     if (cachedStr) {
-      try { shortcodes = JSON.parse(cachedStr); } catch {}
+      try {
+        const parsed = JSON.parse(cachedStr);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          shortcodes = parsed;
+        }
+      } catch {}
     }
 
     // Check if already assigned
@@ -53,20 +58,25 @@ export async function syncAllMissingCalciQuickKeys(
   adminAuthUid?: string | null,
   branchId?: string | null
 ): Promise<Record<string, string>> {
-  if (!allActiveItems || allActiveItems.length === 0) return {};
+  if (!allActiveItems || !Array.isArray(allActiveItems) || allActiveItems.length === 0) return {};
   try {
     const key = branchId ? `hotel_pos_calci_shortcodes_${branchId}` : 'hotel_pos_calci_shortcodes';
     const cachedStr = localStorage.getItem(key) || localStorage.getItem('hotel_pos_calci_shortcodes');
     let shortcodes: Record<string, string> = {};
     if (cachedStr) {
-      try { shortcodes = JSON.parse(cachedStr); } catch {}
+      try {
+        const parsed = JSON.parse(cachedStr);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          shortcodes = parsed;
+        }
+      } catch {}
     }
 
     const assignedIds = new Set(Object.values(shortcodes));
     let changed = false;
 
     allActiveItems.forEach(item => {
-      if (!assignedIds.has(item.id)) {
+      if (item?.id && !assignedIds.has(item.id)) {
         const usedNums = Object.keys(shortcodes).map(k => parseInt(k)).filter(n => !isNaN(n));
         const nextNum = (usedNums.length ? Math.max(...usedNums) : 0) + 1;
         shortcodes[nextNum.toString()] = item.id;
