@@ -30,6 +30,8 @@ interface Table {
   has_seats?: boolean;
   seat_count?: number | null;
   seat_configuration?: any;
+  seat_order_mode?: string | null;
+
   x_pos?: number | null;
   y_pos?: number | null;
   width?: number | null;
