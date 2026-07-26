@@ -987,9 +987,12 @@ const Billing = () => {
       const { offlineManager } = await import('@/utils/offlineManager');
       const { dataCache } = await import('@/utils/cacheUtils');
       
-      let cachedItems = await offlineManager.getCachedItems(adminId, operatingBranchId);
+      const effectiveBranchId = isAllBranchesView ? null : (branchFilterId || operatingBranchId);
+      const cacheKey = `items_${adminId}_${effectiveBranchId || 'all'}`;
+
+      let cachedItems = await offlineManager.getCachedItems(adminId, effectiveBranchId);
       if (!cachedItems || cachedItems.length === 0) {
-        cachedItems = dataCache.get<any[]>('items') || [];
+        cachedItems = dataCache.get<any[]>(cacheKey) || [];
       }
       
       if (cachedItems && cachedItems.length > 0) {
@@ -1007,11 +1010,17 @@ const Billing = () => {
       }
 
       // 2. SYNC PATH: Fetch latest from network if online
-      const { data, error } = await supabase
+      let query = supabase
         .from('items')
         .select('*, is_saleable')
         .eq('admin_id', adminId)
         .eq('is_active', true);
+
+      if (effectiveBranchId) {
+        query = query.eq('branch_id', effectiveBranchId);
+      }
+
+      const { data, error } = await query;
       
       if (!error && data) {
         // Filter saleable items client-side (default true)
@@ -1031,7 +1040,7 @@ const Billing = () => {
         }));
 
         setItems(mappedData as Item[]);
-        dataCache.set('items', mappedData);
+        dataCache.set(cacheKey, mappedData);
         await offlineManager.cacheItems(mappedData);
       }
     } catch (error) {

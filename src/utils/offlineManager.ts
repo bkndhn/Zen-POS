@@ -1166,7 +1166,7 @@ class OfflineManager {
         if (!adminId) return items;
         return items.filter(item => 
             (!item.admin_id || item.admin_id === adminId) && 
-            (!branchId || !item.branch_id || item.branch_id === branchId)
+            (!branchId || item.branch_id === branchId)
         );
     }
 
