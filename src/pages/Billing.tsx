@@ -982,7 +982,7 @@ const Billing = () => {
           if (cart.length > 0) {
             setCart([]);
             setDiscount(0);
-            setCustomerMobile('');
+            
             toast({ title: '🧹 Cart Cleared', description: 'Ready for new bill (F4)' });
           }
           break;

@@ -43,6 +43,7 @@ export const WhatsAppSettings: React.FC = () => {
   const [whatsappBusinessApiEnabled, setWhatsappBusinessApiEnabled] = useState(false);
   const [whatsappBusinessApiToken, setWhatsappBusinessApiToken] = useState('');
   const [whatsappBusinessPhoneId, setWhatsappBusinessPhoneId] = useState('');
+  const [canManageCredentials, setCanManageCredentials] = useState(false);
 
   useEffect(() => {
     if (adminAuthUid && operatingBranchId) {
@@ -52,7 +53,7 @@ export const WhatsAppSettings: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const cols = 'whatsapp_bill_share_enabled, whatsapp_share_mode, whatsapp_business_api_enabled, whatsapp_business_api_token, whatsapp_business_phone_id';
+      const cols = 'whatsapp_bill_share_enabled, whatsapp_share_mode, whatsapp_business_api_enabled';
       let { data, error } = await (supabase as any)
         .from('shop_settings')
         .select(cols)
@@ -76,8 +77,19 @@ export const WhatsAppSettings: React.FC = () => {
         setWhatsappBillShareEnabled(data.whatsapp_bill_share_enabled || false);
         setWhatsappShareMode(data.whatsapp_share_mode === 'image' ? 'image' : 'text');
         setWhatsappBusinessApiEnabled(data.whatsapp_business_api_enabled || false);
-        setWhatsappBusinessApiToken(data.whatsapp_business_api_token || '');
-        setWhatsappBusinessPhoneId(data.whatsapp_business_phone_id || '');
+      }
+
+      // Credentials live in an owner-only table (never readable by sub-users)
+      const { data: creds } = await (supabase as any)
+        .from('shop_whatsapp_credentials')
+        .select('whatsapp_business_api_token, whatsapp_business_phone_id')
+        .eq('user_id', adminAuthUid)
+        .eq('branch_id', operatingBranchId)
+        .maybeSingle();
+      setCanManageCredentials(profile?.role === 'admin' && profile?.user_id === adminAuthUid);
+      if (creds) {
+        setWhatsappBusinessApiToken(creds.whatsapp_business_api_token || '');
+        setWhatsappBusinessPhoneId(creds.whatsapp_business_phone_id || '');
       }
     } catch (error) {
       // Silent fail
@@ -95,8 +107,6 @@ export const WhatsAppSettings: React.FC = () => {
         whatsapp_bill_share_enabled: whatsappBillShareEnabled,
         whatsapp_share_mode: whatsappShareMode,
         whatsapp_business_api_enabled: whatsappBusinessApiEnabled,
-        whatsapp_business_api_token: whatsappBusinessApiToken || null,
-        whatsapp_business_phone_id: whatsappBusinessPhoneId || null,
         updated_at: new Date().toISOString()
       };
       const { data: existing } = await (supabase as any)
@@ -107,6 +117,22 @@ export const WhatsAppSettings: React.FC = () => {
         : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminAuthUid, branch_id: operatingBranchId });
 
       if (error) throw error;
+
+      // Credentials: only the owning admin can write these (RLS enforced)
+      if (canManageCredentials) {
+        const { data: existingCred } = await (supabase as any)
+          .from('shop_whatsapp_credentials').select('id')
+          .eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle();
+        const credPayload = {
+          whatsapp_business_api_token: whatsappBusinessApiToken || null,
+          whatsapp_business_phone_id: whatsappBusinessPhoneId || null,
+          updated_at: new Date().toISOString()
+        };
+        const { error: credError } = existingCred?.id
+          ? await (supabase as any).from('shop_whatsapp_credentials').update(credPayload).eq('id', existingCred.id)
+          : await (supabase as any).from('shop_whatsapp_credentials').insert({ ...credPayload, user_id: adminAuthUid, branch_id: operatingBranchId });
+        if (credError) throw credError;
+      }
 
       // Update local cache
       const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
@@ -139,6 +165,7 @@ export const WhatsAppSettings: React.FC = () => {
       setSaving(false);
     }
   };
+
 
   if (loading) {
     return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
