@@ -403,6 +403,8 @@ const TableManagement: React.FC = () => {
         has_seats: hasSeats,
         seat_count: hasSeats ? parseInt(seatCount) : 0,
         seat_configuration: hasSeats ? seatLabels : [],
+        seat_order_mode: hasSeats ? seatOrderMode : 'table',
+
         shape: shape,
         width: parseInt(width) || 100,
         height: parseInt(height) || 100,
