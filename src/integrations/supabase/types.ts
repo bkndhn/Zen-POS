@@ -1893,8 +1893,6 @@ export type Database = {
           whatsapp: string | null
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
-          whatsapp_business_api_token: string | null
-          whatsapp_business_phone_id: string | null
           whatsapp_share_mode: string | null
         }
         Insert: {
@@ -1955,8 +1953,6 @@ export type Database = {
           whatsapp?: string | null
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
-          whatsapp_business_api_token?: string | null
-          whatsapp_business_phone_id?: string | null
           whatsapp_share_mode?: string | null
         }
         Update: {
@@ -2017,8 +2013,6 @@ export type Database = {
           whatsapp?: string | null
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
-          whatsapp_business_api_token?: string | null
-          whatsapp_business_phone_id?: string | null
           whatsapp_share_mode?: string | null
         }
         Relationships: [
@@ -2030,6 +2024,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_whatsapp_credentials: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          whatsapp_business_api_token: string | null
+          whatsapp_business_phone_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          whatsapp_business_api_token?: string | null
+          whatsapp_business_phone_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp_business_api_token?: string | null
+          whatsapp_business_phone_id?: string | null
+        }
+        Relationships: []
       }
       stock_adjustments: {
         Row: {
@@ -2789,8 +2813,6 @@ export type Database = {
           whatsapp: string | null
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
-          whatsapp_business_api_token: string | null
-          whatsapp_business_phone_id: string | null
           whatsapp_share_mode: string | null
         }[]
         SetofOptions: {
