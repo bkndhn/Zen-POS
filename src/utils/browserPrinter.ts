@@ -3,6 +3,11 @@ import { PrintData } from './bluetoothPrinter';
 import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './timeUtils';
 import QRCode from 'qrcode';
 
+const escapeHtml = (str: string | undefined | null): string => {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+};
+
 export const printBrowserReceipt = async (data: PrintData) => {
   const width = data.printerWidth || '58mm';
   const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
@@ -66,14 +71,14 @@ export const printBrowserReceipt = async (data: PrintData) => {
     
     if (width === '80mm') {
       return `<tr>
-        <td style="width:36%;text-align:left;word-break:break-all;padding-right:4px;">${item.name}</td>
+        <td style="width:36%;text-align:left;word-break:break-all;padding-right:4px;">${escapeHtml(item.name)}</td>
         <td style="width:16%;text-align:center;white-space:nowrap;padding-right:4px;">${qtyWithUnit}</td>
         <td style="width:26%;text-align:right;white-space:nowrap;padding-right:6px;">${rateText}</td>
         <td style="width:22%;text-align:right;white-space:nowrap;">${item.total.toFixed(2)}</td>
       </tr>`;
     } else {
       return `<tr>
-        <td style="width:55%;text-align:left;word-break:break-all;padding-right:4px;">${item.name}</td>
+        <td style="width:55%;text-align:left;word-break:break-all;padding-right:4px;">${escapeHtml(item.name)}</td>
         <td style="width:20%;text-align:center;white-space:nowrap;padding-right:4px;">${qtyWithUnit}</td>
         <td style="width:25%;text-align:right;white-space:nowrap;">${item.total.toFixed(2)}</td>
       </tr>`;
@@ -308,10 +313,10 @@ export const printBrowserKOT = (data: BrowserKOTData) => {
     const qtyStr = formatQuantityWithUnit(item.quantity, item.unit);
     return `
       <tr>
-        <td style="padding: 2px 0; font-weight: bold;">${item.name}</td>
+        <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(item.name)}</td>
         <td style="padding: 2px 0; text-align: right; font-weight: bold;">${qtyStr}</td>
       </tr>
-      ${item.instructions ? `<tr><td colspan="2" style="padding-bottom:4px; font-size:10px; color:#d97706;">📝 ${item.instructions}</td></tr>` : ''}
+      ${item.instructions ? `<tr><td colspan="2" style="padding-bottom:4px; font-size:10px; color:#d97706;">📝 ${escapeHtml(item.instructions)}</td></tr>` : ''}
     `;
   }).join('');
 
