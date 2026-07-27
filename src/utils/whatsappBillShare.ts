@@ -2,7 +2,7 @@
  * WhatsApp Bill Sharing Utilities
  */
 
-import { getShortUnit } from '@/utils/timeUtils';
+
 
 interface BillShareData {
   billNo: string;
@@ -48,13 +48,7 @@ export const formatBillMessage = (data: BillShareData): string => {
   // Items
   message += `*Items:*\n`;
   data.items.forEach((item) => {
-    const shortUnit = getShortUnit(item.selling_unit || item.unit);
-    const qty = `${item.quantity} ${shortUnit}`;
-    const rateVal = item.price ?? (item.total / (item.quantity || 1));
-    const baseVal = item.selling_quantity || item.base_value;
-    const baseValStr = baseVal && baseVal !== 1 ? `${baseVal}` : '';
-    const rateText = `₹${rateVal.toFixed(0)}/${baseValStr}${shortUnit}`;
-    message += `• ${item.name} (${qty} @ ${rateText}) - ₹${item.total.toFixed(0)}\n`;
+    message += `• ${item.name}  ₹${item.total.toFixed(0)}\n`;
   });
 
   message += `\n━━━━━━━━━━━━━━\n`;
