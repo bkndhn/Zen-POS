@@ -46,6 +46,8 @@ interface KitchenTableOrder {
     table_number: string;
     session_id: string;
     seat_id?: string | null;
+    seat_label?: string | null;
+    order_scope?: 'table' | 'seat' | null;
     order_number: number;
     items: Array<{
         item_id: string;
