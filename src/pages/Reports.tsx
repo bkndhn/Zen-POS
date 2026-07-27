@@ -2455,12 +2455,6 @@ const Reports: React.FC = () => {
               </div>
 
               <div>
-                <div className="grid grid-cols-12 gap-2 mb-2 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  <div className="col-span-6">Item Name</div>
-                  <div className="col-span-2 text-center">Qty/Kg</div>
-                  <div className="col-span-2 text-right">Rate</div>
-                  <div className="col-span-2 text-right">Value</div>
-                </div>
                 <div className="space-y-1.5">
                   {selectedBill.bill_items?.map((item, index) => {
                     const itemName = item.items?.name || (item as any).item_name_override || (item as any).name || 'Item';
