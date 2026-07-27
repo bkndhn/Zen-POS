@@ -1,5 +1,10 @@
 // CSV-based exports (xlsx package removed for security — prototype pollution / ReDoS)
 
+const escapeHtml = (str: string | undefined | null): string => {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+};
+
 const csvEscape = (val: any): string => {
   if (val === null || val === undefined) return '';
   const s = String(val);
@@ -269,7 +274,7 @@ ${data.items.length > 0 ? `
   <h2>Items Sales Report</h2>
   <table>
     <tr><th>#</th><th>Item Name</th><th>Category</th><th class="r">Qty</th><th class="r">Revenue</th></tr>
-    ${data.items.map((item, i) => `<tr><td>${i + 1}</td><td>${item.item_name}</td><td>${item.category}</td><td class="r">${formatQtyWithUnit(item.total_quantity, item.unit)}</td><td class="r">${item.total_revenue.toFixed(0)}</td></tr>`).join('')}
+    ${data.items.map((item, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(item.item_name)}</td><td>${escapeHtml(item.category)}</td><td class="r">${formatQtyWithUnit(item.total_quantity, item.unit)}</td><td class="r">${item.total_revenue.toFixed(0)}</td></tr>`).join('')}
     <tr class="b"><td></td><td>TOTAL</td><td></td><td class="r">-</td><td class="r">${itemsTotal.toFixed(0)}</td></tr>
   </table>
 ` : ''}
@@ -361,7 +366,7 @@ export const exportToPDF = (expenses: ExpenseForPDF[], title: string = 'Expenses
   <h2>Expenses</h2>
   <table>
     <tr><th>#</th><th>Name</th><th>Category</th><th class="r">Amount</th><th>Date</th><th>Note</th></tr>
-    ${expenses.map((e, i) => `<tr><td>${i + 1}</td><td>${e.expense_name || 'Unnamed'}</td><td>${e.category}</td><td class="r">${e.amount.toFixed(2)}</td><td>${new Date(e.date).toLocaleDateString()}</td><td>${e.note || '-'}</td></tr>`).join('')}
+    ${expenses.map((e, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(e.expense_name) || 'Unnamed'}</td><td>${escapeHtml(e.category)}</td><td class="r">${e.amount.toFixed(2)}</td><td>${new Date(e.date).toLocaleDateString()}</td><td>${escapeHtml(e.note) || '-'}</td></tr>`).join('')}
     <tr class="b"><td></td><td>TOTAL</td><td></td><td class="r">${total.toFixed(2)}</td><td></td><td></td></tr>
   </table>
 </body></html>`;
