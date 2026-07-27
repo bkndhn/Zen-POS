@@ -2798,7 +2798,7 @@ const Billing = () => {
     const previousCart = [...finalCart];
 
     try {
-      console.log('Completing payment with data:', paymentData);
+
 
       const validCart = previousCart.filter(item => item.quantity > 0);
       if (validCart.length === 0) {

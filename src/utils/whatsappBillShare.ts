@@ -172,7 +172,7 @@ export const sendViaBusinessApi = async (
 ): Promise<{ success: boolean; error?: string }> => {
   // This would call an edge function to send via Meta's API
   // For now, return a placeholder response
-  console.log('WhatsApp Business API send requested', { phoneNumber, phoneNumberId });
+
 
   return {
     success: false,
