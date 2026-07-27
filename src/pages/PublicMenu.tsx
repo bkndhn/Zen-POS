@@ -3025,8 +3025,73 @@ const PublicMenu = () => {
                     shopName={rawShopSettings.shop_name}
                 />
             )}
+
+            {/* Seat Picker (only for tables configured with seats) */}
+            {showSeatPicker && seatModeAllowsSeat && (
+                <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+                        <div className="flex items-start justify-between mb-1">
+                            <div>
+                                <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
+                                    Table {tableNo}{tableConfig?.table_name ? ` • ${tableConfig.table_name}` : ''}
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                    {seatModeAllowsTable
+                                        ? 'Order for the whole table or pick your seat'
+                                        : 'Please select your seat to continue'}
+                                </p>
+                            </div>
+                            {seatModeAllowsTable && (
+                                <button
+                                    onClick={() => setShowSeatPicker(false)}
+                                    className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 mt-4 max-h-[45vh] overflow-y-auto">
+                            {seatModeAllowsTable && (
+                                <button
+                                    onClick={() => chooseSeat(null)}
+                                    className={cn(
+                                        "col-span-3 py-3 rounded-xl border-2 font-bold text-sm transition-all",
+                                        !seatId
+                                            ? "border-primary bg-primary/10 text-primary"
+                                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                                    )}
+                                >
+                                    Whole Table
+                                </button>
+                            )}
+                            {seatLabels.map((label) => (
+                                <button
+                                    key={label}
+                                    onClick={() => chooseSeat(label)}
+                                    className={cn(
+                                        "py-3 rounded-xl border-2 font-bold text-sm transition-all",
+                                        seatId === label
+                                            ? "border-primary bg-primary/10 text-primary"
+                                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {cart.length > 0 && (
+                            <p className="text-[11px] text-amber-600 mt-3">
+                                Changing seat starts a new order session; your cart stays with you.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
 
 export default PublicMenu;
