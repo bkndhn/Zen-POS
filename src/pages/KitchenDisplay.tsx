@@ -840,7 +840,7 @@ const KitchenDisplay = () => {
                         ))}
 
                         {/* Table QR Orders - Pending */}
-                        {pendingTableOrders.map((order) => {
+                        <TableSeatGroups orders={pendingTableOrders} keyPrefix="pending" renderOrder={(order) => {
                             const urgency = getUrgencyColor(order.created_at);
                             const elapsedMin = getElapsedMinutes(order.created_at);
                             return (
@@ -895,7 +895,7 @@ const KitchenDisplay = () => {
                                 </Button>
                             </Card>
                             );
-                        })}
+                        }} />
 
                         {pendingBills.length === 0 && pendingTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
@@ -926,7 +926,7 @@ const KitchenDisplay = () => {
                         ))}
 
                         {/* Table QR Orders - Preparing */}
-                        {preparingTableOrders.map((order) => {
+                        <TableSeatGroups orders={preparingTableOrders} keyPrefix="preparing" renderOrder={(order) => {
                             const urgency = getUrgencyColor(order.created_at);
                             const elapsedMin = getElapsedMinutes(order.created_at);
                             return (
@@ -981,7 +981,7 @@ const KitchenDisplay = () => {
                                 </Button>
                             </Card>
                             );
-                        })}
+                        }} />
 
                         {preparingBills.length === 0 && preparingTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
@@ -1024,7 +1024,7 @@ const KitchenDisplay = () => {
                         ))}
 
                         {/* Table QR Orders - Ready */}
-                        {readyTableOrders.map((order) => (
+                        <TableSeatGroups orders={readyTableOrders} keyPrefix="ready" renderOrder={(order) => (
                             <Card
                                 key={`to-${order.id}`}
                                 className="p-4 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900 border-l-4 border-l-purple-500"
@@ -1047,7 +1047,7 @@ const KitchenDisplay = () => {
                                     {getTimeElapsed(order.created_at)} ago
                                 </div>
                             </Card>
-                        ))}
+                        )} />
 
                         {readyBills.length === 0 && readyTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
