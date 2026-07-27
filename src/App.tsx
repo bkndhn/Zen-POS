@@ -204,6 +204,8 @@ const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
+const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
+const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -361,12 +363,15 @@ const App = () => {
                   <Route path="/super-admin/rum" element={<Layout><ProtectedRoute requiredPermission="users"><SuperAdminRum /></ProtectedRoute></Layout>} />
                   <Route path="/diagnostics/images" element={<Layout><ProtectedRoute requiredPermission="settings"><ImageDiagnostics /></ProtectedRoute></Layout>} />
                   <Route path="/ai-insights" element={<Layout><ProtectedRoute requiredPermission="analytics"><AiInsights /></ProtectedRoute></Layout>} />
+                  <Route path="/renew" element={<Layout><RenewSubscription /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
                   <Route path="/feedback/:slug" element={<PublicFeedback />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/demo" element={<DemoBilling />} />
                   <Route path="/menu-tv/:adminId" element={<MenuTV />} />
+                  <Route path="/terms" element={<TermsAndConditions />} />
+                  <Route path="/privacy" element={<TermsAndConditions />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </Suspense>

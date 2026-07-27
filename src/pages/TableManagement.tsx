@@ -17,6 +17,8 @@ import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranch } from '@/contexts/BranchContext';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { Switch } from '@/components/ui/switch';
+import { getOccupancyTimerInfo } from '@/utils/seatUtils';
+import { reservationManager, TableReservation } from '@/utils/reservationManager';
 
 interface Table {
   id: string;
@@ -111,6 +113,56 @@ const TableManagement: React.FC = () => {
   const [seatOrderMode, setSeatOrderMode] = useState<'table' | 'seat' | 'both'>('both');
 
   const [coverCountInput, setCoverCountInput] = useState('4');
+
+  // Table Pre-Booking / Reservation states
+  const [reservations, setReservations] = useState<TableReservation[]>([]);
+  const [reservationDialogOpen, setReservationDialogOpen] = useState(false);
+  const [resTableNumber, setResTableNumber] = useState('');
+  const [resCustomerName, setResCustomerName] = useState('');
+  const [resCustomerPhone, setResCustomerPhone] = useState('');
+  const [resGuestCount, setResGuestCount] = useState('2');
+  const [resDate, setResDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [resTime, setResTime] = useState('19:30');
+  const [resNotes, setResNotes] = useState('');
+
+  const fetchReservations = useCallback(async () => {
+    const list = await reservationManager.fetchReservations(adminId, operatingBranchId);
+    setReservations(list);
+  }, [adminId, operatingBranchId]);
+
+  useEffect(() => {
+    fetchReservations();
+  }, [fetchReservations]);
+
+  const handleCreateReservation = async () => {
+    if (!resTableNumber || !resCustomerName) {
+      toast({ title: "Required Fields", description: "Please enter table number and customer name.", variant: "destructive" });
+      return;
+    }
+    await reservationManager.addReservation({
+      table_number: resTableNumber,
+      customer_name: resCustomerName,
+      customer_phone: resCustomerPhone,
+      guest_count: parseInt(resGuestCount, 10) || 2,
+      reservation_date: resDate,
+      reservation_time: resTime,
+      notes: resNotes
+    }, adminId, operatingBranchId);
+
+    toast({ title: "⭐ Reservation Created", description: `Table ${resTableNumber} booked for ${resCustomerName} at ${resTime}` });
+    setReservationDialogOpen(false);
+    setResCustomerName('');
+    setResCustomerPhone('');
+    setResNotes('');
+    fetchReservations();
+  };
+
+  const handleSeatReservedGuests = async (table: Table, res: TableReservation) => {
+    await reservationManager.updateStatus(res.id, 'seated');
+    await handleStatusChange(table.id, 'occupied');
+    toast({ title: "🎉 Guests Seated", description: `${res.customer_name} seated at Table ${table.table_number}` });
+    fetchReservations();
+  };
 
   // Section/Floor Filter & Table Merge states
   const [selectedSection, setSelectedSection] = useState<string>('all');
@@ -488,51 +540,60 @@ const TableManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-3 sm:p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen p-2 sm:p-4 w-full max-w-full overflow-x-hidden">
+      <div className="max-w-6xl mx-auto w-full">
         <AllBranchesReadOnlyBanner message="Switch to a specific branch to add or edit tables." />
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
               <LayoutGrid className="w-5 h-5 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight">Table Management</h1>
-              <p className="text-xs text-muted-foreground">Manage dine-in tables</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">Table Management</h1>
+              <p className="text-xs text-muted-foreground truncate">Manage dine-in tables & seats</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReservationDialogOpen(true)}
+              className="rounded-xl h-8 text-xs font-bold border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20 flex-1 sm:flex-none justify-center shrink-0"
+            >
+              <Clock className="w-3.5 h-3.5 mr-1 text-yellow-600 shrink-0" />
+              <span>📅 Pre-Bookings ({reservations.filter(r => r.status === 'confirmed').length})</span>
+            </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setMergeDialogOpen(true)}
-              className="rounded-xl h-8 text-xs font-semibold"
+              className="rounded-xl h-8 text-xs font-semibold flex-1 sm:flex-none justify-center shrink-0"
             >
-              <Users className="w-3.5 h-3.5 mr-1 text-primary" />
-              Merge / Split Tables
+              <Users className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
+              <span className="truncate">Merge / Split</span>
             </Button>
-            <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs">
-              <Plus className="w-4 h-4 mr-1" />
-              Add Table
+            <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs flex-1 sm:flex-none justify-center shrink-0">
+              <Plus className="w-4 h-4 mr-1 shrink-0" />
+              <span className="truncate">Add Table</span>
             </Button>
           </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 mb-4">
           {(Object.entries(displayStatusConfig) as [DisplayStatus, typeof displayStatusConfig[DisplayStatus]][]).map(([status, config]) => {
             const count = tables.filter(t => tableDisplayStatuses[t.id] === status).length;
             const Icon = config.icon;
             return (
-              <Card key={status} className="p-3">
+              <Card key={status} className="p-2 sm:p-3">
                 <div className="flex items-center gap-2">
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", config.color)}>
-                    <Icon className="w-4 h-4 text-white" />
+                  <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0", config.color)}>
+                    <Icon className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <div>
-                    <p className="text-lg font-bold">{count}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">{config.label}</p>
+                  <div className="min-w-0">
+                    <p className="text-base sm:text-lg font-bold leading-none">{count}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight truncate">{config.label}</p>
                   </div>
                 </div>
               </Card>
@@ -660,9 +721,11 @@ const TableManagement: React.FC = () => {
               const isActiveTable = dStatus !== 'available';
               const isOccupiedState = dStatus === 'occupied' || dStatus === 'food_served';
 
-              // Compute elapsed time for non-available tables
+              // Compute elapsed time & occupancy timer info for active tables
               const earliestTs = orderTimestamps[table.table_number];
               const elapsedMs = earliestTs ? Date.now() - new Date(earliestTs).getTime() : 0;
+              const occInfo = isActiveTable ? getOccupancyTimerInfo(earliestTs) : null;
+              const upcomingRes = reservationManager.getUpcomingForTable(table.table_number, reservations);
 
               return (
                 <Card
@@ -670,7 +733,7 @@ const TableManagement: React.FC = () => {
                   className={cn(
                     "relative overflow-hidden transition-all hover:shadow-md cursor-pointer border-2",
                     config.borderColor,
-                    isOccupiedState && cn("ring-2", config.ringColor),
+                    occInfo ? occInfo.ringClass : (isOccupiedState && cn("ring-2", config.ringColor)),
                     isOccupiedState && "animate-[pulse_3s_ease-in-out_infinite]"
                   )}
                 >
@@ -680,7 +743,14 @@ const TableManagement: React.FC = () => {
                   <CardContent className="p-3 pt-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h3 className="font-bold text-lg">T{table.table_number}</h3>
+                        <h3 className="font-bold text-lg flex items-center gap-1.5">
+                          <span>T{table.table_number}</span>
+                          {upcomingRes && (
+                            <span className="text-[10px] bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 font-extrabold px-1.5 py-0.2 rounded-full border border-yellow-500/40">
+                              ⭐ Reserved
+                            </span>
+                          )}
+                        </h3>
                         {table.table_name && (
                           <p className="text-xs text-muted-foreground truncate max-w-[80px]">{table.table_name}</p>
                         )}
@@ -692,22 +762,45 @@ const TableManagement: React.FC = () => {
                     </div>
 
                     {/* Display status + order badge */}
-                    <div className="flex items-center gap-1 mb-1">
+                    <div className="flex items-center gap-1 mb-1.5">
                       <Icon className="w-3 h-3" />
                       <span className="text-xs font-medium">{config.label}</span>
                       {tableOrderCounts[table.table_number] > 0 && (
-                        <Badge className="bg-purple-100 text-purple-700 text-[10px] ml-auto px-1.5 h-5">
+                        <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 text-[10px] ml-auto px-1.5 h-5 font-bold">
                           <ShoppingCart className="w-2.5 h-2.5 mr-0.5" />
                           {tableOrderCounts[table.table_number]} order{tableOrderCounts[table.table_number] > 1 ? 's' : ''}
                         </Badge>
                       )}
                     </div>
 
-                    {/* Duration timer for active (non-available) tables */}
-                    {isActiveTable && earliestTs && elapsedMs > 0 && (
-                      <div className={cn("flex items-center gap-1 mb-2 text-xs", timerColor(elapsedMs))}>
-                        <Timer className="w-3 h-3" />
-                        <span>{formatElapsed(elapsedMs)}</span>
+                    {/* Occupancy Duration Timer Rings (🟢 <30m | 🟡 30-60m | 🔴 >60m) */}
+                    {isActiveTable && occInfo && (
+                      <div className={cn("flex items-center justify-between text-xs px-2 py-1 rounded-lg border mb-2 font-bold", occInfo.badgeClass)}>
+                        <div className="flex items-center gap-1">
+                          <Timer className="w-3 h-3" />
+                          <span>{occInfo.formattedDuration}</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold">{occInfo.label}</span>
+                      </div>
+                    )}
+
+                    {/* Active Upcoming Reservation Details & 1-Tap Seat Action */}
+                    {upcomingRes && (
+                      <div className="mb-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl space-y-1 text-left">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-yellow-700 dark:text-yellow-300">
+                          <span>🕒 {upcomingRes.reservation_time} ({upcomingRes.guest_count} guests)</span>
+                        </div>
+                        <p className="text-[10px] font-semibold text-muted-foreground truncate">{upcomingRes.customer_name} ({upcomingRes.customer_phone})</p>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSeatReservedGuests(table, upcomingRes);
+                          }}
+                          className="w-full h-6 text-[10px] font-bold bg-yellow-500 hover:bg-yellow-600 text-black shadow-sm rounded-lg"
+                        >
+                          Seat Guests
+                        </Button>
                       </div>
                     )}
 
@@ -715,7 +808,7 @@ const TableManagement: React.FC = () => {
                     {table.status === 'occupied' && tableOrderCounts[table.table_number] > 0 && (
                       <Button
                         size="sm"
-                        className="w-full h-7 text-xs mb-2 bg-purple-600 hover:bg-purple-700 text-white"
+                        className="w-full h-7 text-xs mb-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl"
                         onClick={() => navigate(`/table-billing?table=${table.table_number}`)}
                       >
                         <Receipt className="w-3 h-3 mr-1" />
@@ -795,11 +888,11 @@ const TableManagement: React.FC = () => {
 
         {/* Add/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0 rounded-2xl">
+            <DialogHeader className="p-4 sm:p-5 pb-3 border-b shrink-0 bg-background z-10">
               <DialogTitle>{editingTable ? 'Edit Table' : 'Add New Table'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="tableNumber">Table Number *</Label>
                 <Input
@@ -961,7 +1054,7 @@ const TableManagement: React.FC = () => {
 
                   <div className="space-y-2">
                     <Label className="text-[11px] text-muted-foreground font-semibold">Seat Labels / Custom Names</Label>
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
                       {seatLabels.map((label, idx) => (
                         <div key={idx} className="flex items-center gap-1.5">
                           <span className="text-xs text-muted-foreground font-bold">{idx + 1}.</span>
@@ -985,7 +1078,7 @@ const TableManagement: React.FC = () => {
               )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="p-4 border-t bg-muted/20 gap-2 shrink-0 bg-background z-10 flex-row justify-end sm:gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleSave}>{editingTable ? 'Update' : 'Add'} Table</Button>
             </DialogFooter>
@@ -1012,15 +1105,15 @@ const TableManagement: React.FC = () => {
 
         {/* Table Merge / Split Dialog */}
         <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
-          <DialogContent className="max-w-md bg-card rounded-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0 bg-card rounded-2xl">
+            <DialogHeader className="p-4 sm:p-5 pb-3 border-b shrink-0 bg-background z-10">
               <DialogTitle className="flex items-center gap-2 text-lg font-bold">
                 <Users className="w-5 h-5 text-primary" />
                 Merge or Split Tables
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               <div>
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Primary Table (Group Head)</Label>
                 <Select value={mergePrimaryId} onValueChange={setMergePrimaryId}>
@@ -1093,7 +1186,7 @@ const TableManagement: React.FC = () => {
               )}
             </div>
 
-            <DialogFooter className="gap-2 pt-3 border-t">
+            <DialogFooter className="p-4 border-t bg-muted/20 gap-2 shrink-0 bg-background z-10 flex-row justify-end sm:gap-2">
               <Button variant="outline" onClick={() => setMergeDialogOpen(false)} className="rounded-xl">Cancel</Button>
               <Button
                 disabled={!mergePrimaryId || mergeSecondaryIds.length === 0}
@@ -1116,6 +1209,142 @@ const TableManagement: React.FC = () => {
               >
                 Merge {mergeSecondaryIds.length + (mergePrimaryId ? 1 : 0)} Tables
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Table Reservation & Pre-Booking Dialog */}
+        <Dialog open={reservationDialogOpen} onOpenChange={setReservationDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0 bg-card rounded-2xl">
+            <DialogHeader className="p-4 sm:p-5 pb-3 border-b shrink-0 bg-background z-10">
+              <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                <Clock className="w-5 h-5 text-yellow-600" />
+                Table Reservation & Pre-Booking Calendar
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+              <div className="bg-yellow-500/10 border border-yellow-500/30 p-3.5 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-yellow-800 dark:text-yellow-300 uppercase tracking-wider">Book New Table Reservation</h4>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-[11px] font-semibold">Table Number</Label>
+                    <Select value={resTableNumber} onValueChange={setResTableNumber}>
+                      <SelectTrigger className="mt-1 bg-background rounded-xl text-xs h-9">
+                        <SelectValue placeholder="Select Table" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tables.map(t => (
+                          <SelectItem key={t.id} value={t.table_number}>Table {t.table_number}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold">Guest Count</Label>
+                    <Input
+                      type="number"
+                      value={resGuestCount}
+                      onChange={(e) => setResGuestCount(e.target.value)}
+                      placeholder="e.g. 4"
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-[11px] font-semibold">Customer Name</Label>
+                    <Input
+                      value={resCustomerName}
+                      onChange={(e) => setResCustomerName(e.target.value)}
+                      placeholder="e.g. Rahul Sharma"
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold">Customer Phone</Label>
+                    <Input
+                      value={resCustomerPhone}
+                      onChange={(e) => setResCustomerPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-[11px] font-semibold">Reservation Date</Label>
+                    <Input
+                      type="date"
+                      value={resDate}
+                      onChange={(e) => setResDate(e.target.value)}
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-semibold">Arrival Time</Label>
+                    <Input
+                      type="time"
+                      value={resTime}
+                      onChange={(e) => setResTime(e.target.value)}
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] font-semibold">Notes / Requests</Label>
+                  <Input
+                    value={resNotes}
+                    onChange={(e) => setResNotes(e.target.value)}
+                    placeholder="e.g. Window seat, birthday celebration"
+                    className="mt-1 bg-background rounded-xl text-xs h-9"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleCreateReservation}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold h-9 rounded-xl text-xs shadow-sm"
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Confirm Pre-Booking
+                </Button>
+              </div>
+
+              {/* Today's Active Reservations List */}
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Today's Reservations</Label>
+                {reservations.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">No active pre-bookings found for today.</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {reservations.map(r => (
+                      <div key={r.id} className="p-3 bg-muted/40 border rounded-xl flex items-center justify-between text-xs">
+                        <div>
+                          <div className="flex items-center gap-2 font-bold">
+                            <Badge variant="outline" className="text-[10px] bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/40">
+                              Table {r.table_number}
+                            </Badge>
+                            <span>{r.customer_name}</span>
+                            <span className="text-muted-foreground font-medium">({r.guest_count} guests)</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            🕒 {r.reservation_time} • {r.customer_phone} {r.notes ? `• ${r.notes}` : ''}
+                          </p>
+                        </div>
+                        <Badge variant={r.status === 'seated' ? 'default' : 'secondary'} className="text-[10px] capitalize">
+                          {r.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="p-4 border-t bg-muted/20 gap-2 shrink-0 bg-background z-10 flex-row justify-end">
+              <Button variant="outline" onClick={() => setReservationDialogOpen(false)} className="rounded-xl">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

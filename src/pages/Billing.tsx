@@ -23,6 +23,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
 import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
+import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { toast as sonnerToast } from 'sonner';
 import { format } from 'date-fns';
@@ -33,6 +34,7 @@ import { useBranch } from '@/contexts/BranchContext';
 import { cn } from '@/lib/utils';
 import VoiceBillingButton, { VoiceIntent } from '@/components/VoiceBillingButton';
 import { getStationMap } from '@/utils/stationPrinters';
+import { getKOTStatusBadgeInfo } from '@/utils/seatUtils';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -2410,6 +2412,19 @@ const Billing = () => {
     validCart: CartItem[],
     billNumber: string
   ) => {
+    // 0. Verify offline SaaS license status
+    const licStatus = checkOfflineLicenseStatus();
+    if (!licStatus.isValid) {
+      toast({
+        title: '🚫 License Lockout',
+        description: licStatus.lockReason === 'clock_tampered'
+          ? 'System clock discrepancy detected. Please connect to internet to verify license.'
+          : '7-Day Offline Grace Period Expired. Please connect to internet to verify active subscription.',
+        variant: 'destructive',
+      });
+      throw new Error('SaaS Subscription License Expired or Lockout.');
+    }
+
     // 1. Invoke the secure stored procedure to calculate and insert everything server-side
     const { data: resultData, error: rpcError } = await supabase.rpc('secure_create_bill', {
       p_bill_payload: {
@@ -3731,9 +3746,18 @@ const Billing = () => {
         </div> : <div className="space-y-3">
           {cart.map(item => <div key={item.id} className={`bg-gradient-to-r ${String(item.id).startsWith('calci-') ? 'from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800' : 'from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 border-gray-100 dark:border-gray-700'} rounded-2xl p-4 shadow-sm border transition-all hover:shadow-md`}>
             <div className="flex justify-between items-start mb-3">
-              <h3 className="font-bold text-sm line-clamp-2 flex-1 text-gray-800 dark:text-white">
+              <h3 className="font-bold text-sm flex-1 text-gray-800 dark:text-white flex items-center gap-1.5 flex-wrap">
                 {String(item.id).startsWith('calci-') && <span className="inline-flex items-center mr-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-200 align-middle"><Calculator className="w-2.5 h-2.5 mr-0.5" />CALCI</span>}
-                {item.name}
+                <span>{item.name}</span>
+                {(() => {
+                  const badge = getKOTStatusBadgeInfo((item as any).status || 'unsent');
+                  return (
+                    <Badge variant={badge.variant} className={badge.className}>
+                      <span className={cn("w-1.5 h-1.5 rounded-full", badge.dotColor)} />
+                      {badge.label}
+                    </Badge>
+                  );
+                })()}
               </h3>
               <Button variant="ghost" size="sm" onClick={() => removeFromCart(item.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 ml-2 rounded-full h-8 w-8 p-0">
                 <X className="w-4 h-4" />

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChefHat, Clock, Bell, Volume2, VolumeX, Wifi, WifiOff, RefreshCw, Undo2, Filter } from 'lucide-react';
+import { ChefHat, Clock, Bell, Volume2, VolumeX, Wifi, WifiOff, RefreshCw, Undo2, Filter, Printer, CheckCircle2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { getTimeElapsed, formatTimeAMPM, formatQuantityWithUnit } from '@/utils/timeUtils';
@@ -13,7 +13,9 @@ import { kitchenOfflineManager } from '@/utils/kitchenOfflineManager';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import TableSeatGroups from '@/components/TableSeatGroups';
-import { getOrderTargetLabel, getSeatText } from '@/utils/seatUtils';
+import { getOrderTargetLabel, getSeatText, shouldApplyStatusUpdate, mergeOrdersConflictSafe } from '@/utils/seatUtils';
+import { printTableOrderKOT, printSeatGroupKOT } from '@/utils/kotGenerator';
+import { triggerNewOrderPushNotification } from '@/utils/pwaPushNotifications';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -320,6 +322,10 @@ const KitchenDisplay = () => {
                 if (voiceEnabled && payload?.payload?.bill_no) {
                     announce(`New order received, Bill number ${payload.payload.bill_no}`, 'new-order');
                 }
+                const billNo = payload?.payload?.bill_no || 'New';
+                const tableInfo = payload?.payload?.table_no ? `Table ${payload.payload.table_no}` : 'Takeaway / Order';
+                const amount = payload?.payload?.total_amount || 0;
+                triggerNewOrderPushNotification(billNo, tableInfo, amount);
                 fetchBills(true);
             })
             .subscribe();
@@ -342,7 +348,7 @@ const KitchenDisplay = () => {
         };
     }, [fetchBills, fetchTableOrders]);
 
-    // Listen for table order broadcasts from customers
+    // Listen for table order broadcasts from customers and service devices
     useEffect(() => {
         if (!isOnline) return;
 
@@ -360,16 +366,43 @@ const KitchenDisplay = () => {
                 }
                 fetchTableOrders();
             })
+            .on('broadcast', { event: 'table-order-status-update' }, (payload: any) => {
+                const data = payload?.payload;
+                if (data?.order_id && data?.status) {
+                    setTableOrders(prev => prev.map(o =>
+                        o.id === data.order_id && shouldApplyStatusUpdate(o.status, data.status)
+                            ? { ...o, status: data.status }
+                            : o
+                    ));
+                }
+            })
+            .on('broadcast', { event: 'table-order-batch-status-update' }, (payload: any) => {
+                const data = payload?.payload;
+                if (Array.isArray(data?.order_ids) && data?.status) {
+                    setTableOrders(prev => prev.map(o =>
+                        data.order_ids.includes(o.id) && shouldApplyStatusUpdate(o.status, data.status)
+                            ? { ...o, status: data.status }
+                            : o
+                    ));
+                }
+            })
             .subscribe();
 
         tableOrderChannelRef.current = channel;
 
-        // Also subscribe to postgres_changes for table_orders
+        // Also subscribe to postgres_changes for table_orders with conflict-safe merge
         const pgChannel = supabase.channel('table-order-kitchen-pg')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'table_orders' }, () => {
                 fetchTableOrders();
             })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'table_orders' }, () => {
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'table_orders' }, (payload: any) => {
+                if (payload.new?.id && payload.new?.status) {
+                    setTableOrders(prev => prev.map(o =>
+                        o.id === payload.new.id && shouldApplyStatusUpdate(o.status, payload.new.status)
+                            ? { ...o, ...payload.new }
+                            : o
+                    ));
+                }
                 fetchTableOrders();
             })
             .subscribe();
@@ -545,16 +578,47 @@ const KitchenDisplay = () => {
     const filteredBills = bills.filter(b => withinWindow(b.created_at) && matchesStatus(b.kitchen_status));
     const filteredTableOrders = tableOrders.filter(o => withinWindow(o.created_at) && matchesStatus(o.status));
 
-    // Extract unique item categories from all visible orders
-    const allCategories = useMemo(() => {
+    // Extract unique item categories from all visible orders and compute bulk item counts with units
+    const { allCategories, itemCountsMap, totalOrdersCount } = useMemo(() => {
         const names = new Set<string>();
+        const counts: Record<string, { qty: number; unit: string; ordersCount: number }> = {};
+        let totalOrders = 0;
+
         filteredBills.forEach(b => (b.bill_items || []).forEach(bi => {
-            if (bi.items?.name) names.add(bi.items.name);
+            if (bi.items?.name) {
+                const name = bi.items.name;
+                names.add(name);
+                const qty = bi.quantity || 1;
+                const unit = bi.unit || (bi.items as any)?.selling_unit || bi.items?.unit || 'pc';
+                if (!counts[name]) {
+                    counts[name] = { qty: 0, unit, ordersCount: 0 };
+                }
+                counts[name].qty += qty;
+                counts[name].ordersCount += 1;
+                totalOrders += 1;
+            }
         }));
+
         filteredTableOrders.forEach(o => (o.items || []).forEach(item => {
-            if (item.name) names.add(item.name);
+            if (item.name) {
+                const name = item.name;
+                names.add(name);
+                const qty = item.quantity || 1;
+                const unit = item.unit || (item as any)?.selling_unit || 'pc';
+                if (!counts[name]) {
+                    counts[name] = { qty: 0, unit, ordersCount: 0 };
+                }
+                counts[name].qty += qty;
+                counts[name].ordersCount += 1;
+                totalOrders += 1;
+            }
         }));
-        return Array.from(names).sort();
+
+        return {
+            allCategories: Array.from(names).sort(),
+            itemCountsMap: counts,
+            totalOrdersCount: totalOrders
+        };
     }, [filteredBills, filteredTableOrders]);
 
     // Helper: compute urgency level from created_at
@@ -591,7 +655,7 @@ const KitchenDisplay = () => {
     const preparingTableOrders = filteredTableOrders.filter(o => o.status === 'preparing');
     const readyTableOrders = filteredTableOrders.filter(o => o.status === 'ready');
 
-    // Update table order status
+    // Update table order status (single ticket)
     const updateTableOrderStatus = async (orderId: string, tableNumber: string, sessionId: string, status: 'preparing' | 'ready' | 'served') => {
         const targetOrder = tableOrders.find(o => o.id === orderId);
         const previousStatus = targetOrder?.status || 'pending';
@@ -610,9 +674,11 @@ const KitchenDisplay = () => {
             timestamp: new Date().toISOString(),
         }, ...prev.filter(p => p.id !== orderId)].slice(0, 10));
 
-        // Optimistic update
+        // Conflict-safe optimistic update
         setTableOrders(prev => prev.map(o =>
-            o.id === orderId ? { ...o, status } : o
+            o.id === orderId && shouldApplyStatusUpdate(o.status, status)
+                ? { ...o, status }
+                : o
         ));
 
         try {
@@ -628,24 +694,22 @@ const KitchenDisplay = () => {
             await channel.send({
                 type: 'broadcast',
                 event: 'order-status-update',
-                payload: { order_id: orderId, status }
+                payload: { order_id: orderId, status, timestamp: Date.now() }
             });
             supabase.removeChannel(channel);
 
             // Broadcast to Service Area and other displays via persistent shared channel
-            // IMPORTANT: Do NOT create a new channel('table-order-sync') — it returns the
-            // existing persistent listener and removeChannel would destroy it.
             tableOrderChannelRef.current?.send({
                 type: 'broadcast',
                 event: 'table-order-status-update',
-                payload: { order_id: orderId, table_number: tableNumber, seat_id: seatId || null, seat_label: targetOrder?.seat_label || null, order_scope: targetOrder?.order_scope || 'table', status }
+                payload: { order_id: orderId, table_number: tableNumber, seat_id: seatId || null, seat_label: targetOrder?.seat_label || null, order_scope: targetOrder?.order_scope || 'table', status, timestamp: Date.now() }
             });
 
             // Also broadcast to other kitchen/service displays
             syncChannelRef.current?.send({
                 type: 'broadcast',
                 event: 'bills-updated',
-                payload: { table_order_id: orderId, status }
+                payload: { table_order_id: orderId, status, timestamp: Date.now() }
             });
 
             if (status === 'ready') {
@@ -653,11 +717,84 @@ const KitchenDisplay = () => {
                 toast({ title: '🔔 Table Order Ready!', description: `Table ${tableNumber}${seatLabel} order ready` });
             } else if (status === 'preparing') {
                 toast({ title: '👨‍🍳 Preparing', description: `Table ${tableNumber}${seatLabel} order` });
+            } else if (status === 'served') {
+                toast({ title: '✅ Order Served', description: `Table ${tableNumber}${seatLabel} served` });
             }
         } catch (error) {
             console.error('Table order update failed:', error);
             fetchTableOrders();
             toast({ title: 'Update Failed', description: 'Please try again', variant: 'destructive' });
+        }
+    };
+
+    // Batch update table order status per seat group
+    const updateSeatGroupStatus = async (
+        tableNumber: string,
+        seatKey: string,
+        orders: KitchenTableOrder[],
+        nextStatus: 'preparing' | 'ready' | 'served'
+    ) => {
+        if (orders.length === 0) return;
+        const orderIds = orders.map(o => o.id);
+        const seatText = getSeatText(orders[0]);
+        const seatLabel = ` · ${seatText}`;
+        const labelText = `Table ${tableNumber}${seatLabel}`;
+
+        // 1. Conflict-safe optimistic update
+        setTableOrders(prev => prev.map(o =>
+            orderIds.includes(o.id) && shouldApplyStatusUpdate(o.status, nextStatus)
+                ? { ...o, status: nextStatus }
+                : o
+        ));
+
+        try {
+            // 2. Batch update Supabase
+            const { error } = await supabase
+                .from('table_orders')
+                .update({ status: nextStatus })
+                .in('id', orderIds);
+
+            if (error) throw error;
+
+            // 3. Broadcast to customers and other displays in real-time
+            orders.forEach(async (order) => {
+                if (order.session_id) {
+                    const channel = supabase.channel(`table-order-status-${order.session_id}`);
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'order-status-update',
+                        payload: { order_id: order.id, status: nextStatus, timestamp: Date.now() }
+                    });
+                    supabase.removeChannel(channel);
+                }
+            });
+
+            // Persistent shared broadcast
+            tableOrderChannelRef.current?.send({
+                type: 'broadcast',
+                event: 'table-order-batch-status-update',
+                payload: { table_number: tableNumber, seat_key: seatKey, order_ids: orderIds, status: nextStatus, timestamp: Date.now() }
+            });
+
+            syncChannelRef.current?.send({
+                type: 'broadcast',
+                event: 'bills-updated',
+                payload: { table_number: tableNumber, seat_key: seatKey, status: nextStatus, timestamp: Date.now() }
+            });
+
+            // Audio chime & toast
+            if (nextStatus === 'ready') {
+                announce(`Table ${tableNumber}, ${seatText} orders are ready`, 'order-ready');
+                toast({ title: '🔔 Seat Ready!', description: `${labelText} orders marked ready` });
+            } else if (nextStatus === 'preparing') {
+                toast({ title: '👨‍🍳 Preparing Seat', description: `Started ${labelText}` });
+            } else if (nextStatus === 'served') {
+                toast({ title: '✅ Seat Served', description: `${labelText} served to customer` });
+            }
+        } catch (err) {
+            console.error('Batch seat update failed:', err);
+            fetchTableOrders();
+            toast({ title: 'Seat Update Failed', description: 'Please try again', variant: 'destructive' });
         }
     };
 
@@ -773,32 +910,53 @@ const KitchenDisplay = () => {
 
                 {/* Category Tab Strip */}
                 {allCategories.length > 0 && (
-                    <div className="mt-2 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-muted">
+                    <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-muted">
                         <button
                             onClick={() => setCategoryFilter('all')}
                             className={cn(
-                                'shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                                'shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1',
                                 categoryFilter === 'all'
-                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                     : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
                             )}
                         >
-                            All Items
+                            <span>All Items</span>
+                            <span className={cn(
+                                "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                                categoryFilter === 'all'
+                                    ? "bg-primary-foreground/20 text-primary-foreground"
+                                    : "bg-muted text-muted-foreground"
+                            )}>
+                                {totalOrdersCount}
+                            </span>
                         </button>
-                        {allCategories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setCategoryFilter(cat === categoryFilter ? 'all' : cat)}
-                                className={cn(
-                                    'shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors',
-                                    categoryFilter === cat
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
-                                )}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                        {allCategories.map(cat => {
+                            const info = itemCountsMap[cat];
+                            const formattedQtyUnit = info ? formatQuantityWithUnit(info.qty, info.unit) : '0';
+                            const isSelected = categoryFilter === cat;
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => setCategoryFilter(isSelected ? 'all' : cat)}
+                                    className={cn(
+                                        'shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1',
+                                        isSelected
+                                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                            : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted'
+                                    )}
+                                >
+                                    <span>{cat}</span>
+                                    <span className={cn(
+                                        "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                                        isSelected
+                                            ? "bg-primary-foreground/20 text-primary-foreground"
+                                            : "bg-primary/10 text-primary"
+                                    )}>
+                                        ({formattedQtyUnit})
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -840,62 +998,80 @@ const KitchenDisplay = () => {
                         ))}
 
                         {/* Table QR Orders - Pending */}
-                        <TableSeatGroups orders={pendingTableOrders} keyPrefix="pending" renderOrder={(order) => {
-                            const urgency = getUrgencyColor(order.created_at);
-                            const elapsedMin = getElapsedMinutes(order.created_at);
-                            return (
-                            <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
-                                <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-bold">{getOrderTargetLabel(order)}</h3>
-                                            <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
-                                    </div>
-                                    <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
-                                    </Badge>
-                                </div>
-                                <div className="space-y-1.5 mb-3">
-                                    {(order.items || []).map((item, idx) => {
-                                        const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
-                                        return (
-                                        <div key={idx} className={cn(
-                                            'rounded-lg px-3 py-2',
-                                            isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
-                                            categoryFilter !== 'all' && !isHighlighted && 'opacity-40'
-                                        )}>
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className={cn('font-medium', isHighlighted && 'text-primary font-bold')}>{item.name}</span>
-                                                <Badge variant="secondary" className="font-bold text-base min-w-[60px] justify-center ml-2">
-                                                    {formatQuantityWithUnit(item.quantity, item.unit)}
-                                                </Badge>
+                        <TableSeatGroups
+                            orders={pendingTableOrders}
+                            keyPrefix="pending"
+                            onUpdateSeatStatus={updateSeatGroupStatus}
+                            onPrintSeatGroup={printSeatGroupKOT}
+                            renderOrder={(order) => {
+                                const urgency = getUrgencyColor(order.created_at);
+                                const elapsedMin = getElapsedMinutes(order.created_at);
+                                return (
+                                <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-xl font-bold">{getOrderTargetLabel(order)}</h3>
+                                                <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
                                             </div>
-                                            {item.instructions && (
-                                                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                                                    📝 {item.instructions}
-                                                </p>
-                                            )}
+                                            <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
                                         </div>
-                                        );
-                                    })}
-                                </div>
-                                {order.customer_note && (
-                                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 mb-3 text-xs text-amber-700">
-                                        💬 Customer Note: {order.customer_note}
+                                        <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
+                                            <Clock className="w-3 h-3 mr-1" />
+                                            {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
+                                        </Badge>
                                     </div>
-                                )}
-                                <Button
-                                    onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'preparing')}
-                                    className="w-full text-white bg-orange-500 hover:bg-orange-600"
-                                >
-                                    Start Preparing
-                                </Button>
-                            </Card>
-                            );
-                        }} />
+                                    <div className="space-y-1.5 mb-3">
+                                        {(order.items || []).map((item, idx) => {
+                                            const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
+                                            return (
+                                            <div key={idx} className={cn(
+                                                'rounded-lg px-3 py-2',
+                                                isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
+                                                categoryFilter !== 'all' && !isHighlighted && 'opacity-40'
+                                            )}>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className={cn('font-medium', isHighlighted && 'text-primary font-bold')}>{item.name}</span>
+                                                    <Badge variant="secondary" className="font-bold text-base min-w-[60px] justify-center ml-2">
+                                                        {formatQuantityWithUnit(item.quantity, item.unit)}
+                                                    </Badge>
+                                                </div>
+                                                {item.instructions && (
+                                                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                                                        📝 {item.instructions}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {order.customer_note && (
+                                        <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 mb-3 text-xs text-amber-700">
+                                            💬 Customer Note: {order.customer_note}
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => printTableOrderKOT(order)}
+                                            className="h-9 px-3 border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 shrink-0"
+                                            title="Print KOT Ticket"
+                                        >
+                                            <Printer className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'preparing')}
+                                            className="flex-1 text-white bg-orange-500 hover:bg-orange-600 font-bold"
+                                        >
+                                            Start Preparing
+                                        </Button>
+                                    </div>
+                                </Card>
+                                );
+                            }}
+                        />
 
                         {pendingBills.length === 0 && pendingTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
@@ -926,62 +1102,80 @@ const KitchenDisplay = () => {
                         ))}
 
                         {/* Table QR Orders - Preparing */}
-                        <TableSeatGroups orders={preparingTableOrders} keyPrefix="preparing" renderOrder={(order) => {
-                            const urgency = getUrgencyColor(order.created_at);
-                            const elapsedMin = getElapsedMinutes(order.created_at);
-                            return (
-                            <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
-                                <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-bold">{getOrderTargetLabel(order)}</h3>
-                                            <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
-                                    </div>
-                                    <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
-                                    </Badge>
-                                </div>
-                                <div className="space-y-1.5 mb-3">
-                                    {(order.items || []).map((item, idx) => {
-                                        const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
-                                        return (
-                                        <div key={idx} className={cn(
-                                            'rounded-lg px-3 py-2',
-                                            isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
-                                            categoryFilter !== 'all' && !isHighlighted && 'opacity-40'
-                                        )}>
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className={cn('font-medium', isHighlighted && 'text-primary font-bold')}>{item.name}</span>
-                                                <Badge variant="secondary" className="font-bold text-base min-w-[60px] justify-center ml-2">
-                                                    {formatQuantityWithUnit(item.quantity, item.unit)}
-                                                </Badge>
+                        <TableSeatGroups
+                            orders={preparingTableOrders}
+                            keyPrefix="preparing"
+                            onUpdateSeatStatus={updateSeatGroupStatus}
+                            onPrintSeatGroup={printSeatGroupKOT}
+                            renderOrder={(order) => {
+                                const urgency = getUrgencyColor(order.created_at);
+                                const elapsedMin = getElapsedMinutes(order.created_at);
+                                return (
+                                <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-xl font-bold">{getOrderTargetLabel(order)}</h3>
+                                                <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
                                             </div>
-                                            {item.instructions && (
-                                                <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                                                    📝 {item.instructions}
-                                                </p>
-                                            )}
+                                            <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
                                         </div>
-                                        );
-                                    })}
-                                </div>
-                                {order.customer_note && (
-                                    <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 mb-3 text-xs text-amber-700">
-                                        💬 {order.customer_note}
+                                        <Badge className={cn('text-xs font-mono font-bold', urgencyBadgeClass[urgency])}>
+                                            <Clock className="w-3 h-3 mr-1" />
+                                            {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
+                                        </Badge>
                                     </div>
-                                )}
-                                <Button
-                                    onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'ready')}
-                                    className="w-full text-white bg-green-500 hover:bg-green-600"
-                                >
-                                    Mark Ready
-                                </Button>
-                            </Card>
-                            );
-                        }} />
+                                    <div className="space-y-1.5 mb-3">
+                                        {(order.items || []).map((item, idx) => {
+                                            const isHighlighted = categoryFilter !== 'all' && item.name === categoryFilter;
+                                            return (
+                                            <div key={idx} className={cn(
+                                                'rounded-lg px-3 py-2',
+                                                isHighlighted ? 'bg-primary/15 ring-2 ring-primary/40' : 'bg-muted/30',
+                                                categoryFilter !== 'all' && !isHighlighted && 'opacity-40'
+                                            )}>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className={cn('font-medium', isHighlighted && 'text-primary font-bold')}>{item.name}</span>
+                                                    <Badge variant="secondary" className="font-bold text-base min-w-[60px] justify-center ml-2">
+                                                        {formatQuantityWithUnit(item.quantity, item.unit)}
+                                                    </Badge>
+                                                </div>
+                                                {item.instructions && (
+                                                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                                                        📝 {item.instructions}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {order.customer_note && (
+                                        <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 mb-3 text-xs text-amber-700">
+                                            💬 {order.customer_note}
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => printTableOrderKOT(order)}
+                                            className="h-9 px-3 border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 shrink-0"
+                                            title="Print KOT Ticket"
+                                        >
+                                            <Printer className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'ready')}
+                                            className="flex-1 text-white bg-green-500 hover:bg-green-600 font-bold"
+                                        >
+                                            Mark Ready
+                                        </Button>
+                                    </div>
+                                </Card>
+                                );
+                            }}
+                        />
 
                         {preparingBills.length === 0 && preparingTableOrders.length === 0 && (
                             <Card className="p-6 text-center text-muted-foreground">
@@ -1024,7 +1218,12 @@ const KitchenDisplay = () => {
                         ))}
 
                         {/* Table QR Orders - Ready */}
-                        <TableSeatGroups orders={readyTableOrders} keyPrefix="ready" renderOrder={(order) => (
+                        <TableSeatGroups
+                            orders={readyTableOrders}
+                            keyPrefix="ready"
+                            onUpdateSeatStatus={updateSeatGroupStatus}
+                            onPrintSeatGroup={printSeatGroupKOT}
+                            renderOrder={(order) => (
                             <Card
                                 key={`to-${order.id}`}
                                 className="p-4 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900 border-l-4 border-l-purple-500"
@@ -1038,13 +1237,33 @@ const KitchenDisplay = () => {
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order #{order.order_number}</Badge>
                                         </div>
                                     </div>
-                                    <Badge className="bg-green-500 text-white animate-pulse">
-                                        <Bell className="w-3 h-3 mr-1" />
-                                        READY
-                                    </Badge>
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => printTableOrderKOT(order)}
+                                            className="h-8 px-2 border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50"
+                                            title="Print KOT Ticket"
+                                        >
+                                            <Printer className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Badge className="bg-green-500 text-white animate-pulse">
+                                            <Bell className="w-3 h-3 mr-1" />
+                                            READY
+                                        </Badge>
+                                    </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                    {getTimeElapsed(order.created_at)} ago
+                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-green-200/60 dark:border-green-900/60">
+                                    <span className="text-xs text-muted-foreground">{getTimeElapsed(order.created_at)} ago</span>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => updateTableOrderStatus(order.id, order.table_number, order.session_id, 'served')}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-3 text-xs font-bold"
+                                    >
+                                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                                        Mark Served
+                                    </Button>
                                 </div>
                             </Card>
                         )} />

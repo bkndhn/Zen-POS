@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import TableSeatGroups from '@/components/TableSeatGroups';
-import { getOrderTargetLabel, getSeatText } from '@/utils/seatUtils';
+import { getOrderTargetLabel, getSeatText, shouldApplyStatusUpdate } from '@/utils/seatUtils';
 
 // === INSTANT SYNC LAYER ===
 // 1. BroadcastChannel - 0ms same-browser tabs
@@ -346,7 +346,26 @@ const ServiceArea = () => {
             .on('broadcast', { event: 'new-table-order' }, () => {
                 fetchTableOrders();
             })
-            .on('broadcast', { event: 'table-order-status-update' }, () => {
+            .on('broadcast', { event: 'table-order-status-update' }, (payload: any) => {
+                const data = payload?.payload;
+                if (data?.order_id && data?.status) {
+                    setTableOrders(prev => prev.map(o =>
+                        o.id === data.order_id && shouldApplyStatusUpdate(o.status, data.status)
+                            ? { ...o, status: data.status }
+                            : o
+                    ));
+                }
+                fetchTableOrders();
+            })
+            .on('broadcast', { event: 'table-order-batch-status-update' }, (payload: any) => {
+                const data = payload?.payload;
+                if (Array.isArray(data?.order_ids) && data?.status) {
+                    setTableOrders(prev => prev.map(o =>
+                        data.order_ids.includes(o.id) && shouldApplyStatusUpdate(o.status, data.status)
+                            ? { ...o, status: data.status }
+                            : o
+                    ));
+                }
                 fetchTableOrders();
             })
             .subscribe();
@@ -354,7 +373,17 @@ const ServiceArea = () => {
         tableOrderChannelRef.current = channel;
 
         const pgChannel = supabase.channel('table-order-service-pg')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'table_orders' }, () => {
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'table_orders' }, (payload: any) => {
+                if (payload.new?.id && payload.new?.status) {
+                    setTableOrders(prev => prev.map(o =>
+                        o.id === payload.new.id && shouldApplyStatusUpdate(o.status, payload.new.status)
+                            ? { ...o, ...payload.new }
+                            : o
+                    ));
+                }
+                fetchTableOrders();
+            })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'table_orders' }, () => {
                 fetchTableOrders();
             })
             .subscribe();

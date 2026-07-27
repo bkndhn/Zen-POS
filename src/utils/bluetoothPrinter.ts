@@ -640,11 +640,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   
   if (autoCut) {
-    // Push "Thank you!" past the cutter blade so it's not hidden inside the printer housing
+    // Feed text past cutter blade so footer is fully visible
     commands.push(FEED_LINES(paperSaving ? 2 : 3));
-    commands.push(CUT_FULL); // Standard ESC/POS cut (GS V 0)
+    commands.push(CUT_FULL); // Standard GS V 0 cut command
+    commands.push(CUT_ALT);  // ESC i cut command (supported by Xprinter, Sunmi, Bixolon, ZKP)
   } else {
-    // Feed so it reaches tear-bar, but DO NOT cut. Extra feed keeps "Thank you!" visible.
+    // Feed to tear-bar without cutting
     commands.push(FEED_LINES(paperSaving ? 3 : 4));
   }
 

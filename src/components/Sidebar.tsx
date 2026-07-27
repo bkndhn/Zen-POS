@@ -3,10 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { Users, Settings, ShieldAlert } from 'lucide-react';
+import { Users, Settings, ShieldAlert, CreditCard, Shield } from 'lucide-react';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { useTranslation } from 'react-i18next';
 import { ContactSupportDialog } from './ContactSupportDialog';
+import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -70,16 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
                 isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
                   : "text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
               )}>
-                <Users className="w-4 h-4 mr-3" /><span className="font-medium">All Users</span>
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/users" className={({ isActive }) => cn(
-                "flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm",
-                isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
-                  : "text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              )}>
-                <Settings className="w-4 h-4 mr-3" /><span className="font-medium">Admin Management</span>
+                <Shield className="w-4 h-4 mr-3" /><span className="font-medium font-bold">Super Admin Hub</span>
               </NavLink>
             </li>
           </ul>
@@ -135,6 +127,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               </li>
             );
           })}
+          {/* Subscription Renewal Link — admin only */}
+          {profile?.role === 'admin' && (() => {
+            const license = checkOfflineLicenseStatus();
+            const isExpiringSoon = (license.daysUntilExpiry !== undefined && license.daysUntilExpiry <= 7 && license.daysUntilExpiry > 0);
+            const isExpired = license.degradationStage === 'locked' || license.degradationStage === 'limited';
+            const isRenewActive = location.pathname === '/renew';
+            return (
+              <li className="mt-2 pt-2 border-t border-sidebar-border">
+                <NavLink
+                  to="/renew"
+                  className={cn(
+                    "flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm",
+                    isRenewActive
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                      : isExpired
+                        ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 font-bold"
+                        : isExpiringSoon
+                          ? "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 font-bold"
+                          : "text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  )}
+                >
+                  <CreditCard className={cn("w-4 h-4 mr-3 flex-shrink-0", isExpired && "animate-pulse text-red-500", isExpiringSoon && "text-amber-500")} />
+                  <span className="font-medium truncate">Subscription</span>
+                  {isExpiringSoon && <span className="ml-auto text-[10px] bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-bold">{license.daysUntilExpiry}d</span>}
+                  {isExpired && <span className="ml-auto text-[10px] bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded-full font-bold">!</span>}
+                </NavLink>
+              </li>
+            );
+          })()}
           <li className="mt-4 pt-4 border-t border-sidebar-border">
             <button
               onClick={() => setSupportOpen(true)}

@@ -280,3 +280,106 @@ export const printBrowserReceipt = async (data: PrintData) => {
   printWindow.document.write(html);
   printWindow.document.close();
 };
+
+export interface BrowserKOTData {
+  title?: string;
+  tableNumber: string;
+  seatText?: string;
+  orderScope?: string;
+  orderNumber?: number | string;
+  ordersCount?: number;
+  items: Array<{ name: string; quantity: number; unit?: string; instructions?: string }>;
+  customerNote?: string;
+  printerWidth?: '58mm' | '80mm';
+  date?: string;
+  time?: string;
+}
+
+export const printBrowserKOT = (data: BrowserKOTData) => {
+  const width = data.printerWidth || '58mm';
+  const widthValue = width === '80mm' ? '80mm' : '58mm';
+  const fontSize = width === '80mm' ? '15px' : '12px';
+  const headerFontSize = width === '80mm' ? '22px' : '16px';
+  const now = new Date();
+  const dateStr = data.date || now.toLocaleDateString('en-IN');
+  const timeStr = data.time || now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const itemsHtml = data.items.map(item => {
+    const qtyStr = formatQuantityWithUnit(item.quantity, item.unit);
+    return `
+      <tr>
+        <td style="padding: 2px 0; font-weight: bold;">${item.name}</td>
+        <td style="padding: 2px 0; text-align: right; font-weight: bold;">${qtyStr}</td>
+      </tr>
+      ${item.instructions ? `<tr><td colspan="2" style="padding-bottom:4px; font-size:10px; color:#d97706;">📝 ${item.instructions}</td></tr>` : ''}
+    `;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>KOT Ticket - Table ${data.tableNumber}</title>
+  <style>
+    @page { size: ${widthValue} auto; margin: 0; }
+    body {
+      width: ${widthValue};
+      margin: 0;
+      padding: 6px;
+      font-family: monospace;
+      font-size: ${fontSize};
+      color: #000;
+      background: #fff;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .bold { font-weight: bold; }
+    .header { font-size: ${headerFontSize}; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 4px; }
+    .badge { display: inline-block; background: #000; color: #fff; padding: 2px 6px; font-size: 11px; font-weight: bold; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+    @media print {
+      header, footer, .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="text-center header">*** KITCHEN KOT ***</div>
+  <div class="text-center" style="margin-bottom: 4px;">
+    <span class="badge">TABLE ${data.tableNumber}</span>
+    ${data.seatText ? `<span style="font-weight:bold; margin-left: 4px;">· ${data.seatText}</span>` : ''}
+  </div>
+  ${data.orderNumber ? `<div style="font-size: 11px;"><b>Order #:</b> ${data.orderNumber}</div>` : ''}
+  ${data.ordersCount ? `<div style="font-size: 11px;"><b>Group Tickets:</b> ${data.ordersCount}</div>` : ''}
+  <div style="font-size: 10px; color: #444;">Time: ${dateStr} ${timeStr}</div>
+  <hr>
+  <table>
+    <tr style="font-weight: bold; border-bottom: 1px solid #000;">
+      <td style="text-align: left;">ITEM</td>
+      <td style="text-align: right;">QTY</td>
+    </tr>
+    ${itemsHtml}
+  </table>
+  <hr>
+  ${data.customerNote ? `<div style="font-size: 11px; padding: 4px; border: 1px solid #000; margin-top: 4px;">💬 Note: ${data.customerNote}</div>` : ''}
+  <div class="text-center" style="margin-top: 8px; font-size: 10px; text-transform: uppercase;">-- KITCHEN DISPLAY COPY --</div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() { window.close(); }, 500);
+      }, 300);
+    };
+  </script>
+</body>
+</html>`;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups to print KOT tickets');
+    return;
+  }
+  printWindow.document.write(html);
+  printWindow.document.close();
+};
+

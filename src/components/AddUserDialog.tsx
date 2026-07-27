@@ -7,19 +7,40 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { isStrongPassword, isValidEmail } from '@/utils/securityUtils';
 
 interface AddUserDialogProps {
   onUserAdded: () => void;
   adminId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: React.ReactNode;
 }
 
 // Mobile: exactly 10 digits, starts with 6/7/8/9
 const MOBILE_RE = /^[6-9][0-9]{9}$/;
 
-export const AddUserDialog: React.FC<AddUserDialogProps> = ({ onUserAdded, adminId }) => {
+export const AddUserDialog: React.FC<AddUserDialogProps> = ({
+  onUserAdded,
+  adminId,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+  trigger,
+}) => {
   const { signUp, profile } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = externalOpen !== undefined;
+  const isOpen = isControlled ? externalOpen : internalOpen;
+
+  const setIsOpen = (value: boolean) => {
+    if (isControlled) {
+      externalOnOpenChange?.(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -104,11 +125,11 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({ onUserAdded, admin
       toast({
         title: "Success!",
         description: isSuperAdmin
-          ? "Admin account created successfully."
+          ? "User account created successfully."
           : "User account created successfully.",
       });
       resetForm();
-      setOpen(false);
+      setIsOpen(false);
       onUserAdded();
     } catch (error: any) {
       console.error('Add user error:', error);
@@ -119,19 +140,24 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({ onUserAdded, admin
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          {isSuperAdmin ? 'Add Admin' : 'Add User'}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : !isControlled ? (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            {isSuperAdmin ? 'Add User' : 'Add User'}
+          </Button>
+        </DialogTrigger>
+      ) : null}
+
       <DialogContent className="sm:max-w-[460px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isSuperAdmin ? 'Add New Admin' : 'Add New User'}</DialogTitle>
+          <DialogTitle>{isSuperAdmin ? 'Add New System User' : 'Add New User'}</DialogTitle>
           <DialogDescription>
             {isSuperAdmin
-              ? 'Create a new hotel admin account with contact details.'
+              ? 'Create a new tenant admin or branch staff account with contact details.'
               : 'Create a new sub-user account with contact details.'}
           </DialogDescription>
         </DialogHeader>
@@ -173,9 +199,35 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({ onUserAdded, admin
 
           {isSuperAdmin ? (
             <div className="space-y-2">
-              <Label>Role</Label>
-              <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                <span className="text-sm font-medium text-primary">Hotel Admin</span>
+              <Label className="text-xs font-bold">Account Role</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, role: 'admin' }))}
+                  className={cn(
+                    'p-3 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5',
+                    formData.role === 'admin'
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                  )}
+                >
+                  <span className="text-sm font-bold">Tenant Admin</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">Owns hotel instance & sub-users</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, role: 'user' }))}
+                  className={cn(
+                    'p-3 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5',
+                    formData.role === 'user'
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                  )}
+                >
+                  <span className="text-sm font-bold">Branch Staff</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">Sub-user with restricted permissions</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -205,7 +257,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({ onUserAdded, admin
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create User'}</Button>
           </DialogFooter>
         </form>

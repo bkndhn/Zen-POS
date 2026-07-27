@@ -4,6 +4,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, UserStatus, UserRole } from '@/types/user';
 import { seedAdminDefaults } from '@/utils/seedAdminDefaults';
+import { syncSubscriptionLicense, cacheVerifiedLicense, clearAllLicenseData, isForceLogoutCached } from '@/utils/offlineLicenseManager';
 
 // Simple obfuscation for cached profile data (defense-in-depth against casual tampering)
 const encodeProfileCache = (profile: Profile): string => {
@@ -528,6 +529,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               devLog('[AuthContext] User status changed, updating local profile');
               setProfile(prev => prev ? { ...prev, status: updatedProfile.status as UserStatus } : null);
             }
+
+            // Check for force_logout flag from Super Admin subscription management
+            if ((isCurrentUser || isCurrentUserAdmin) && updatedProfile.force_logout === true) {
+              devLog('[AuthContext] Force logout detected via profiles table update');
+              localStorage.removeItem(`profile_${user.id}`);
+              clearAllLicenseData();
+              // Cache force logout so it persists offline
+              cacheVerifiedLicense(updatedProfile.id || profile.id, {
+                status: 'locked',
+                forceLogout: true,
+                forceLogoutReason: updatedProfile.force_logout_reason || 'Account suspended by administrator',
+              });
+              const { toast } = await import('@/hooks/use-toast');
+              toast({
+                title: 'Account Suspended',
+                description: updatedProfile.force_logout_reason || 'Your subscription has been paused by the administrator.',
+                variant: 'destructive',
+              });
+              await supabase.auth.signOut();
+              setUser(null);
+              setSession(null);
+              setAdminProfileId(null);
+              setAdminAuthUid(null);
+              setProfile(null);
+              return;
+            }
           }
         }
       )
@@ -535,9 +562,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         devLog('[AuthContext] Force logout subscription status:', status);
       });
 
+    // Also subscribe to broadcast channel for instant force logout from Super Admin
+    const adminId = profile.role === 'admin' ? profile.id : profile.admin_id;
+    let broadcastChannel: any = null;
+    if (adminId) {
+      broadcastChannel = supabase
+        .channel(`force-logout-broadcast-${adminId}`)
+        .on('broadcast', { event: 'force_logout' }, async (payload: any) => {
+          const { force, reason } = payload.payload || {};
+          if (force) {
+            devLog('[AuthContext] Force logout broadcast received!');
+            localStorage.removeItem(`profile_${user.id}`);
+            clearAllLicenseData();
+            cacheVerifiedLicense(adminId, {
+              status: 'locked',
+              forceLogout: true,
+              forceLogoutReason: reason || 'Account suspended',
+            });
+            const { toast } = await import('@/hooks/use-toast');
+            toast({
+              title: 'Account Suspended',
+              description: reason || 'Your subscription has been paused.',
+              variant: 'destructive',
+            });
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
+            setAdminProfileId(null);
+            setAdminAuthUid(null);
+            setProfile(null);
+          }
+        })
+        .subscribe();
+    }
+
+    // Sync subscription license status when profile is loaded
+    if (adminId && navigator.onLine) {
+      syncSubscriptionLicense(adminId).then(license => {
+        if (license.isForceLoggedOut) {
+          devLog('[AuthContext] License sync found force logout - signing out');
+          supabase.auth.signOut().then(() => {
+            setUser(null);
+            setSession(null);
+            setAdminProfileId(null);
+            setAdminAuthUid(null);
+            setProfile(null);
+          });
+        }
+      }).catch(e => devLog('[AuthContext] License sync error:', e));
+    }
+
     return () => {
       devLog('[AuthContext] Cleaning up force-logout realtime subscription');
       supabase.removeChannel(channel);
+      if (broadcastChannel) supabase.removeChannel(broadcastChannel);
     };
   }, [user?.id, profile?.id, profile?.admin_id, profile?.status]);
 

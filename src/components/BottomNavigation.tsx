@@ -6,7 +6,7 @@ import { useBranch } from '@/contexts/BranchContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, CreditCard, Users as UsersIcon, Database, Settings, FileText, Shield, Activity, LayoutDashboard, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -168,7 +168,79 @@ export const BottomNavigation: React.FC = () => {
   }, []);
 
   if (!profile || loading) return null;
-  if (profile.role === 'super_admin') return null;
+
+  if (profile.role === 'super_admin') {
+    const superAdminNavItems = [
+      { to: '/super-admin/users?tab=users', tabKey: 'users', label: 'Users & Staff', icon: UsersIcon },
+      { to: '/super-admin/users?tab=subscriptions', tabKey: 'subscriptions', label: 'Subs', icon: CreditCard },
+      { to: '/super-admin/users?tab=backups', tabKey: 'backups', label: 'Backups', icon: Database },
+      { to: '/super-admin/users?tab=support', tabKey: 'support', label: 'Support', icon: Settings },
+      { to: '/super-admin/rum', tabKey: 'rum', label: 'RUM Metrics', icon: Activity },
+    ];
+
+    const currentTab = new URLSearchParams(location.search).get('tab') || 'users';
+
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 md:hidden z-50" aria-label="Super Admin Bottom Navigation">
+        <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-black/5 to-transparent dark:from-black/30 pointer-events-none" />
+        <div className="absolute inset-0 bg-card/90 dark:bg-card/80 backdrop-blur-xl border-t border-border/70 shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.55)]" />
+        <div
+          className="relative flex justify-around items-center px-1 sm:px-2"
+          style={{
+            paddingTop: '4px',
+            paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
+          }}
+        >
+          {superAdminNavItems.map(item => {
+            const Icon = item.icon;
+            const isActive = item.to.startsWith('/super-admin/rum') 
+              ? location.pathname === '/super-admin/rum'
+              : (location.pathname === '/super-admin/users' && currentTab === item.tabKey);
+
+            return (
+              <NavLink
+                key={item.label}
+                to={item.to}
+                onClick={haptic}
+                className="group relative flex flex-col items-center justify-center py-1 px-0.5 min-w-0 flex-1 select-none"
+              >
+                <span
+                  className={cn(
+                    'absolute top-0 left-1/2 -translate-x-1/2 h-1 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300',
+                    isActive ? 'w-8 opacity-100' : 'w-0 opacity-0',
+                  )}
+                />
+                <div
+                  className={cn(
+                    'relative flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+                    isActive
+                      ? 'w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-[0_8px_20px_-6px_hsl(var(--primary)/0.55)] scale-100'
+                      : 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-transparent group-active:scale-90'
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'transition-all duration-300',
+                      isActive ? 'w-5 h-5 text-primary-foreground' : 'w-[18px] h-[18px] text-muted-foreground group-hover:text-foreground'
+                    )}
+                    strokeWidth={isActive ? 2.4 : 2}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    'text-[10.5px] mt-1 font-medium tracking-tight transition-all duration-300 truncate max-w-full',
+                    isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
+                  )}
+                >
+                  {item.label}
+                </span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+    );
+  }
 
   const renderTab = (item: (typeof navItems)[number]) => {
     const { to, icon: Icon } = item;
@@ -314,6 +386,30 @@ export const BottomNavigation: React.FC = () => {
                   );
                 })}
               </div>
+              {/* Subscription link for admin users */}
+              {profile?.role === 'admin' && (
+                <div className="mt-4 pt-3 border-t border-border/50">
+                  <button
+                    onClick={() => { haptic(); setIsSheetOpen(false); navigate('/renew'); }}
+                    className={cn(
+                      'w-full flex items-center gap-3 p-3 rounded-2xl border transition-all active:scale-95',
+                      location.pathname === '/renew'
+                        ? 'bg-primary/10 border-primary/40 text-primary shadow-sm'
+                        : 'bg-card/60 hover:bg-muted border-border/60 text-foreground'
+                    )}
+                  >
+                    <div className={cn(
+                      'flex items-center justify-center w-10 h-10 rounded-xl',
+                      location.pathname === '/renew'
+                        ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground'
+                        : 'bg-muted/60'
+                    )}>
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm font-medium">Subscription</span>
+                  </button>
+                </div>
+              )}
             </SheetContent>
           </Sheet>
         )}

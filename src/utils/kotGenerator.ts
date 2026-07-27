@@ -38,6 +38,8 @@ export interface KOTItem {
 export interface KOTMeta {
   billNo: string;
   tableNo?: string;
+  seatLabel?: string;
+  orderScope?: string;
   orderType?: 'dine_in' | 'parcel';
   printerWidth?: '58mm' | '80mm';
   shopName?: string;
@@ -135,7 +137,8 @@ export const buildKOTBytes = (
 
     if (meta.tableNo) {
       chunks.push(BOLD_ON);
-      chunks.push(bytes(`Table: ${meta.tableNo}`));
+      const scopeLabel = meta.seatLabel ? ` (Seat ${meta.seatLabel})` : (meta.orderScope === 'seat' ? ' (Seat)' : ' (Whole Table)');
+      chunks.push(bytes(`Table: ${meta.tableNo}${scopeLabel}`));
       chunks.push(BOLD_OFF);
       chunks.push(FEED_LINE);
     }
@@ -245,6 +248,104 @@ export const printKOTs = async (
     }
   }
   return { ok, failed, results };
+};
+
+/**
+ * Print individual Table / Seat KOT ticket via thermal printer or browser fallback.
+ */
+export const printTableOrderKOT = async (order: any) => {
+  const { printerManager } = await import('./printerManager');
+  const { printBrowserKOT } = await import('./browserPrinter');
+
+  const items: KOTItem[] = (order.items || []).map((it: any) => ({
+    name: it.name,
+    quantity: it.quantity,
+    unit: it.unit,
+    notes: it.instructions
+  }));
+
+  const meta: KOTMeta = {
+    billNo: String(order.order_number || order.id?.substring(0, 6) || 'KOT'),
+    tableNo: String(order.table_number || ''),
+    seatLabel: order.seat_label || order.seat_id || undefined,
+    orderScope: order.order_scope || (order.seat_label ? 'seat' : 'table'),
+    orderType: 'dine_in'
+  };
+
+  const isConnected = printerManager.getConnectionState() === 'connected';
+
+  if (isConnected) {
+    const kotBytes = buildKOTBytes('kitchen', items, meta);
+    const success = await printerManager.printRawBytes(kotBytes);
+    if (success) return true;
+  }
+
+  // Fallback to Browser KOT Print
+  printBrowserKOT({
+    tableNumber: String(order.table_number || ''),
+    seatText: order.seat_label ? `Seat ${order.seat_label}` : 'Whole Table',
+    orderScope: order.order_scope || 'table',
+    orderNumber: order.order_number,
+    items,
+    customerNote: order.customer_note
+  });
+  return true;
+};
+
+/**
+ * Print grouped Seat / Table KOT ticket for multiple orders under the same seat/table group.
+ */
+export const printSeatGroupKOT = async (tableNumber: string, seatText: string, orders: any[]) => {
+  const { printerManager } = await import('./printerManager');
+  const { printBrowserKOT } = await import('./browserPrinter');
+
+  // Consolidate all items across all orders in this seat group
+  const itemMap = new Map<string, KOTItem>();
+  orders.forEach(order => {
+    (order.items || []).forEach((it: any) => {
+      const key = `${it.name}_${it.unit || ''}_${it.instructions || ''}`;
+      const existing = itemMap.get(key);
+      if (existing) {
+        existing.quantity += it.quantity;
+      } else {
+        itemMap.set(key, {
+          name: it.name,
+          quantity: it.quantity,
+          unit: it.unit,
+          notes: it.instructions
+        });
+      }
+    });
+  });
+
+  const consolidatedItems = Array.from(itemMap.values());
+  const firstOrder = orders[0];
+  const meta: KOTMeta = {
+    billNo: `GRP-${orders.length}`,
+    tableNo: tableNumber,
+    seatLabel: firstOrder?.seat_label || firstOrder?.seat_id || undefined,
+    orderScope: firstOrder?.order_scope || 'table',
+    orderType: 'dine_in'
+  };
+
+  const isConnected = printerManager.getConnectionState() === 'connected';
+
+  if (isConnected) {
+    const kotBytes = buildKOTBytes('kitchen', consolidatedItems, meta);
+    const success = await printerManager.printRawBytes(kotBytes);
+    if (success) return true;
+  }
+
+  // Fallback to Browser KOT Print
+  printBrowserKOT({
+    tableNumber,
+    seatText,
+    orderScope: firstOrder?.order_scope || 'table',
+    ordersCount: orders.length,
+    items: consolidatedItems,
+    customerNote: orders.map(o => o.customer_note).filter(Boolean).join(' | ')
+  });
+  return true;
 };
 
 export { DEFAULT_STATIONS };

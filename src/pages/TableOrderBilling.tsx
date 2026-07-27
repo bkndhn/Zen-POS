@@ -10,7 +10,9 @@ import { toast } from '@/hooks/use-toast';
 import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter, syncBillCounter } from '@/utils/billNumberGenerator';
+import { getOrderTargetLabel, getSeatText, getKOTStatusBadgeInfo, getOccupancyTimerInfo } from '@/utils/seatUtils';
 import { calculateSmartQtyCount, getTimeElapsed } from '@/utils/timeUtils';
+import { reservationManager, TableReservation } from '@/utils/reservationManager';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
@@ -18,6 +20,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
+import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { toast as sonnerToast } from 'sonner';
 
 // BroadcastChannel for instant cross-tab sync
@@ -696,6 +699,18 @@ const TableOrderBilling: React.FC = () => {
         if (!selectedTable || !adminId || isBilling) return;
 
         setPaymentDialogOpen(false);
+        const licStatus = checkOfflineLicenseStatus();
+        if (!licStatus.isValid) {
+            toast({
+                title: '🚫 License Lockout',
+                description: licStatus.lockReason === 'clock_tampered'
+                    ? 'System clock discrepancy detected. Please connect to internet to verify license.'
+                    : '7-Day Offline Grace Period Expired. Connect online to verify active SaaS subscription.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         setIsBilling(true);
 
         try {
@@ -1328,30 +1343,42 @@ const TableOrderBilling: React.FC = () => {
                     </Card>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {tables.map((table) => (
-                            <Card
-                                key={table.seat_id ? `${table.table_number}-seat-${table.seat_id}` : `${table.table_number}-general`}
-                                className="cursor-pointer transition-all hover:shadow-md border-l-4 border-l-purple-500"
-                                onClick={() => handleTableSelect(table)}
-                            >
-                                <CardContent className="p-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-2xl font-black flex items-baseline">
-                                                T{table.table_number}
-                                                {table.seat_id && (
-                                                    <span className="text-xs font-bold text-purple-600 ml-1 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
-                                                        Seat {table.seat_id}
-                                                    </span>
-                                                )}
-                                            </h3>
-                                            <Badge className="bg-purple-100 text-purple-700 text-[10px]">
-                                                <ShoppingCart className="w-2.5 h-2.5 mr-0.5" />
-                                                {table.orderCount} order{table.orderCount > 1 ? 's' : ''}
-                                            </Badge>
+                        {tables.map((table) => {
+                            const earliestOrderTime = table.orders && table.orders.length > 0 ? table.orders[0].created_at : null;
+                            const occInfo = getOccupancyTimerInfo(earliestOrderTime);
+
+                            return (
+                                <Card
+                                    key={table.seat_id ? `${table.table_number}-seat-${table.seat_id}` : `${table.table_number}-general`}
+                                    className={cn(
+                                        "cursor-pointer transition-all hover:shadow-md border-l-4 border-l-purple-500",
+                                        occInfo?.ringClass
+                                    )}
+                                    onClick={() => handleTableSelect(table)}
+                                >
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-2xl font-black flex items-baseline">
+                                                    T{table.table_number}
+                                                    {table.seat_id && (
+                                                        <span className="text-xs font-bold text-purple-600 ml-1 bg-purple-50 dark:bg-purple-950 px-1.5 py-0.5 rounded border border-purple-200">
+                                                            Seat {table.seat_id}
+                                                        </span>
+                                                    )}
+                                                </h3>
+                                                <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 text-[10px]">
+                                                    <ShoppingCart className="w-2.5 h-2.5 mr-0.5" />
+                                                    {table.orderCount} order{table.orderCount > 1 ? 's' : ''}
+                                                </Badge>
+                                            </div>
+                                            {occInfo && (
+                                                <Badge className={cn("text-[10px] px-1.5 py-0.5 font-bold flex items-center gap-1 border", occInfo.badgeClass)}>
+                                                    <Clock className="w-3 h-3" />
+                                                    <span>{occInfo.formattedDuration} ({occInfo.label})</span>
+                                                </Badge>
+                                            )}
                                         </div>
-                                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                                    </div>
 
                                     {/* Order summary */}
                                     <div className="space-y-1.5 mb-3">
@@ -1380,8 +1407,9 @@ const TableOrderBilling: React.FC = () => {
                                     </div>
                                 </CardContent>
                             </Card>
-                        ))}
-                    </div>
+                        );
+                    })}
+                </div>
                 )}
 
                 {/* Checkout Options Dialog */}
@@ -1493,7 +1521,18 @@ const TableOrderBilling: React.FC = () => {
                                                             className="w-4 h-4 rounded text-primary focus:ring-primary border-muted"
                                                         />
                                                         <div>
-                                                            <span className="font-bold text-sm block">{item.name}</span>
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <span className="font-bold text-sm">{item.name}</span>
+                                                                {(() => {
+                                                                    const badge = getKOTStatusBadgeInfo((item as any).status || 'unsent');
+                                                                    return (
+                                                                        <Badge variant={badge.variant} className={badge.className}>
+                                                                            <span className={cn("w-1.5 h-1.5 rounded-full", badge.dotColor)} />
+                                                                            {badge.label}
+                                                                        </Badge>
+                                                                    );
+                                                                })()}
+                                                            </div>
                                                             <span className="text-xs text-muted-foreground">₹{item.price.toFixed(0)} each</span>
                                                         </div>
                                                     </div>

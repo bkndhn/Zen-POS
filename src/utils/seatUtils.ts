@@ -97,3 +97,157 @@ export const groupOrdersByTableSeat = <T extends SeatScopedOrder>(orders: T[]): 
             };
         });
 };
+
+/** Monotonic rank map for order lifecycle progression */
+export const STATUS_RANK: Record<string, number> = {
+    pending: 1,
+    preparing: 2,
+    ready: 3,
+    served: 4,
+    completed: 5,
+    cancelled: 99,
+    rejected: 99
+};
+
+/**
+ * Conflict-safe status merge rule:
+ * Ensures rapid, out-of-order broadcast messages across multiple devices never
+ * regress a ticket's status unless explicitly an undo operation.
+ */
+export const shouldApplyStatusUpdate = (
+    currentStatus: string,
+    newStatus: string,
+    isUndo = false
+): boolean => {
+    if (isUndo) return true;
+    const currentRank = STATUS_RANK[currentStatus?.toLowerCase()] || 0;
+    const newRank = STATUS_RANK[newStatus?.toLowerCase()] || 0;
+    return newRank >= currentRank;
+};
+
+/**
+ * Conflict-safe array merger for real-time table orders / bills updates.
+ */
+export const mergeOrdersConflictSafe = <T extends { id: string; status: string; updated_at?: string; created_at?: string }>(
+    existingOrders: T[],
+    incomingOrder: T,
+    isUndo = false
+): T[] => {
+    const idx = existingOrders.findIndex(o => o.id === incomingOrder.id);
+    if (idx === -1) {
+        return [incomingOrder, ...existingOrders];
+    }
+    const current = existingOrders[idx];
+    if (shouldApplyStatusUpdate(current.status, incomingOrder.status, isUndo)) {
+        const next = [...existingOrders];
+        next[idx] = { ...current, ...incomingOrder };
+        return next;
+    }
+    return existingOrders;
+};
+
+export interface KOTStatusBadgeInfo {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className: string;
+    dotColor: string;
+}
+
+export const getKOTStatusBadgeInfo = (status?: string | null): KOTStatusBadgeInfo => {
+    const s = String(status || 'unsent').toLowerCase();
+    switch (s) {
+        case 'preparing':
+            return {
+                label: 'Preparing',
+                variant: 'secondary',
+                className: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 font-bold text-[10px] py-0 px-1.5 h-4.5 inline-flex items-center gap-1',
+                dotColor: 'bg-orange-500 animate-pulse',
+            };
+        case 'ready':
+            return {
+                label: 'Ready',
+                variant: 'secondary',
+                className: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 font-bold text-[10px] py-0 px-1.5 h-4.5 inline-flex items-center gap-1',
+                dotColor: 'bg-blue-500',
+            };
+        case 'served':
+            return {
+                label: 'Served',
+                variant: 'secondary',
+                className: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 font-bold text-[10px] py-0 px-1.5 h-4.5 inline-flex items-center gap-1',
+                dotColor: 'bg-purple-500',
+            };
+        case 'pending':
+        case 'sent':
+        case 'kot_sent':
+            return {
+                label: 'KOT Sent',
+                variant: 'secondary',
+                className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold text-[10px] py-0 px-1.5 h-4.5 inline-flex items-center gap-1',
+                dotColor: 'bg-emerald-500',
+            };
+        case 'unsent':
+        case 'draft':
+        default:
+            return {
+                label: 'Unsent Draft',
+                variant: 'outline',
+                className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-700 font-bold text-[10px] py-0 px-1.5 h-4.5 inline-flex items-center gap-1',
+                dotColor: 'bg-gray-400',
+            };
+    }
+};
+
+export interface OccupancyTimerInfo {
+    elapsedMinutes: number;
+    level: 'fresh' | 'mid' | 'long';
+    formattedDuration: string;
+    ringClass: string;
+    badgeClass: string;
+    dotColor: string;
+    label: string;
+}
+
+export const getOccupancyTimerInfo = (createdAt?: string | null): OccupancyTimerInfo | null => {
+    if (!createdAt) return null;
+    const startTime = new Date(createdAt).getTime();
+    if (isNaN(startTime)) return null;
+
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - startTime) / 60000));
+    const hours = Math.floor(elapsedMinutes / 60);
+    const mins = elapsedMinutes % 60;
+    const formattedDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+    if (elapsedMinutes < 30) {
+        return {
+            elapsedMinutes,
+            level: 'fresh',
+            formattedDuration,
+            ringClass: 'ring-2 ring-emerald-500/80 border-emerald-500/50 shadow-emerald-500/10',
+            badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+            dotColor: 'bg-emerald-500',
+            label: '🟢 <30m',
+        };
+    } else if (elapsedMinutes <= 60) {
+        return {
+            elapsedMinutes,
+            level: 'mid',
+            formattedDuration,
+            ringClass: 'ring-2 ring-amber-500/80 border-amber-500/50 shadow-amber-500/10',
+            badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+            dotColor: 'bg-amber-500',
+            label: '🟡 30-60m',
+        };
+    } else {
+        return {
+            elapsedMinutes,
+            level: 'long',
+            formattedDuration,
+            ringClass: 'ring-2 ring-rose-500/80 border-rose-500/50 shadow-rose-500/20 animate-pulse',
+            badgeClass: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 font-black',
+            dotColor: 'bg-rose-500 animate-ping',
+            label: '🔴 >60m',
+        };
+    }
+};
+

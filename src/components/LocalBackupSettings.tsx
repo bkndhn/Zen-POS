@@ -70,14 +70,13 @@ export function LocalBackupSettings() {
         await loadMetrics();
         if (granted) {
             toast({
-                title: 'Storage Protection Enabled',
-                description: 'Operating system will preserve your local POS database against automatic disk eviction.',
+                title: '🛡️ Storage Protection Active',
+                description: 'Operating system persistent storage is granted for your offline POS database.',
             });
         } else {
             toast({
-                variant: 'destructive',
-                title: 'Persistence Request Pending',
-                description: 'Storage persistence check complete. Ensure browser site permissions allow persistent storage.',
+                title: 'ℹ️ Storage Check Complete',
+                description: 'Local IndexedDB storage is active & operational. To request maximum OS eviction protection, install Zen POS as a PWA app or bookmark this site in your browser.',
             });
         }
     };

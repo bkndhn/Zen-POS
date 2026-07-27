@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound, Activity } from 'lucide-react';
+import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound, Activity, CreditCard, Bell, FileText, ExternalLink, PhoneCall } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,49 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
-import { Pencil, Sparkles } from 'lucide-react';
+import { AddUserDialog } from '@/components/AddUserDialog';
+import { Pencil, Sparkles, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export function getRelativeSubscriptionText(endDateStr?: string | null): { text: string; isExpired: boolean; badgeColor: string; stage: 'active' | 'expiring' | 'expired' } {
+  if (!endDateStr) return { text: 'Lifetime / No Expiry', isExpired: false, badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300', stage: 'active' };
+
+  const endDate = new Date(endDateStr);
+  const now = new Date();
+  const diffMs = endDate.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const absDays = Math.abs(diffDays);
+
+  const formattedDate = endDate.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+  if (diffDays >= 0) {
+    if (diffDays === 0) return { text: `Expires today (${formattedDate})`, isExpired: false, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300', stage: 'expiring' };
+    if (diffDays === 1) return { text: `Expires tomorrow (${formattedDate})`, isExpired: false, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300', stage: 'expiring' };
+    if (diffDays <= 7) return { text: `Expires in ${diffDays} days (${formattedDate})`, isExpired: false, badgeColor: 'bg-amber-100 text-amber-800 border-amber-300', stage: 'expiring' };
+    if (diffDays < 30) return { text: `Expires in ${diffDays} days (${formattedDate})`, isExpired: false, badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300', stage: 'active' };
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return { text: `Expires in ${months} month${months > 1 ? 's' : ''} (${formattedDate})`, isExpired: false, badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300', stage: 'active' };
+    }
+    const years = (diffDays / 365).toFixed(1);
+    return { text: `Expires in ${years} year${+years > 1 ? 's' : ''} (${formattedDate})`, isExpired: false, badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300', stage: 'active' };
+  } else {
+    if (absDays === 1) return { text: `Expired 1 day ago (${formattedDate})`, isExpired: true, badgeColor: 'bg-orange-100 text-orange-800 border-orange-300', stage: 'expired' };
+    if (absDays < 30) return { text: `Expired ${absDays} days ago (${formattedDate})`, isExpired: true, badgeColor: 'bg-orange-100 text-orange-800 border-orange-300', stage: 'expired' };
+    if (absDays < 365) {
+      const months = Math.floor(absDays / 30);
+      return { text: `Expired ${months} month${months > 1 ? 's' : ''} ago (${formattedDate})`, isExpired: true, badgeColor: 'bg-red-100 text-red-800 border-red-300', stage: 'expired' };
+    }
+    const years = Math.floor(absDays / 365);
+    const remMonths = Math.floor((absDays % 365) / 30);
+    const relStr = remMonths > 0 ? `${years} yr ${remMonths} mo ago` : `${years} yr${years > 1 ? 's' : ''} ago`;
+    return { text: `Expired ${relStr} (${formattedDate})`, isExpired: true, badgeColor: 'bg-red-100 text-red-800 border-red-300', stage: 'expired' };
+  }
+}
 
 interface Row {
   profile_id: string;
@@ -36,6 +79,12 @@ interface Row {
   login_count: number;
   created_at: string;
   client_permissions?: Record<string, boolean>;
+  subscription_plan?: string;
+  subscription_status?: string;
+  subscription_end_date?: string;
+  subscription_amount?: number;
+  force_logout?: boolean;
+  force_logout_reason?: string;
 }
 
 const SuperAdminUsers: React.FC = () => {
@@ -52,9 +101,24 @@ const SuperAdminUsers: React.FC = () => {
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
   const [contactTarget, setContactTarget] = useState<Row | null>(null);
   const [aiLimitTarget, setAiLimitTarget] = useState<Row | null>(null);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
 
-  // Backup & Restore State
-  const [activeTab, setActiveTab] = useState('users');
+  // Tabs & URL sync state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'users';
+  const [activeTabState, setActiveTabState] = useState(tabFromUrl);
+
+  useEffect(() => {
+    const t = searchParams.get('tab') || 'users';
+    setActiveTabState(t);
+  }, [searchParams]);
+
+  const activeTab = activeTabState;
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab });
+  };
   const [backupSettings, setBackupSettings] = useState<any>(null);
   const [backupLogs, setBackupLogs] = useState<any[]>([]);
   const [loadingBackup, setLoadingBackup] = useState(false);
@@ -77,6 +141,20 @@ const SuperAdminUsers: React.FC = () => {
   const [savingSupport, setSavingSupport] = useState(false);
   const [loadingSupport, setLoadingSupport] = useState(false);
 
+  // Terms & Conditions / Legal Policy State
+  const [termsAndConditionsText, setTermsAndConditionsText] = useState('');
+  const [savingTerms, setSavingTerms] = useState(false);
+
+  // Subscription management state
+  const [paymentUpiId, setPaymentUpiId] = useState('');
+  const [paymentQrImageUrl, setPaymentQrImageUrl] = useState('');
+  const [paymentInstructions, setPaymentInstructions] = useState('');
+  const [defaultSubAmount, setDefaultSubAmount] = useState(999);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [subPayments, setSubPayments] = useState<any[]>([]);
+  const [subFilter, setSubFilter] = useState<'all' | 'active' | 'expiring' | 'expired' | 'suspended'>('all');
+
   const fetchSupportData = async () => {
     try {
       setLoadingSupport(true);
@@ -96,12 +174,33 @@ const SuperAdminUsers: React.FC = () => {
         setShowSupportEmail(data.show_support_email ?? true);
         setShowSupportWhatsapp(data.show_support_whatsapp ?? true);
         setShowSupportCustom(data.show_support_custom ?? true);
+        setTermsAndConditionsText((data as any).terms_and_conditions || '');
       }
     } catch (e: any) {
       console.error("Failed to load support data:", e);
       toast({ title: "Failed to load support settings", description: e.message, variant: "destructive" });
     } finally {
       setLoadingSupport(false);
+    }
+  };
+
+  const handleSaveTerms = async () => {
+    try {
+      setSavingTerms(true);
+      const { error } = await (supabase as any)
+        .from('app_settings')
+        .update({
+          terms_and_conditions: termsAndConditionsText,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', true);
+
+      if (error) throw error;
+      toast({ title: "Saved!", description: "Terms & Conditions updated and published live." });
+    } catch (e: any) {
+      toast({ title: "Failed to save terms", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingTerms(false);
     }
   };
 
@@ -130,6 +229,222 @@ const SuperAdminUsers: React.FC = () => {
       toast({ title: "Failed to save support settings", description: e.message, variant: "destructive" });
     } finally {
       setSavingSupport(false);
+    }
+  };
+
+  const fetchPaymentSettings = async () => {
+    try {
+      setLoadingPayment(true);
+      const { data, error } = await (supabase as any).from('payment_settings').select('*').maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setPaymentUpiId(data.upi_id || '');
+        setPaymentQrImageUrl(data.upi_qr_image_url || '');
+        setPaymentInstructions(data.payment_instructions || '');
+        setDefaultSubAmount(data.default_amount || 999);
+      }
+      const { data: payments, error: pErr } = await (supabase as any).from('subscription_payments').select('*').order('created_at', { ascending: false }).limit(100);
+      if (pErr) throw pErr;
+      setSubPayments(payments || []);
+    } catch (e: any) {
+      console.error('Failed to load payment settings:', e);
+    } finally {
+      setLoadingPayment(false);
+    }
+  };
+
+  const handleSavePaymentSettings = async () => {
+    try {
+      setSavingPayment(true);
+      const { error } = await (supabase as any).from('payment_settings').upsert({
+        id: '00000000-0000-0000-0000-000000000001',
+        upi_id: paymentUpiId,
+        upi_qr_image_url: paymentQrImageUrl,
+        default_amount: defaultSubAmount,
+        payment_instructions: paymentInstructions,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      toast({ title: 'Saved', description: 'Payment settings updated.' });
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const handleSetSubscription = async (adminProfileId: string, plan: string, amount: number, endDate: string) => {
+    try {
+      const formattedEndDate = endDate ? new Date(`${endDate}T23:59:59.000Z`).toISOString() : null;
+      const { error } = await (supabase as any).from('profiles').update({
+        subscription_plan: plan,
+        subscription_amount: amount,
+        subscription_end_date: formattedEndDate,
+        subscription_status: 'active',
+      }).eq('id', adminProfileId);
+      if (error) throw error;
+      toast({ title: 'Subscription updated', description: 'Changes saved successfully.' });
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleForceLogout = async (adminProfileId: string, force: boolean, reason: string) => {
+    try {
+      const { error } = await (supabase as any).from('profiles').update({
+        force_logout: force,
+        force_logout_reason: force ? reason : null,
+        subscription_status: force ? 'paused' : 'active',
+      }).eq('id', adminProfileId);
+      if (error) throw error;
+      // Broadcast force logout via realtime channel
+      const bc = supabase.channel(`force-logout-${adminProfileId}`);
+      bc.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await bc.send({ type: 'broadcast', event: 'force_logout', payload: { force, reason } });
+          supabase.removeChannel(bc);
+        }
+      });
+      toast({ title: force ? 'Client force logged out' : 'Force logout lifted', description: force ? reason : 'Client can now login again.' });
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleConfirmPayment = async (paymentId: string, adminProfileId: string) => {
+    try {
+      const now = new Date();
+      // Get current end date, extend from it or from now
+      const admin = rows.find(r => r.profile_id === adminProfileId);
+      const currentEndStr = (admin as any)?.subscription_end_date;
+      const baseDate = currentEndStr && new Date(currentEndStr) > now ? new Date(currentEndStr) : now;
+      const newEnd = new Date(baseDate);
+      newEnd.setDate(newEnd.getDate() + 30);
+      
+      await (supabase as any).from('subscription_payments').update({
+        status: 'confirmed',
+        confirmed_by: profile?.id,
+        confirmed_at: now.toISOString(),
+      }).eq('id', paymentId);
+      
+      await (supabase as any).from('profiles').update({
+        subscription_status: 'active',
+        subscription_end_date: newEnd.toISOString(),
+        force_logout: false,
+        force_logout_reason: null,
+      }).eq('id', adminProfileId);
+      
+      toast({ title: 'Payment confirmed', description: `Subscription extended to ${newEnd.toLocaleDateString('en-IN')}` });
+      fetchPaymentSettings();
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleQuickExtend = async (adminProfileId: string, daysToAdd: number) => {
+    try {
+      const admin = rows.find(r => r.profile_id === adminProfileId);
+      const now = new Date();
+      const currentEndStr = (admin as any)?.subscription_end_date;
+      const baseDate = currentEndStr && new Date(currentEndStr) > now ? new Date(currentEndStr) : now;
+      const newEnd = new Date(baseDate);
+      newEnd.setDate(newEnd.getDate() + daysToAdd);
+
+      const { error } = await (supabase as any).from('profiles').update({
+        subscription_status: 'active',
+        subscription_end_date: newEnd.toISOString(),
+        force_logout: false,
+        force_logout_reason: null,
+      }).eq('id', adminProfileId);
+
+      if (error) throw error;
+      toast({
+        title: 'Subscription Extended',
+        description: `Extended by ${daysToAdd} days to ${newEnd.toLocaleDateString('en-IN')}`,
+      });
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Failed to extend', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleQuickExtendMonths = async (adminProfileId: string, monthsToAdd: number) => {
+    try {
+      const admin = rows.find(r => r.profile_id === adminProfileId);
+      const now = new Date();
+      const currentEndStr = (admin as any)?.subscription_end_date;
+      const baseDate = currentEndStr && new Date(currentEndStr) > now ? new Date(currentEndStr) : now;
+      const newEnd = new Date(baseDate);
+      newEnd.setMonth(newEnd.getMonth() + monthsToAdd);
+
+      const { error } = await (supabase as any).from('profiles').update({
+        subscription_status: 'active',
+        subscription_end_date: newEnd.toISOString(),
+        force_logout: false,
+        force_logout_reason: null,
+      }).eq('id', adminProfileId);
+
+      if (error) throw error;
+      toast({
+        title: 'Subscription Extended',
+        description: `Extended by ${monthsToAdd} month(s) to ${newEnd.toLocaleDateString('en-IN')}`,
+      });
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Failed to extend', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleCustomExtend = async (adminProfileId: string) => {
+    const input = window.prompt('Enter extension duration in months (e.g. 1, 3, 6, 12, 36) or days (e.g. 45d):');
+    if (!input || !input.trim()) return;
+
+    const trimmed = input.trim();
+    if (trimmed.endsWith('d')) {
+      const days = parseInt(trimmed.replace('d', ''), 10);
+      if (!isNaN(days) && days > 0) {
+        handleQuickExtend(adminProfileId, days);
+        return;
+      }
+    }
+
+    const months = parseInt(trimmed, 10);
+    if (!isNaN(months) && months > 0) {
+      handleQuickExtendMonths(adminProfileId, months);
+    } else {
+      toast({ title: 'Invalid input', description: 'Please enter a valid number of months or days (e.g. 6 or 45d).', variant: 'destructive' });
+    }
+  };
+
+  const handleSendExpiryPushNotification = async (adminProfileId: string, hotelName: string, daysLeftText: string) => {
+    try {
+      const channelName = `subscription-notifications-${adminProfileId}`;
+      const bc = supabase.channel(channelName);
+      bc.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await bc.send({
+            type: 'broadcast',
+            event: 'expiry_push_reminder',
+            payload: {
+              title: '⚠️ Subscription Renewal Notice',
+              body: `Your ZenPOS plan for ${hotelName || 'your restaurant'} is ${daysLeftText}. Renew now to keep uninterrupted service!`,
+              url: '/renew',
+              timestamp: new Date().toISOString(),
+            },
+          });
+          setTimeout(() => supabase.removeChannel(bc), 1000);
+        }
+      });
+
+      toast({
+        title: '🔔 Push Reminder Sent!',
+        description: `Push notification dispatched to ${hotelName || 'client'} Android/PWA bar.`,
+      });
+    } catch (e: any) {
+      toast({ title: 'Failed to send notification', description: e.message, variant: 'destructive' });
     }
   };
 
@@ -313,19 +628,28 @@ const SuperAdminUsers: React.FC = () => {
       if (rpcError) throw rpcError;
 
       if (data) {
-        // Enriched with client_permissions from profiles table
+        // Enriched with client_permissions & subscription fields from profiles table
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, client_permissions');
+          .select('id, client_permissions, subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason');
 
         if (profilesError) throw profilesError;
 
-        const permsMap = new Map((profilesData || []).map(p => [p.id, p.client_permissions]));
+        const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const enrichedRows = (data as Row[]).map(r => ({
-          ...r,
-          client_permissions: (permsMap.get(r.profile_id) as any) || {}
-        }));
+        const enrichedRows = (data as Row[]).map(r => {
+          const prof: any = profileMap.get(r.profile_id) || {};
+          return {
+            ...r,
+            client_permissions: prof.client_permissions || {},
+            subscription_plan: prof.subscription_plan || 'basic',
+            subscription_status: prof.subscription_status || 'active',
+            subscription_end_date: prof.subscription_end_date || null,
+            subscription_amount: prof.subscription_amount || 999,
+            force_logout: prof.force_logout || false,
+            force_logout_reason: prof.force_logout_reason || null,
+          };
+        });
 
         setRows(enrichedRows);
       }
@@ -352,6 +676,35 @@ const SuperAdminUsers: React.FC = () => {
   useEffect(() => {
     if (profile?.role === 'super_admin' && activeTab === 'support') {
       fetchSupportData();
+    }
+  }, [activeTab, profile]);
+
+  useEffect(() => {
+    if (profile?.role === 'super_admin' && activeTab === 'subscriptions') {
+      fetchPaymentSettings();
+
+      // Realtime listener for incoming client UTR payment submissions
+      const subChannel = supabase
+        .channel('subscription-payments-realtime')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'subscription_payments' },
+          (payload) => {
+            fetchPaymentSettings();
+            fetchUsers();
+            if (payload.eventType === 'INSERT') {
+              toast({
+                title: '⚡ New Payment Reference (UTR) Received!',
+                description: 'A client submitted a new UTR reference for subscription renewal.',
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(subChannel);
+      };
     }
   }, [activeTab, profile]);
 
@@ -425,15 +778,24 @@ const SuperAdminUsers: React.FC = () => {
   };
 
   const filtered = useMemo(() => {
+    let result = rows;
+    if (userRoleFilter === 'admin') {
+      result = result.filter(r => r.role === 'admin');
+    } else if (userRoleFilter === 'staff') {
+      result = result.filter(r => r.role === 'user');
+    }
+
     const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter(r =>
+    if (!s) return result;
+    return result.filter(r =>
       (r.name || '').toLowerCase().includes(s) ||
       (r.email || '').toLowerCase().includes(s) ||
+      (r.mobile_number || '').toLowerCase().includes(s) ||
       (r.hotel_name || '').toLowerCase().includes(s) ||
+      (r.shop_name || '').toLowerCase().includes(s) ||
       (r.admin_name || '').toLowerCase().includes(s)
     );
-  }, [rows, q]);
+  }, [rows, q, userRoleFilter]);
 
   if (authLoading) return null;
   if (!profile) return <Navigate to="/auth" replace />;
@@ -465,21 +827,72 @@ const SuperAdminUsers: React.FC = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 max-w-lg bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
+          <TabsList className="hidden sm:grid sm:grid-cols-4 max-w-3xl bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
             <TabsTrigger value="users" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-              <UsersIcon className="w-3.5 h-3.5 mr-2" /> Users & Permissions
+              <UsersIcon className="w-3.5 h-3.5 mr-2" /> Users & Staff ({rows.length})
+            </TabsTrigger>
+            <TabsTrigger value="subscriptions" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+              <CreditCard className="w-3.5 h-3.5 mr-2" /> Subscriptions ({subPayments.length})
             </TabsTrigger>
             <TabsTrigger value="backups" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-              <Database className="w-3.5 h-3.5 mr-2" /> Backup & Recovery
+              <Database className="w-3.5 h-3.5 mr-2" /> Backups & Health
             </TabsTrigger>
             <TabsTrigger value="support" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
-              <Settings className="w-3.5 h-3.5 mr-2" /> Support Settings
+              <Settings className="w-3.5 h-3.5 mr-2" /> Support & Legal
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-6 mt-6 focus-visible:outline-none">
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-              <Input placeholder="Search by name, email, hotel or parent admin..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-md h-10 shadow-sm bg-white dark:bg-slate-800" />
+            {/* Header Controls: Search + Filter Pills + Add User */}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <Input
+                placeholder="Search name, email, mobile, hotel, shop, or admin..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="max-w-md h-10 shadow-sm bg-white dark:bg-slate-800"
+              />
+              
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border">
+                  <button
+                    type="button"
+                    onClick={() => setUserRoleFilter('admin')}
+                    className={cn(
+                      'px-3 py-1 rounded-lg text-xs font-bold transition-all',
+                      userRoleFilter === 'admin' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    Admins ({admins.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserRoleFilter('staff')}
+                    className={cn(
+                      'px-3 py-1 rounded-lg text-xs font-bold transition-all',
+                      userRoleFilter === 'staff' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    Staff ({subUsers.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserRoleFilter('all')}
+                    className={cn(
+                      'px-3 py-1 rounded-lg text-xs font-bold transition-all',
+                      userRoleFilter === 'all' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    All ({rows.length})
+                  </button>
+                </div>
+
+                <Button
+                  onClick={() => setAddUserDialogOpen(true)}
+                  className="h-10 font-bold gap-2 rounded-xl shadow-md"
+                >
+                  <Plus className="w-4 h-4" /> Add User
+                </Button>
+              </div>
             </div>
 
             {error && (
@@ -489,24 +902,35 @@ const SuperAdminUsers: React.FC = () => {
               </div>
             )}
 
-            {/* Admins Table */}
+            {/* Unified User Directory Table */}
             <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm">
               <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                  <UsersIcon className="w-4 h-4 text-primary" /> Tenant Admins ({admins.length})
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Admins who manage separate hotel client instances.</CardDescription>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <UsersIcon className="w-4 h-4 text-primary" /> System User Directory ({filtered.length})
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">
+                      Consolidated management of Tenant Admins and Branch Staff sub-users.
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-xs font-mono font-bold">
+                    {admins.length} Admins • {subUsers.length} Staff
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-slate-50/30 dark:bg-slate-950/20">
                     <TableRow>
-                      <TableHead className="font-bold text-xs">Name</TableHead>
+                      <TableHead className="font-bold text-xs">Full Name</TableHead>
+                      <TableHead className="font-bold text-xs">Role</TableHead>
                       <TableHead className="font-bold text-xs">Email</TableHead>
-                      <TableHead className="font-bold text-xs">Mobile</TableHead>
-                      <TableHead className="font-bold text-xs">Hotel</TableHead>
-                      <TableHead className="font-bold text-xs">Shop</TableHead>
+                      <TableHead className="font-bold text-xs">Mobile (Click to Call)</TableHead>
+                      <TableHead className="font-bold text-xs">Hotel Name</TableHead>
+                      <TableHead className="font-bold text-xs">Shop Name</TableHead>
                       <TableHead className="font-bold text-xs">Address</TableHead>
+                      <TableHead className="font-bold text-xs">Parent Admin</TableHead>
                       <TableHead className="font-bold text-xs">Status</TableHead>
                       <TableHead className="font-bold text-xs">Logins</TableHead>
                       <TableHead className="font-bold text-xs">Last Login</TableHead>
@@ -515,27 +939,47 @@ const SuperAdminUsers: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading && <TableRow><TableCell colSpan={11} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
-                    {!loading && admins.length === 0 && <TableRow><TableCell colSpan={11} className="text-center py-6 text-muted-foreground">No admins found</TableCell></TableRow>}
-                    {admins.map(r => (
+                    {loading && <TableRow><TableCell colSpan={13} className="text-center py-6 text-muted-foreground">Loading users...</TableCell></TableRow>}
+                    {!loading && filtered.length === 0 && <TableRow><TableCell colSpan={13} className="text-center py-6 text-muted-foreground">No users found matching query</TableCell></TableRow>}
+                    {filtered.map(r => (
                       <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
-                        <TableCell className="font-semibold">
-                          <div className="flex items-center gap-2">
-                            {r.name}
-                            <Badge variant="default" className="text-[9px] font-bold px-1.5 py-0.5">Admin</Badge>
-                          </div>
+                        <TableCell className="font-bold text-xs text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                          {r.name || '—'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge variant={r.role === 'admin' ? 'default' : 'secondary'} className="text-[9px] font-bold px-1.5 py-0.5 uppercase">
+                            {r.role === 'admin' ? 'Admin' : 'Staff'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
-                        <TableCell className="text-xs font-mono">{r.mobile_number || '—'}</TableCell>
-                        <TableCell className="font-medium">{r.hotel_name || '—'}</TableCell>
-                        <TableCell className="font-medium">{r.shop_name || '—'}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={r.address || ''}>{r.address || '—'}</TableCell>
+                        <TableCell className="text-xs font-mono whitespace-nowrap">
+                          {r.mobile_number ? (
+                            <a
+                              href={`tel:${r.mobile_number}`}
+                              className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-bold hover:underline bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg border border-primary/20 transition-all"
+                              title="Click to dial number directly"
+                            >
+                              <PhoneCall className="w-3 h-3 text-primary" />
+                              {r.mobile_number}
+                            </a>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">{r.hotel_name || '—'}</TableCell>
+                        <TableCell className="text-xs font-medium">{r.shop_name || '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={r.address || ''}>
+                          {r.address || '—'}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                          {r.admin_name || (r.role === 'admin' ? 'Self (Admin)' : '—')}
+                        </TableCell>
                         <TableCell>{statusBadge(r.status)}</TableCell>
-                        <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-semibold text-xs">{r.login_count ?? 0}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">{r.last_login ? new Date(r.last_login).toLocaleString('en-IN') : '—'}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1.5">
                             <Button
                               variant="outline"
                               size="sm"
@@ -554,90 +998,31 @@ const SuperAdminUsers: React.FC = () => {
                             >
                               <KeyRound className="w-3.5 h-3.5" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setAiLimitTarget(r)}
-                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                              title="AI Insights limits"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedAdmin(r);
-                                setPermsDialogOpen(true);
-                              }}
-                              className="h-8 text-xs px-3 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-150 gap-1.5 rounded-xl font-semibold"
-                            >
-                              <Shield className="w-3.5 h-3.5" />
-                              Permissions
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            {/* Sub-users Table */}
-            <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm">
-              <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                  <UsersIcon className="w-4 h-4 text-primary" /> Branch Staff & Sub-users ({subUsers.length})
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Sub-users assigned to individual hotel client branches.</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-slate-50/30 dark:bg-slate-950/20">
-                    <TableRow>
-                      <TableHead className="font-bold text-xs">Name</TableHead>
-                      <TableHead className="font-bold text-xs">Email</TableHead>
-                      <TableHead className="font-bold text-xs">Mobile</TableHead>
-                      <TableHead className="font-bold text-xs">Parent Admin</TableHead>
-                      <TableHead className="font-bold text-xs">Status</TableHead>
-                      <TableHead className="font-bold text-xs">Logins</TableHead>
-                      <TableHead className="font-bold text-xs">Last Login</TableHead>
-                      <TableHead className="text-right font-bold text-xs">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">Loading...</TableCell></TableRow>}
-                    {!loading && subUsers.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No sub-users found</TableCell></TableRow>}
-                    {subUsers.map(r => (
-                      <TableRow key={r.profile_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
-                        <TableCell className="font-semibold">{r.name}</TableCell>
-                        <TableCell className="text-xs font-mono">{r.email || '—'}</TableCell>
-                        <TableCell className="text-xs font-mono">{r.mobile_number || '—'}</TableCell>
-                        <TableCell className="font-medium text-slate-700 dark:text-slate-300">{r.admin_name || '—'}</TableCell>
-                        <TableCell>{statusBadge(r.status)}</TableCell>
-                        <TableCell className="font-semibold">{r.login_count ?? 0}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{r.last_login ? new Date(r.last_login).toLocaleString() : '—'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setContactTarget(r)}
-                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                              title="Edit contact"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setPwdTarget({ id: r.profile_id, label: r.name || r.email || 'user' })}
-                              className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
-                              title="Reset password"
-                            >
-                              <KeyRound className="w-3.5 h-3.5" />
-                            </Button>
+                            {r.role === 'admin' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setAiLimitTarget(r)}
+                                  className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                                  title="AI Insights limits"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedAdmin(r);
+                                    setPermsDialogOpen(true);
+                                  }}
+                                  className="h-8 text-xs px-2.5 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-150 gap-1.5 rounded-xl font-semibold"
+                                >
+                                  <Shield className="w-3.5 h-3.5" />
+                                  Permissions
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -903,9 +1288,348 @@ const SuperAdminUsers: React.FC = () => {
                     💾 Save Support Coordinates
                   </Button>
                 </div>
+
+                {/* Google Play Store Terms & Conditions Manager Card */}
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden mt-6">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                          <FileText className="w-4 h-4 text-primary" /> Google Play Store Terms & Conditions Manager
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">
+                          Edit and publish live Terms & Conditions and Privacy Policy text required for Google Play Store app approval.
+                        </CardDescription>
+                      </div>
+                      <a
+                        href="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-xs font-bold transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> View Live /terms Page
+                      </a>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        Terms & Conditions & Privacy Policy Content (Supports Plain Text & Markdown Formatting)
+                      </Label>
+                      <Textarea
+                        rows={16}
+                        value={termsAndConditionsText}
+                        onChange={e => setTermsAndConditionsText(e.target.value)}
+                        placeholder="Enter Terms & Conditions and Privacy Policy text..."
+                        className="font-mono text-xs leading-relaxed bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 rounded-xl p-4"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSaveTerms}
+                      disabled={savingTerms}
+                      className="h-11 px-6 font-bold shadow-md gap-2 rounded-xl"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${savingTerms ? 'animate-spin' : ''}`} />
+                      💾 Save & Publish Terms & Conditions
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="subscriptions" className="space-y-6 mt-6 focus-visible:outline-none">
+            {loadingPayment ? (
+              <div className="text-center py-12 text-muted-foreground">Loading subscription settings...</div>
+            ) : (
+              <div className="space-y-6">
+                {/* Payment Settings Card */}
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <CreditCard className="w-4 h-4 text-primary" /> Payment Settings
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Configure UPI payment details shown to clients for subscription payments.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold">UPI ID</Label>
+                        <Input placeholder="e.g. yourname@upi" value={paymentUpiId} onChange={e => setPaymentUpiId(e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800 font-mono" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold">QR Code Image URL</Label>
+                        <Input placeholder="https://... QR image URL" value={paymentQrImageUrl} onChange={e => setPaymentQrImageUrl(e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800 font-mono" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold">Default Amount (₹)</Label>
+                        <Input type="number" min={0} value={defaultSubAmount} onChange={e => setDefaultSubAmount(+e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800 font-semibold" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold">Payment Instructions</Label>
+                        <Input placeholder="e.g. Pay via UPI and share screenshot" value={paymentInstructions} onChange={e => setPaymentInstructions(e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800" />
+                      </div>
+                    </div>
+                    <Button onClick={handleSavePaymentSettings} disabled={savingPayment} className="h-9 font-bold shadow-sm gap-1.5">
+                      <RefreshCw className={`w-3.5 h-3.5 ${savingPayment ? 'animate-spin' : ''}`} /> Save Payment Settings
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Per-Admin Subscription Cards */}
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                          <UsersIcon className="w-4 h-4 text-primary" /> Admin Subscriptions ({admins.length})
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">Manage subscription plans, force logout, and payment status per admin.</CardDescription>
+                      </div>
+
+                      {/* Status Filter Pills */}
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                        <button
+                          onClick={() => setSubFilter('all')}
+                          className={cn('px-2.5 py-1 rounded-lg transition-all', subFilter === 'all' ? 'bg-white dark:bg-slate-700 shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                        >
+                          All ({admins.length})
+                        </button>
+                        <button
+                          onClick={() => setSubFilter('active')}
+                          className={cn('px-2.5 py-1 rounded-lg transition-all', subFilter === 'active' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-600 hover:text-emerald-700')}
+                        >
+                          Active
+                        </button>
+                        <button
+                          onClick={() => setSubFilter('expiring')}
+                          className={cn('px-2.5 py-1 rounded-lg transition-all', subFilter === 'expiring' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-600 hover:text-amber-700')}
+                        >
+                          Expiring
+                        </button>
+                        <button
+                          onClick={() => setSubFilter('expired')}
+                          className={cn('px-2.5 py-1 rounded-lg transition-all', subFilter === 'expired' ? 'bg-red-500 text-white shadow-sm' : 'text-red-600 hover:text-red-700')}
+                        >
+                          Expired
+                        </button>
+                        <button
+                          onClick={() => setSubFilter('suspended')}
+                          className={cn('px-2.5 py-1 rounded-lg transition-all', subFilter === 'suspended' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}
+                        >
+                          Suspended
+                        </button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    {admins.length === 0 && <div className="text-center py-6 text-muted-foreground text-sm">No admins found.</div>}
+                    {admins.filter(admin => {
+                      const a = admin as any;
+                      const isSuspended = a.force_logout === true;
+                      const rel = getRelativeSubscriptionText(a.subscription_end_date);
+                      if (subFilter === 'suspended') return isSuspended;
+                      if (subFilter === 'active') return !isSuspended && rel.stage === 'active';
+                      if (subFilter === 'expiring') return !isSuspended && rel.stage === 'expiring';
+                      if (subFilter === 'expired') return !isSuspended && rel.stage === 'expired';
+                      return true;
+                    }).map(admin => {
+                      const a = admin as any;
+                      const formattedDate = a.subscription_end_date ? new Date(a.subscription_end_date).toISOString().split('T')[0] : '';
+                      const relInfo = getRelativeSubscriptionText(a.subscription_end_date);
+                      const pendingPayment = subPayments.find(p => p.admin_id === admin.profile_id && p.status === 'pending');
+
+                      return (
+                        <div key={`sub-admin-${admin.profile_id}-${formattedDate}-${a.subscription_plan}-${a.subscription_amount}`} className="border rounded-xl p-4 bg-white dark:bg-slate-900/50 space-y-3 shadow-sm hover:shadow transition-shadow">
+                          {/* Top Info Bar */}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{admin.hotel_name || admin.name}</span>
+                              <span className="ml-2 text-xs text-muted-foreground font-mono">{admin.email}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {/* Relative Expiry Badge */}
+                              <Badge className={cn('text-[11px] font-semibold border px-2.5 py-0.5', relInfo.badgeColor)}>
+                                {relInfo.text}
+                              </Badge>
+
+                              {a.force_logout && <Badge variant="destructive" className="text-[10px]">FORCE LOGGED OUT</Badge>}
+                            </div>
+                          </div>
+
+                          {/* Pending Payment Notification Banner if Client Submitted UTR */}
+                          {pendingPayment && (
+                            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-lg p-2.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-amber-600 dark:text-amber-400">⚡ Client Submitted Payment:</span>
+                                <span className="font-semibold">₹{pendingPayment.amount}</span>
+                                <span>| UTR: <strong className="font-mono text-amber-950 dark:text-amber-100">{pendingPayment.transaction_ref || '—'}</strong></span>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 shrink-0"
+                                onClick={() => handleConfirmPayment(pendingPayment.id, admin.profile_id)}
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Confirm & Extend +30 Days
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Form Inputs & Action Buttons */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-muted-foreground">Plan</Label>
+                              <Input defaultValue={a.subscription_plan || 'basic'} id={`plan-${admin.profile_id}`} className="h-8 text-xs font-medium" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-muted-foreground">Amount (₹)</Label>
+                              <Input type="number" defaultValue={a.subscription_amount || defaultSubAmount} id={`amount-${admin.profile_id}`} className="h-8 text-xs font-semibold" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-muted-foreground">End Date</Label>
+                              <Input type="date" defaultValue={a.subscription_end_date ? new Date(a.subscription_end_date).toISOString().split('T')[0] : ''} id={`enddate-${admin.profile_id}`} className="h-8 text-xs font-mono" />
+                            </div>
+                            <div className="flex items-end gap-1.5">
+                              <Button size="sm" className="h-8 text-xs font-bold gap-1 flex-1" onClick={() => {
+                                const plan = (document.getElementById(`plan-${admin.profile_id}`) as HTMLInputElement)?.value || 'basic';
+                                const amount = +(document.getElementById(`amount-${admin.profile_id}`) as HTMLInputElement)?.value || defaultSubAmount;
+                                const endDate = (document.getElementById(`enddate-${admin.profile_id}`) as HTMLInputElement)?.value || '';
+                                handleSetSubscription(admin.profile_id, plan, amount, endDate);
+                              }}>
+                                <CheckCircle2 className="w-3 h-3" /> Save
+                              </Button>
+                              <Button size="sm" variant={a.force_logout ? 'default' : 'destructive'} className="h-8 text-xs font-bold gap-1" onClick={() => {
+                                if (a.force_logout) {
+                                  handleForceLogout(admin.profile_id, false, '');
+                                } else {
+                                  const reason = window.prompt('Reason for force logout (e.g. Payment overdue):');
+                                  if (reason) handleForceLogout(admin.profile_id, true, reason);
+                                }
+                              }}>
+                                <XCircle className="w-3 h-3" /> {a.force_logout ? 'Lift' : 'Force Out'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Quick Extension & Push Reminder Bar */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t text-[11px] text-muted-foreground">
+                            <span>Shortcuts & Extensions:</span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <button
+                                onClick={() => handleSendExpiryPushNotification(admin.profile_id, admin.hotel_name || admin.name, relInfo.text)}
+                                className="px-2 py-0.5 rounded bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] border border-purple-300/60 transition-colors flex items-center gap-1"
+                                title="Send Push Notification to client's Android/PWA Status Bar"
+                              >
+                                <Bell className="w-3 h-3" /> Push Reminder
+                              </button>
+                              <button
+                                onClick={() => handleQuickExtendMonths(admin.profile_id, 1)}
+                                className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/60 transition-colors"
+                              >
+                                +1 Mo
+                              </button>
+                              <button
+                                onClick={() => handleQuickExtendMonths(admin.profile_id, 3)}
+                                className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/60 transition-colors"
+                              >
+                                +3 Mo
+                              </button>
+                              <button
+                                onClick={() => handleQuickExtendMonths(admin.profile_id, 6)}
+                                className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-[10px] border border-blue-300/60 transition-colors"
+                              >
+                                +6 Mo
+                              </button>
+                              <button
+                                onClick={() => handleQuickExtendMonths(admin.profile_id, 12)}
+                                className="px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-300/60 transition-colors"
+                              >
+                                +1 Yr
+                              </button>
+                              <button
+                                onClick={() => handleQuickExtendMonths(admin.profile_id, 36)}
+                                className="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 font-bold text-[10px] border border-amber-300/60 transition-colors"
+                              >
+                                +3 Yr
+                              </button>
+                              <button
+                                onClick={() => handleCustomExtend(admin.profile_id)}
+                                className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[10px] border border-slate-300/60 transition-colors"
+                              >
+                                +Custom
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                {/* Payment History */}
+                <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                    <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <Database className="w-4 h-4 text-primary" /> Payment History ({subPayments.length})
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Recent subscription payment submissions from clients with UTR references.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                    <Table>
+                      <TableHeader className="bg-slate-50/30 dark:bg-slate-950/20">
+                        <TableRow>
+                          <TableHead className="font-bold text-xs">Date</TableHead>
+                          <TableHead className="font-bold text-xs">Client / Admin</TableHead>
+                          <TableHead className="font-bold text-xs">Plan / Duration</TableHead>
+                          <TableHead className="font-bold text-xs">Amount</TableHead>
+                          <TableHead className="font-bold text-xs">UTR / Ref No.</TableHead>
+                          <TableHead className="font-bold text-xs">Status</TableHead>
+                          <TableHead className="text-right font-bold text-xs">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {subPayments.length === 0 && (
+                          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No payment records yet.</TableCell></TableRow>
+                        )}
+                        {subPayments.map(p => {
+                          const matchingAdmin = rows.find(r => r.profile_id === p.admin_id);
+                          const clientLabel = matchingAdmin?.hotel_name || matchingAdmin?.name || matchingAdmin?.email || (p.admin_id ? `${p.admin_id.slice(0, 8)}...` : 'Unknown');
+
+                          return (
+                            <TableRow key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 text-xs">
+                              <TableCell className="font-mono text-muted-foreground whitespace-nowrap">{new Date(p.created_at).toLocaleString('en-IN')}</TableCell>
+                              <TableCell className="font-semibold text-xs text-slate-900 dark:text-slate-100" title={p.admin_id}>{clientLabel}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground font-medium">{p.notes || 'Subscription Renewal'}</TableCell>
+                              <TableCell className="font-bold text-emerald-600">₹{p.amount?.toLocaleString('en-IN') ?? '—'}</TableCell>
+                              <TableCell className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                                {p.transaction_ref ? (
+                                  <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700">{p.transaction_ref}</span>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={p.status === 'confirmed' ? 'default' : p.status === 'pending' ? 'secondary' : 'destructive'} className="text-[10px]">
+                                  {(p.status || 'pending').toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {p.status === 'pending' && (
+                                  <Button size="sm" className="h-7 text-xs font-bold gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmPayment(p.id, p.admin_id)}>
+                                    <CheckCircle2 className="w-3 h-3" /> Confirm & Extend
+                                  </Button>
+                                )}
+                                {p.status === 'confirmed' && <span className="text-[10px] text-emerald-600 font-bold">✓ Confirmed</span>}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+
         </Tabs>
       </div>
 
@@ -1087,6 +1811,12 @@ const SuperAdminUsers: React.FC = () => {
           onClose={() => setAiLimitTarget(null)}
         />
       )}
+
+      <AddUserDialog
+        open={addUserDialogOpen}
+        onOpenChange={setAddUserDialogOpen}
+        onUserAdded={fetchUsers}
+      />
     </div>
   );
 };

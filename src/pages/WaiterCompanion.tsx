@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,12 +18,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle, LayoutGrid, List } from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { cn } from '@/lib/utils';
-import { formatQuantityWithUnit, getShortUnit, isWeightOrVolumeUnit } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, getShortUnit, isWeightOrVolumeUnit, parseQuickChipQuantity } from '@/utils/timeUtils';
+import { getKOTStatusBadgeInfo, getOccupancyTimerInfo } from '@/utils/seatUtils';
+import { reservationManager, TableReservation } from '@/utils/reservationManager';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
+import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 
 interface Table {
     id: string;
@@ -49,6 +53,8 @@ interface MenuItem {
     quantity_step?: number;
     is_saleable?: boolean;
     is_active: boolean;
+    image_url?: string;
+    quick_chips?: string[] | null;
 }
 
 interface CartItem {
@@ -63,6 +69,7 @@ interface CartItem {
     quantity_step?: number;
     instructions: string;
     seatId: string | null; // null represents whole table or no seat assignment
+    image_url?: string;
 }
 
 /** Resolve seat labels for a table: custom labels from seat_configuration, else S1..Sn */
@@ -95,7 +102,27 @@ const WaiterCompanion: React.FC = () => {
     const [customerNote, setCustomerNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'cart'>('tables');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [gridCols, setGridCols] = useState<number>(() => {
+        const saved = localStorage.getItem('waiter_grid_cols');
+        return saved ? parseInt(saved, 10) || 2 : 2;
+    });
+
+    const handleSetGridCols = (cols: number) => {
+        setGridCols(cols);
+        localStorage.setItem('waiter_grid_cols', cols.toString());
+    };
     const [clearCartOpen, setClearCartOpen] = useState(false);
+    const [reservations, setReservations] = useState<TableReservation[]>([]);
+
+    const fetchReservations = useCallback(async () => {
+        const list = await reservationManager.fetchReservations(adminId, operatingBranchId);
+        setReservations(list);
+    }, [adminId, operatingBranchId]);
+
+    useEffect(() => {
+        fetchReservations();
+    }, [fetchReservations]);
     const [gstSettings, setGstSettings] = useState<{
         enabled: boolean;
         taxRatesMap: Record<string, { rate: number; name: string; cess: number }>;
@@ -329,6 +356,52 @@ const WaiterCompanion: React.FC = () => {
         });
     };
 
+    // Add item to cart with quick chip quantity
+    const handleAddToCartWithChip = (item: MenuItem, chipText: string) => {
+        if (!selectedTable) {
+            toast({
+                title: 'Select Table',
+                description: 'Please select a table before adding items to order.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        const unitToUse = item.selling_unit || item.unit;
+        const parsedQty = parseQuickChipQuantity(chipText, unitToUse);
+        const qtyToAdd = parsedQty && parsedQty > 0 ? parsedQty : (item.selling_quantity || item.base_value || 1);
+
+        setCart(prev => {
+            const existingIndex = prev.findIndex(i => i.id === item.id && i.seatId === selectedSeatId);
+            if (existingIndex > -1) {
+                const updated = [...prev];
+                updated[existingIndex].quantity = qtyToAdd;
+                return updated;
+            }
+            return [...prev, {
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: qtyToAdd,
+                unit: item.selling_unit || item.unit,
+                base_value: item.selling_quantity || item.base_value || 1,
+                selling_unit: item.selling_unit,
+                selling_quantity: item.selling_quantity,
+                quantity_step: item.quantity_step || item.selling_quantity || item.base_value || 1,
+                instructions: '',
+                seatId: selectedSeatId,
+                tax_rate_id: (item as any).tax_rate_id || null,
+                is_tax_inclusive: (item as any).is_tax_inclusive !== false
+            }];
+        });
+
+        toast({
+            title: '⚡ Quick Portion Set',
+            description: `${item.name} (${chipText}) set for ${selectedSeatId ? `Seat ${selectedSeatId}` : `Table ${selectedTable.table_number}`}`,
+            duration: 1500
+        });
+    };
+
     // Update cart item quantity
     const handleUpdateQty = (itemId: string, seatId: string | null, deltaMultiplier: number) => {
         setCart(prev => {
@@ -400,6 +473,18 @@ const WaiterCompanion: React.FC = () => {
     // Submit table order
     const handleSubmitOrder = async () => {
         if (!selectedTable || cart.length === 0 || !adminId) return;
+
+        const licStatus = checkOfflineLicenseStatus();
+        if (!licStatus.isValid) {
+            toast({
+                title: '🚫 License Lockout',
+                description: licStatus.lockReason === 'clock_tampered'
+                    ? 'System clock discrepancy detected. Please connect to internet to verify license.'
+                    : '7-Day Offline Grace Period Expired. Connect online to verify active SaaS subscription.',
+                variant: 'destructive',
+            });
+            return;
+        }
 
         setIsSubmitting(true);
         try {
@@ -604,32 +689,43 @@ const WaiterCompanion: React.FC = () => {
                             <h2 className="text-lg font-bold">Choose Dine-In Table</h2>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {tables.map(table => (
-                                <Card
-                                    key={table.id}
-                                    onClick={() => handleSelectTable(table)}
-                                    className={cn(
-                                        "cursor-pointer hover:shadow-md transition-all border-2",
-                                        selectedTable?.id === table.id ? "border-primary bg-primary/5" : "border-muted",
-                                        table.status === 'occupied' && "border-l-4 border-l-red-500",
-                                        table.status === 'cleaning' && "border-l-4 border-l-blue-500",
-                                        table.status === 'reserved' && "border-l-4 border-l-yellow-500"
-                                    )}
-                                >
-                                    <CardContent className="p-4 flex flex-col justify-between h-28">
-                                        <div className="flex justify-between items-start">
-                                            <span className="text-2xl font-black">{table.table_number}</span>
-                                            <Badge variant={table.status === 'available' ? 'outline' : 'secondary'} className="text-[10px] uppercase">
-                                                {table.status}
-                                            </Badge>
-                                        </div>
-                                        <div className="text-xs text-muted-foreground flex justify-between items-center mt-2">
-                                            <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> Max {table.capacity}</span>
-                                            {table.has_seats && <Badge variant="outline" className="text-[9px]">S1-S{table.seat_count}</Badge>}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                            {tables.map(table => {
+                                const upcomingRes = reservationManager.getUpcomingForTable(table.table_number, reservations);
+                                return (
+                                    <Card
+                                        key={table.id}
+                                        onClick={() => handleSelectTable(table)}
+                                        className={cn(
+                                            "cursor-pointer hover:shadow-md transition-all border-2",
+                                            selectedTable?.id === table.id ? "border-primary bg-primary/5 shadow-md" : "border-muted",
+                                            table.status === 'occupied' && "border-l-4 border-l-red-500",
+                                            table.status === 'cleaning' && "border-l-4 border-l-blue-500",
+                                            table.status === 'reserved' && "border-l-4 border-l-yellow-500",
+                                            upcomingRes && "ring-2 ring-yellow-500/60"
+                                        )}
+                                    >
+                                        <CardContent className="p-3.5 flex flex-col justify-between min-h-28">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <span className="text-2xl font-black">T{table.table_number}</span>
+                                                    {upcomingRes && (
+                                                        <span className="text-[9px] block font-bold text-yellow-700 dark:text-yellow-300">
+                                                            ⭐ Res: {upcomingRes.reservation_time} ({upcomingRes.customer_name})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <Badge variant={table.status === 'available' ? 'outline' : 'secondary'} className="text-[10px] uppercase font-bold">
+                                                    {table.status}
+                                                </Badge>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground flex justify-between items-center mt-2">
+                                                <span className="flex items-center gap-1 text-[11px] font-semibold"><User className="w-3.5 h-3.5" /> Max {table.capacity}</span>
+                                                {table.has_seats && <Badge variant="outline" className="text-[9px] font-bold">S1-S{table.seat_count}</Badge>}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -668,65 +764,235 @@ const WaiterCompanion: React.FC = () => {
                         )}
 
 
-                        {/* Search & Category Filter */}
+                        {/* Search & View Mode Filter */}
                         <div className="space-y-2">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search food item..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 h-10 rounded-xl"
-                                />
-                                {searchQuery && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute right-1 top-1 h-8 w-8"
-                                        onClick={() => setSearchQuery('')}
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </Button>
-                                )}
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search food item..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-9 h-10 rounded-xl bg-card"
+                                    />
+                                    {searchQuery && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-1 top-1 h-8 w-8"
+                                            onClick={() => setSearchQuery('')}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-muted shrink-0 gap-1">
+                                    <div className="flex items-center">
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                                            onClick={() => setViewMode('grid')}
+                                            className="h-8 w-8 rounded-lg p-0"
+                                        >
+                                            <LayoutGrid className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant={viewMode === 'list' ? 'default' : 'ghost'}
+                                            onClick={() => setViewMode('list')}
+                                            className="h-8 w-8 rounded-lg p-0"
+                                        >
+                                            <List className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    {viewMode === 'grid' && (
+                                        <div className="flex items-center border-l pl-1 gap-0.5">
+                                            {[2, 3, 4].map(c => (
+                                                <button
+                                                    key={c}
+                                                    type="button"
+                                                    onClick={() => handleSetGridCols(c)}
+                                                    className={cn(
+                                                        "h-7 w-7 rounded-lg text-[11px] font-extrabold transition-all",
+                                                        gridCols === c ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
+                                                    )}
+                                                    title={`${c} per row`}
+                                                >
+                                                    {c}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Swipeable Category list */}
-                            <div className="flex gap-1.5 overflow-x-auto pb-1.5 pt-0.5">
-                                {categories.map(cat => (
-                                    <Button
-                                        key={cat}
-                                        variant={selectedCategory === cat ? 'default' : 'secondary'}
-                                        size="sm"
-                                        onClick={() => setSelectedCategory(cat)}
-                                        className="h-8 rounded-full text-xs shrink-0 px-3.5"
-                                    >
-                                        {cat}
-                                    </Button>
-                                ))}
+                            {/* Swipeable Category list with item count */}
+                            <div className="flex gap-1.5 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
+                                {categories.map(cat => {
+                                    const count = cat === 'All'
+                                        ? menuItems.length
+                                        : menuItems.filter(i => (i.category || 'Other').toLowerCase() === cat.toLowerCase()).length;
+                                    return (
+                                        <Button
+                                            key={cat}
+                                            variant={selectedCategory === cat ? 'default' : 'secondary'}
+                                            size="sm"
+                                            onClick={() => setSelectedCategory(cat)}
+                                            className="h-8 rounded-full text-xs shrink-0 px-3.5 flex items-center gap-1 font-semibold"
+                                        >
+                                            <span>{cat}</span>
+                                            <span className={cn(
+                                                "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                                                selectedCategory === cat ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                                            )}>
+                                                ({count})
+                                            </span>
+                                        </Button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* Menu Items Grid */}
-                        <div className="flex-1 overflow-y-auto h-[48vh] space-y-3 pr-1">
-                            <div className="grid grid-cols-1 gap-2.5">
-                                {filteredMenuItems.map(item => (
-                                    <Card key={item.id} className="overflow-hidden border border-muted shadow-sm hover:shadow-md transition-all">
-                                        <CardContent className="p-3 flex items-center justify-between">
-                                            <div className="min-w-0 pr-2">
-                                                <h4 className="font-bold text-sm truncate">{item.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-primary font-black text-sm">₹{item.price.toFixed(0)}</span>
-                                                    {(item.selling_unit || item.unit) && (
-                                                        <Badge variant="outline" className="text-[10px] scale-90 px-1 py-0 h-4">
-                                                            per {item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)}
-                                                        </Badge>
+                        {/* Menu Items Grid / List Container */}
+                        <div className="flex-1 overflow-y-auto min-h-[48vh] pb-24 space-y-3 pr-1">
+                            {viewMode === 'grid' ? (
+                                <div className={cn(
+                                    "grid gap-2.5",
+                                    gridCols === 2 && "grid-cols-2",
+                                    gridCols === 3 && "grid-cols-3",
+                                    gridCols === 4 && "grid-cols-2 sm:grid-cols-4"
+                                )}>
+                                    {filteredMenuItems.map(item => {
+                                        const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
+                                        return (
+                                            <Card key={item.id} className="overflow-hidden border border-muted shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+                                                <div>
+                                                    {/* Food image or fallback icon */}
+                                                    <div className="w-full h-24 bg-muted/30 relative flex items-center justify-center overflow-hidden">
+                                                        {item.image_url ? (
+                                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                <Utensils className="w-5 h-5 text-primary/70" />
+                                                            </div>
+                                                        )}
+                                                        {(item.selling_unit || item.unit) && (
+                                                            <Badge className="absolute bottom-1.5 right-1.5 bg-black/60 backdrop-blur-md text-white text-[9px] px-1.5 py-0 border-none font-bold">
+                                                                {item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="p-2.5">
+                                                        <h4 className="font-bold text-xs line-clamp-2 leading-snug">{item.name}</h4>
+                                                        <span className="text-primary font-black text-xs block mt-1">₹{item.price.toFixed(0)}</span>
+
+                                                        {/* Quick Chips per Item */}
+                                                        {item.quick_chips && item.quick_chips.length > 0 && (
+                                                            <div className="flex gap-1 overflow-x-auto pt-1.5 pb-0.5 scrollbar-none">
+                                                                {item.quick_chips.map((chip: string) => (
+                                                                    <button
+                                                                        key={chip}
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleAddToCartWithChip(item, chip);
+                                                                        }}
+                                                                        className="px-1.5 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[9px] font-extrabold border border-primary/20 whitespace-nowrap shrink-0 transition-colors"
+                                                                    >
+                                                                        {chip}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-2.5 pt-0">
+                                                    {cartItem ? (
+                                                        <div className="flex items-center justify-between bg-primary/10 rounded-xl p-1 border border-primary/20">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="rounded-lg h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, -1); }}
+                                                            >
+                                                                <Minus className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                            <span className="font-black text-xs text-primary">
+                                                                {cartItem.quantity / (item.selling_quantity || item.base_value || 1)}
+                                                            </span>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="rounded-lg h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, 1); }}
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
+                                                            className="w-full rounded-xl h-8 text-xs font-bold gap-1"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" /> Add
+                                                        </Button>
                                                     )}
                                                 </div>
-                                            </div>
-                                            {(() => {
-                                                const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
-                                                if (cartItem) {
-                                                    return (
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-2.5">
+                                    {filteredMenuItems.map(item => {
+                                        const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
+                                        return (
+                                            <Card key={item.id} className="overflow-hidden border border-muted shadow-sm hover:shadow-md transition-all">
+                                                <CardContent className="p-3 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                                                        <div className="w-12 h-12 rounded-xl bg-muted/40 shrink-0 overflow-hidden flex items-center justify-center">
+                                                            {item.image_url ? (
+                                                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <Utensils className="w-5 h-5 text-primary/70" />
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h4 className="font-bold text-sm truncate">{item.name}</h4>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className="text-primary font-black text-sm">₹{item.price.toFixed(0)}</span>
+                                                                {(item.selling_unit || item.unit) && (
+                                                                    <Badge variant="outline" className="text-[10px] scale-90 px-1 py-0 h-4">
+                                                                        per {item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            {item.quick_chips && item.quick_chips.length > 0 && (
+                                                                <div className="flex gap-1 overflow-x-auto pt-1 scrollbar-none">
+                                                                    {item.quick_chips.map((chip: string) => (
+                                                                        <button
+                                                                            key={chip}
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleAddToCartWithChip(item, chip);
+                                                                            }}
+                                                                            className="px-1.5 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[9px] font-extrabold border border-primary/20 whitespace-nowrap shrink-0 transition-colors"
+                                                                        >
+                                                                            {chip}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {cartItem ? (
                                                         <div className="flex items-center gap-2 bg-primary/10 rounded-full p-1 border border-primary/20">
                                                             <Button
                                                                 size="sm"
@@ -746,34 +1012,35 @@ const WaiterCompanion: React.FC = () => {
                                                                 <Plus className="w-3.5 h-3.5" />
                                                             </Button>
                                                         </div>
-                                                    );
-                                                }
-                                                return (
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
-                                                        className="rounded-full h-8 w-8 p-0"
-                                                    >
-                                                        <Plus className="w-4 h-4" />
-                                                    </Button>
-                                                );
-                                            })()}
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                                {filteredMenuItems.length === 0 && (
-                                    <div className="text-center py-8 text-muted-foreground text-sm">
-                                        No items found.
-                                    </div>
-                                )}
-                            </div>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
+                                                            className="rounded-full h-8 w-8 p-0"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {filteredMenuItems.length === 0 && (
+                                <div className="text-center py-12 text-muted-foreground text-sm space-y-2">
+                                    <Utensils className="w-8 h-8 mx-auto opacity-40" />
+                                    <p>No menu items found matching search.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
                 {/* TAB 3: CART VIEW */}
                 {activeTab === 'cart' && selectedTable && (
-                    <div className="space-y-4 flex flex-col h-full">
+                    <div className="space-y-4 flex flex-col h-full pb-20">
                         <div className="flex items-center justify-between border-b pb-2">
                             <div>
                                 <h3 className="font-bold text-base">Table {selectedTable.table_number} Order Cart</h3>
@@ -807,10 +1074,19 @@ const WaiterCompanion: React.FC = () => {
                                                         )}
                                                     </span>
                                                     {item.seatId && (
-                                                        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px] h-4 py-0 px-1.5">
+                                                        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 text-[10px] h-4 py-0 px-1.5 font-bold">
                                                             Seat {item.seatId}
                                                         </Badge>
                                                     )}
+                                                    {(() => {
+                                                        const badge = getKOTStatusBadgeInfo((item as any).status || 'unsent');
+                                                        return (
+                                                            <Badge variant={badge.variant} className={badge.className}>
+                                                                <span className={cn("w-1.5 h-1.5 rounded-full", badge.dotColor)} />
+                                                                {badge.label}
+                                                            </Badge>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <span className="text-xs text-muted-foreground block mt-0.5">₹{item.price.toFixed(0)} each ({item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)})</span>
                                             </div>
@@ -902,23 +1178,58 @@ const WaiterCompanion: React.FC = () => {
                 )}
             </div>
             
-            {/* Quick Floating Cart Bar for Mobile (when not on cart tab) */}
-            {activeTab !== 'cart' && cart.length > 0 && (
-                <div
-                    onClick={() => setActiveTab('cart')}
-                    className="mx-4 mb-4 p-3 bg-primary text-primary-foreground rounded-2xl flex items-center justify-between cursor-pointer shadow-lg animate-bounce shrink-0"
-                >
-                    <div className="flex items-center gap-2">
-                        <ShoppingCart className="w-5 h-5" />
-                        <span className="font-bold text-xs">
-                            {cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)} items selected
-                        </span>
+            {/* Sticky Floating Cart Bar (Rendered via Portal to match POS page position exactly) */}
+            {activeTab !== 'cart' && cart.length > 0 && createPortal(
+                <div className="fixed bottom-[68px] left-0 right-0 z-[9999] px-3 pb-1 pointer-events-none animate-in slide-in-from-bottom-5 duration-300">
+                    <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-blue-400/30 flex items-center justify-between backdrop-blur-md pointer-events-auto">
+                        <div
+                            onClick={() => setActiveTab('cart')}
+                            className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                <ShoppingCart className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-extrabold text-sm text-white truncate">
+                                        {cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)} items selected
+                                    </span>
+                                    {selectedTable?.table_number && (
+                                        <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md text-white font-medium">
+                                            Table {selectedTable.table_number}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-lg font-black text-white block leading-tight">
+                                    ₹{cartTotal.toFixed(0)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClearCartOpen(true);
+                                }}
+                                className="h-9 w-9 rounded-xl text-white/80 hover:text-white hover:bg-white/20"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                onClick={() => setActiveTab('cart')}
+                                size="sm"
+                                className="rounded-xl h-9 px-3 font-bold bg-white text-blue-700 hover:bg-white/90 shadow-md flex items-center gap-1 text-xs"
+                            >
+                                <span>View Cart</span>
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <span className="font-bold text-sm">View Cart (₹{cartTotal.toFixed(0)})</span>
-                        <ChevronRight className="w-4 h-4" />
-                    </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Modern Clear Cart Confirmation Dialog */}

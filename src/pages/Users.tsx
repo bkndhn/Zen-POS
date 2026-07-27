@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,6 +56,10 @@ const Users: React.FC = () => {
 
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
+
+  if (isSuperAdmin) {
+    return <Navigate to="/super-admin/users?tab=users" replace />;
+  }
 
   useEffect(() => {
     fetchUsers();

@@ -17,6 +17,7 @@ import { convertToInventoryUnit, formatStoredQuantity, getShortUnit, toStoredQua
 import { formatMoney } from '@/utils/formatters';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { triggerLowStockPushNotification } from '@/utils/pwaPushNotifications';
 
 interface ItemRow {
   id: string;
@@ -121,7 +122,15 @@ const StockManagement: React.FC = () => {
         .eq('is_active', true)
         .order('name');
       if (itemsError) throw itemsError;
-      setItems((itemsData || []) as ItemRow[]);
+      const loadedItems = (itemsData || []) as ItemRow[];
+      setItems(loadedItems);
+
+      // Auto-trigger Android & PWA Status Bar Push Notification for low stock items
+      const lowStock = loadedItems.filter(i => !i.unlimited_stock && i.stock_quantity !== null && i.minimum_stock_alert !== null && i.stock_quantity <= i.minimum_stock_alert);
+      if (lowStock.length > 0) {
+        const itemToAlert = lowStock[0];
+        triggerLowStockPushNotification(itemToAlert.name, itemToAlert.stock_quantity || 0, itemToAlert.minimum_stock_alert || 0, itemToAlert.unit || '');
+      }
 
       // 2. Fetch Ingredients
       const { data: ingData, error: ingError } = await supabase
