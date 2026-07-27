@@ -1730,10 +1730,17 @@ const PublicMenu = () => {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                             {tableNo && (
-                                <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                                    T{tableNo}{seatId ? ` - Seat ${seatId}` : ''}
+                                <Badge
+                                    onClick={() => { if (seatModeAllowsSeat && !urlSeatId) setShowSeatPicker(true); }}
+                                    className={cn(
+                                        "bg-white/20 text-white border-white/30 text-xs",
+                                        seatModeAllowsSeat && !urlSeatId && "cursor-pointer hover:bg-white/30"
+                                    )}
+                                >
+                                    T{tableNo}{seatId ? ` • ${seatId}` : ''}
                                 </Badge>
                             )}
+
                             <button
                                 onClick={toggleDarkMode}
                                 className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
