@@ -223,8 +223,73 @@ const PublicMenu = () => {
     // ========== TABLE ORDERING STATE (only active when ?table=N) ==========
     const isTableMode = !!tableNo;
 
+    // Seat handling: ?seat= wins, otherwise the customer picks a seat in-app
+    const urlSeatId = searchParams.get('seat');
+    const seatStorageKey = isTableMode ? `table-seat-${urlParam}-${tableNo}` : null;
+    const [pickedSeat, setPickedSeat] = useState<string | null>(() => {
+        if (!isTableMode) return null;
+        return localStorage.getItem(`table-seat-${urlParam}-${tableNo}`) || null;
+    });
+    const [tableConfig, setTableConfig] = useState<{
+        table_name: string | null;
+        capacity: number | null;
+        has_seats: boolean;
+        seat_count: number | null;
+        seat_configuration: any;
+        seat_order_mode: string;
+    } | null>(null);
+    const [showSeatPicker, setShowSeatPicker] = useState(false);
+    const seatId = urlSeatId || pickedSeat;
+
+    const seatLabels = React.useMemo(() => {
+        if (!tableConfig) return [] as string[];
+        const cfg = tableConfig.seat_configuration;
+        if (Array.isArray(cfg) && cfg.length > 0) {
+            const labels = cfg
+                .map((s: any) => (typeof s === 'string' ? s : s?.label || s?.id))
+                .filter((s: any): s is string => typeof s === 'string' && s.trim().length > 0);
+            if (labels.length > 0) return labels;
+        }
+        const n = tableConfig.seat_count || tableConfig.capacity || 0;
+        return Array.from({ length: n }).map((_, i) => `S${i + 1}`);
+    }, [tableConfig]);
+
+    const seatModeAllowsTable = !tableConfig?.has_seats || (tableConfig?.seat_order_mode ?? 'both') !== 'seat';
+    const seatModeAllowsSeat = !!tableConfig?.has_seats && (tableConfig?.seat_order_mode ?? 'both') !== 'table';
+
+    const chooseSeat = useCallback((label: string | null) => {
+        setPickedSeat(label);
+        if (seatStorageKey) {
+            if (label) localStorage.setItem(seatStorageKey, label);
+            else localStorage.removeItem(seatStorageKey);
+        }
+        setShowSeatPicker(false);
+    }, [seatStorageKey]);
+
+    // Load the table's seat configuration (public, read-only RPC)
+    useEffect(() => {
+        if (!adminId || !isTableMode || !tableNo) return;
+        let cancelled = false;
+        (async () => {
+            const { data, error } = await supabase.rpc('get_public_table_seats', {
+                p_admin_id: adminId,
+                p_table_number: tableNo,
+                p_branch_id: branchId ?? null,
+            });
+            if (cancelled || error) return;
+            const row: any = Array.isArray(data) ? data[0] : data;
+            if (row) setTableConfig(row);
+        })();
+        return () => { cancelled = true; };
+    }, [adminId, isTableMode, tableNo, branchId]);
+
+    // Force seat selection when the table is seat-only and nothing chosen yet
+    useEffect(() => {
+        if (!tableConfig) return;
+        if (seatModeAllowsSeat && !seatModeAllowsTable && !seatId) setShowSeatPicker(true);
+    }, [tableConfig, seatModeAllowsSeat, seatModeAllowsTable, seatId]);
+
     // Session ID: persisted in localStorage so it survives app close/reopen
-    const seatId = searchParams.get('seat');
     const sessionStorageKey = isTableMode 
         ? (seatId ? `table-session-${urlParam}-${tableNo}-${seatId}` : `table-session-${urlParam}-${tableNo}`) 
         : null;
@@ -233,6 +298,7 @@ const PublicMenu = () => {
         return localStorage.getItem(sessionStorageKey) || null;
     });
     const [sessionReady, setSessionReady] = useState(false);
+
 
     // Cart
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -1664,10 +1730,17 @@ const PublicMenu = () => {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                             {tableNo && (
-                                <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                                    T{tableNo}{seatId ? ` - Seat ${seatId}` : ''}
+                                <Badge
+                                    onClick={() => { if (seatModeAllowsSeat && !urlSeatId) setShowSeatPicker(true); }}
+                                    className={cn(
+                                        "bg-white/20 text-white border-white/30 text-xs",
+                                        seatModeAllowsSeat && !urlSeatId && "cursor-pointer hover:bg-white/30"
+                                    )}
+                                >
+                                    T{tableNo}{seatId ? ` • ${seatId}` : ''}
                                 </Badge>
                             )}
+
                             <button
                                 onClick={toggleDarkMode}
                                 className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
@@ -2952,8 +3025,73 @@ const PublicMenu = () => {
                     shopName={rawShopSettings.shop_name}
                 />
             )}
+
+            {/* Seat Picker (only for tables configured with seats) */}
+            {showSeatPicker && seatModeAllowsSeat && (
+                <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+                        <div className="flex items-start justify-between mb-1">
+                            <div>
+                                <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">
+                                    Table {tableNo}{tableConfig?.table_name ? ` • ${tableConfig.table_name}` : ''}
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                    {seatModeAllowsTable
+                                        ? 'Order for the whole table or pick your seat'
+                                        : 'Please select your seat to continue'}
+                                </p>
+                            </div>
+                            {seatModeAllowsTable && (
+                                <button
+                                    onClick={() => setShowSeatPicker(false)}
+                                    className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 mt-4 max-h-[45vh] overflow-y-auto">
+                            {seatModeAllowsTable && (
+                                <button
+                                    onClick={() => chooseSeat(null)}
+                                    className={cn(
+                                        "col-span-3 py-3 rounded-xl border-2 font-bold text-sm transition-all",
+                                        !seatId
+                                            ? "border-primary bg-primary/10 text-primary"
+                                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                                    )}
+                                >
+                                    Whole Table
+                                </button>
+                            )}
+                            {seatLabels.map((label) => (
+                                <button
+                                    key={label}
+                                    onClick={() => chooseSeat(label)}
+                                    className={cn(
+                                        "py-3 rounded-xl border-2 font-bold text-sm transition-all",
+                                        seatId === label
+                                            ? "border-primary bg-primary/10 text-primary"
+                                            : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                                    )}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {cart.length > 0 && (
+                            <p className="text-[11px] text-amber-600 mt-3">
+                                Changing seat starts a new order session; your cart stays with you.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
 
 export default PublicMenu;

@@ -2904,6 +2904,23 @@ export type Database = {
         Args: { p_admin_id: string; p_branch_id: string }
         Returns: Json
       }
+      get_public_table_seats: {
+        Args: {
+          p_admin_id: string
+          p_branch_id?: string
+          p_table_number: string
+        }
+        Returns: {
+          capacity: number
+          has_seats: boolean
+          seat_configuration: Json
+          seat_count: number
+          seat_order_mode: string
+          status: string
+          table_name: string
+          table_number: string
+        }[]
+      }
       get_public_tax_rates: {
         Args: { p_admin_id: string; p_branch_id?: string }
         Returns: {
