@@ -915,7 +915,11 @@ const ServiceArea = () => {
                     ))}
 
                     {/* Table QR Orders - Ready & Preparing */}
-                    {tableOrders.filter(o => o.status === 'ready' || o.status === 'preparing').map((order) => (
+                    <div className="col-span-full">
+                    <TableSeatGroups
+                        orders={tableOrders.filter(o => o.status === 'ready' || o.status === 'preparing')}
+                        keyPrefix="service"
+                        renderOrder={(order) => (
                         <Card
                             key={`to-${order.id}`}
                             className={cn(
@@ -985,7 +989,9 @@ const ServiceArea = () => {
                                 </div>
                             )}
                         </Card>
-                    ))}
+                    )}
+                    />
+                    </div>
                 </div>
             )}
 
