@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { kitchenOfflineManager } from '@/utils/kitchenOfflineManager';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import TableSeatGroups from '@/components/TableSeatGroups';
+import { getOrderTargetLabel, getSeatText } from '@/utils/seatUtils';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -353,7 +355,7 @@ const KitchenDisplay = () => {
                 if (order?.id && !knownTableOrderIds.current.has(order.id)) {
                     knownTableOrderIds.current.add(order.id);
                     if (voiceEnabled) {
-                        announce(`New table order from Table ${order.table_number}${order.seat_id ? `, Seat ${order.seat_id}` : ''}`, 'new-order');
+                        announce(`New table order from Table ${order.table_number}, ${getSeatText(order)}`, 'new-order');
                     }
                 }
                 fetchTableOrders();
@@ -594,7 +596,8 @@ const KitchenDisplay = () => {
         const targetOrder = tableOrders.find(o => o.id === orderId);
         const previousStatus = targetOrder?.status || 'pending';
         const seatId = targetOrder?.seat_id;
-        const seatLabel = seatId ? ` (Seat ${seatId})` : '';
+        const seatText = targetOrder ? getSeatText(targetOrder) : 'Whole Table';
+        const seatLabel = ` · ${seatText}`;
         const labelText = `T${tableNumber}${seatLabel}`;
 
         // Track for undo
@@ -635,7 +638,7 @@ const KitchenDisplay = () => {
             tableOrderChannelRef.current?.send({
                 type: 'broadcast',
                 event: 'table-order-status-update',
-                payload: { order_id: orderId, table_number: tableNumber, seat_id: seatId || null, status }
+                payload: { order_id: orderId, table_number: tableNumber, seat_id: seatId || null, seat_label: targetOrder?.seat_label || null, order_scope: targetOrder?.order_scope || 'table', status }
             });
 
             // Also broadcast to other kitchen/service displays
@@ -646,7 +649,7 @@ const KitchenDisplay = () => {
             });
 
             if (status === 'ready') {
-                announce(`Table ${tableNumber}${seatId ? `, Seat ${seatId}` : ''} order is ready`, 'order-ready');
+                announce(`Table ${tableNumber}, ${seatText} order is ready`, 'order-ready');
                 toast({ title: '🔔 Table Order Ready!', description: `Table ${tableNumber}${seatLabel} order ready` });
             } else if (status === 'preparing') {
                 toast({ title: '👨‍🍳 Preparing', description: `Table ${tableNumber}${seatLabel} order` });
@@ -845,7 +848,7 @@ const KitchenDisplay = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-bold">Table {order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}</h3>
+                                            <h3 className="text-xl font-bold">{getOrderTargetLabel(order)}</h3>
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
                                         </div>
                                         <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
@@ -931,7 +934,7 @@ const KitchenDisplay = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-xl font-bold">Table {order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}</h3>
+                                            <h3 className="text-xl font-bold">{getOrderTargetLabel(order)}</h3>
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order</Badge>
                                         </div>
                                         <span className="text-xs text-muted-foreground">Order #{order.order_number}</span>
@@ -1029,7 +1032,7 @@ const KitchenDisplay = () => {
                                 <div className="flex items-center justify-between mb-3">
                                     <div>
                                         <h3 className="text-2xl font-bold text-green-600">
-                                            Table {order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}
+                                            {getOrderTargetLabel(order)}
                                         </h3>
                                         <div className="flex items-center gap-1.5">
                                             <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR Order #{order.order_number}</Badge>
