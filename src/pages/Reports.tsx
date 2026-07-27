@@ -266,7 +266,7 @@ const Reports: React.FC = () => {
         phone: settings?.contactNumber,
         gstin: settings?.gstin,
         items: (bill.bill_items || []).map(item => ({
-          name: item.items?.name || (item as any).item_name_override || (item as any).name || 'Item',
+          name: (() => { const n = item.items?.name || (item as any).item_name_override || (item as any).name || 'Item'; return n.startsWith('Calci ') ? n.replace(/^Calci /, '') : n; })(),
           quantity: item.quantity,
           total: item.total,
           unit: item.items?.unit || (item as any).unit || 'pcs',
@@ -309,7 +309,7 @@ const Reports: React.FC = () => {
         shopName: settings?.shopName || profile?.hotel_name || 'Hotel',
         gstin: settings?.gstin,
         items: (bill.bill_items || []).map(item => ({
-          name: item.items?.name || item.item_name_override || 'Item',
+          name: (() => { const n = item.items?.name || item.item_name_override || 'Item'; return n.startsWith('Calci ') ? n.replace(/^Calci /, '') : n; })(),
           quantity: item.quantity,
           total: item.total,
           unit: item.items?.unit,
@@ -1114,7 +1114,7 @@ const Reports: React.FC = () => {
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
         time: format(new Date(bill.created_at), 'hh:mm a'),
         items: bill.bill_items?.map(item => ({
-          name: item.items?.name || item.item_name_override || 'Unknown Item',
+          name: (() => { const n = item.items?.name || item.item_name_override || 'Item'; return n.startsWith('Calci ') ? n.replace(/^Calci /, '') : n; })(),
           quantity: item.quantity,
           price: item.price,
           total: item.total,
@@ -1178,7 +1178,7 @@ const Reports: React.FC = () => {
         date: format(new Date(bill.date), 'MMM dd, yyyy'),
         time: format(new Date(bill.created_at), 'hh:mm a'),
         items: bill.bill_items?.map(item => ({
-          name: item.items?.name || item.item_name_override || 'Unknown Item',
+          name: (() => { const n = item.items?.name || item.item_name_override || 'Item'; return n.startsWith('Calci ') ? n.replace(/^Calci /, '') : n; })(),
           quantity: item.quantity,
           price: item.price,
           total: item.total,
@@ -2456,14 +2456,15 @@ const Reports: React.FC = () => {
 
               <div>
                 <div className="grid grid-cols-12 gap-2 mb-2 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  <div className="col-span-6">Item</div>
+                  <div className="col-span-6">Item Name</div>
                   <div className="col-span-2 text-center">Qty/Kg</div>
                   <div className="col-span-2 text-right">Rate</div>
                   <div className="col-span-2 text-right">Value</div>
                 </div>
                 <div className="space-y-1.5">
                   {selectedBill.bill_items?.map((item, index) => {
-                    const itemName = item.items?.name || (item as any).item_name_override || (item as any).name || 'Item';
+                    const rawName = item.items?.name || (item as any).item_name_override || (item as any).name || 'Item';
+                    const itemName = rawName.startsWith('Calci ') ? rawName.replace(/^Calci /, '') : rawName;
                     const itemUnit = item.items?.unit || (item as any).unit || 'pcs';
                     const itemBaseVal = item.items?.base_value || 1;
                     return (
