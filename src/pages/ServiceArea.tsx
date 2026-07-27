@@ -283,6 +283,10 @@ const ServiceArea = () => {
 
         const handleLocal = (event: MessageEvent) => {
             console.log('[ServiceArea] Local broadcast received:', event.data);
+            if (event.data?.type === 'table-orders') {
+                fetchTableOrders();
+                return;
+            }
             debouncedFetch(true);
         };
 
@@ -294,7 +298,7 @@ const ServiceArea = () => {
             billingChannel?.removeEventListener('message', handleLocal);
             billingChannel?.close();
         };
-    }, [debouncedFetch]);
+    }, [debouncedFetch, fetchTableOrders]);
 
     // === LAYER 3: Window custom events (Same tab) ===
     useEffect(() => {
@@ -433,6 +437,12 @@ const ServiceArea = () => {
                     fetchServiceRequests();
                     playChime();
                 }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'table_service_requests' }, (payload: any) => {
+                if (payload.new?.admin_id === adminId) fetchServiceRequests();
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'table_service_requests' }, () => {
+                fetchServiceRequests();
             })
             .subscribe();
 
