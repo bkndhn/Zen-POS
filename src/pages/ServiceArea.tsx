@@ -10,6 +10,8 @@ import { formatDateTimeAMPM, getTimeElapsed, isWithinUndoWindow, formatQuantityW
 import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import TableSeatGroups from '@/components/TableSeatGroups';
+import { getOrderTargetLabel, getSeatText } from '@/utils/seatUtils';
 
 // === INSTANT SYNC LAYER ===
 // 1. BroadcastChannel - 0ms same-browser tabs
@@ -54,6 +56,8 @@ interface ServiceTableOrder {
     table_number: string;
     session_id: string;
     seat_id?: string | null;
+    seat_label?: string | null;
+    order_scope?: 'table' | 'seat' | null;
     order_number: number;
     items: Array<{
         item_id: string;
@@ -77,6 +81,8 @@ interface ServiceRequest {
     table_number: string;
     session_id: string;
     seat_id?: string | null;
+    seat_label?: string | null;
+    order_scope?: 'table' | 'seat' | null;
     request_type: string;
     message: string | null;
     status: 'pending' | 'acknowledged' | 'resolved';
@@ -277,6 +283,10 @@ const ServiceArea = () => {
 
         const handleLocal = (event: MessageEvent) => {
             console.log('[ServiceArea] Local broadcast received:', event.data);
+            if (event.data?.type === 'table-orders') {
+                fetchTableOrders();
+                return;
+            }
             debouncedFetch(true);
         };
 
@@ -288,7 +298,7 @@ const ServiceArea = () => {
             billingChannel?.removeEventListener('message', handleLocal);
             billingChannel?.close();
         };
-    }, [debouncedFetch]);
+    }, [debouncedFetch, fetchTableOrders]);
 
     // === LAYER 3: Window custom events (Same tab) ===
     useEffect(() => {
@@ -412,7 +422,7 @@ const ServiceArea = () => {
                     fetchServiceRequests();
                     playChime();
                     toast({
-                        title: `🔔 Table ${payload.payload.table_number}${payload.payload.seat_id ? ` (Seat ${payload.payload.seat_id})` : ''}`,
+                        title: `🔔 ${getOrderTargetLabel(payload.payload)}`,
                         description: REQUEST_LABELS[payload.payload.request_type]?.label || 'Help Requested',
                         duration: 5000,
                     });
@@ -427,6 +437,12 @@ const ServiceArea = () => {
                     fetchServiceRequests();
                     playChime();
                 }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'table_service_requests' }, (payload: any) => {
+                if (payload.new?.admin_id === adminId) fetchServiceRequests();
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'table_service_requests' }, () => {
+                fetchServiceRequests();
             })
             .subscribe();
 
@@ -466,7 +482,7 @@ const ServiceArea = () => {
             });
             supabase.removeChannel(respChannel);
 
-            toast({ title: '👍 Acknowledged', description: `Table ${req.table_number}${req.seat_id ? ` (Seat ${req.seat_id})` : ''} notified` });
+            toast({ title: '👍 Acknowledged', description: `${getOrderTargetLabel(req)} notified` });
         } catch (e) {
             console.error('[ServiceArea] Acknowledge error:', e);
             fetchServiceRequests();
@@ -496,7 +512,7 @@ const ServiceArea = () => {
             });
             supabase.removeChannel(respChannel);
 
-            toast({ title: '✅ Resolved', description: `Table ${req.table_number}${req.seat_id ? ` (Seat ${req.seat_id})` : ''} request done` });
+            toast({ title: '✅ Resolved', description: `${getOrderTargetLabel(req)} request done` });
         } catch (e) {
             console.error('[ServiceArea] Resolve error:', e);
             fetchServiceRequests();
@@ -633,6 +649,7 @@ const ServiceArea = () => {
 
     // Update table order status (mark as served)
     const updateTableOrderStatus = async (orderId: string, sessionId: string, status: 'served') => {
+        const targetOrder = tableOrders.find(o => o.id === orderId);
         setTableOrders(prev => prev.map(o =>
             o.id === orderId ? { ...o, status } : o
         ));
@@ -654,7 +671,27 @@ const ServiceArea = () => {
             });
             supabase.removeChannel(channel);
 
-            toast({ title: '✅ Served', description: 'Table order marked as served' });
+            // Instant cross-device sync to KDS / other service screens
+            tableOrderChannelRef.current?.send({
+                type: 'broadcast',
+                event: 'table-order-status-update',
+                payload: {
+                    order_id: orderId,
+                    table_number: targetOrder?.table_number,
+                    seat_id: targetOrder?.seat_id || null,
+                    seat_label: targetOrder?.seat_label || null,
+                    order_scope: targetOrder?.order_scope || 'table',
+                    status,
+                },
+            });
+            localBroadcast?.postMessage({ type: 'table-orders' });
+
+            toast({
+                title: '✅ Served',
+                description: targetOrder
+                    ? `${getOrderTargetLabel(targetOrder)} marked as served`
+                    : 'Table order marked as served',
+            });
         } catch (error) {
             console.error('Table order update failed:', error);
             fetchTableOrders();
@@ -747,7 +784,7 @@ const ServiceArea = () => {
                                         <div className="flex items-center gap-2">
                                             <span className="text-2xl">{meta.emoji}</span>
                                             <div>
-                                                <p className="font-bold text-foreground text-sm">Table {req.table_number}{req.seat_id ? ` (Seat ${req.seat_id})` : ''}</p>
+                                                <p className="font-bold text-foreground text-sm">{getOrderTargetLabel(req)}</p>
                                                 <p className="text-xs text-muted-foreground">{meta.label}</p>
                                             </div>
                                         </div>
@@ -878,7 +915,11 @@ const ServiceArea = () => {
                     ))}
 
                     {/* Table QR Orders - Ready & Preparing */}
-                    {tableOrders.filter(o => o.status === 'ready' || o.status === 'preparing').map((order) => (
+                    <div className="col-span-full">
+                    <TableSeatGroups
+                        orders={tableOrders.filter(o => o.status === 'ready' || o.status === 'preparing')}
+                        keyPrefix="service"
+                        renderOrder={(order) => (
                         <Card
                             key={`to-${order.id}`}
                             className={cn(
@@ -890,7 +931,7 @@ const ServiceArea = () => {
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-xl font-black text-foreground">T{order.table_number}{order.seat_id ? ` (Seat ${order.seat_id})` : ''}</h3>
+                                    <h3 className="text-xl font-black text-foreground">{getOrderTargetLabel(order, true)}</h3>
                                     <Badge className="bg-purple-100 text-purple-700 text-[10px]">QR #{order.order_number}</Badge>
                                     <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
                                         {getTimeElapsed(order.created_at)}
@@ -948,7 +989,9 @@ const ServiceArea = () => {
                                 </div>
                             )}
                         </Card>
-                    ))}
+                    )}
+                    />
+                    </div>
                 </div>
             )}
 
