@@ -223,8 +223,73 @@ const PublicMenu = () => {
     // ========== TABLE ORDERING STATE (only active when ?table=N) ==========
     const isTableMode = !!tableNo;
 
+    // Seat handling: ?seat= wins, otherwise the customer picks a seat in-app
+    const urlSeatId = searchParams.get('seat');
+    const seatStorageKey = isTableMode ? `table-seat-${urlParam}-${tableNo}` : null;
+    const [pickedSeat, setPickedSeat] = useState<string | null>(() => {
+        if (!isTableMode) return null;
+        return localStorage.getItem(`table-seat-${urlParam}-${tableNo}`) || null;
+    });
+    const [tableConfig, setTableConfig] = useState<{
+        table_name: string | null;
+        capacity: number | null;
+        has_seats: boolean;
+        seat_count: number | null;
+        seat_configuration: any;
+        seat_order_mode: string;
+    } | null>(null);
+    const [showSeatPicker, setShowSeatPicker] = useState(false);
+    const seatId = urlSeatId || pickedSeat;
+
+    const seatLabels = React.useMemo(() => {
+        if (!tableConfig) return [] as string[];
+        const cfg = tableConfig.seat_configuration;
+        if (Array.isArray(cfg) && cfg.length > 0) {
+            const labels = cfg
+                .map((s: any) => (typeof s === 'string' ? s : s?.label || s?.id))
+                .filter((s: any): s is string => typeof s === 'string' && s.trim().length > 0);
+            if (labels.length > 0) return labels;
+        }
+        const n = tableConfig.seat_count || tableConfig.capacity || 0;
+        return Array.from({ length: n }).map((_, i) => `S${i + 1}`);
+    }, [tableConfig]);
+
+    const seatModeAllowsTable = !tableConfig?.has_seats || (tableConfig?.seat_order_mode ?? 'both') !== 'seat';
+    const seatModeAllowsSeat = !!tableConfig?.has_seats && (tableConfig?.seat_order_mode ?? 'both') !== 'table';
+
+    const chooseSeat = useCallback((label: string | null) => {
+        setPickedSeat(label);
+        if (seatStorageKey) {
+            if (label) localStorage.setItem(seatStorageKey, label);
+            else localStorage.removeItem(seatStorageKey);
+        }
+        setShowSeatPicker(false);
+    }, [seatStorageKey]);
+
+    // Load the table's seat configuration (public, read-only RPC)
+    useEffect(() => {
+        if (!adminId || !isTableMode || !tableNo) return;
+        let cancelled = false;
+        (async () => {
+            const { data, error } = await supabase.rpc('get_public_table_seats', {
+                p_admin_id: adminId,
+                p_table_number: tableNo,
+                p_branch_id: branchId ?? null,
+            });
+            if (cancelled || error) return;
+            const row: any = Array.isArray(data) ? data[0] : data;
+            if (row) setTableConfig(row);
+        })();
+        return () => { cancelled = true; };
+    }, [adminId, isTableMode, tableNo, branchId]);
+
+    // Force seat selection when the table is seat-only and nothing chosen yet
+    useEffect(() => {
+        if (!tableConfig) return;
+        if (seatModeAllowsSeat && !seatModeAllowsTable && !seatId) setShowSeatPicker(true);
+    }, [tableConfig, seatModeAllowsSeat, seatModeAllowsTable, seatId]);
+
     // Session ID: persisted in localStorage so it survives app close/reopen
-    const seatId = searchParams.get('seat');
     const sessionStorageKey = isTableMode 
         ? (seatId ? `table-session-${urlParam}-${tableNo}-${seatId}` : `table-session-${urlParam}-${tableNo}`) 
         : null;
@@ -233,6 +298,7 @@ const PublicMenu = () => {
         return localStorage.getItem(sessionStorageKey) || null;
     });
     const [sessionReady, setSessionReady] = useState(false);
+
 
     // Cart
     const [cart, setCart] = useState<CartItem[]>([]);
