@@ -223,9 +223,12 @@ const generateSocialMediaImage = async (
         for (const item of row) {
           const iconImg = await loadImg(item.icon);
 
-          // Draw Icon
-          ctx.drawImage(iconImg, currentX, currentY + (rowHeight - iconSize) / 2, iconSize, iconSize);
+          // Draw Icon (skip silently if the icon could not be decoded)
+          if (iconImg) {
+            ctx.drawImage(iconImg, currentX, currentY + (rowHeight - iconSize) / 2, iconSize, iconSize);
+          }
           currentX += iconSize + padding;
+
 
           // Draw Text
           ctx.fillStyle = 'black';
