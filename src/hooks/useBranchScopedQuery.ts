@@ -66,3 +66,11 @@ export function applyBranchFilter<T>(query: T, branchFilterId: string | null): T
   // @ts-expect-error - supabase query builder has chainable .eq
   return query.eq('branch_id', branchFilterId);
 }
+
+/**
+ * Helper hook: returns a function to scope localStorage keys to the operating branch.
+ */
+export function useBranchKey() {
+  const { operatingBranchId } = useBranch();
+  return (key: string) => (operatingBranchId ? `${key}_${operatingBranchId}` : key);
+}
