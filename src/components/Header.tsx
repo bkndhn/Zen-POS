@@ -15,6 +15,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { BranchSwitcher } from './BranchSwitcher';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { ContactSupportDialog } from './ContactSupportDialog';
+import { LocalMeshStatusBadge } from './LocalMeshStatusBadge';
 
 const allNavItems = ALL_NAV_ITEMS;
 
@@ -198,6 +199,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+            <LocalMeshStatusBadge />
             {!isSuperAdmin && <BranchSwitcher />}
             <LanguageSwitcher />
 
