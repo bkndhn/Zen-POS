@@ -138,7 +138,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               tag: 'zenpos-expiry-push',
               renotify: true,
               data: { url: url || '/renew' },
-            });
+            } as NotificationOptions);
+
           }).catch(() => {
             new Notification(title, { body, icon: '/brand/logo.png' });
           });
