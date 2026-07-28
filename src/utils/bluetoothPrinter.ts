@@ -58,7 +58,7 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        resolve(null);
+        finish(null);
         return;
       }
 
@@ -116,10 +116,10 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
       finalCommand.set(commandHeader);
       finalCommand.set(imageBuffer, commandHeader.length);
 
-      resolve(finalCommand);
+      finish(finalCommand);
     };
 
-    img.onerror = () => resolve(null);
+    img.onerror = () => finish(null);
     img.src = base64Url;
   });
 };
