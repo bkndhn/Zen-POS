@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles } from 'lucide-react';
+import { Receipt, ChevronRight, Clock, Loader2, ShoppingCart, Plus, Minus, Trash2, AlertTriangle, LayoutGrid, Sparkles, ArrowRightLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInstantBillNumber, initBillCounter, syncBillCounter } from '@/utils/billNumberGenerator';
 import { getOrderTargetLabel, getSeatText, getKOTStatusBadgeInfo, getOccupancyTimerInfo } from '@/utils/seatUtils';
 import { calculateSmartQtyCount, getTimeElapsed } from '@/utils/timeUtils';
 import { reservationManager, TableReservation } from '@/utils/reservationManager';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
+import { TableMoveDialog } from '@/components/TableMoveDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -101,6 +102,7 @@ const TableOrderBilling: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
     const [selectedTable, setSelectedTable] = useState<TableWithOrders | null>(null);
+    const [moveDialogOpen, setMoveDialogOpen] = useState(false);
     const [isBilling, setIsBilling] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
@@ -1236,9 +1238,20 @@ const TableOrderBilling: React.FC = () => {
                             </p>
                         </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => fetchTableOrders()}>
-                        Refresh
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setMoveDialogOpen(true)}
+                            className="h-8 border-primary/40 text-primary hover:bg-primary/10 gap-1.5 shadow-2xs font-semibold text-xs"
+                        >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                            Move Table / Seat
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => fetchTableOrders()}>
+                            Refresh
+                        </Button>
+                    </div>
                 </div>
 
                 {/* View Mode Toggle */}
@@ -1668,6 +1681,12 @@ const TableOrderBilling: React.FC = () => {
                     gstEnabled={gstSettings.enabled}
                     showOrderType={showOrderType}
                     taxRatesMap={gstSettings.taxRatesMap}
+                />
+
+                <TableMoveDialog
+                    open={moveDialogOpen}
+                    onOpenChange={setMoveDialogOpen}
+                    onMoveSuccess={() => fetchTableOrders()}
                 />
             </div>
         </div>

@@ -18,12 +18,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle, LayoutGrid, List } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle, LayoutGrid, List, ArrowRightLeft } from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { cn } from '@/lib/utils';
 import { formatQuantityWithUnit, getShortUnit, isWeightOrVolumeUnit, parseQuickChipQuantity } from '@/utils/timeUtils';
 import { getKOTStatusBadgeInfo, getOccupancyTimerInfo } from '@/utils/seatUtils';
 import { reservationManager, TableReservation } from '@/utils/reservationManager';
+import { TableMoveDialog } from '@/components/TableMoveDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
@@ -95,6 +96,7 @@ const WaiterCompanion: React.FC = () => {
     const [tables, setTables] = useState<Table[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+    const [moveDialogOpen, setMoveDialogOpen] = useState(false);
     const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -684,9 +686,20 @@ const WaiterCompanion: React.FC = () => {
                 {/* TAB 1: TABLES SELECTOR */}
                 {activeTab === 'tables' && (
                     <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Utensils className="w-5 h-5 text-primary" />
-                            <h2 className="text-lg font-bold">Choose Dine-In Table</h2>
+                        <div className="flex items-center justify-between gap-2 mb-2 p-2 rounded-xl bg-muted/40 border border-border">
+                            <div className="flex items-center gap-2">
+                                <Utensils className="w-5 h-5 text-primary" />
+                                <h2 className="text-sm font-bold">Choose Dine-In Table</h2>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setMoveDialogOpen(true)}
+                                className="h-8 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 gap-1.5 shadow-2xs"
+                            >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                                Move Table / Seat
+                            </Button>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {tables.map(table => {
@@ -1255,6 +1268,12 @@ const WaiterCompanion: React.FC = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <TableMoveDialog
+                open={moveDialogOpen}
+                onOpenChange={setMoveDialogOpen}
+                onMoveSuccess={() => fetchTables()}
+            />
         </div>
     );
 };
