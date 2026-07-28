@@ -16,7 +16,9 @@ dist-ssr
 test_db.ts
 
 # Environment variables
-.env
+# NOTE: .env is tracked intentionally — it only contains public VITE_ keys (Supabase anon key)
+# that are embedded in the client bundle. Vercel reads .env from git for builds.
+# Never put secrets (service_role, private keys) in .env — use .env.local instead.
 .env.local
 .env.*.local
 
