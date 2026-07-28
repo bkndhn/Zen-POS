@@ -73,6 +73,7 @@ export const ShopSettingsForm = () => {
     const [showInstagram, setShowInstagram] = useState(true);
     const [whatsapp, setWhatsapp] = useState('');
     const [showWhatsapp, setShowWhatsapp] = useState(true);
+    const [googleReviewUrl, setGoogleReviewUrl] = useState('');
     const [telegram, setTelegram] = useState('');
     const [receiptQrEnabled, setReceiptQrEnabled] = useState(false);
     const [receiptQrType, setReceiptQrType] = useState('payment');
@@ -188,6 +189,7 @@ export const ShopSettingsForm = () => {
                 setShowInstagram(data.show_instagram !== false);
                 setWhatsapp(data.whatsapp || '');
                 setShowWhatsapp(data.show_whatsapp !== false);
+                setGoogleReviewUrl((data as any).google_review_url || localStorage.getItem(`hotel_pos_google_review_url_${operatingBranchId}`) || localStorage.getItem('hotel_pos_google_review_url') || '');
                 setUpiId(data.upi_id || '');
                 setUpiName(data.upi_name || '');
                 setQrPaymentEnabled(data.qr_payment_enabled || false);
@@ -431,8 +433,14 @@ export const ShopSettingsForm = () => {
                 upi_id: sanitizeString(upiId || '', 100) || null,
                 upi_name: sanitizeString(upiName || '', 100) || null,
                 qr_payment_enabled: qrPaymentEnabled,
+                google_review_url: cleanUrl(googleReviewUrl),
                 updated_at: new Date().toISOString()
             };
+
+            if (operatingBranchId) {
+                localStorage.setItem(`hotel_pos_google_review_url_${operatingBranchId}`, cleanUrl(googleReviewUrl));
+            }
+            localStorage.setItem('hotel_pos_google_review_url', cleanUrl(googleReviewUrl));
 
             // QR receipt fields — these require the migration to have been applied
             const qrFields: any = {
@@ -696,6 +704,24 @@ export const ShopSettingsForm = () => {
                                 onChange={e => setWhatsapp(e.target.value)}
                                 className="pl-9"
                             />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 pt-2 border-t">
+                        <div className="flex-1 space-y-1">
+                            <Label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                <Navigation className="w-3.5 h-3.5 text-blue-600" />
+                                Google Maps Place Review Link (Branch Isolated)
+                            </Label>
+                            <Input
+                                placeholder="e.g. https://g.page/r/your-shop/review"
+                                value={googleReviewUrl}
+                                onChange={e => setGoogleReviewUrl(e.target.value)}
+                                className="text-xs"
+                            />
+                            <p className="text-[11px] text-slate-500">
+                                Prompts happy feedback customers to post a 5-star Google review for this branch!
+                            </p>
                         </div>
                     </div>
                 </div>

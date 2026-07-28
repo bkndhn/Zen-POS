@@ -2165,9 +2165,23 @@ const PublicMenu = () => {
                                                     <>
                                                         <ItemMedia item={item} />
                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                                                            <h3 className="font-semibold text-gray-900 text-sm leading-tight">
-                                                                {item.name}
-                                                            </h3>
+                                                            <div>
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <h3 className="font-semibold text-gray-900 text-sm leading-tight">
+                                                                        {item.name}
+                                                                    </h3>
+                                                                    {((item as any).is_popular || (item as any).popular || (item as any).bestseller) && (
+                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                                                            🔥 Popular
+                                                                        </span>
+                                                                    )}
+                                                                    {((item as any).is_special || (item as any).chef_special) && (
+                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                                                            👨‍🍳 Chef Special
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                             <div className="flex items-center gap-2 flex-shrink-0">
                                                                 <span className="text-base font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                     ₹{item.price}

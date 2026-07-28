@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Star, CheckCircle2, AlertCircle, QrCode } from 'lucide-react';
+import { Loader2, Star, CheckCircle2, AlertCircle, QrCode, MapPin } from 'lucide-react';
 
 interface Field {
   id: string;
@@ -165,12 +165,37 @@ const PublicFeedback: React.FC = () => {
   const radius = form.border_radius;
 
   if (done?.ok) {
+    const googleReviewUrl = shop?.google_review_url || shop?.google_maps_link || localStorage.getItem('hotel_pos_google_review_url') || undefined;
+
     return (
       <div style={style} className="flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full space-y-4">
+        <div className="max-w-md w-full space-y-5 bg-white/95 dark:bg-zinc-900/95 p-6 rounded-2xl shadow-xl border border-slate-200/80 dark:border-zinc-800">
           <CheckCircle2 className="w-16 h-16 mx-auto" style={{ color: primary }} />
-          <h1 className="text-2xl font-bold">Thank you!</h1>
-          <p className="opacity-80">{done.message}</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Thank You!</h1>
+          <p className="text-sm opacity-90 text-slate-600 dark:text-slate-300">{done.message}</p>
+
+          {googleReviewUrl && (
+            <div className="pt-4 border-t border-slate-200 dark:border-zinc-800 space-y-3">
+              <div className="flex items-center justify-center gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star key={s} className="w-5 h-5 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">Loved your meal with us?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Help us grow by posting your 5-star review on Google Maps!
+              </p>
+              <a
+                href={googleReviewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg transition-all w-full active:scale-95"
+              >
+                <MapPin className="w-4 h-4" />
+                Post Review on Google Maps ⭐⭐⭐⭐⭐
+              </a>
+            </div>
+          )}
         </div>
       </div>
     );
