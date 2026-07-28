@@ -198,6 +198,7 @@ export type Database = {
       app_settings: {
         Row: {
           id: boolean
+          privacy_policy: string | null
           show_support_custom: boolean
           show_support_email: boolean
           show_support_phone: boolean
@@ -207,11 +208,13 @@ export type Database = {
           support_email: string | null
           support_phone: string | null
           support_whatsapp: string | null
+          terms_and_conditions: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           id?: boolean
+          privacy_policy?: string | null
           show_support_custom?: boolean
           show_support_email?: boolean
           show_support_phone?: boolean
@@ -221,11 +224,13 @@ export type Database = {
           support_email?: string | null
           support_phone?: string | null
           support_whatsapp?: string | null
+          terms_and_conditions?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           id?: boolean
+          privacy_policy?: string | null
           show_support_custom?: boolean
           show_support_email?: boolean
           show_support_phone?: boolean
@@ -235,6 +240,7 @@ export type Database = {
           support_email?: string | null
           support_phone?: string | null
           support_whatsapp?: string | null
+          terms_and_conditions?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -1246,6 +1252,33 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_settings: {
+        Row: {
+          default_amount: number | null
+          id: string
+          payment_instructions: string | null
+          updated_at: string | null
+          upi_id: string | null
+          upi_qr_image_url: string | null
+        }
+        Insert: {
+          default_amount?: number | null
+          id?: string
+          payment_instructions?: string | null
+          updated_at?: string | null
+          upi_id?: string | null
+          upi_qr_image_url?: string | null
+        }
+        Update: {
+          default_amount?: number | null
+          id?: string
+          payment_instructions?: string | null
+          updated_at?: string | null
+          upi_id?: string | null
+          upi_qr_image_url?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           admin_id: string | null
@@ -1303,6 +1336,8 @@ export type Database = {
           admin_id: string | null
           client_permissions: Json | null
           created_at: string
+          force_logout: boolean | null
+          force_logout_reason: string | null
           has_qr_menu_access: boolean | null
           hotel_name: string | null
           id: string
@@ -1317,6 +1352,10 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           shop_name: string | null
           status: string | null
+          subscription_amount: number | null
+          subscription_end_date: string | null
+          subscription_plan: string | null
+          subscription_status: string | null
           updated_at: string
           user_id: string
         }
@@ -1325,6 +1364,8 @@ export type Database = {
           admin_id?: string | null
           client_permissions?: Json | null
           created_at?: string
+          force_logout?: boolean | null
+          force_logout_reason?: string | null
           has_qr_menu_access?: boolean | null
           hotel_name?: string | null
           id?: string
@@ -1339,6 +1380,10 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           shop_name?: string | null
           status?: string | null
+          subscription_amount?: number | null
+          subscription_end_date?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1347,6 +1392,8 @@ export type Database = {
           admin_id?: string | null
           client_permissions?: Json | null
           created_at?: string
+          force_logout?: boolean | null
+          force_logout_reason?: string | null
           has_qr_menu_access?: boolean | null
           hotel_name?: string | null
           id?: string
@@ -1361,6 +1408,10 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           shop_name?: string | null
           status?: string | null
+          subscription_amount?: number | null
+          subscription_end_date?: string | null
+          subscription_plan?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2218,6 +2269,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      subscription_payments: {
+        Row: {
+          admin_id: string | null
+          amount: number
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          period_end: string | null
+          period_start: string | null
+          status: string | null
+          transaction_ref: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          amount: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string | null
+          transaction_ref?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          amount?: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string | null
+          transaction_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {

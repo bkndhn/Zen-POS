@@ -45,7 +45,7 @@ export async function sendPwaStatusBarNotification(payload: PushNotificationPayl
         renotify: true,
         requireInteraction: payload.requireInteraction ?? false,
         data: { url: payload.url || '/' },
-      });
+      } as NotificationOptions);
     } else if ('Notification' in window && hasPermission) {
       new Notification(payload.title, {
         body: payload.body,

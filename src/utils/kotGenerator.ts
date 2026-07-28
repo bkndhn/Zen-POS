@@ -251,11 +251,39 @@ export const printKOTs = async (
 };
 
 /**
+ * Try to send a KOT to the connected thermal printer.
+ * Never throws — returns false so callers can fall back to browser print.
+ */
+const tryThermalKOT = async (kotBytes: Uint8Array): Promise<boolean> => {
+  const { toast } = await import('sonner');
+  try {
+    const { printerManager } = await import('./printerManager');
+    const canThermal = printerManager.isConnected() || printerManager.hasNativePrinterBridge();
+    if (!canThermal) {
+      toast.info('No thermal printer connected', { description: 'Opening browser KOT print instead.' });
+      return false;
+    }
+    const id = toast.loading('Printing KOT...');
+    const ok = await printerManager.printRawBytes(kotBytes);
+    if (ok) {
+      toast.success('KOT printed', { id });
+    } else {
+      toast.error('KOT print failed', { id, description: 'Falling back to browser print.' });
+    }
+    return ok;
+  } catch (e) {
+    console.error('[KOT] Thermal print failed, falling back to browser print:', e);
+    toast.error('KOT print failed', { description: e instanceof Error ? e.message : 'Falling back to browser print.' });
+    return false;
+  }
+};
+
+/**
  * Print individual Table / Seat KOT ticket via thermal printer or browser fallback.
  */
 export const printTableOrderKOT = async (order: any) => {
-  const { printerManager } = await import('./printerManager');
   const { printBrowserKOT } = await import('./browserPrinter');
+
 
   const items: KOTItem[] = (order.items || []).map((it: any) => ({
     name: it.name,
@@ -272,13 +300,9 @@ export const printTableOrderKOT = async (order: any) => {
     orderType: 'dine_in'
   };
 
-  const isConnected = printerManager.getConnectionState() === 'connected';
+  const kotBytes = buildKOTBytes('kitchen', items, meta);
+  if (await tryThermalKOT(kotBytes)) return true;
 
-  if (isConnected) {
-    const kotBytes = buildKOTBytes('kitchen', items, meta);
-    const success = await printerManager.printRawBytes(kotBytes);
-    if (success) return true;
-  }
 
   // Fallback to Browser KOT Print
   printBrowserKOT({
@@ -328,13 +352,9 @@ export const printSeatGroupKOT = async (tableNumber: string, seatText: string, o
     orderType: 'dine_in'
   };
 
-  const isConnected = printerManager.getConnectionState() === 'connected';
+  const kotBytes = buildKOTBytes('kitchen', consolidatedItems, meta);
+  if (await tryThermalKOT(kotBytes)) return true;
 
-  if (isConnected) {
-    const kotBytes = buildKOTBytes('kitchen', consolidatedItems, meta);
-    const success = await printerManager.printRawBytes(kotBytes);
-    if (success) return true;
-  }
 
   // Fallback to Browser KOT Print
   printBrowserKOT({

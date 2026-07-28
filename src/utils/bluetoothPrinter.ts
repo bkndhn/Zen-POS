@@ -36,7 +36,20 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
+    // Hard timeout: a slow/blocked image must never stall the whole receipt.
+    let settled = false;
+    const finish = (value: Uint8Array | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = setTimeout(() => {
+      console.warn('[Print] Image load timed out — printing receipt without it');
+      finish(null);
+    }, 4000);
     img.onload = () => {
+
       const canvas = document.createElement('canvas');
       // Calculate height to maintain aspect ratio
       const height = Math.floor((img.height * targetWidth) / img.width);
@@ -45,7 +58,7 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        resolve(null);
+        finish(null);
         return;
       }
 
@@ -103,10 +116,10 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
       finalCommand.set(commandHeader);
       finalCommand.set(imageBuffer, commandHeader.length);
 
-      resolve(finalCommand);
+      finish(finalCommand);
     };
 
-    img.onerror = () => resolve(null);
+    img.onerror = () => finish(null);
     img.src = base64Url;
   });
 };
@@ -182,11 +195,16 @@ const generateSocialMediaImage = async (
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Load images helper
-    const loadImg = (src: string) => new Promise<HTMLImageElement>((r) => {
+    const loadImg = (src: string) => new Promise<HTMLImageElement | null>((r) => {
       const i = new Image();
-      i.onload = () => r(i);
+      let done = false;
+      const settle = (v: HTMLImageElement | null) => { if (!done) { done = true; clearTimeout(t); r(v); } };
+      const t = setTimeout(() => settle(null), 3000);
+      i.onload = () => settle(i);
+      i.onerror = () => settle(null);
       i.src = src;
     });
+
 
     try {
       // Draw Rows
@@ -205,9 +223,12 @@ const generateSocialMediaImage = async (
         for (const item of row) {
           const iconImg = await loadImg(item.icon);
 
-          // Draw Icon
-          ctx.drawImage(iconImg, currentX, currentY + (rowHeight - iconSize) / 2, iconSize, iconSize);
+          // Draw Icon (skip silently if the icon could not be decoded)
+          if (iconImg) {
+            ctx.drawImage(iconImg, currentX, currentY + (rowHeight - iconSize) / 2, iconSize, iconSize);
+          }
           currentX += iconSize + padding;
+
 
           // Draw Text
           ctx.fillStyle = 'black';

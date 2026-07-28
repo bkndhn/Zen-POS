@@ -140,7 +140,7 @@ class LocalMeshSyncEngine {
     try {
       const count = await offlineManager.getPendingBillsCount();
       if (count > 0) {
-        await offlineManager.syncPendingBills();
+        await offlineManager.processSyncQueue(true);
       }
       this.notifyMeshStatus();
       return { success: true, syncedCount: count };

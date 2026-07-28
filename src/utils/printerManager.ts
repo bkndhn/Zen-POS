@@ -14,6 +14,25 @@ import { generateReceiptBytes, PrintData } from './bluetoothPrinter';
 import { USBPrinterTransport } from './usbPrinterTransport';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
+/**
+ * Receipt building involves canvas/image work (logo, QR, social icons).
+ * A stalled asset must never freeze the print pipeline, so the build is
+ * always bounded and falls back to a text-only receipt on timeout.
+ */
+const buildReceiptBytesSafe = async (data: PrintData): Promise<Uint8Array> => {
+    try {
+        return await Promise.race([
+            generateReceiptBytes(data),
+            new Promise<Uint8Array>((_, reject) =>
+                setTimeout(() => reject(new Error('Receipt build timed out')), 12000)
+            ),
+        ]);
+    } catch (err) {
+        console.warn('[Printer] Receipt build failed, retrying without logo/QR:', err);
+        return generateReceiptBytes({ ...data, logoUrl: undefined, receiptQrEnabled: false } as PrintData);
+    }
+};
+
 export interface BluetoothPrinterPlugin {
   printRaw(options: { hex: string, address?: string }): Promise<{ success: boolean }>;
   getPairedDevices(): Promise<{ devices: Array<{ name: string, address: string }> }>;
@@ -999,7 +1018,7 @@ class PrinterManager {
                 // Capacitor Flow
                 if (Capacitor.isNativePlatform()) {
                     if (!this.nativeConnected && !(await this.connect())) throw new Error('Printer not connected');
-                    const receiptBytes = await generateReceiptBytes(data);
+                    const receiptBytes = await buildReceiptBytesSafe(data);
                     const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
                     
                     const savedPrinterAddress = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
@@ -1010,7 +1029,7 @@ class PrinterManager {
                 else if (typeof win.AndroidPrinter.printReceipt === 'function') {
                     win.AndroidPrinter.printReceipt(JSON.stringify(data));
                 } else if (typeof win.AndroidPrinter.printRawBytes === 'function') {
-                    const receiptBytes = await generateReceiptBytes(data);
+                    const receiptBytes = await buildReceiptBytesSafe(data);
                     const hex = Array.from(receiptBytes).map(b => b.toString(16).padStart(2, '0')).join('');
                     win.AndroidPrinter.printRawBytes(hex);
                 } else {
@@ -1061,7 +1080,7 @@ class PrinterManager {
 
         const t0 = performance.now();
         try {
-            const receiptBytes = await generateReceiptBytes(data);
+            const receiptBytes = await buildReceiptBytesSafe(data);
 
             if (this._printerType === 'usb') {
                 const ok = await this.usbTransport.write(receiptBytes);

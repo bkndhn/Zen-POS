@@ -322,39 +322,18 @@ export const BluetoothPrinterSettings: React.FC = () => {
   };
 
   const printTestPage = async () => {
-    if (!isConnected) {
-      toast({
-        title: "No Printer",
-        description: "Please connect a printer first",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setPrinting(true);
     try {
-      // Use the PrinterManager to print test page
-      const testData = {
-        billNo: 'TEST',
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        items: [{ name: 'Test Item', quantity: 1, price: 100, total: 100 }],
-        subtotal: 100,
-        total: 100,
-        paymentMethod: 'Cash',
-        shopName: 'Test Print',
-        printerWidth: '58mm' as const
-      };
+      // Direct thermal print (same path as a real bill) — never opens a browser preview.
+      const res = await printerManager.sendTestPrint();
 
-      const success = await print(testData);
-
-      if (success) {
+      if (res.ok) {
         toast({
           title: "Test Print Sent!",
-          description: "Check your printer for the test page. Connection is persistent - no re-pairing needed!",
+          description: `Printed directly on ${connectedDeviceName || 'the connected printer'} in ${res.ms}ms.`,
         });
       } else {
-        throw new Error('Print failed');
+        throw new Error(res.error || 'Printer did not respond');
       }
     } catch (error: any) {
       console.error('Print error:', error);
@@ -367,6 +346,7 @@ export const BluetoothPrinterSettings: React.FC = () => {
       setPrinting(false);
     }
   };
+
 
   // isBluetoothSupported is now provided by usePrinter hook
 

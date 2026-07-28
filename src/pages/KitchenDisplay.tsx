@@ -589,7 +589,7 @@ const KitchenDisplay = () => {
                 const name = bi.items.name;
                 names.add(name);
                 const qty = bi.quantity || 1;
-                const unit = bi.unit || (bi.items as any)?.selling_unit || bi.items?.unit || 'pc';
+                const unit = (bi as any).unit || (bi.items as any)?.selling_unit || bi.items?.unit || 'pc';
                 if (!counts[name]) {
                     counts[name] = { qty: 0, unit, ordersCount: 0 };
                 }
