@@ -255,13 +255,25 @@ export const printKOTs = async (
  * Never throws — returns false so callers can fall back to browser print.
  */
 const tryThermalKOT = async (kotBytes: Uint8Array): Promise<boolean> => {
+  const { toast } = await import('sonner');
   try {
     const { printerManager } = await import('./printerManager');
     const canThermal = printerManager.isConnected() || printerManager.hasNativePrinterBridge();
-    if (!canThermal) return false;
-    return await printerManager.printRawBytes(kotBytes);
+    if (!canThermal) {
+      toast.info('No thermal printer connected', { description: 'Opening browser KOT print instead.' });
+      return false;
+    }
+    const id = toast.loading('Printing KOT...');
+    const ok = await printerManager.printRawBytes(kotBytes);
+    if (ok) {
+      toast.success('KOT printed', { id });
+    } else {
+      toast.error('KOT print failed', { id, description: 'Falling back to browser print.' });
+    }
+    return ok;
   } catch (e) {
     console.error('[KOT] Thermal print failed, falling back to browser print:', e);
+    toast.error('KOT print failed', { description: e instanceof Error ? e.message : 'Falling back to browser print.' });
     return false;
   }
 };
