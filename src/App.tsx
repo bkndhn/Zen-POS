@@ -12,6 +12,7 @@ import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { Layout } from "@/components/Layout";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { getStoredBillFont, getSelectedBillFont, loadGoogleFont } from "@/utils/billFontUtils";
 
 const ThemeLoader = () => {
   const { operatingBranchId } = useBranch();
@@ -149,14 +150,23 @@ const ThemeLoader = () => {
       }
     };
 
+    // Load active Bill Font
+    const loadBillFont = () => {
+      const activeFont = getSelectedBillFont(getStoredBillFont());
+      loadGoogleFont(activeFont);
+    };
+
     applyGlobalTheme();
+    loadBillFont();
 
     // Listen for custom theme change events
     window.addEventListener('theme-changed', applyGlobalTheme);
     window.addEventListener('branch-changed', applyGlobalTheme);
+    window.addEventListener('bill-font-changed', loadBillFont);
     return () => {
       window.removeEventListener('theme-changed', applyGlobalTheme);
       window.removeEventListener('branch-changed', applyGlobalTheme);
+      window.removeEventListener('bill-font-changed', loadBillFont);
     };
   }, [operatingBranchId]);
 

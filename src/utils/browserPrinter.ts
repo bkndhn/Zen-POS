@@ -1,6 +1,7 @@
 import { isBillNumberHidden } from './printerConfig';
 import { PrintData } from './bluetoothPrinter';
 import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './timeUtils';
+import { calculateBillTypography, generatePrintStyleHeader } from './billFontUtils';
 import QRCode from 'qrcode';
 
 const escapeHtml = (str: string | undefined | null): string => {
@@ -12,9 +13,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
   const width = data.printerWidth || '58mm';
   const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
   const widthValue = width === '80mm' ? '80mm' : '58mm';
-  const fontSize = width === '80mm' ? '16px' : '12px';
-  const shopNameFontSize = width === '80mm' ? '22px' : '15px';
-  const totalFontSize = width === '80mm' ? '18px' : '13px';
+  const fontMetrics = calculateBillTypography(width);
 
   let qrCodeDataUrl = '';
   try {
@@ -165,49 +164,15 @@ export const printBrowserReceipt = async (data: PrintData) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bill Receipt</title>
+  ${generatePrintStyleHeader(width)}
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: monospace;
-      font-size: ${paperSaving ? (width === '80mm' ? '14px' : '11px') : fontSize};
-      width: ${widthValue};
-      max-width: 100%;
-      margin: 0 auto;
-      padding: ${paperSaving ? '2px' : '6px'};
-      background: white;
-      color: black;
-    }
     .center { text-align: center; }
-    .shop-name { font-size: ${paperSaving ? (width === '80mm' ? '18px' : '13px') : shopNameFontSize}; font-weight: bold; margin-bottom: ${paperSaving ? '2px' : '4px'}; }
+    .shop-name { font-size: ${fontMetrics.shopTitleFontSizePx}px !important; font-weight: bold; margin-bottom: ${paperSaving ? '2px' : '4px'}; }
     hr { border: none; border-top: 1px dashed #000; margin: ${paperSaving ? '4px 0' : '6px 0'}; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    td { padding: ${paperSaving ? '1.5px 1px' : '3px 2px'}; vertical-align: top; font-size: ${paperSaving ? (width === '80mm' ? '14px' : '11px') : fontSize}; }
-    .total { font-size: ${width === '80mm' ? '22px' : '16px'}; font-weight: bold; }
-    .footer { margin-top: ${paperSaving ? '6px' : '12px'}; font-size: ${paperSaving ? (width === '80mm' ? '13px' : '10px') : fontSize}; margin-bottom: ${paperSaving ? '8px' : '24px'}; }
-    @media print {
-      @page { 
-        margin: 0 !important; 
-        size: auto; 
-      }
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        height: auto !important;
-        max-height: 100% !important;
-        overflow: hidden !important;
-        background: white;
-        color: black;
-      }
-      body { 
-        width: ${widthValue}; 
-        margin: 0; 
-        padding: ${paperSaving ? '0px 0px 4px 0px' : '4px 4px 10px 4px'} !important; 
-      }
-      /* Hide browser default headers and footers */
-      header, footer, .no-print {
-        display: none !important;
-      }
-    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; word-break: break-word; overflow-wrap: anywhere; }
+    td, th { padding: ${paperSaving ? '1.5px 1px' : '3px 2px'}; vertical-align: top; font-size: ${fontMetrics.bodyFontSizePx}px; overflow-wrap: anywhere; word-break: break-word; }
+    .total { font-size: ${fontMetrics.grandTotalFontSizePx}px !important; font-weight: bold; }
+    .footer { margin-top: ${paperSaving ? '6px' : '12px'}; font-size: ${fontMetrics.bodyFontSizePx}px; margin-bottom: ${paperSaving ? '8px' : '24px'}; }
   </style>
 </head>
 <body>

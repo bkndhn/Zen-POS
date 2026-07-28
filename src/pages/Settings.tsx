@@ -15,6 +15,7 @@ import { EditAdditionalChargeDialog } from '@/components/EditAdditionalChargeDia
 import { DisplaySettings } from '@/components/DisplaySettings';
 import { PaymentTypesManagement } from '@/components/PaymentTypesManagement';
 import { BluetoothPrinterSettings } from '@/components/BluetoothPrinterSettings';
+import { BillFontPicker } from '@/components/BillFontPicker';
 import { ShopSettingsForm } from '@/components/ShopSettingsForm';
 import { ThemeSettings } from '@/components/ThemeSettings';
 import { WhatsAppSettings } from '@/components/WhatsAppSettings';
@@ -486,7 +487,7 @@ const Settings = () => {
                 <span className="text-base sm:text-lg">Print Settings</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-6">
+            <CardContent className="p-3 sm:p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="auto-print" className="text-sm font-medium">
@@ -504,6 +505,11 @@ const Settings = () => {
                   onCheckedChange={handleAutoPrintToggle}
                   disabled={isAllBranchesView}
                 />
+              </div>
+
+              {/* Bill & Receipt Font Picker (60+ Market Fonts) */}
+              <div className="pt-2 border-t border-border">
+                <BillFontPicker />
               </div>
             </CardContent>
           </Card>

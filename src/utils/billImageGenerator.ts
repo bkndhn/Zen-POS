@@ -8,6 +8,7 @@ import { isBillNumberHidden } from './printerConfig';
 
 import html2canvas from 'html2canvas';
 import { getShortUnit, formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
+import { getSelectedBillFont, loadGoogleFont } from '@/utils/billFontUtils';
 
 /** Escape HTML special characters to prevent XSS */
 const escapeHtml = (str: string | undefined | null): string => {
@@ -107,9 +108,12 @@ const generateBillHtml = (data: BillImageData): string => {
       </div>
     `).join('') || '';
 
+  const activeFont = getSelectedBillFont();
+  loadGoogleFont(activeFont);
+
   return `
     <div id="bill-image-content" style="
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Arial, sans-serif;
+      font-family: "${activeFont.name}", ${activeFont.fallback};
       width: 360px;
       background: #ffffff;
       color: #1a1a2e;
