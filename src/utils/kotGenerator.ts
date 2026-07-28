@@ -272,13 +272,9 @@ export const printTableOrderKOT = async (order: any) => {
     orderType: 'dine_in'
   };
 
-  const isConnected = printerManager.getConnectionState() === 'connected';
+  const kotBytes = buildKOTBytes('kitchen', items, meta);
+  if (await tryThermalKOT(kotBytes)) return true;
 
-  if (isConnected) {
-    const kotBytes = buildKOTBytes('kitchen', items, meta);
-    const success = await printerManager.printRawBytes(kotBytes);
-    if (success) return true;
-  }
 
   // Fallback to Browser KOT Print
   printBrowserKOT({
