@@ -195,11 +195,16 @@ const generateSocialMediaImage = async (
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Load images helper
-    const loadImg = (src: string) => new Promise<HTMLImageElement>((r) => {
+    const loadImg = (src: string) => new Promise<HTMLImageElement | null>((r) => {
       const i = new Image();
-      i.onload = () => r(i);
+      let done = false;
+      const settle = (v: HTMLImageElement | null) => { if (!done) { done = true; clearTimeout(t); r(v); } };
+      const t = setTimeout(() => settle(null), 3000);
+      i.onload = () => settle(i);
+      i.onerror = () => settle(null);
       i.src = src;
     });
+
 
     try {
       // Draw Rows
