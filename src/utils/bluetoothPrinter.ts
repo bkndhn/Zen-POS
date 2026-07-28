@@ -36,7 +36,20 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
+    // Hard timeout: a slow/blocked image must never stall the whole receipt.
+    let settled = false;
+    const finish = (value: Uint8Array | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = setTimeout(() => {
+      console.warn('[Print] Image load timed out — printing receipt without it');
+      finish(null);
+    }, 4000);
     img.onload = () => {
+
       const canvas = document.createElement('canvas');
       // Calculate height to maintain aspect ratio
       const height = Math.floor((img.height * targetWidth) / img.width);
