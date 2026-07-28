@@ -287,25 +287,30 @@ export const PrinterStatusPanel: React.FC<{ inline?: boolean; className?: string
                             {log.length === 0 ? (
                                 <div className="text-xs text-muted-foreground py-4 text-center">No activity yet.</div>
                             ) : (
-                                <ul className="space-y-1 max-h-64 overflow-y-auto overflow-x-hidden pr-1">
+                                <ul className="space-y-1.5 max-h-64 overflow-y-auto overflow-x-hidden pr-1">
                                     {log.map((e, i) => (
-                                        <li key={i} className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono min-w-0 w-full overflow-hidden">
-                                            <span className={cn(
-                                                'w-1.5 h-1.5 rounded-full shrink-0',
-                                                e.status === 'ok' && 'bg-success',
-                                                e.status === 'fail' && 'bg-destructive',
-                                                e.status === 'info' && 'bg-muted-foreground'
-                                            )} />
-                                            <span className="text-muted-foreground shrink-0">{formatTime(e.ts)}</span>
-                                            <span className="uppercase font-semibold shrink-0">{e.action}</span>
-                                            {e.billNo && (
-                                                <span className="px-1 py-0.5 rounded bg-primary/10 text-primary font-semibold shrink-0">#{e.billNo}</span>
+                                        <li key={i} className="text-[10px] sm:text-[11px] font-mono w-full min-w-0 border-b border-border/40 last:border-0 pb-1">
+                                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                                <span className={cn(
+                                                    'w-1.5 h-1.5 rounded-full shrink-0',
+                                                    e.status === 'ok' && 'bg-success',
+                                                    e.status === 'fail' && 'bg-destructive',
+                                                    e.status === 'info' && 'bg-muted-foreground'
+                                                )} />
+                                                <span className="text-muted-foreground">{formatTime(e.ts)}</span>
+                                                <span className="uppercase font-semibold">{e.action}</span>
+                                                {e.billNo && (
+                                                    <span className="px-1 py-0.5 rounded bg-primary/10 text-primary font-semibold max-w-[8rem] truncate">#{e.billNo}</span>
+                                                )}
+                                                {typeof e.ms === 'number' && <span className="text-muted-foreground">{e.ms}ms</span>}
+                                            </div>
+                                            {e.detail && (
+                                                <div className="text-muted-foreground break-words whitespace-pre-wrap pl-3">{e.detail}</div>
                                             )}
-                                            {typeof e.ms === 'number' && <span className="text-muted-foreground shrink-0">{e.ms}ms</span>}
-                                            <span className="truncate flex-1 min-w-0 text-muted-foreground">{e.detail}</span>
                                         </li>
                                     ))}
                                 </ul>
+
                             )}
                         </Card>
                     </div>
