@@ -8,8 +8,11 @@
   },
   "scripts": {
     "dev": "git pull origin main && vite || vite",
+    "prebuild": "node -e \"const fs=require('fs');const env=fs.readFileSync('.env','utf8');if(!env.includes('VITE_SUPABASE_URL')||!env.includes('VITE_SUPABASE_PUBLISHABLE_KEY')){console.error('FATAL: .env missing required VITE_SUPABASE vars!');process.exit(1)}\"",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "typecheck": "tsc --noEmit",
+    "safe-push": "npm run typecheck && npm run build && git push origin main",
     "lint": "eslint .",
     "preview": "vite preview",
     "eas-build-post-install": "npm run build && npx cap sync && node scripts/fix-gradlew.cjs"
