@@ -330,7 +330,7 @@ export const BluetoothPrinterSettings: React.FC = () => {
       if (res.ok) {
         toast({
           title: "Test Print Sent!",
-          description: `Printed directly on ${deviceName || 'the connected printer'} in ${res.ms}ms.`,
+          description: `Printed directly on ${connectedDeviceName || 'the connected printer'} in ${res.ms}ms.`,
         });
       } else {
         throw new Error(res.error || 'Printer did not respond');
