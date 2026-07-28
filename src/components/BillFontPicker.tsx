@@ -25,18 +25,19 @@ interface BillFontPickerProps {
 
 export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, compact = false }) => {
   const getBranchKey = useBranchKey();
+  const activeBranchId = localStorage.getItem('hotel_pos_active_branch_id') || undefined;
   const [selectedFontId, setSelectedFontId] = useState<string>(DEFAULT_BILL_FONT);
   const [fontScale, setFontScale] = useState<number>(1);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [paperPreviewWidth, setPaperPreviewWidth] = useState<'58mm' | '80mm'>('58mm');
 
   useEffect(() => {
-    const savedFont = getStoredBillFont();
-    const savedScale = getStoredBillFontScale();
+    const savedFont = getStoredBillFont(activeBranchId);
+    const savedScale = getStoredBillFontScale(activeBranchId);
     setSelectedFontId(savedFont);
     setFontScale(savedScale);
-    loadGoogleFont(getSelectedBillFont(savedFont));
-  }, []);
+    loadGoogleFont(getSelectedBillFont(savedFont, activeBranchId));
+  }, [activeBranchId]);
 
   const handleFontSelect = (fontId: string) => {
     setSelectedFontId(fontId);

@@ -89,18 +89,25 @@ export const DEFAULT_BILL_FONT = 'Inter';
 /**
  * Helper to retrieve active selected font option
  */
-export function getSelectedBillFont(fontId?: string): FontOption {
-  const targetId = fontId || getStoredBillFont();
+export function getSelectedBillFont(fontId?: string, branchId?: string): FontOption {
+  const targetId = fontId || getStoredBillFont(branchId);
   return MARKET_FONTS.find(f => f.id === targetId) || MARKET_FONTS[0];
 }
 
 /**
- * Retrieve saved bill font ID from localStorage (branch aware)
+ * Retrieve saved bill font ID from localStorage (strictly branch isolated)
  */
-export function getStoredBillFont(): string {
+export function getStoredBillFont(branchId?: string): string {
   try {
-    const branchKey = Object.keys(localStorage).find(k => k.startsWith('hotel_pos_bill_font_family_'));
-    if (branchKey) return localStorage.getItem(branchKey) || DEFAULT_BILL_FONT;
+    if (branchId) {
+      const scoped = localStorage.getItem(`hotel_pos_bill_font_family_${branchId}`);
+      if (scoped) return scoped;
+    }
+    const activeBranchId = localStorage.getItem('hotel_pos_active_branch_id');
+    if (activeBranchId) {
+      const activeScoped = localStorage.getItem(`hotel_pos_bill_font_family_${activeBranchId}`);
+      if (activeScoped) return activeScoped;
+    }
     return localStorage.getItem('hotel_pos_bill_font_family') || DEFAULT_BILL_FONT;
   } catch {
     return DEFAULT_BILL_FONT;
@@ -108,12 +115,26 @@ export function getStoredBillFont(): string {
 }
 
 /**
- * Retrieve saved bill font scale (multiplier)
+ * Retrieve saved bill font scale (strictly branch isolated)
  */
-export function getStoredBillFontScale(): number {
+export function getStoredBillFontScale(branchId?: string): number {
   try {
-    const branchKey = Object.keys(localStorage).find(k => k.startsWith('hotel_pos_bill_font_scale_'));
-    const val = branchKey ? localStorage.getItem(branchKey) : localStorage.getItem('hotel_pos_bill_font_scale');
+    if (branchId) {
+      const scoped = localStorage.getItem(`hotel_pos_bill_font_scale_${branchId}`);
+      if (scoped) {
+        const p = parseFloat(scoped);
+        if (!isNaN(p) && p > 0) return p;
+      }
+    }
+    const activeBranchId = localStorage.getItem('hotel_pos_active_branch_id');
+    if (activeBranchId) {
+      const activeScoped = localStorage.getItem(`hotel_pos_bill_font_scale_${activeBranchId}`);
+      if (activeScoped) {
+        const p = parseFloat(activeScoped);
+        if (!isNaN(p) && p > 0) return p;
+      }
+    }
+    const val = localStorage.getItem('hotel_pos_bill_font_scale');
     const parsed = parseFloat(val || '1');
     return isNaN(parsed) || parsed <= 0 ? 1 : parsed;
   } catch {
