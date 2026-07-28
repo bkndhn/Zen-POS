@@ -251,11 +251,27 @@ export const printKOTs = async (
 };
 
 /**
+ * Try to send a KOT to the connected thermal printer.
+ * Never throws — returns false so callers can fall back to browser print.
+ */
+const tryThermalKOT = async (kotBytes: Uint8Array): Promise<boolean> => {
+  try {
+    const { printerManager } = await import('./printerManager');
+    const canThermal = printerManager.isConnected() || printerManager.hasNativePrinterBridge();
+    if (!canThermal) return false;
+    return await printerManager.printRawBytes(kotBytes);
+  } catch (e) {
+    console.error('[KOT] Thermal print failed, falling back to browser print:', e);
+    return false;
+  }
+};
+
+/**
  * Print individual Table / Seat KOT ticket via thermal printer or browser fallback.
  */
 export const printTableOrderKOT = async (order: any) => {
-  const { printerManager } = await import('./printerManager');
   const { printBrowserKOT } = await import('./browserPrinter');
+
 
   const items: KOTItem[] = (order.items || []).map((it: any) => ({
     name: it.name,
