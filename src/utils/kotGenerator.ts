@@ -340,13 +340,9 @@ export const printSeatGroupKOT = async (tableNumber: string, seatText: string, o
     orderType: 'dine_in'
   };
 
-  const isConnected = printerManager.getConnectionState() === 'connected';
+  const kotBytes = buildKOTBytes('kitchen', consolidatedItems, meta);
+  if (await tryThermalKOT(kotBytes)) return true;
 
-  if (isConnected) {
-    const kotBytes = buildKOTBytes('kitchen', consolidatedItems, meta);
-    const success = await printerManager.printRawBytes(kotBytes);
-    if (success) return true;
-  }
 
   // Fallback to Browser KOT Print
   printBrowserKOT({
