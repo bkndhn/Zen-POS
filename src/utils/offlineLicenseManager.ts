@@ -314,7 +314,7 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
         if (profileError) throw profileError;
 
         // Also try the subscriptions table as fallback
-        const { data: subData, error: subError } = await supabase
+        const { data: subData, error: subError } = await (supabase as any)
             .from('subscriptions')
             .select('status, plan_name, current_period_end')
             .eq('admin_id', adminId)
