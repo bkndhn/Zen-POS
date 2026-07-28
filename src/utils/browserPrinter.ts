@@ -1,7 +1,7 @@
 import { isBillNumberHidden } from './printerConfig';
 import { PrintData } from './bluetoothPrinter';
 import { formatQuantityWithUnit, getShortUnit, calculateSmartQtyCount } from './timeUtils';
-import { calculateBillTypography, generatePrintStyleHeader } from './billFontUtils';
+import { calculateBillTypography, generatePrintStyleHeader, getStoredFooterMessage } from './billFontUtils';
 import QRCode from 'qrcode';
 
 const escapeHtml = (str: string | undefined | null): string => {
@@ -157,7 +157,8 @@ export const printBrowserReceipt = async (data: PrintData) => {
     </table>`;
   }
 
-  // Simple, clean HTML that works reliably on mobile
+  const customFooterMsg = getStoredFooterMessage();
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -221,7 +222,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
   
   <div class="footer center">
     ${qrCodeDataUrl ? `<div style="margin-top: 10px; margin-bottom: 5px;"><img src="${qrCodeDataUrl}" alt="QR Code" style="display:block;margin:0 auto;max-width:140px;" /></div>` : ''}
-    <div></div>
+    <div style="font-weight: 700; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(customFooterMsg)}</div>
     ${(data.facebook || data.instagram || data.whatsapp) && !paperSaving ? '<hr>' : ''}
     ${data.facebook && !paperSaving ? `<div>FB: ${data.facebook}</div>` : ''}
     ${data.instagram && !paperSaving ? `<div>IG: ${data.instagram}</div>` : ''}

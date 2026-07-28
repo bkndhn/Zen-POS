@@ -8,7 +8,7 @@ import { isBillNumberHidden } from './printerConfig';
 
 import html2canvas from 'html2canvas';
 import { getShortUnit, formatQuantityWithUnit, calculateSmartQtyCount } from '@/utils/timeUtils';
-import { getSelectedBillFont, loadGoogleFont } from '@/utils/billFontUtils';
+import { getSelectedBillFont, loadGoogleFont, getStoredFooterMessage } from '@/utils/billFontUtils';
 
 /** Escape HTML special characters to prevent XSS */
 const escapeHtml = (str: string | undefined | null): string => {
@@ -268,8 +268,8 @@ const generateBillHtml = (data: BillImageData): string => {
       </div>
 
       <!-- Footer -->
-      <div style="text-align: center; padding: 12px 20px 20px; font-size: 12px; color: #9ca3af;">
-        Thank you for your visit! 🙏
+      <div style="text-align: center; padding: 12px 20px 20px; font-size: 13px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
+        ${escapeHtml(getStoredFooterMessage())}
       </div>
     </div>
   `;

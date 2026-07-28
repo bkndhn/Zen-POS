@@ -142,6 +142,47 @@ export function getStoredBillFontScale(branchId?: string): number {
   }
 }
 
+export const DEFAULT_FOOTER_MESSAGE = 'THANK YOU! VISIT AGAIN';
+
+/**
+ * Retrieve saved receipt footer message (strictly branch isolated)
+ */
+export function getStoredFooterMessage(branchId?: string): string {
+  try {
+    if (branchId) {
+      const scoped = localStorage.getItem(`hotel_pos_footer_message_${branchId}`);
+      if (scoped !== null && scoped !== undefined) return scoped;
+    }
+    const activeBranchId = localStorage.getItem('hotel_pos_active_branch_id');
+    if (activeBranchId) {
+      const activeScoped = localStorage.getItem(`hotel_pos_footer_message_${activeBranchId}`);
+      if (activeScoped !== null && activeScoped !== undefined) return activeScoped;
+    }
+    const val = localStorage.getItem('hotel_pos_footer_message');
+    return val !== null && val !== undefined ? val : DEFAULT_FOOTER_MESSAGE;
+  } catch {
+    return DEFAULT_FOOTER_MESSAGE;
+  }
+}
+
+/**
+ * Save receipt footer message (strictly branch isolated)
+ */
+export function setStoredFooterMessage(message: string, branchId?: string): void {
+  try {
+    if (branchId) {
+      localStorage.setItem(`hotel_pos_footer_message_${branchId}`, message);
+    }
+    const activeBranchId = localStorage.getItem('hotel_pos_active_branch_id');
+    if (activeBranchId) {
+      localStorage.setItem(`hotel_pos_footer_message_${activeBranchId}`, message);
+    }
+    localStorage.setItem('hotel_pos_footer_message', message);
+  } catch (e) {
+    console.error('Error saving footer message:', e);
+  }
+}
+
 /**
  * Inject Google Font link tag into document head if not present
  */

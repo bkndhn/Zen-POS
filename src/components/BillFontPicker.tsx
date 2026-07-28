@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { 
   MARKET_FONTS, 
   DEFAULT_BILL_FONT, 
@@ -7,8 +6,13 @@ import {
   getSelectedBillFont,
   loadGoogleFont,
   calculateBillTypography,
+  getStoredFooterMessage,
+  setStoredFooterMessage,
+  DEFAULT_FOOTER_MESSAGE,
   FontOption
 } from '@/utils/billFontUtils';
+import { printBrowserReceipt } from '@/utils/browserPrinter';
+import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,14 +32,17 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
   const activeBranchId = localStorage.getItem('hotel_pos_active_branch_id') || undefined;
   const [selectedFontId, setSelectedFontId] = useState<string>(DEFAULT_BILL_FONT);
   const [fontScale, setFontScale] = useState<number>(1);
+  const [footerMessage, setFooterMessage] = useState<string>(DEFAULT_FOOTER_MESSAGE);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [paperPreviewWidth, setPaperPreviewWidth] = useState<'58mm' | '80mm'>('58mm');
 
   useEffect(() => {
     const savedFont = getStoredBillFont(activeBranchId);
     const savedScale = getStoredBillFontScale(activeBranchId);
+    const savedFooter = getStoredFooterMessage(activeBranchId);
     setSelectedFontId(savedFont);
     setFontScale(savedScale);
+    setFooterMessage(savedFooter);
     loadGoogleFont(getSelectedBillFont(savedFont, activeBranchId));
   }, [activeBranchId]);
 
@@ -64,9 +71,42 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
     if (onFontChange) onFontChange(selectedFontId, scale);
   };
 
+  const handleFooterMessageChange = (msg: string) => {
+    setFooterMessage(msg);
+    setStoredFooterMessage(msg, activeBranchId);
+    window.dispatchEvent(new CustomEvent('bill-footer-changed', { detail: msg }));
+  };
+
   const handleReset = () => {
     handleFontSelect(DEFAULT_BILL_FONT);
     handleScaleChange([1]);
+    handleFooterMessageChange(DEFAULT_FOOTER_MESSAGE);
+  };
+
+  const handleTestPrint = async () => {
+    toast({
+      title: "🖨️ Printing Test Receipt",
+      description: `Printing sample receipt on ${paperPreviewWidth} paper using ${currentFont.name} font...`,
+    });
+
+    await printBrowserReceipt({
+      billNo: "TEST-1042",
+      shopName: "ZEN CAFE & RESTO",
+      address: "123 MAIN ROAD, TIRUPUR",
+      contactNumber: "+91 98765 43210",
+      date: new Date().toLocaleDateString('en-IN'),
+      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      items: [
+        { name: "Chicken Biryani Special", quantity: 2, price: 220, total: 440, unit: "plate" },
+        { name: "Butter Naan", quantity: 4, price: 40, total: 160, unit: "pcs" }
+      ],
+      subtotal: 600,
+      total: 600,
+      paymentMethod: "UPI",
+      printerWidth: paperPreviewWidth,
+      totalItemsCount: 2,
+      smartQtyCount: 6,
+    });
   };
 
   const currentFont = getSelectedBillFont(selectedFontId);
@@ -106,14 +146,26 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
           </div>
         </div>
 
-        <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 text-xs text-muted-foreground hover:text-foreground">
-          <RotateCcw className="w-3.5 h-3.5 mr-1" />
-          Reset Default (Inter)
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleTestPrint}
+            className="h-8 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 gap-1.5 shadow-2xs"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Test Print ({paperPreviewWidth})
+          </Button>
+
+          <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 text-xs text-muted-foreground hover:text-foreground">
+            <RotateCcw className="w-3.5 h-3.5 mr-1" />
+            Reset Default
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left Column: Font Selection & Scaling */}
+        {/* Left Column: Font Selection & Scaling & Footer Text */}
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-foreground flex items-center justify-between">
@@ -191,6 +243,25 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
               <span>100% (Standard)</span>
               <span>125% (Large)</span>
             </div>
+          </div>
+
+          {/* Receipt Footer Greeting Message (Branch Isolated) */}
+          <div className="space-y-1.5 pt-2 border-t border-border/60">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium">Receipt Footer Greeting / Message</Label>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border-primary/30 text-primary">
+                Branch Isolated
+              </Badge>
+            </div>
+            <Input
+              value={footerMessage}
+              onChange={(e) => handleFooterMessageChange(e.target.value)}
+              placeholder="THANK YOU! VISIT AGAIN"
+              className="h-9 text-xs font-semibold tracking-wide bg-background border-border/80 uppercase"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Custom bottom greeting printed on thermal receipts and WhatsApp shared bills for this branch.
+            </p>
           </div>
         </div>
 
@@ -277,8 +348,8 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
               <span>₹600.00</span>
             </div>
 
-            <div className="mt-2 text-center text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-              Thank You! Visit Again
+            <div className="mt-2 text-center text-[10px] text-slate-800 font-bold uppercase tracking-wider">
+              {footerMessage || 'THANK YOU! VISIT AGAIN'}
             </div>
           </div>
 
