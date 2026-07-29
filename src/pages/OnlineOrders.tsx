@@ -312,7 +312,7 @@ export default function OnlineOrders() {
       // Mark remote order as completed with bill reference and collector audit info
       await updateOrderStatus(order.id, 'completed', {
         completed_at: new Date().toISOString(),
-        payment_mode: primaryMode === 'Cash' ? 'pay_on_pickup' : 'paid',
+        payment_mode: primaryMode === 'cash' ? 'pay_on_pickup' : 'paid',
         is_paid: true,
         payment_reference: (billData as any)?.id || null,
         collected_by_name: isDelegatePickup ? collectorName.trim() : order.customer_name,
@@ -645,13 +645,13 @@ export default function OnlineOrders() {
               }}>
                 <CheckCircle2 className="w-5 h-5 mr-2" /> Complete & Pay
               </Button>
-              <Button variant="outline" className="py-6" onClick={() => updateOrderStatus(order.id, 'no_show')}>No Show</Button>
+              <Button variant="outline" className="py-6" onClick={() => updateOrderStatus(order.id, 'no_show', { no_show_at: new Date().toISOString() })}>No Show</Button>
             </div>
           )}
 
           {((mode === 'active' || mode === 'delivery') && order.status === 'ready' && !isPickup) && (
             <div className="flex gap-2 w-full">
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-base py-6" onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-base py-6" onClick={() => updateOrderStatus(order.id, 'out_for_delivery', { out_for_delivery_at: new Date().toISOString() })}>
                 <Truck className="w-5 h-5 mr-2" /> Dispatch for Delivery
               </Button>
             </div>

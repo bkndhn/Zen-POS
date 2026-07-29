@@ -1235,12 +1235,12 @@ const Reports: React.FC = () => {
     return acc;
   }, {} as Record<string, { revenue: number; count: number }>);
 
-  // Ensure all three exist in summary for clean display
-  const channelsToShow = ['store', 'zomato', 'swiggy'];
+  // Ensure all channels exist in summary for clean display
+  const channelsToShow = ['store', 'online', 'zomato', 'swiggy'];
   const channelData = channelsToShow.map(ch => {
     const summary = channelSummary[ch] || { revenue: 0, count: 0 };
     return {
-      name: ch === 'store' ? '🏪 Store' : ch === 'zomato' ? '🍅 Zomato' : '🍊 Swiggy',
+      name: ch === 'store' ? '🏪 Store' : ch === 'online' ? '📱 Online' : ch === 'zomato' ? '🍅 Zomato' : '🍊 Swiggy',
       channelId: ch,
       revenue: summary.revenue,
       count: summary.count,
@@ -1251,13 +1251,13 @@ const Reports: React.FC = () => {
   const totalChannelSales = channelData.reduce((sum, c) => sum + c.revenue, 0);
 
   // Recharts Pie Chart Data
-  const COLORS = ['#4361ee', '#ef4444', '#f97316'];
+  const COLORS = ['#4361ee', '#10b981', '#ef4444', '#f97316'];
   const pieChartData = channelData
     .filter(c => c.revenue > 0)
-    .map((c, index) => ({
+    .map((c) => ({
       name: c.name,
       value: c.revenue,
-      color: c.channelId === 'store' ? COLORS[0] : c.channelId === 'zomato' ? COLORS[1] : COLORS[2]
+      color: c.channelId === 'store' ? COLORS[0] : c.channelId === 'online' ? COLORS[1] : c.channelId === 'zomato' ? COLORS[2] : COLORS[3]
     }));
 
   // Compute detailed P&L

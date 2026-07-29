@@ -29,6 +29,7 @@ const labelMap: Record<string, string> = {
   '/expenses': 'nav.expenses',
   '/reports': 'nav.reports',
   '/crm': 'nav.crm',
+  '/online-orders': 'nav.onlineOrders',
   '/qr-menu': 'nav.qrMenu',
   '/users': 'nav.users',
   '/settings': 'nav.settings'
