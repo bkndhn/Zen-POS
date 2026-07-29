@@ -246,6 +246,66 @@ export type Database = {
         }
         Relationships: []
       }
+      appointments: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          customer_id: string
+          end_time: string
+          id: string
+          notes: string | null
+          provider_id: string
+          service_name: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          customer_id: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          provider_id: string
+          service_name: string
+          start_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          customer_id?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          provider_id?: string
+          service_name?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_logs: {
         Row: {
           backup_time: string
@@ -390,13 +450,19 @@ export type Database = {
           customer_phone: string | null
           date: string
           discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
           id: string
           is_deleted: boolean | null
           is_edited: boolean | null
           kitchen_status: string | null
           order_type: string | null
+          paid_amount: number | null
           payment_details: Json | null
           payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
           round_off: number | null
           service_status: string | null
           status_updated_at: string | null
@@ -421,13 +487,19 @@ export type Database = {
           customer_phone?: string | null
           date?: string
           discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
           kitchen_status?: string | null
           order_type?: string | null
+          paid_amount?: number | null
           payment_details?: Json | null
           payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
           round_off?: number | null
           service_status?: string | null
           status_updated_at?: string | null
@@ -452,13 +524,19 @@ export type Database = {
           customer_phone?: string | null
           date?: string
           discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
           kitchen_status?: string | null
           order_type?: string | null
+          paid_amount?: number | null
           payment_details?: Json | null
           payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
           round_off?: number | null
           service_status?: string | null
           status_updated_at?: string | null
@@ -479,6 +557,55 @@ export type Database = {
           },
           {
             foreignKeyName: "bills_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_devices: {
+        Row: {
+          admin_id: string
+          blocked_at: string | null
+          branch_id: string
+          device_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          admin_id: string
+          blocked_at?: string | null
+          branch_id: string
+          device_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          admin_id?: string
+          blocked_at?: string | null
+          branch_id?: string
+          device_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_devices_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_devices_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
@@ -588,11 +715,72 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_ledger: {
+        Row: {
+          admin_id: string
+          amount: number
+          balance_after: number
+          bill_id: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          id: string
+          notes: string | null
+          payment_mode: string | null
+          transaction_type: string
+        }
+        Insert: {
+          admin_id: string
+          amount: number
+          balance_after: number
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          payment_mode?: string | null
+          transaction_type: string
+        }
+        Update: {
+          admin_id?: string
+          amount?: number
+          balance_after?: number
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          payment_mode?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_ledger_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           admin_id: string | null
           branch_id: string | null
           created_at: string
+          current_balance: number | null
           id: string
           last_visit: string | null
           name: string | null
@@ -605,6 +793,7 @@ export type Database = {
           admin_id?: string | null
           branch_id?: string | null
           created_at?: string
+          current_balance?: number | null
           id?: string
           last_visit?: string | null
           name?: string | null
@@ -617,6 +806,7 @@ export type Database = {
           admin_id?: string | null
           branch_id?: string | null
           created_at?: string
+          current_balance?: number | null
           id?: string
           last_visit?: string | null
           name?: string | null
@@ -1029,6 +1219,56 @@ export type Database = {
         }
         Relationships: []
       }
+      item_batches: {
+        Row: {
+          admin_id: string
+          batch_number: string
+          branch_id: string | null
+          cost_price: number | null
+          created_at: string
+          expiry_date: string
+          id: string
+          item_id: string
+          mfg_date: string | null
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          batch_number: string
+          branch_id?: string | null
+          cost_price?: number | null
+          created_at?: string
+          expiry_date: string
+          id?: string
+          item_id: string
+          mfg_date?: string | null
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          batch_number?: string
+          branch_id?: string | null
+          cost_price?: number | null
+          created_at?: string
+          expiry_date?: string
+          id?: string
+          item_id?: string
+          mfg_date?: string | null
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_categories: {
         Row: {
           admin_id: string | null
@@ -1249,138 +1489,6 @@ export type Database = {
           status?: string
           total?: number
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      remote_orders: {
-        Row: {
-          id: string
-          admin_id: string
-          branch_id: string
-          device_id: string
-          customer_name: string
-          customer_phone: string
-          order_number: string
-          items: Json
-          subtotal: number
-          tax_total: number
-          delivery_fee: number
-          packaging_fee: number
-          surge_fee: number
-          tip_amount: number
-          total_amount: number
-          order_type: string
-          status: string
-          estimated_wait_minutes: number | null
-          reject_reason: string | null
-          customer_latitude: number | null
-          customer_longitude: number | null
-          customer_address: string | null
-          payment_mode: string
-          payment_reference: string | null
-          is_scheduled: boolean
-          scheduled_for: string | null
-          rating: number | null
-          feedback_text: string | null
-          created_at: string
-          updated_at: string
-          accepted_at: string | null
-          completed_at: string | null
-        }
-        Insert: {
-          id?: string
-          admin_id: string
-          branch_id: string
-          device_id: string
-          customer_name: string
-          customer_phone: string
-          order_number: string
-          items?: Json
-          subtotal?: number
-          tax_total?: number
-          delivery_fee?: number
-          packaging_fee?: number
-          surge_fee?: number
-          tip_amount?: number
-          total_amount?: number
-          order_type: string
-          status?: string
-          estimated_wait_minutes?: number | null
-          reject_reason?: string | null
-          customer_latitude?: number | null
-          customer_longitude?: number | null
-          customer_address?: string | null
-          payment_mode?: string
-          payment_reference?: string | null
-          is_scheduled?: boolean
-          scheduled_for?: string | null
-          rating?: number | null
-          feedback_text?: string | null
-          created_at?: string
-          updated_at?: string
-          accepted_at?: string | null
-          completed_at?: string | null
-        }
-        Update: {
-          id?: string
-          admin_id?: string
-          branch_id?: string
-          device_id?: string
-          customer_name?: string
-          customer_phone?: string
-          order_number?: string
-          items?: Json
-          subtotal?: number
-          tax_total?: number
-          delivery_fee?: number
-          packaging_fee?: number
-          surge_fee?: number
-          tip_amount?: number
-          total_amount?: number
-          order_type?: string
-          status?: string
-          estimated_wait_minutes?: number | null
-          reject_reason?: string | null
-          customer_latitude?: number | null
-          customer_longitude?: number | null
-          customer_address?: string | null
-          payment_mode?: string
-          payment_reference?: string | null
-          is_scheduled?: boolean
-          scheduled_for?: string | null
-          rating?: number | null
-          feedback_text?: string | null
-          created_at?: string
-          updated_at?: string
-          accepted_at?: string | null
-          completed_at?: string | null
-        }
-        Relationships: []
-      }
-      blocked_devices: {
-        Row: {
-          id: string
-          admin_id: string
-          branch_id: string
-          device_id: string
-          reason: string | null
-          blocked_at: string
-        }
-        Insert: {
-          id?: string
-          admin_id: string
-          branch_id: string
-          device_id: string
-          reason?: string | null
-          blocked_at?: string
-        }
-        Update: {
-          id?: string
-          admin_id?: string
-          branch_id?: string
-          device_id?: string
-          reason?: string | null
-          blocked_at?: string
         }
         Relationships: []
       }
@@ -1625,6 +1733,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      providers: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          commission_rate: number | null
+          commission_type: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          commission_rate?: number | null
+          commission_type?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          commission_rate?: number | null
+          commission_type?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       purchase_distributions: {
         Row: {
@@ -1978,6 +2125,165 @@ export type Database = {
           },
         ]
       }
+      remote_orders: {
+        Row: {
+          accepted_at: string | null
+          admin_id: string
+          branch_id: string
+          collected_by_name: string | null
+          collected_by_phone: string | null
+          completed_at: string | null
+          created_at: string | null
+          customer_address: string | null
+          customer_latitude: number | null
+          customer_longitude: number | null
+          customer_name: string
+          customer_phone: string
+          delivery_address: string | null
+          delivery_distance_km: number | null
+          delivery_fee: number
+          device_id: string
+          estimated_prep_time: number | null
+          estimated_wait_minutes: number | null
+          feedback_text: string | null
+          id: string
+          is_delegate_pickup: boolean | null
+          is_paid: boolean | null
+          is_scheduled: boolean | null
+          items: Json
+          no_show_at: string | null
+          order_number: string
+          order_type: string
+          out_for_delivery_at: string | null
+          packaging_fee: number
+          payment_method: string | null
+          payment_mode: string | null
+          payment_reference: string | null
+          pickup_pin: string | null
+          rating: number | null
+          ready_at: string | null
+          reject_reason: string | null
+          rejection_reason: string | null
+          scheduled_for: string | null
+          status: string
+          subtotal: number
+          surge_fee: number
+          tax_total: number
+          tip_amount: number
+          total_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          admin_id: string
+          branch_id: string
+          collected_by_name?: string | null
+          collected_by_phone?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_latitude?: number | null
+          customer_longitude?: number | null
+          customer_name: string
+          customer_phone: string
+          delivery_address?: string | null
+          delivery_distance_km?: number | null
+          delivery_fee?: number
+          device_id: string
+          estimated_prep_time?: number | null
+          estimated_wait_minutes?: number | null
+          feedback_text?: string | null
+          id?: string
+          is_delegate_pickup?: boolean | null
+          is_paid?: boolean | null
+          is_scheduled?: boolean | null
+          items?: Json
+          no_show_at?: string | null
+          order_number: string
+          order_type: string
+          out_for_delivery_at?: string | null
+          packaging_fee?: number
+          payment_method?: string | null
+          payment_mode?: string | null
+          payment_reference?: string | null
+          pickup_pin?: string | null
+          rating?: number | null
+          ready_at?: string | null
+          reject_reason?: string | null
+          rejection_reason?: string | null
+          scheduled_for?: string | null
+          status?: string
+          subtotal?: number
+          surge_fee?: number
+          tax_total?: number
+          tip_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          admin_id?: string
+          branch_id?: string
+          collected_by_name?: string | null
+          collected_by_phone?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          customer_address?: string | null
+          customer_latitude?: number | null
+          customer_longitude?: number | null
+          customer_name?: string
+          customer_phone?: string
+          delivery_address?: string | null
+          delivery_distance_km?: number | null
+          delivery_fee?: number
+          device_id?: string
+          estimated_prep_time?: number | null
+          estimated_wait_minutes?: number | null
+          feedback_text?: string | null
+          id?: string
+          is_delegate_pickup?: boolean | null
+          is_paid?: boolean | null
+          is_scheduled?: boolean | null
+          items?: Json
+          no_show_at?: string | null
+          order_number?: string
+          order_type?: string
+          out_for_delivery_at?: string | null
+          packaging_fee?: number
+          payment_method?: string | null
+          payment_mode?: string | null
+          payment_reference?: string | null
+          pickup_pin?: string | null
+          rating?: number | null
+          ready_at?: string | null
+          reject_reason?: string | null
+          rejection_reason?: string | null
+          scheduled_for?: string | null
+          status?: string
+          subtotal?: number
+          surge_fee?: number
+          tax_total?: number
+          tip_amount?: number
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remote_orders_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remote_orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rum_events: {
         Row: {
           admin_id: string | null
@@ -2032,6 +2338,11 @@ export type Database = {
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
+          delivery_fee_base: number | null
+          delivery_fee_flat: number | null
+          delivery_fee_free_km: number | null
+          delivery_fee_mode: string | null
+          delivery_fee_per_km: number | null
           facebook: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -2040,6 +2351,7 @@ export type Database = {
           is_composition_scheme: boolean | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
+          max_delivery_radius_km: number | null
           menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
           menu_border_radius: string | null
@@ -2056,11 +2368,16 @@ export type Database = {
           menu_slug: string | null
           menu_text_color: string | null
           operating_hours: Json | null
+          packaging_fee_mode: string | null
+          packaging_fee_value: number | null
           printer_width: string | null
           qr_payment_enabled: boolean
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
           receipt_qr_type: string | null
+          remote_order_modes: string | null
+          remote_ordering_enabled: boolean | null
+          remote_ordering_paused: boolean | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -2069,7 +2386,11 @@ export type Database = {
           show_order_type: boolean | null
           show_whatsapp: boolean | null
           store_status_override: string | null
+          surge_fee_amount: number | null
+          surge_fee_enabled: boolean | null
+          table_qr_protection: string | null
           telegram: string | null
+          tipping_enabled: boolean | null
           updated_at: string | null
           upi_id: string | null
           upi_name: string | null
@@ -2079,21 +2400,6 @@ export type Database = {
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
           whatsapp_share_mode: string | null
-          remote_ordering_enabled: boolean
-          remote_order_modes: string
-          remote_ordering_paused: boolean
-          table_qr_protection: string
-          delivery_fee_mode: string
-          delivery_fee_flat: number
-          delivery_fee_base: number
-          delivery_fee_per_km: number
-          delivery_fee_free_km: number
-          packaging_fee_mode: string
-          packaging_fee_value: number
-          surge_fee_enabled: boolean
-          surge_fee_amount: number
-          tipping_enabled: boolean
-          max_delivery_radius_km: number
         }
         Insert: {
           address?: string | null
@@ -2109,6 +2415,11 @@ export type Database = {
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
+          delivery_fee_base?: number | null
+          delivery_fee_flat?: number | null
+          delivery_fee_free_km?: number | null
+          delivery_fee_mode?: string | null
+          delivery_fee_per_km?: number | null
           facebook?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -2117,6 +2428,7 @@ export type Database = {
           is_composition_scheme?: boolean | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
+          max_delivery_radius_km?: number | null
           menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
           menu_border_radius?: string | null
@@ -2133,11 +2445,16 @@ export type Database = {
           menu_slug?: string | null
           menu_text_color?: string | null
           operating_hours?: Json | null
+          packaging_fee_mode?: string | null
+          packaging_fee_value?: number | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
           receipt_qr_type?: string | null
+          remote_order_modes?: string | null
+          remote_ordering_enabled?: boolean | null
+          remote_ordering_paused?: boolean | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -2146,7 +2463,11 @@ export type Database = {
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
           store_status_override?: string | null
+          surge_fee_amount?: number | null
+          surge_fee_enabled?: boolean | null
+          table_qr_protection?: string | null
           telegram?: string | null
+          tipping_enabled?: boolean | null
           updated_at?: string | null
           upi_id?: string | null
           upi_name?: string | null
@@ -2156,21 +2477,6 @@ export type Database = {
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
           whatsapp_share_mode?: string | null
-          remote_ordering_enabled?: boolean
-          remote_order_modes?: string
-          remote_ordering_paused?: boolean
-          table_qr_protection?: string
-          delivery_fee_mode?: string
-          delivery_fee_flat?: number
-          delivery_fee_base?: number
-          delivery_fee_per_km?: number
-          delivery_fee_free_km?: number
-          packaging_fee_mode?: string
-          packaging_fee_value?: number
-          surge_fee_enabled?: boolean
-          surge_fee_amount?: number
-          tipping_enabled?: boolean
-          max_delivery_radius_km?: number
         }
         Update: {
           address?: string | null
@@ -2186,6 +2492,11 @@ export type Database = {
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
+          delivery_fee_base?: number | null
+          delivery_fee_flat?: number | null
+          delivery_fee_free_km?: number | null
+          delivery_fee_mode?: string | null
+          delivery_fee_per_km?: number | null
           facebook?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -2194,6 +2505,7 @@ export type Database = {
           is_composition_scheme?: boolean | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
+          max_delivery_radius_km?: number | null
           menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
           menu_border_radius?: string | null
@@ -2210,11 +2522,16 @@ export type Database = {
           menu_slug?: string | null
           menu_text_color?: string | null
           operating_hours?: Json | null
+          packaging_fee_mode?: string | null
+          packaging_fee_value?: number | null
           printer_width?: string | null
           qr_payment_enabled?: boolean
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
           receipt_qr_type?: string | null
+          remote_order_modes?: string | null
+          remote_ordering_enabled?: boolean | null
+          remote_ordering_paused?: boolean | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -2223,7 +2540,11 @@ export type Database = {
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
           store_status_override?: string | null
+          surge_fee_amount?: number | null
+          surge_fee_enabled?: boolean | null
+          table_qr_protection?: string | null
           telegram?: string | null
+          tipping_enabled?: boolean | null
           updated_at?: string | null
           upi_id?: string | null
           upi_name?: string | null
@@ -2233,21 +2554,6 @@ export type Database = {
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
           whatsapp_share_mode?: string | null
-          remote_ordering_enabled?: boolean
-          remote_order_modes?: string
-          remote_ordering_paused?: boolean
-          table_qr_protection?: string
-          delivery_fee_mode?: string
-          delivery_fee_flat?: number
-          delivery_fee_base?: number
-          delivery_fee_per_km?: number
-          delivery_fee_free_km?: number
-          packaging_fee_mode?: string
-          packaging_fee_value?: number
-          surge_fee_enabled?: boolean
-          surge_fee_amount?: number
-          tipping_enabled?: boolean
-          max_delivery_radius_km?: number
         }
         Relationships: [
           {
@@ -3075,6 +3381,11 @@ export type Database = {
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
+          delivery_fee_base: number | null
+          delivery_fee_flat: number | null
+          delivery_fee_free_km: number | null
+          delivery_fee_mode: string | null
+          delivery_fee_per_km: number | null
           facebook: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -3083,6 +3394,7 @@ export type Database = {
           is_composition_scheme: boolean | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
+          max_delivery_radius_km: number | null
           menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
           menu_border_radius: string | null
@@ -3099,11 +3411,16 @@ export type Database = {
           menu_slug: string | null
           menu_text_color: string | null
           operating_hours: Json | null
+          packaging_fee_mode: string | null
+          packaging_fee_value: number | null
           printer_width: string | null
           qr_payment_enabled: boolean
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
           receipt_qr_type: string | null
+          remote_order_modes: string | null
+          remote_ordering_enabled: boolean | null
+          remote_ordering_paused: boolean | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -3112,7 +3429,11 @@ export type Database = {
           show_order_type: boolean | null
           show_whatsapp: boolean | null
           store_status_override: string | null
+          surge_fee_amount: number | null
+          surge_fee_enabled: boolean | null
+          table_qr_protection: string | null
           telegram: string | null
+          tipping_enabled: boolean | null
           updated_at: string | null
           upi_id: string | null
           upi_name: string | null
@@ -3140,6 +3461,10 @@ export type Database = {
       }
       get_my_profile_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
+      get_next_remote_order_number: {
+        Args: { p_admin_id: string; p_branch_id: string }
+        Returns: string
+      }
       get_public_feedback_form: { Args: { p_slug: string }; Returns: Json }
       get_public_item_categories: {
         Args: { p_admin_id: string }
