@@ -88,9 +88,41 @@ const CRMFeedbackTab: React.FC = () => {
 
       let q = (supabase as any).from('feedback_submissions').select('*').eq('admin_id', adminProfileId).order('submitted_at', { ascending: false }).limit(500);
       if (!isAllBranchesView && operatingBranchId) q = q.eq('branch_id', operatingBranchId);
-      const { data: rows, error } = await q;
-      if (error) throw error;
-      setSubs(rows || []);
+      const { data: rows } = await q;
+
+      // Also fetch online order ratings from remote_orders
+      let remoteFeedbackQ = (supabase as any)
+        .from('remote_orders')
+        .select('id, admin_id, branch_id, customer_name, customer_phone, order_number, rating, feedback_text, created_at, updated_at')
+        .eq('admin_id', adminProfileId)
+        .not('rating', 'is', null)
+        .order('updated_at', { ascending: false });
+      if (!isAllBranchesView && operatingBranchId) remoteFeedbackQ = remoteFeedbackQ.eq('branch_id', operatingBranchId);
+      const { data: remoteRatings } = await remoteFeedbackQ;
+
+      const mergedSubs: Submission[] = [...(rows || [])];
+
+      if (remoteRatings && remoteRatings.length > 0) {
+        remoteRatings.forEach((ro: any) => {
+          mergedSubs.push({
+            id: `remote-${ro.id}`,
+            form_id: 'online-order',
+            admin_id: ro.admin_id,
+            branch_id: ro.branch_id,
+            customer_mobile: ro.customer_phone || 'N/A',
+            customer_name: ro.customer_name || 'Online Customer',
+            responses: { 'Order': `#${ro.order_number}`, 'Feedback': ro.feedback_text || 'Rating submitted via Order Tracker' },
+            overall_rating: Number(ro.rating) || null,
+            status: 'reviewed',
+            reply_notes: null,
+            replied_at: null,
+            submitted_at: ro.updated_at || ro.created_at
+          });
+        });
+      }
+
+      mergedSubs.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+      setSubs(mergedSubs);
     } catch (e: any) {
       toast({ title: 'Failed to load feedback', description: e.message, variant: 'destructive' });
     } finally {

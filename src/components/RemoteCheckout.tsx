@@ -228,11 +228,24 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
 
       if (insertErr) throw insertErr;
 
-      // Upsert customer
-      await (supabase as any).from('customers').upsert(
-        { admin_id: adminId, branch_id: branchId, phone: phone, name: name },
-        { onConflict: 'admin_id,phone' }
-      );
+      // Upsert customer in customers table
+      try {
+        const nowIso = new Date().toISOString();
+        await (supabase as any).from('customers').upsert(
+          {
+            admin_id: adminId,
+            branch_id: branchId,
+            phone: phone.trim(),
+            name: name.trim(),
+            last_visit: nowIso,
+            updated_at: nowIso,
+            created_at: nowIso
+          },
+          { onConflict: 'admin_id,phone' }
+        );
+      } catch (custErr) {
+        console.warn('[RemoteCheckout] Customer upsert notice:', custErr);
+      }
 
       toast({ title: "Order Placed successfully!" });
       onOrderPlaced(insertedOrder.id);

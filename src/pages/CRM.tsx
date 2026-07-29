@@ -142,65 +142,105 @@ const CRM: React.FC = () => {
       }
 
       // Clean, fail-safe query for all admin customers
-      const { data, error } = await supabase
+      const custMap = new Map<string, any>();
+
+      // Source 1: customers table
+      const { data: dbCustomers } = await supabase
         .from('customers')
         .select('*')
         .eq('admin_id', adminId)
         .order('last_visit', { ascending: false });
 
-      if (error) {
-        console.error('[CRM] Error fetching customers from Supabase:', error);
-        throw error;
-      }
-
-      let mappedCustomers: Customer[] = [];
-
-      if (data && data.length > 0) {
-        let filteredData = data;
+      if (dbCustomers) {
+        let filtered = dbCustomers;
         if (branchFilterId) {
-          filteredData = data.filter((c: any) => !c.branch_id || c.branch_id === branchFilterId);
+          filtered = dbCustomers.filter((c: any) => !c.branch_id || c.branch_id === branchFilterId);
         }
-        mappedCustomers = filteredData.map((c: any) => ({
-          ...c,
-          visit_count: c.visit_count ?? 0,
-          total_spent: Number(c.total_spent) || 0,
-          last_visit: c.last_visit ?? c.created_at
-        }));
+        filtered.forEach((c: any) => {
+          const phone = c.phone?.replace(/[\s\-\(\)\+]/g, '') || '';
+          if (phone.length >= 10) {
+            custMap.set(phone, {
+              ...c,
+              phone,
+              name: c.name || `Customer (${phone.slice(-4)})`,
+              visit_count: c.visit_count ?? 0,
+              total_spent: Number(c.total_spent) || 0,
+              last_visit: c.last_visit ?? c.created_at
+            });
+          }
+        });
       }
 
-      // Fallback: Aggregate customer records from bills if customer list is empty
-      if (mappedCustomers.length === 0) {
-        let billsQ: any = supabase
-          .from('bills')
-          .select('customer_name, customer_mobile, total_amount, created_at')
-          .eq('admin_id', adminId)
-          .not('customer_mobile', 'is', null);
-        if (branchFilterId) billsQ = billsQ.eq('branch_id', branchFilterId);
-        const { data: billsData } = await billsQ;
+      // Source 2: remote_orders table (online orders)
+      let remoteQ: any = (supabase as any)
+        .from('remote_orders')
+        .select('customer_name, customer_phone, total_amount, created_at, branch_id')
+        .eq('admin_id', adminId)
+        .not('customer_phone', 'is', null);
+      if (branchFilterId) remoteQ = remoteQ.eq('branch_id', branchFilterId);
+      const { data: remoteData } = await remoteQ;
 
-        if (billsData && billsData.length > 0) {
-          const custMap = new Map<string, any>();
-          billsData.forEach((b: any) => {
-            const phone = b.customer_mobile?.replace(/[\s\-\(\)\+]/g, '') || '';
-            if (phone.length >= 10) {
-              const existing = custMap.get(phone) || {
+      if (remoteData && remoteData.length > 0) {
+        remoteData.forEach((ro: any) => {
+          const phone = ro.customer_phone?.replace(/[\s\-\(\)\+]/g, '') || '';
+          if (phone.length >= 10) {
+            const existing = custMap.get(phone);
+            if (existing) {
+              if (ro.customer_name && (!existing.name || existing.name.startsWith('Customer ('))) {
+                existing.name = ro.customer_name;
+              }
+              // If visit_count wasn't manually tracked, add up
+              if (ro.created_at > existing.last_visit) existing.last_visit = ro.created_at;
+            } else {
+              custMap.set(phone, {
+                id: `remote-cust-${phone}`,
+                phone,
+                name: ro.customer_name || `Customer (${phone.slice(-4)})`,
+                visit_count: 1,
+                total_spent: Number(ro.total_amount || 0),
+                last_visit: ro.created_at,
+                created_at: ro.created_at
+              });
+            }
+          }
+        });
+      }
+
+      // Source 3: bills table (POS bills)
+      let billsQ: any = supabase
+        .from('bills')
+        .select('customer_name, customer_mobile, total_amount, created_at, branch_id')
+        .eq('admin_id', adminId)
+        .not('customer_mobile', 'is', null);
+      if (branchFilterId) billsQ = billsQ.eq('branch_id', branchFilterId);
+      const { data: billsData } = await billsQ;
+
+      if (billsData && billsData.length > 0) {
+        billsData.forEach((b: any) => {
+          const phone = b.customer_mobile?.replace(/[\s\-\(\)\+]/g, '') || '';
+          if (phone.length >= 10) {
+            const existing = custMap.get(phone);
+            if (existing) {
+              if (b.customer_name && (!existing.name || existing.name.startsWith('Customer ('))) {
+                existing.name = b.customer_name;
+              }
+              if (b.created_at > existing.last_visit) existing.last_visit = b.created_at;
+            } else {
+              custMap.set(phone, {
                 id: `bill-cust-${phone}`,
                 phone,
                 name: b.customer_name || `Customer (${phone.slice(-4)})`,
-                visit_count: 0,
-                total_spent: 0,
+                visit_count: 1,
+                total_spent: Number(b.total_amount || 0),
                 last_visit: b.created_at,
                 created_at: b.created_at
-              };
-              existing.visit_count += 1;
-              existing.total_spent += Number(b.total_amount || 0);
-              if (b.created_at > existing.last_visit) existing.last_visit = b.created_at;
-              custMap.set(phone, existing);
+              });
             }
-          });
-          mappedCustomers = Array.from(custMap.values()).sort((a, b) => new Date(b.last_visit).getTime() - new Date(a.last_visit).getTime());
-        }
+          }
+        });
       }
+
+      const mappedCustomers = Array.from(custMap.values()).sort((a, b) => new Date(b.last_visit).getTime() - new Date(a.last_visit).getTime());
 
       setCustomers(mappedCustomers);
       if (mappedCustomers.length > 0) {

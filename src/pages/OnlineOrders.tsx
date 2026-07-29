@@ -311,12 +311,56 @@ export default function OnlineOrders() {
         payment_reference: (billData as any)?.id || null
       });
 
+      // Update customer record in customers table for CRM
+      try {
+        const phone = order.customer_phone?.trim();
+        const custName = order.customer_name?.trim();
+        if (phone && phone.length >= 10) {
+          const nowIso = new Date().toISOString();
+          const { data: existingCust } = await (supabase as any)
+            .from('customers')
+            .select('id, visit_count, total_spent, name')
+            .eq('admin_id', adminId)
+            .eq('phone', phone)
+            .maybeSingle();
+
+          if (existingCust) {
+            await (supabase as any)
+              .from('customers')
+              .update({
+                name: custName || existingCust.name,
+                visit_count: (existingCust.visit_count || 0) + 1,
+                total_spent: (Number(existingCust.total_spent) || 0) + total,
+                last_visit: nowIso,
+                updated_at: nowIso
+              })
+              .eq('id', existingCust.id);
+          } else {
+            await (supabase as any)
+              .from('customers')
+              .insert({
+                admin_id: adminId,
+                branch_id: branchId,
+                phone: phone,
+                name: custName,
+                visit_count: 1,
+                total_spent: total,
+                last_visit: nowIso,
+                updated_at: nowIso,
+                created_at: nowIso
+              });
+          }
+        }
+      } catch (cErr) {
+        console.warn('Customer stats update error:', cErr);
+      }
+
       toast({ title: '✅ Order Completed & Bill Created', description: `Bill #${nextBillNo} created. Revenue added to reports.` });
       setPaymentOrder(null);
       setPaymentDiscount(0);
       setPaymentMode({ 'Cash': 0, 'UPI': 0, 'Card': 0, 'GPay': 0 });
       
-      // Signal reports to refresh
+      // Signal reports and CRM to refresh
       window.dispatchEvent(new CustomEvent('bills-updated'));
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Payment failed', description: err.message });
