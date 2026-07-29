@@ -72,15 +72,28 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/settings',         icon: Settings,        label: 'Settings',         page: 'settings',      bottomNav: true },
 ];
 
-/** Unique page keys that appear in the bottom-nav customiser. */
-export const BOTTOM_NAV_OPTIONS: { id: PageKey; label: string }[] = (() => {
+export const getFilteredNavItems = (businessType: string | null | undefined): NavItem[] => {
+  const type = businessType || 'restaurant';
+  if (type === 'retail' || type === 'pharmacy' || type === 'services') {
+    const hiddenPages = ['kitchen', 'waiterCompanion', 'serviceArea', 'tables', 'tableBilling', 'qrMenu'];
+    return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
+  }
+  return ALL_NAV_ITEMS;
+};
+
+/** Unique page keys that appear in the bottom-nav customiser based on business type. */
+export const getBottomNavOptions = (businessType: string | null | undefined): { id: PageKey; label: string }[] => {
+  const items = getFilteredNavItems(businessType);
   const seen = new Set<PageKey>();
   const out: { id: PageKey; label: string }[] = [];
-  for (const item of ALL_NAV_ITEMS) {
+  for (const item of items) {
     if (!item.bottomNav) continue;
     if (seen.has(item.page)) continue;
     seen.add(item.page);
     out.push({ id: item.page, label: item.shortLabel || item.label });
   }
   return out;
-})();
+};
+
+// Kept for backward compatibility, but components should use getBottomNavOptions
+export const BOTTOM_NAV_OPTIONS = getBottomNavOptions('restaurant');

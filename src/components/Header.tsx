@@ -13,11 +13,11 @@ import { LogOut, User, Hotel, Menu, Sun, Moon, ShieldAlert } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { BranchSwitcher } from './BranchSwitcher';
-import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { ALL_NAV_ITEMS, getFilteredNavItems } from '@/config/navItems';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { ContactSupportDialog } from './ContactSupportDialog';
 import { LocalMeshStatusBadge } from './LocalMeshStatusBadge';
 
-const allNavItems = ALL_NAV_ITEMS;
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -54,6 +54,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
   const { t } = useTranslation();
   const { profile, signOut } = useAuth();
   const { hasAccess, loading: permLoading } = useUserPermissions();
+  const { settings } = useBranchSettings();
   const location = useLocation();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -97,7 +98,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
   };
 
   // Filter nav items based on permissions (empty for super_admin)
-  const navItems = isSuperAdmin ? [] : (permLoading ? [] : ALL_NAV_ITEMS.filter(item => {
+  const allNavItems = getFilteredNavItems(settings?.business_type);
+  const navItems = isSuperAdmin ? [] : (permLoading ? [] : allNavItems.filter(item => {
     if (item.to === '/users' && profile?.role === 'user') return false;
     if (!hasAccess(item.page)) return false;
     if (profile?.client_permissions && profile.client_permissions[item.to] === false) {

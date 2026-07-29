@@ -4,7 +4,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useBranch } from '@/contexts/BranchContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { ALL_NAV_ITEMS, getFilteredNavItems } from '@/config/navItems';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { MoreHorizontal, CreditCard, Users as UsersIcon, Database, Settings, FileText, Shield, Activity, LayoutDashboard, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +37,6 @@ const labelMap: Record<string, string> = {
   '/online-orders': 'nav.onlineOrders',
 };
 
-const allNavItems = ALL_NAV_ITEMS.filter(i => i.bottomNav);
 const MAX_BOTTOM_VISIBLE = 5;
 
 // Lightweight haptic tap on Android WebView / iOS Safari where supported.
@@ -75,6 +75,8 @@ export const BottomNavigation: React.FC = () => {
   const navigate = useNavigate();
   const { hasAccess, loading } = useUserPermissions();
   const { operatingBranchId } = useBranch();
+  const { settings } = useBranchSettings();
+  const allNavItems = getFilteredNavItems(settings?.business_type).filter(i => i.bottomNav);
   const [visiblePages, setVisiblePages] = useState<string[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { t } = useTranslation();

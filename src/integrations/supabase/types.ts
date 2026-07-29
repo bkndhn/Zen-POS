@@ -2332,6 +2332,8 @@ export type Database = {
           bill_font_family: string | null
           bill_font_scale: number | null
           branch_id: string | null
+          business_type: string | null
+          enabled_modules: Json | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
           composition_rate: number | null
@@ -2409,6 +2411,8 @@ export type Database = {
           bill_font_family?: string | null
           bill_font_scale?: number | null
           branch_id?: string | null
+          business_type?: string | null
+          enabled_modules?: Json | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
           composition_rate?: number | null
@@ -2486,6 +2490,8 @@ export type Database = {
           bill_font_family?: string | null
           bill_font_scale?: number | null
           branch_id?: string | null
+          business_type?: string | null
+          enabled_modules?: Json | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
           composition_rate?: number | null
@@ -3375,6 +3381,8 @@ export type Database = {
           bill_font_family: string | null
           bill_font_scale: number | null
           branch_id: string | null
+          business_type: string | null
+          enabled_modules: Json | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
           composition_rate: number | null

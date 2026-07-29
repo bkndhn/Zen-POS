@@ -14,7 +14,8 @@ interface UserPermission {
   has_access: boolean;
 }
 
-import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { ALL_NAV_ITEMS, getFilteredNavItems } from '@/config/navItems';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 
 interface UserPermissionsProps {
   users: UserProfile[];
@@ -26,6 +27,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
   const { profile } = useAuth();
   const { hasAccess } = useUserPermissions();
+  const { settings } = useBranchSettings();
   const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +35,8 @@ export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
   const AVAILABLE_PAGES = React.useMemo(() => {
     const seen = new Set<string>();
     const out: { name: string; label: string; description: string }[] = [];
-    for (const item of ALL_NAV_ITEMS) {
+    const allNavItems = getFilteredNavItems(settings?.business_type);
+    for (const item of allNavItems) {
       if (item.page === 'users') continue; // Users page access is role-based, not toggled
       if (seen.has(item.page as string)) continue;
       seen.add(item.page as string);
@@ -47,7 +50,7 @@ export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
       out.push({ name: 'bottomNavCustomize', label: 'Bottom Nav Customise', description: 'Customise Bottom Navigation' });
     }
     return out;
-  }, []);
+  }, [settings?.business_type]);
 
   // Filter pages based on the viewer's role
   // Super Admin sees all pages

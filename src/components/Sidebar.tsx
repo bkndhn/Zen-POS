@@ -4,10 +4,11 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { Users, Settings, ShieldAlert, CreditCard, Shield } from 'lucide-react';
-import { ALL_NAV_ITEMS } from '@/config/navItems';
+import { ALL_NAV_ITEMS, getFilteredNavItems } from '@/config/navItems';
 import { useTranslation } from 'react-i18next';
 import { ContactSupportDialog } from './ContactSupportDialog';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -35,7 +36,7 @@ const labelMap: Record<string, string> = {
   '/settings': 'nav.settings'
 };
 
-const allNavItems = ALL_NAV_ITEMS;
+
 
 
 
@@ -49,7 +50,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
   const { t } = useTranslation();
+  const { settings } = useBranchSettings();
   const [supportOpen, setSupportOpen] = useState(false);
+  const allNavItems = getFilteredNavItems(settings?.business_type);
 
   if (!profile || loading) return null;
 

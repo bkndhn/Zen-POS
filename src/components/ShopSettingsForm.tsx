@@ -51,6 +51,7 @@ export const ShopSettingsForm = () => {
     const [contactNumber, setContactNumber] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [printerWidth, setPrinterWidth] = useState<'58mm' | '80mm'>('58mm');
+    const [businessType, setBusinessType] = useState('restaurant');
     const [autoCut, setAutoCut] = useState<boolean>(true);
     const [paperSavingMode, setPaperSavingMode] = useState<boolean>(false);
     const [upiId, setUpiId] = useState('');
@@ -104,6 +105,7 @@ export const ShopSettingsForm = () => {
                 setContactNumber(parsed.contactNumber || '');
                 setLogoUrl(parsed.logoUrl || '');
                 setPrinterWidth(parsed.printerWidth || '58mm');
+                if (parsed.businessType) setBusinessType(parsed.businessType);
                 if (parsed.autoCut !== undefined) setAutoCut(parsed.autoCut);
                 if (parsed.paperSavingMode !== undefined) setPaperSavingMode(parsed.paperSavingMode);
                 setFacebook(parsed.facebook || '');
@@ -182,7 +184,9 @@ export const ShopSettingsForm = () => {
                 setContactNumber(data.contact_number || '');
                 setLogoUrl(data.logo_url || '');
                 setPrinterWidth((data.printer_width as '58mm' | '80mm') || '58mm');
+                setBusinessType(data.business_type || 'restaurant');
 
+                setAutoCut(data.auto_cut ?? true);
                 setFacebook(data.facebook || '');
                 setShowFacebook(data.show_facebook !== false);
                 setInstagram(data.instagram || '');
@@ -224,6 +228,7 @@ export const ShopSettingsForm = () => {
                     contactNumber: data.contact_number || '',
                     logoUrl: data.logo_url || '',
                     printerWidth: data.printer_width || '58mm',
+                    businessType: data.business_type || 'restaurant',
                     facebook: data.facebook || '',
                     showFacebook: data.show_facebook !== false,
                     instagram: data.instagram || '',
@@ -241,6 +246,7 @@ export const ShopSettingsForm = () => {
                     telegram: data.telegram || '',
                     receiptQrEnabled: data.receipt_qr_enabled || false,
                     receiptQrType: data.receipt_qr_type || 'payment',
+                    autoCut: data.auto_cut ?? true,
                     paperSavingMode: localStorage.getItem('hotel_pos_paper_saving_mode') === 'true',
                 };
                 const headerKey = operatingBranchId ? `hotel_pos_bill_header_${operatingBranchId}` : 'hotel_pos_bill_header';
@@ -433,6 +439,8 @@ export const ShopSettingsForm = () => {
                 contact_number: sanitizeString(contactNumber || '', 20) || null,
                 logo_url: logoUrl || null,
                 printer_width: printerWidth,
+                business_type: businessType,
+                auto_cut: autoCut,
                 facebook: cleanUrl(facebook),
                 show_facebook: showFacebook,
                 instagram: cleanUrl(instagram),
@@ -515,6 +523,7 @@ export const ShopSettingsForm = () => {
             // Update Local Cache
             const cacheData = {
                 shopName, address, contactNumber, logoUrl, printerWidth, autoCut, paperSavingMode,
+                businessType,
                 facebook, showFacebook, instagram, showInstagram, whatsapp, showWhatsapp, visiblePages,
                 menuSlug, menuShowShopName, menuShowAddress, menuShowPhone,
                 upiId, upiName, qrPaymentEnabled, telegram, receiptQrEnabled, receiptQrType
@@ -575,6 +584,29 @@ export const ShopSettingsForm = () => {
                             value={shopName}
                             onChange={e => setShopName(e.target.value)}
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="businessType" className="flex items-center gap-2">
+                            Business Type
+                            {profile?.role !== 'super_admin' && (
+                                <Badge variant="secondary" className="text-[10px]">Read Only</Badge>
+                            )}
+                        </Label>
+                        <Select 
+                            value={businessType} 
+                            onValueChange={setBusinessType}
+                            disabled={profile?.role !== 'super_admin'}
+                        >
+                            <SelectTrigger id="businessType">
+                                <SelectValue placeholder="Select business type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="restaurant">Restaurant / Food</SelectItem>
+                                <SelectItem value="retail">Retail / Supermarket</SelectItem>
+                                <SelectItem value="pharmacy">Pharmacy / Medical</SelectItem>
+                                <SelectItem value="services">Services</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <Label>Contact Number</Label>

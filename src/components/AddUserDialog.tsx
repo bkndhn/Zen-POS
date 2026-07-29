@@ -9,6 +9,8 @@ import { toast } from '@/hooks/use-toast';
 import { Plus, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isStrongPassword, isValidEmail } from '@/utils/securityUtils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddUserDialogProps {
   onUserAdded: () => void;
@@ -56,11 +58,12 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     shopName: '',
     address: '',
     mobileNumber: '',
+    businessType: 'restaurant',
   });
 
   const resetForm = () => setFormData({
     email: '', password: '', name: '', role: defaultRole,
-    hotelName: '', shopName: '', address: '', mobileNumber: '',
+    hotelName: '', shopName: '', address: '', mobileNumber: '', businessType: 'restaurant',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +104,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
     setLoading(true);
     try {
-      const { error } = await signUp(
+      const { error, user } = await signUp(
         formData.email,
         formData.password,
         formData.name,
@@ -112,6 +115,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
           mobileNumber: formData.mobileNumber.trim(),
           shopName: formData.role === 'admin' ? formData.shopName.trim() : undefined,
           address: formData.role === 'admin' ? formData.address.trim() : undefined,
+          businessType: formData.role === 'admin' ? formData.businessType : undefined,
         }
       );
 
@@ -120,6 +124,18 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
           throw new Error('An account with this email already exists.');
         }
         throw error;
+      }
+
+      // Update shop_settings with business_type for the new tenant
+      if (isSuperAdmin && formData.role === 'admin' && user?.id) {
+        const { error: settingsError } = await supabase
+          .from('shop_settings')
+          .update({ business_type: formData.businessType })
+          .eq('user_id', user.id);
+        
+        if (settingsError) {
+          console.error('Failed to update shop_settings business_type:', settingsError);
+        }
       }
 
       toast({
@@ -241,6 +257,20 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
           {formData.role === 'admin' && (
             <>
+              <div className="space-y-2">
+                <Label htmlFor="businessType">Business Type</Label>
+                <Select value={formData.businessType} onValueChange={(val) => setFormData(p => ({ ...p, businessType: val }))}>
+                  <SelectTrigger id="businessType">
+                    <SelectValue placeholder="Select business type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="restaurant">Restaurant / Food</SelectItem>
+                    <SelectItem value="retail">Retail / Supermarket</SelectItem>
+                    <SelectItem value="pharmacy">Pharmacy / Medical</SelectItem>
+                    <SelectItem value="services">Services</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="hotelName">Hotel Name</Label>
                 <Input id="hotelName" value={formData.hotelName} onChange={(e) => setFormData(p => ({ ...p, hotelName: e.target.value }))} required placeholder="Enter hotel name" />

@@ -47,8 +47,8 @@ interface AuthContextType {
     role?: string,
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
-  ) => Promise<{ error: any }>;
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string; businessType?: string }
+  ) => Promise<{ error: any; user?: any }>;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -626,7 +626,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: string = 'user',
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string; businessType?: string }
   ) => {
     devLog('Sign up attempt');
 
@@ -636,6 +636,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (extras?.mobileNumber) userData.mobile_number = extras.mobileNumber;
     if (extras?.shopName && role === 'admin') userData.shop_name = extras.shopName;
     if (extras?.address && role === 'admin') userData.address = extras.address;
+    if (extras?.businessType && role === 'admin') userData.business_type = extras.businessType;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -687,7 +688,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     devLog('Sign up result:', error ? 'Error' : 'Success');
-    return { error };
+    return { error, user: data?.user };
   };
 
   const signIn = async (email: string, password: string, captchaToken?: string) => {
