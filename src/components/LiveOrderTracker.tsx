@@ -123,6 +123,23 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
 
       <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6 sm:border sm:border-t-0 sm:rounded-b-lg bg-background">
         
+        {/* Pickup Security PIN Card */}
+        {!isCancelled && order.pickup_pin && (
+          <Card className="bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-amber-500/5 border-amber-500/30">
+            <CardContent className="p-4 text-center space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1.5">
+                🔐 Pickup Verification PIN
+              </div>
+              <div className="text-3xl font-extrabold tracking-widest text-amber-600 dark:text-amber-300 font-mono bg-background/80 py-2 px-4 rounded-xl border border-amber-500/30 inline-block shadow-sm">
+                {order.pickup_pin}
+              </div>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                Show this 4-digit PIN at counter to claim your order, or share it with the person collecting on your behalf.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Animated Timeline */}
         <Card>
           <CardHeader className="pb-3">

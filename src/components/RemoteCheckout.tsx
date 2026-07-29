@@ -215,6 +215,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
         payment_method: payMethod,
         status: 'pending',
+        pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
         // Store display qty (divided by base_value) so the KDS/tracker shows correct numbers
         items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
         is_paid: false

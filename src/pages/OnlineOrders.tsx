@@ -59,6 +59,12 @@ export default function OnlineOrders() {
   const [isCompletingPayment, setIsCompletingPayment] = useState(false);
   const [paymentDiscount, setPaymentDiscount] = useState(0);
   
+  // Delegate & Pickup Security PIN state
+  const [collectorName, setCollectorName] = useState('');
+  const [collectorPhone, setCollectorPhone] = useState('');
+  const [isDelegatePickup, setIsDelegatePickup] = useState(false);
+  const [enteredPin, setEnteredPin] = useState('');
+  
   const audioContext = useRef<AudioContext | null>(null);
 
   // Computed Values
@@ -303,12 +309,15 @@ export default function OnlineOrders() {
 
       if (rpcError) throw rpcError;
 
-      // Mark remote order as completed with bill reference
+      // Mark remote order as completed with bill reference and collector audit info
       await updateOrderStatus(order.id, 'completed', {
         completed_at: new Date().toISOString(),
         payment_mode: primaryMode === 'Cash' ? 'pay_on_pickup' : 'paid',
         is_paid: true,
-        payment_reference: (billData as any)?.id || null
+        payment_reference: (billData as any)?.id || null,
+        collected_by_name: isDelegatePickup ? collectorName.trim() : order.customer_name,
+        collected_by_phone: isDelegatePickup ? collectorPhone.trim() : order.customer_phone,
+        is_delegate_pickup: isDelegatePickup
       });
 
       // Update customer record in customers table for CRM
@@ -629,6 +638,10 @@ export default function OnlineOrders() {
                 const total = Number(order.total_amount);
                 setPaymentMode({ 'Cash': total, 'UPI': 0, 'Card': 0, 'GPay': 0 });
                 setPaymentDiscount(0);
+                setCollectorName('');
+                setCollectorPhone('');
+                setIsDelegatePickup(false);
+                setEnteredPin('');
               }}>
                 <CheckCircle2 className="w-5 h-5 mr-2" /> Complete & Pay
               </Button>
@@ -651,6 +664,10 @@ export default function OnlineOrders() {
                 const total = Number(order.total_amount);
                 setPaymentMode({ 'Cash': 0, 'UPI': total, 'Card': 0, 'GPay': 0 });
                 setPaymentDiscount(0);
+                setCollectorName('');
+                setCollectorPhone('');
+                setIsDelegatePickup(false);
+                setEnteredPin('');
               }}>
                 <CheckCircle2 className="w-5 h-5 mr-2" /> Complete & Pay
               </Button>
@@ -1089,6 +1106,23 @@ export default function OnlineOrders() {
                 )}
               </div>
 
+              {/* Delegate / Collector Security Audit */}
+              {(viewDetailOrder.collected_by_name || viewDetailOrder.pickup_pin) && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm space-y-1">
+                  <div className="font-semibold flex items-center justify-between text-amber-900 dark:text-amber-200">
+                    <span className="flex items-center gap-1">🔐 Pickup Security Audit</span>
+                    {viewDetailOrder.pickup_pin && <Badge variant="outline" className="font-mono font-bold">PIN: {viewDetailOrder.pickup_pin}</Badge>}
+                  </div>
+                  {viewDetailOrder.is_delegate_pickup && viewDetailOrder.collected_by_name ? (
+                    <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                      ⚠️ Collected by Delegate (Friend/Relative): {viewDetailOrder.collected_by_name} ({viewDetailOrder.collected_by_phone || 'No phone'})
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">Collected by customer directly</div>
+                  )}
+                </div>
+              )}
+
               {/* Rejection reason */}
               {viewDetailOrder.rejection_reason && (
                 <div className="bg-red-50 dark:bg-red-900/20 rounded p-3 text-sm text-red-700 dark:text-red-300">
@@ -1144,6 +1178,87 @@ export default function OnlineOrders() {
                       <span>Delivery Fee</span><span>₹{Number(paymentOrder.delivery_fee).toFixed(2)}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Handover & Pickup Verification Section */}
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-sm flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                      <span>🔐 Pickup PIN Verification</span>
+                      {paymentOrder.pickup_pin && (
+                        <Badge variant="outline" className="font-mono font-bold bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                          PIN: {paymentOrder.pickup_pin}
+                        </Badge>
+                      )}
+                    </div>
+                    {enteredPin && enteredPin === paymentOrder.pickup_pin && (
+                      <Badge className="bg-green-600 text-white flex items-center gap-1">
+                        ✓ PIN Verified
+                      </Badge>
+                    )}
+                  </div>
+
+                  {paymentOrder.pickup_pin && (
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Enter 4-digit PIN from customer"
+                        maxLength={4}
+                        value={enteredPin}
+                        onChange={e => setEnteredPin(e.target.value.trim())}
+                        className="h-9 text-sm font-mono tracking-widest text-center max-w-[200px]"
+                      />
+                      {enteredPin && enteredPin === paymentOrder.pickup_pin && (
+                        <span className="text-xs text-green-600 font-semibold">✓ Correct PIN</span>
+                      )}
+                      {enteredPin && enteredPin !== paymentOrder.pickup_pin && (
+                        <span className="text-xs text-red-500 font-medium">Incorrect PIN</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Delegate / Third-party Collector Toggle */}
+                  <div className="border-t border-amber-500/20 pt-2.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="delegate-toggle" className="text-xs font-semibold cursor-pointer flex items-center gap-1.5">
+                        <span>👤 Collecting on behalf of customer? (Friend / Relative)</span>
+                      </Label>
+                      <Switch
+                        id="delegate-toggle"
+                        checked={isDelegatePickup}
+                        onCheckedChange={checked => {
+                          setIsDelegatePickup(checked);
+                          if (!checked) {
+                            setCollectorName('');
+                            setCollectorPhone('');
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {isDelegatePickup && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground mb-1 block">Collector Name *</Label>
+                          <Input
+                            placeholder="e.g. Rahul (Friend)"
+                            value={collectorName}
+                            onChange={e => setCollectorName(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground mb-1 block">Collector Mobile *</Label>
+                          <Input
+                            placeholder="10-digit mobile"
+                            maxLength={10}
+                            value={collectorPhone}
+                            onChange={e => setCollectorPhone(e.target.value.replace(/\D/g, ''))}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Discount */}
