@@ -1,5 +1,6 @@
 import { isBillNumberHidden } from './printerConfig';
 import QRCode from 'qrcode';
+import { getStoredFooterMessage } from './billFontUtils';
 
 // ESC/POS Commands
 const ESC = 0x1B;
@@ -651,7 +652,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   if ((data as any).billBottomText) {
     commands.push(textToBytes((data as any).billBottomText));
   } else {
-    commands.push(textToBytes('Thank you!'));
+    commands.push(textToBytes(getStoredFooterMessage()));
   }
   commands.push(FEED_LINE);
 

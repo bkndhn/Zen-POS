@@ -33,6 +33,7 @@ const labelMap: Record<string, string> = {
   '/qr-menu': 'nav.qrMenu',
   '/users': 'nav.users',
   '/settings': 'nav.settings',
+  '/online-orders': 'nav.onlineOrders',
 };
 
 const allNavItems = ALL_NAV_ITEMS.filter(i => i.bottomNav);
@@ -65,6 +66,7 @@ const routePrefetch: Record<string, () => Promise<any>> = {
   '/stock-reports': () => import('@/pages/StockReports'),
   '/stock-transfers': () => import('@/pages/StockTransfers'),
   '/users': () => import('@/pages/Users'),
+  '/online-orders': () => import('@/pages/OnlineOrders'),
 };
 
 export const BottomNavigation: React.FC = () => {
@@ -106,7 +108,12 @@ export const BottomNavigation: React.FC = () => {
         const { data } = await query.maybeSingle();
         if (cancelled) return;
         if (data?.visible_nav_pages && Array.isArray(data.visible_nav_pages)) {
-          const savedPages = data.visible_nav_pages as string[];
+          let savedPages = data.visible_nav_pages as string[];
+          const isOnlineOrdersAllowed = hasAccess('onlineOrders') && profile?.client_permissions?.['/online-orders'] !== false && profile?.client_permissions?.['allow_online_orders'] !== false;
+          const initKey = `online_orders_init_${targetUserId}`;
+          if (isOnlineOrdersAllowed && !savedPages.includes('onlineOrders') && localStorage.getItem(initKey) !== 'dismissed') {
+            savedPages = [...savedPages, 'onlineOrders'];
+          }
           setVisiblePages(savedPages);
           if (saved) {
             try {
@@ -138,14 +145,17 @@ export const BottomNavigation: React.FC = () => {
       window.removeEventListener('nav-settings-updated', handleUpdate);
       window.removeEventListener('shop-settings-updated', handleShopUpdate);
     };
-  }, [profile?.user_id, profile?.role, profile?.admin_id, operatingBranchId]);
+  }, [profile?.user_id, profile?.role, profile?.admin_id, operatingBranchId, hasAccess, profile?.client_permissions]);
 
   const navItems = useMemo(() => {
     if (!profile) return [];
     return allNavItems
       .filter(item => {
         if (!hasAccess(item.page)) return false;
-        if (profile.client_permissions && profile.client_permissions[item.to] === false) return false;
+        if (profile.client_permissions) {
+          if (profile.client_permissions[item.to] === false) return false;
+          if (item.page === 'onlineOrders' && profile.client_permissions['allow_online_orders'] === false) return false;
+        }
         return true;
       })
       .filter(item => visiblePages.length === 0 || visiblePages.includes(item.page as string));

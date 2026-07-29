@@ -3192,6 +3192,7 @@ const PublicMenu = () => {
                     isOpen={showRemoteTracker}
                     onClose={() => setShowRemoteTracker(false)}
                     orderId={activeRemoteOrderId}
+                    shopSettings={rawShopSettings as any}
                     onOrderComplete={() => {
                         setShowRemoteTracker(false);
                         setActiveRemoteOrderId(null);

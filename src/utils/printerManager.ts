@@ -1201,6 +1201,19 @@ class PrinterManager {
                 return false;
             }
         }
+
+        const win = window as any;
+        if (typeof win.AndroidPrinter !== 'undefined' && typeof win.AndroidPrinter.printRawBytes === 'function') {
+            try {
+                const hex = Array.from(bytesData).map(b => b.toString(16).padStart(2, '0')).join('');
+                win.AndroidPrinter.printRawBytes(hex);
+                this.nativeConnected = true;
+                return true;
+            } catch (error: any) {
+                this.recordLog('error', 'fail', undefined, `Android Webview raw print failed: ${String(error?.message || error)}`);
+                return false;
+            }
+        }
         // Try routed BT print first
         if (targetDeviceName) {
             const nav = navigator as any;
@@ -1291,6 +1304,10 @@ class PrinterManager {
                 const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
                 const address = localStorage.getItem('hotel_pos_bluetooth_printer_address') || '';
                 await BluetoothPrinter.printRaw({ hex, address });
+                this.nativeConnected = true;
+            } else if (typeof (window as any).AndroidPrinter !== 'undefined' && typeof (window as any).AndroidPrinter.printRawBytes === 'function') {
+                const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                (window as any).AndroidPrinter.printRawBytes(hex);
                 this.nativeConnected = true;
             } else if (this._printerType === 'usb') {
                 const ok = await this.usbTransport.write(bytes);

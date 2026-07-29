@@ -11,6 +11,7 @@ import { getTimeElapsed, formatTimeAMPM, formatQuantityWithUnit } from '@/utils/
 import { cn } from '@/lib/utils';
 import { kitchenOfflineManager } from '@/utils/kitchenOfflineManager';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { RemoteOrdersKDS } from '@/components/RemoteOrdersKDS';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import TableSeatGroups from '@/components/TableSeatGroups';
 import { getOrderTargetLabel, getSeatText, shouldApplyStatusUpdate, mergeOrdersConflictSafe } from '@/utils/seatUtils';
@@ -1276,6 +1277,13 @@ const KitchenDisplay = () => {
                     </div>
 
                 </div>
+
+                {/* ========== REMOTE ORDERS SECTION ========== */}
+                {adminId && branchFilterId && (
+                    <div className="mt-6 pt-4 border-t-2 border-dashed border-purple-300">
+                        <RemoteOrdersKDS adminId={adminId} branchId={branchFilterId} />
+                    </div>
+                )}
 
                 {/* Recently Processed - Undo Section */}
                 {recentlyProcessed.filter(p => {

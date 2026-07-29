@@ -714,6 +714,10 @@ const SuperAdminUsers: React.FC = () => {
 
     const currentPerms = admin.client_permissions || {};
     const updatedPerms = { ...currentPerms, [toPath]: enabled };
+    if (toPath === '/online-orders' || toPath === 'allow_online_orders') {
+      updatedPerms['/online-orders'] = enabled;
+      updatedPerms['allow_online_orders'] = enabled;
+    }
 
     try {
       const { error } = await supabase
@@ -758,6 +762,8 @@ const SuperAdminUsers: React.FC = () => {
     base['receipt_qr'] = enabled;
     base['calci_billing'] = enabled;
     base['allow_cloud_storage'] = enabled;
+    base['allow_online_orders'] = enabled;
+    base['/online-orders'] = enabled;
     try {
       const { error } = await supabase.from('profiles').update({ client_permissions: base }).eq('id', adminProfileId);
       if (error) throw error;
@@ -1770,6 +1776,26 @@ const SuperAdminUsers: React.FC = () => {
                 onCheckedChange={(checked) => {
                   if (selectedAdmin) {
                     handleTogglePermission(selectedAdmin.profile_id, 'allow_feedback_module', checked);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-orange-50/50 dark:bg-orange-900/20 hover:bg-orange-50 dark:hover:bg-orange-900/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center dark:bg-orange-900/60">
+                  <span className="text-sm">📱</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-orange-800 dark:text-orange-300">Online Orders Hub</span>
+                  <span className="text-[10px] text-orange-600 dark:text-orange-400 font-mono">allow_online_orders</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.client_permissions?.['allow_online_orders'] === true}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) {
+                    handleTogglePermission(selectedAdmin.profile_id, 'allow_online_orders', checked);
                   }
                 }}
               />

@@ -1,0 +1,250 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { Phone, MessageCircle, Star, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface LiveOrderTrackerProps {
+  orderId: string;
+  onClose: () => void;
+  onOrderComplete?: () => void;
+  isOpen?: boolean;
+  shopSettings?: any;
+}
+
+export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onClose, onOrderComplete, shopSettings }) => {
+  const { toast } = useToast();
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  useEffect(() => {
+    const fetchOrder = async () => {
+      const { data, error } = await (supabase as any)
+        .from('remote_orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+      
+      if (error) {
+        toast({ title: 'Error fetching order', description: error.message, variant: 'destructive' });
+      } else {
+        setOrder(data);
+      }
+      setLoading(false);
+    };
+
+    fetchOrder();
+
+    const channel = supabase
+      .channel(`order_${orderId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'remote_orders', filter: `id=eq.${orderId}` },
+        (payload) => {
+          if (payload.new && Object.keys(payload.new).length > 0) {
+            const newOrder = payload.new as any;
+            setOrder(newOrder);
+            // Fire onOrderComplete callback when order is done
+            if ((newOrder.status === 'completed' || newOrder.status === 'cancelled' || newOrder.status === 'no_show') && onOrderComplete) {
+              // Delay slightly so user sees final status before modal closes
+              setTimeout(() => onOrderComplete(), newOrder.status === 'completed' ? 5000 : 3000);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, toast, onOrderComplete]);
+
+  if (loading) {
+    return <div className="fixed inset-0 bg-background flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!order) {
+    return (
+      <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4">
+        <p className="mb-4">Order not found.</p>
+        <Button onClick={onClose}>Close</Button>
+      </div>
+    );
+  }
+
+  const getStatusIndex = (status: string) => {
+    if (status === 'cancelled' || status === 'no_show') return -1;
+    const stages = ['pending', 'accepted', 'preparing', 'ready', 'completed'];
+    return stages.indexOf(status);
+  };
+
+  const statusIndex = getStatusIndex(order.status);
+  const isCancelled = order.status === 'cancelled' || order.status === 'no_show';
+
+  const steps = [
+    { key: 'pending', label: 'Order Placed', index: 0 },
+    { key: 'accepted', label: 'Accepted' + (order.estimated_wait_minutes ? ` (~${order.estimated_wait_minutes} min)` : ''), index: 1 },
+    { key: 'preparing', label: 'Preparing', index: 2 },
+    { key: 'ready', label: order.order_type === 'delivery' ? 'Out for Delivery' : 'Ready for Pickup', index: 3 },
+    { key: 'completed', label: 'Completed', index: 4 }
+  ];
+
+  const handleFeedbackSubmit = async () => {
+    setSubmittingFeedback(true);
+    const { error } = await (supabase as any)
+      .from('remote_orders')
+      .update({ rating, feedback_text: feedback })
+      .eq('id', orderId);
+      
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to submit feedback.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Success', description: 'Thank you for your feedback!' });
+      setOrder({ ...order, rating, feedback_text: feedback });
+    }
+    setSubmittingFeedback(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-y-auto w-full h-full sm:p-4">
+      <div className="bg-card text-card-foreground p-4 sticky top-0 z-10 border-b flex items-center justify-between shadow-sm sm:rounded-t-lg sm:border sm:border-b-0 max-w-md mx-auto w-full">
+        <div>
+          <h2 className="font-bold text-lg">Order #{order.order_number}</h2>
+          <p className="text-sm text-muted-foreground">{shopSettings?.shop_name || 'Store'}</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose}><X className="w-5 h-5" /></Button>
+      </div>
+
+      <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6 sm:border sm:border-t-0 sm:rounded-b-lg bg-background">
+        
+        {/* Animated Timeline */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Order Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative pl-4 border-l-2 border-muted space-y-6">
+              {steps.map((step) => {
+                const isCompleted = isCancelled ? false : statusIndex >= step.index;
+                const isCurrent = isCancelled ? false : statusIndex === step.index;
+                
+                let dotColor = 'bg-gray-400';
+                if (isCompleted) dotColor = 'bg-green-500';
+                if (isCurrent) dotColor = 'bg-blue-500';
+                
+                return (
+                  <div key={step.key} className="relative">
+                    <div className={`absolute -left-[21px] w-3 h-3 rounded-full ${dotColor} ${isCurrent ? 'animate-pulse ring-4 ring-blue-500/20' : ''}`} />
+                    <p className={`text-sm ${isCompleted || isCurrent ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                      {step.label}
+                    </p>
+                  </div>
+                );
+              })}
+              {isCancelled && (
+                <div className="relative">
+                  <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-500/20" />
+                  <p className="text-sm font-medium text-red-500">
+                    Cancelled {order.reject_reason ? `- ${order.reject_reason}` : ''}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Order Summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex justify-between">
+              <span>Order Summary</span>
+              <Badge variant="outline" className="capitalize">{order.order_type}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 divide-y">
+              {order.items?.map((item: any, i: number) => (
+                <div key={i} className="flex justify-between py-2 text-sm">
+                  <span>{(item.qty ?? item.quantity)}x {item.name}</span>
+                  <span>₹{(item.price * (item.qty ?? item.quantity)).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t pt-2 space-y-1 text-sm text-muted-foreground">
+              <div className="flex justify-between"><span>Subtotal</span><span>₹{order.subtotal?.toFixed(2)}</span></div>
+              {order.tax_total > 0 && <div className="flex justify-between"><span>Tax</span><span>₹{order.tax_total?.toFixed(2)}</span></div>}
+              {order.delivery_fee > 0 && <div className="flex justify-between"><span>Delivery</span><span>₹{order.delivery_fee?.toFixed(2)}</span></div>}
+              {order.packaging_fee > 0 && <div className="flex justify-between"><span>Packaging</span><span>₹{order.packaging_fee?.toFixed(2)}</span></div>}
+              {order.surge_fee > 0 && <div className="flex justify-between"><span>Surge</span><span>₹{order.surge_fee?.toFixed(2)}</span></div>}
+              {order.tip_amount > 0 && <div className="flex justify-between"><span>Tip</span><span>₹{order.tip_amount?.toFixed(2)}</span></div>}
+            </div>
+            <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
+              <span>Total</span>
+              <span>₹{order.total_amount?.toFixed(2)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contact Actions */}
+        {!isCancelled && order.status !== 'completed' && (
+          <div className="flex gap-2">
+            {shopSettings?.contact_number && (
+              <Button className="flex-1" variant="outline" onClick={() => window.location.href = `tel:${shopSettings.contact_number}`}>
+                <Phone className="w-4 h-4 mr-2" /> Call Shop
+              </Button>
+            )}
+            {shopSettings?.whatsapp && (
+              <Button className="flex-1 bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={() => window.location.href = `https://wa.me/91${shopSettings.whatsapp}?text=Hi, I have a query about my order ${order.order_number}`}>
+                <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Feedback Section */}
+        {order.status === 'completed' && !order.rating && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-center">How was your experience?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star 
+                    key={star} 
+                    className={`w-8 h-8 cursor-pointer transition-colors ${rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                    onClick={() => setRating(star)}
+                  />
+                ))}
+              </div>
+              {rating > 0 && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                  <Textarea 
+                    placeholder="Tell us what you liked or how we can improve..."
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                  />
+                  <Button className="w-full" onClick={handleFeedbackSubmit} disabled={submittingFeedback}>
+                    Submit Feedback
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+        
+        {order.status === 'completed' && order.rating && (
+          <div className="text-center text-muted-foreground p-4 bg-muted/50 rounded-lg">
+            <p>Thank you for your rating of {order.rating} stars!</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

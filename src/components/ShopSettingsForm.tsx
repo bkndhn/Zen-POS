@@ -196,11 +196,18 @@ export const ShopSettingsForm = () => {
                 setTelegram(data.telegram || '');
                 setReceiptQrEnabled(data.receipt_qr_enabled || false);
                 setReceiptQrType(data.receipt_qr_type || 'payment');
+                let resolvedVisiblePages: string[] = [];
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
-                    setVisiblePages((data as any).visible_nav_pages);
+                    resolvedVisiblePages = (data as any).visible_nav_pages as string[];
+                    const isOnlineOrdersAllowed = hasAccess('onlineOrders') && profile?.client_permissions?.['/online-orders'] !== false && profile?.client_permissions?.['allow_online_orders'] !== false;
+                    const initKey = `online_orders_init_${adminAuthUid}`;
+                    if (isOnlineOrdersAllowed && !resolvedVisiblePages.includes('onlineOrders') && localStorage.getItem(initKey) !== 'dismissed') {
+                        resolvedVisiblePages = [...resolvedVisiblePages, 'onlineOrders'];
+                    }
                 } else {
-                    setVisiblePages(ALL_NAV_ITEMS.filter(i => i.bottomNav).map(i => i.page as string));
+                    resolvedVisiblePages = ALL_NAV_ITEMS.filter(i => i.bottomNav).map(i => i.page as string);
                 }
+                setVisiblePages(resolvedVisiblePages);
 
                 // Menu settings
                 const resolvedSlug = branchSlug || (isFallback ? '' : ((data as any).menu_slug || ''));
@@ -223,7 +230,7 @@ export const ShopSettingsForm = () => {
                     showInstagram: data.show_instagram !== false,
                     whatsapp: data.whatsapp || '',
                     showWhatsapp: data.show_whatsapp !== false,
-                    visiblePages: ((data as any).visible_nav_pages && (data as any).visible_nav_pages.length > 0) ? (data as any).visible_nav_pages : ALL_NAV_ITEMS.filter(i => i.bottomNav).map(i => i.page as string),
+                    visiblePages: resolvedVisiblePages,
                     menuSlug: resolvedSlug,
                     menuShowShopName: (data as any).menu_show_shop_name !== false,
                     menuShowAddress: (data as any).menu_show_address !== false,
@@ -413,6 +420,13 @@ export const ShopSettingsForm = () => {
 
         try {
             const isMainBranch = operatingBranchId === mainBranchId;
+            const initKey = `online_orders_init_${adminAuthUid}`;
+            if (!visiblePages.includes('onlineOrders')) {
+                localStorage.setItem(initKey, 'dismissed');
+            } else {
+                localStorage.setItem(initKey, 'auto_added');
+            }
+
             const settingsData: any = {
                 shop_name: sanitizeString(shopName || '', 200) || null,
                 address: sanitizeString(address || '', 500) || null,
@@ -850,8 +864,9 @@ export const ShopSettingsForm = () => {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {ALL_NAV_ITEMS.filter(i => i.bottomNav)
                                 .filter(item => {
-                                    if (profile?.client_permissions && profile.client_permissions[item.to] === false) {
-                                        return false;
+                                    if (profile?.client_permissions) {
+                                        if (profile.client_permissions[item.to] === false) return false;
+                                        if (item.page === 'onlineOrders' && profile.client_permissions['allow_online_orders'] === false) return false;
                                     }
                                     return true;
                                 })

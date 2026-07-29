@@ -211,11 +211,13 @@ const StockLedger = lazy(() => import("./pages/StockLedger"));
 const StockAdjustment = lazy(() => import("./pages/StockAdjustment"));
 const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuTV })));
 const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
+const OnlineOrders = lazy(() => import("./pages/OnlineOrders"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
+import { GlobalSettingsSync } from '@/components/GlobalSettingsSync';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -342,6 +344,7 @@ const App = () => {
               <PermissionsProvider>
                 <BranchProvider>
                   <ThemeLoader />
+                  <GlobalSettingsSync />
                   <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
                   <Routes>
                   <Route path="/auth" element={<Auth />} />
@@ -359,6 +362,7 @@ const App = () => {
                   <Route path="/tables" element={<Layout><ProtectedRoute requiredPermission="tables"><TableManagement /></ProtectedRoute></Layout>} />
                   <Route path="/crm" element={<Layout><ProtectedRoute requiredPermission="customers"><CRM /></ProtectedRoute></Layout>} />
                   <Route path="/qr-menu" element={<Layout><ProtectedRoute requiredPermission="qrMenu"><QRMenu /></ProtectedRoute></Layout>} />
+                  <Route path="/online-orders" element={<Layout><ProtectedRoute requiredPermission="onlineOrders"><OnlineOrders /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />
                   <Route path="/waiter" element={<Layout><ProtectedRoute requiredPermission="waiterCompanion"><WaiterCompanion /></ProtectedRoute></Layout>} />
                   <Route path="/suppliers" element={<Layout><ProtectedRoute requiredPermission="suppliers"><Suppliers /></ProtectedRoute></Layout>} />

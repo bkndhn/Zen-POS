@@ -24,6 +24,7 @@ export interface UserPermissions {
     waiterCompanion: boolean;
     bottomNavCustomize: boolean;
     calci_billing: boolean;
+    onlineOrders: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -48,6 +49,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     waiterCompanion: false,
     bottomNavCustomize: false,
     calci_billing: false,
+    onlineOrders: false,
 };
 
 const ADMIN_PERMISSIONS: UserPermissions = {
@@ -72,6 +74,7 @@ const ADMIN_PERMISSIONS: UserPermissions = {
     waiterCompanion: true,
     bottomNavCustomize: true,
     calci_billing: true,
+    onlineOrders: true,
 };
 
 interface PermissionsContextType {
@@ -104,8 +107,11 @@ const routeToPageKey: Record<string, keyof UserPermissions> = {
     '/reports': 'reports',
     '/crm': 'customers',
     '/qr-menu': 'qrMenu',
+    '/online-orders': 'onlineOrders',
     '/users': 'users',
     '/settings': 'settings',
+    // Special feature toggle aliases (super admin uses these keys)
+    'allow_online_orders': 'onlineOrders',
 };
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);

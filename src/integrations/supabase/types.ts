@@ -1252,6 +1252,138 @@ export type Database = {
         }
         Relationships: []
       }
+      remote_orders: {
+        Row: {
+          id: string
+          admin_id: string
+          branch_id: string
+          device_id: string
+          customer_name: string
+          customer_phone: string
+          order_number: string
+          items: Json
+          subtotal: number
+          tax_total: number
+          delivery_fee: number
+          packaging_fee: number
+          surge_fee: number
+          tip_amount: number
+          total_amount: number
+          order_type: string
+          status: string
+          estimated_wait_minutes: number | null
+          reject_reason: string | null
+          customer_latitude: number | null
+          customer_longitude: number | null
+          customer_address: string | null
+          payment_mode: string
+          payment_reference: string | null
+          is_scheduled: boolean
+          scheduled_for: string | null
+          rating: number | null
+          feedback_text: string | null
+          created_at: string
+          updated_at: string
+          accepted_at: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          admin_id: string
+          branch_id: string
+          device_id: string
+          customer_name: string
+          customer_phone: string
+          order_number: string
+          items?: Json
+          subtotal?: number
+          tax_total?: number
+          delivery_fee?: number
+          packaging_fee?: number
+          surge_fee?: number
+          tip_amount?: number
+          total_amount?: number
+          order_type: string
+          status?: string
+          estimated_wait_minutes?: number | null
+          reject_reason?: string | null
+          customer_latitude?: number | null
+          customer_longitude?: number | null
+          customer_address?: string | null
+          payment_mode?: string
+          payment_reference?: string | null
+          is_scheduled?: boolean
+          scheduled_for?: string | null
+          rating?: number | null
+          feedback_text?: string | null
+          created_at?: string
+          updated_at?: string
+          accepted_at?: string | null
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          admin_id?: string
+          branch_id?: string
+          device_id?: string
+          customer_name?: string
+          customer_phone?: string
+          order_number?: string
+          items?: Json
+          subtotal?: number
+          tax_total?: number
+          delivery_fee?: number
+          packaging_fee?: number
+          surge_fee?: number
+          tip_amount?: number
+          total_amount?: number
+          order_type?: string
+          status?: string
+          estimated_wait_minutes?: number | null
+          reject_reason?: string | null
+          customer_latitude?: number | null
+          customer_longitude?: number | null
+          customer_address?: string | null
+          payment_mode?: string
+          payment_reference?: string | null
+          is_scheduled?: boolean
+          scheduled_for?: string | null
+          rating?: number | null
+          feedback_text?: string | null
+          created_at?: string
+          updated_at?: string
+          accepted_at?: string | null
+          completed_at?: string | null
+        }
+        Relationships: []
+      }
+      blocked_devices: {
+        Row: {
+          id: string
+          admin_id: string
+          branch_id: string
+          device_id: string
+          reason: string | null
+          blocked_at: string
+        }
+        Insert: {
+          id?: string
+          admin_id: string
+          branch_id: string
+          device_id: string
+          reason?: string | null
+          blocked_at?: string
+        }
+        Update: {
+          id?: string
+          admin_id?: string
+          branch_id?: string
+          device_id?: string
+          reason?: string | null
+          blocked_at?: string
+        }
+        Relationships: []
+      }
       payment_settings: {
         Row: {
           default_amount: number | null
@@ -1891,6 +2023,8 @@ export type Database = {
           auto_report_enabled: boolean | null
           auto_report_time: string | null
           bill_bottom_text: string | null
+          bill_font_family: string | null
+          bill_font_scale: number | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
@@ -1945,12 +2079,29 @@ export type Database = {
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
           whatsapp_share_mode: string | null
+          remote_ordering_enabled: boolean
+          remote_order_modes: string
+          remote_ordering_paused: boolean
+          table_qr_protection: string
+          delivery_fee_mode: string
+          delivery_fee_flat: number
+          delivery_fee_base: number
+          delivery_fee_per_km: number
+          delivery_fee_free_km: number
+          packaging_fee_mode: string
+          packaging_fee_value: number
+          surge_fee_enabled: boolean
+          surge_fee_amount: number
+          tipping_enabled: boolean
+          max_delivery_radius_km: number
         }
         Insert: {
           address?: string | null
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
           bill_bottom_text?: string | null
+          bill_font_family?: string | null
+          bill_font_scale?: number | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
@@ -2005,12 +2156,29 @@ export type Database = {
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
           whatsapp_share_mode?: string | null
+          remote_ordering_enabled?: boolean
+          remote_order_modes?: string
+          remote_ordering_paused?: boolean
+          table_qr_protection?: string
+          delivery_fee_mode?: string
+          delivery_fee_flat?: number
+          delivery_fee_base?: number
+          delivery_fee_per_km?: number
+          delivery_fee_free_km?: number
+          packaging_fee_mode?: string
+          packaging_fee_value?: number
+          surge_fee_enabled?: boolean
+          surge_fee_amount?: number
+          tipping_enabled?: boolean
+          max_delivery_radius_km?: number
         }
         Update: {
           address?: string | null
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
           bill_bottom_text?: string | null
+          bill_font_family?: string | null
+          bill_font_scale?: number | null
           branch_id?: string | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
@@ -2065,6 +2233,21 @@ export type Database = {
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
           whatsapp_share_mode?: string | null
+          remote_ordering_enabled?: boolean
+          remote_order_modes?: string
+          remote_ordering_paused?: boolean
+          table_qr_protection?: string
+          delivery_fee_mode?: string
+          delivery_fee_flat?: number
+          delivery_fee_base?: number
+          delivery_fee_per_km?: number
+          delivery_fee_free_km?: number
+          packaging_fee_mode?: string
+          packaging_fee_value?: number
+          surge_fee_enabled?: boolean
+          surge_fee_amount?: number
+          tipping_enabled?: boolean
+          max_delivery_radius_km?: number
         }
         Relationships: [
           {
@@ -2883,6 +3066,8 @@ export type Database = {
           auto_report_enabled: boolean | null
           auto_report_time: string | null
           bill_bottom_text: string | null
+          bill_font_family: string | null
+          bill_font_scale: number | null
           branch_id: string | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null

@@ -34,7 +34,7 @@ export function useBranchSettings<T extends Record<string, any>>(
 
   const fetchedFor = useRef<string>('');
 
-  const fetchRow = useCallback(async () => {
+  const fetchRow = useCallback(async (isSilent = false) => {
     if (!userId || !branchId) {
       setData(null);
       setLoading(false);
@@ -42,7 +42,7 @@ export function useBranchSettings<T extends Record<string, any>>(
     }
     const key = `${userId}:${branchId}`;
     fetchedFor.current = key;
-    setLoading(true);
+    if (!isSilent) setLoading(true);
     try {
       // 1) Try the row for current branch
       const { data: row } = await (supabase as any)
@@ -108,8 +108,8 @@ export function useBranchSettings<T extends Record<string, any>>(
             }));
         }
         if (!error) {
-          // Refresh local cache
-          await fetchRow();
+          // Refresh local cache silently without unmounting UI
+          await fetchRow(true);
         }
         return { error };
       } finally {

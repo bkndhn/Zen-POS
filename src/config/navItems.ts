@@ -20,6 +20,7 @@ import {
   Undo2,
   History,
   Sliders,
+  Smartphone,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserPermissions } from '@/contexts/PermissionsContext';
@@ -66,6 +67,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/reports',          icon: BarChart3,       label: 'Reports',          page: 'reports',       bottomNav: true },
   { to: '/crm',              icon: UserCircle,      label: 'CRM',              page: 'customers',     bottomNav: true },
   { to: '/qr-menu',          icon: QrCode,          label: 'QR Menu',          page: 'qrMenu',        bottomNav: true },
+  { to: '/online-orders',    icon: Smartphone,      label: 'Online Orders',    shortLabel: 'Orders',  page: 'onlineOrders',  bottomNav: true },
   { to: '/users',            icon: Users,           label: 'Users',            page: 'users' },
   { to: '/settings',         icon: Settings,        label: 'Settings',         page: 'settings',      bottomNav: true },
 ];

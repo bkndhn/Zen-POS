@@ -13,6 +13,7 @@ import {
   FontOption
 } from '@/utils/billFontUtils';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
+import { printerManager } from '@/utils/printerManager';
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Type, Sparkles, Printer, Check, Search, RotateCcw } from 'lucide-react';
 import { useBranchKey } from '@/hooks/useBranchScopedQuery';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 
 interface BillFontPickerProps {
   onFontChange?: (fontId: string, scale: number) => void;
@@ -36,6 +38,7 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
   const [footerMessage, setFooterMessage] = useState<string>(DEFAULT_FOOTER_MESSAGE);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [paperPreviewWidth, setPaperPreviewWidth] = useState<'58mm' | '80mm'>('58mm');
+  const { save: saveSettings } = useBranchSettings('shop_settings');
 
   useEffect(() => {
     const savedFont = getStoredBillFont(activeBranchId);
@@ -59,6 +62,7 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
     // Broadcast change
     window.dispatchEvent(new CustomEvent('bill-font-changed', { detail: { fontId, fontScale } }));
     if (onFontChange) onFontChange(fontId, fontScale);
+    saveSettings({ bill_font_family: fontId });
   };
 
   const handleScaleChange = (newScaleArr: number[]) => {
@@ -70,12 +74,14 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
 
     window.dispatchEvent(new CustomEvent('bill-font-changed', { detail: { fontId: selectedFontId, fontScale: scale } }));
     if (onFontChange) onFontChange(selectedFontId, scale);
+    saveSettings({ bill_font_scale: scale });
   };
 
   const handleFooterMessageChange = (msg: string) => {
     setFooterMessage(msg);
     setStoredFooterMessage(msg, activeBranchId);
     window.dispatchEvent(new CustomEvent('bill-footer-changed', { detail: msg }));
+    saveSettings({ bill_bottom_text: msg });
   };
 
   const handleReset = () => {
@@ -85,12 +91,7 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
   };
 
   const handleTestPrint = async () => {
-    toast({
-      title: "🖨️ Printing Test Receipt",
-      description: `Printing sample receipt on ${paperPreviewWidth} paper using ${currentFont.name} font...`,
-    });
-
-    await printBrowserReceipt({
+    const printData = {
       billNo: "TEST-1042",
       shopName: "ZEN CAFE & RESTO",
       address: "123 MAIN ROAD, TIRUPUR",
@@ -107,7 +108,32 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
       printerWidth: paperPreviewWidth,
       totalItemsCount: 2,
       smartQtyCount: 6,
-    });
+    };
+
+    const canThermal = printerManager.isConnected() || printerManager.hasNativePrinterBridge();
+    if (canThermal) {
+      toast({
+        title: "🖨️ Printing Test Receipt",
+        description: `Sending sample receipt to thermal printer...`,
+      });
+      const ok = await printerManager.print(printData as any);
+      if (ok) {
+        return;
+      } else {
+        toast({
+          title: "Thermal Print Failed",
+          description: "Falling back to browser print...",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "🖨️ Printing Test Receipt",
+        description: `Printing sample receipt on ${paperPreviewWidth} paper using ${currentFont.name} font...`,
+      });
+    }
+
+    await printBrowserReceipt(printData as any);
   };
 
   const currentFont = getSelectedBillFont(selectedFontId);

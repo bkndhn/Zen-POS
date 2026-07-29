@@ -19,6 +19,7 @@ import { BillFontPicker } from '@/components/BillFontPicker';
 import { ShopSettingsForm } from '@/components/ShopSettingsForm';
 import { ThemeSettings } from '@/components/ThemeSettings';
 import { WhatsAppSettings } from '@/components/WhatsAppSettings';
+import { RemoteOrderSettings } from '@/components/RemoteOrderSettings';
 import { GSTSettings } from '@/components/GSTSettings';
 import { OrderTypeSettings } from '@/components/OrderTypeSettings';
 import { BranchManagement } from '@/components/BranchManagement';
@@ -733,6 +734,11 @@ const Settings = () => {
               {/* Food Aggregator Integrations */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Aggregator Settings failed to load. Try refreshing.</div>}>
             <AggregatorIntegrationSettings />
+          </ErrorBoundary>
+
+              {/* Remote Ordering Settings */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Remote Ordering Settings failed to load. Try refreshing.</div>}>
+            <RemoteOrderSettings />
           </ErrorBoundary>
             </TabsContent>
 
