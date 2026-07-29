@@ -1053,7 +1053,15 @@ const PublicMenu = () => {
 
     // Place order
     const placeOrder = useCallback(async () => {
-        if (!adminId || !tableNo || !sessionId || cart.length === 0) return;
+        if (!adminId || !tableNo || cart.length === 0) return;
+        if (!sessionId) {
+            toast({
+                title: "Session not ready",
+                description: "Your session is being initialized. Please try again in a moment.",
+                variant: "destructive"
+            });
+            return;
+        }
         setIsPlacingOrder(true);
         try {
             const orderItems = cart.map(c => ({
@@ -2449,7 +2457,7 @@ const PublicMenu = () => {
 
             {/* Cart Overlay */}
             {
-                isTableMode && showCart && cart.length > 0 && (
+                isOrderingMode && showCart && cart.length > 0 && (
                     <div className="fixed inset-0 z-[60] bg-black/50 flex items-end" onClick={() => setShowCart(false)}>
                         <div className="w-full max-w-2xl mx-auto bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center justify-between p-4 border-b">
