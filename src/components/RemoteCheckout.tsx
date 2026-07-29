@@ -104,11 +104,13 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
     );
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  // item.quantity is in raw base units (e.g. 200 for 200ml); divide by base_value to get display units
+  const getDisplayQty = (item: any) => item.quantity / (item.base_value || 1);
+  const subtotal = cart.reduce((acc, item) => acc + (item.price * getDisplayQty(item)), 0);
   
   const tax = cart.reduce((acc, item) => {
     const rate = taxRates.find(t => t.id === item.tax_rate_id)?.rate || 0;
-    const lineTotal = item.price * item.quantity;
+    const lineTotal = item.price * getDisplayQty(item);
     if (item.is_tax_inclusive) {
       return acc + (lineTotal - (lineTotal / (1 + rate / 100)));
     } else {
@@ -213,7 +215,8 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
         payment_method: payMethod,
         status: 'pending',
-        items: cart.map(item => ({ ...item, qty: item.quantity })),
+        // Store display qty (divided by base_value) so the KDS/tracker shows correct numbers
+        items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
         is_paid: false
       };
 
