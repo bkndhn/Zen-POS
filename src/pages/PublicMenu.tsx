@@ -14,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
 import { StoreTimingsModal } from '@/components/StoreTimingsModal';
 import { OperatingHours } from '@/types/operatingHours';
+import { RemoteCheckout } from '@/components/RemoteCheckout';
+import { LiveOrderTracker } from '@/components/LiveOrderTracker';
 
 // Types
 interface MenuItem {
@@ -308,6 +310,61 @@ const PublicMenu = () => {
     const [showMyOrders, setShowMyOrders] = useState(false);
     const [instructionItemId, setInstructionItemId] = useState<string | null>(null);
 
+    // ========== REMOTE ORDERING STATE ==========
+    // isTableMode is declared at line 224, cart at 304 — both above these hooks, no TDZ risk
+    const isRemoteMode = !isTableMode && !!(rawShopSettings as any)?.remote_ordering_enabled && !(rawShopSettings as any)?.remote_ordering_paused;
+    const isOrderingMode = isTableMode || isRemoteMode;
+    const [showRemoteCheckout, setShowRemoteCheckout] = useState(false);
+    const [activeRemoteOrderId, setActiveRemoteOrderId] = useState<string | null>(null);
+    const [showRemoteTracker, setShowRemoteTracker] = useState(false);
+
+    // Check for active remote order on mount
+    useEffect(() => {
+        if (!adminId || !branchId || isTableMode) return;
+        const deviceId = localStorage.getItem('zenpos_remote_device_id');
+        if (!deviceId) return;
+        (async () => {
+            const { data } = await (supabase as any)
+                .from('remote_orders')
+                .select('id, status')
+                .eq('admin_id', adminId)
+                .eq('branch_id', branchId)
+                .eq('device_id', deviceId)
+                .not('status', 'in', '(completed,cancelled,no_show)')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (data?.id) {
+                setActiveRemoteOrderId(data.id);
+                setShowRemoteTracker(true);
+            }
+        })();
+    }, [adminId, branchId, isTableMode]);
+
+    // Abandoned cart recovery for remote mode
+    useEffect(() => {
+        if (!isRemoteMode || !adminId) return;
+        const deviceId = localStorage.getItem('zenpos_remote_device_id');
+        const savedCart = localStorage.getItem(`zenpos_remote_cart_${deviceId || 'anon'}`);
+        if (savedCart && cart.length === 0) {
+            try {
+                const parsed = JSON.parse(savedCart);
+                if (Array.isArray(parsed) && parsed.length > 0) setCart(parsed);
+            } catch {}
+        }
+    }, [isRemoteMode, adminId]);
+
+    // Save cart to localStorage for remote recovery
+    useEffect(() => {
+        if (!isRemoteMode) return;
+        const deviceId = localStorage.getItem('zenpos_remote_device_id') || 'anon';
+        if (cart.length > 0) {
+            localStorage.setItem(`zenpos_remote_cart_${deviceId}`, JSON.stringify(cart));
+        } else {
+            localStorage.removeItem(`zenpos_remote_cart_${deviceId}`);
+        }
+    }, [cart, isRemoteMode]);
+
     // Orders for this session
     const [sessionOrders, setSessionOrders] = useState<TableOrder[]>([]);
     const orderChannelRef = useRef<any>(null);
@@ -338,7 +395,7 @@ const PublicMenu = () => {
         };
     }, []);
 
-    // Scroll listener for glassmorphic header transition
+    // Scroll listener for glassmorphic header
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
@@ -935,7 +992,7 @@ const PublicMenu = () => {
                       i.category?.toLowerCase().includes('drink') || 
                       i.category?.toLowerCase().includes('side') || 
                       i.category?.toLowerCase().includes('dessert') || 
-                      i.category?.toLowerCase().includes('snack') ||
+                      i.category?.toLowerCase().includes('snack') || 
                       ['Beverages', 'Drinks', 'Sides', 'Snacks', 'Desserts'].includes(i.category || ''))
             );
 
@@ -1566,7 +1623,7 @@ const PublicMenu = () => {
             </div>
         );
     }
-    if (shopSettings && shopSettings.allow_qr_menu === false) {
+    if (shopSettings && shopSettings.allow_qr_menu === false) {
         const shopName = shopSettings?.shop_name || 'the shop';
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -1681,7 +1738,7 @@ const PublicMenu = () => {
                     animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
             `}</style>
-            {/* Header with Shop Name */}
+            
             <header
                 className={cn(
                     "sticky top-0 z-50 text-white shadow-xl transition-all duration-300",
@@ -1741,793 +1798,6 @@ const PublicMenu = () => {
                                 </Badge>
                             )}
 
-                            <button
-                                onClick={toggleDarkMode}
-                                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
-                            >
-                                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                            </button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-white hover:bg-white/20"
-                                onClick={() => setShowSearch(!showSearch)}
-                            >
-                                <Search className="w-4 h-4" />
-                            </Button>
-                            <button
-                                onClick={() => {
-                                    const nextLang = i18n.language?.startsWith('ta') ? 'en' : 'ta';
-                                    i18n.changeLanguage(nextLang);
-                                    localStorage.setItem('i18nextLng', nextLang);
-                                }}
-                                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
-                                title="Change Language"
-                            >
-                                <Languages className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Search Bar */}
-                    {showSearch && (
-                        <div className="mt-3 flex gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
-                                <Input
-                                    type="text"
-                                    placeholder={t('menu.searchPlaceholder') || "Search menu items..."}
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 pr-9 bg-white/95 border-0 text-gray-800 placeholder:text-gray-400"
-                                    autoFocus
-                                />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => setSearchQuery('')}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-white hover:bg-white/20"
-                                onClick={clearSearch}
-                            >
-                                {t('common.cancel') || 'Cancel'}
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </header>
-
-            {/* Store Status Banner */}
-            {storeStatus && storeStatus.status !== 'open' && (
-                <div className={cn(
-                    "w-full px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold shadow-sm sticky top-[72px] z-40 transition-colors",
-                    storeStatus.status === 'break' ? "bg-amber-500 text-white" : "bg-red-500 text-white"
-                )}>
-                    {storeStatus.status === 'break' ? <Clock className="w-4 h-4 animate-pulse" /> : <Power className="w-4 h-4" />}
-                    {storeStatus.message}
-                </div>
-            )}
-
-            {/* Main Content */}
-            {itemCategories.length > 0 && (
-                <div className="sticky z-40 bg-white/95 backdrop-blur-md border-b shadow-sm transition-all duration-300"
-                    style={{ 
-                        top: `${72 + (storeStatus && storeStatus.status !== 'open' ? 40 : 0) + (showSearch ? 48 : 0)}px`,
-                        borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa' 
-                    }}
-                >
-                    <div className="max-w-2xl mx-auto px-4 py-2.5">
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                            <button
-                                onClick={() => setSelectedCategory('all')}
-                                className={cn(
-                                    "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
-                                    selectedCategory === 'all'
-                                        ? "text-white border-transparent shadow-md scale-105"
-                                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm"
-                                )}
-                                style={selectedCategory === 'all' ? {
-                                    background: shopSettings?.menu_primary_color
-                                        ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
-                                        : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                                } : {}}
-                            >
-                                {t('menu.all') || 'All'} ({items.length})
-                            </button>
-                            {itemCategories.map(cat => {
-                                const count = items.filter(i => i.category === cat).length;
-                                return (
-                                    <button
-                                        key={cat}
-                                        onClick={() => setSelectedCategory(cat)}
-                                        className={cn(
-                                            "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
-                                            selectedCategory === cat
-                                                ? "text-white border-transparent shadow-md scale-105"
-                                                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm"
-                                        )}
-                                        style={selectedCategory === cat ? {
-                                            background: shopSettings?.menu_primary_color
-                                                ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
-                                                : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                                        } : {}}
-                                    >
-                                        {cat} ({count})
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Search Results Info */}
-            {searchQuery && (
-                <div className="max-w-2xl mx-auto px-4 pt-4">
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-orange-700">
-                            {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''} for "{searchQuery}"
-                        </span>
-                        <button
-                            onClick={() => setSearchQuery('')}
-                            className="text-orange-500 hover:text-orange-700 underline text-xs"
-                        >
-                            Clear search
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Get Directions & Share Location Bar - Shows when shop location is set */}
-            {shopSettings?.shop_latitude && shopSettings?.shop_longitude && (
-                <div className="max-w-2xl mx-auto px-4 pt-3">
-                    <div className="flex gap-2.5">
-                        <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${shopSettings.shop_latitude},${shopSettings.shop_longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 flex items-center justify-center gap-2 text-white py-2.5 px-3 rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99]"
-                            style={{
-                                background: shopSettings?.menu_primary_color
-                                    ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
-                                    : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                            }}
-                        >
-                            <MapPin className="w-4 h-4" />
-                            <span>Get Directions</span>
-                        </a>
-                        <button
-                            onClick={handleShareLocation}
-                            className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 py-2.5 px-3 rounded-xl shadow-sm hover:shadow-md transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99] border border-slate-200/50"
-                        >
-                            <Share2 className="w-4 h-4" />
-                            <span>Share Location</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Promotional Banners Carousel */}
-            {
-                banners.length > 0 && (
-                    <div className="max-w-2xl mx-auto px-4 pt-4">
-                        <div className="relative rounded-xl overflow-hidden shadow-lg h-40 sm:h-48 md:h-56">
-                            <div
-                                className="flex transition-transform duration-500 ease-in-out touch-pan-y h-full"
-                                style={{ transform: `translateX(-${currentBannerIndex * 100}%)` }}
-                                onTouchStart={handleTouchStart}
-                                onTouchMove={handleTouchMove}
-                                onTouchEnd={handleTouchEnd}
-                            >
-                                {banners.map((banner) => (
-                                    <div
-                                        key={banner.id}
-                                        className="w-full flex-shrink-0"
-                                        onContextMenu={(e) => e.preventDefault()}
-                                    >
-                                        {banner.is_text_only ? (
-                                            // Text-only banner with solid color background
-                                            <div
-                                                className="relative w-full h-full flex items-center justify-center"
-                                                style={{ backgroundColor: banner.bg_color || '#22c55e' }}
-                                            >
-                                                <div className="text-center px-6">
-                                                    <h3
-                                                        className="font-bold text-xl md:text-2xl drop-shadow-lg"
-                                                        style={{ color: banner.text_color || '#ffffff' }}
-                                                    >
-                                                        {banner.title}
-                                                    </h3>
-                                                    {banner.description && (
-                                                        <p
-                                                            className="text-sm md:text-base mt-1 opacity-90"
-                                                            style={{ color: banner.text_color || '#ffffff' }}
-                                                        >
-                                                            {banner.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            // Image banner
-                                            <div className="relative w-full h-full bg-gradient-to-r from-orange-400 to-amber-400">
-                                                <img
-                                                    src={banner.image_url}
-                                                    alt={banner.title}
-                                                    className="w-full h-full object-cover object-center"
-                                                    draggable={false}
-                                                    loading="lazy"
-                                                    onError={(e) => handleImageError(e, banner.image_url)}
-                                                />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                                <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                                                    <h3 className="font-bold text-sm drop-shadow-lg">{banner.title}</h3>
-                                                    {banner.description && (
-                                                        <p className="text-xs opacity-90 line-clamp-1">{banner.description}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                            {banners.length > 1 && (
-                                <>
-                                    {/* Arrow Navigation */}
-                                    <button
-                                        onClick={goToPrevBanner}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors"
-                                        aria-label="Previous banner"
-                                    >
-                                        <ChevronLeft className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={goToNextBanner}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors"
-                                        aria-label="Next banner"
-                                    >
-                                        <ChevronRight className="w-5 h-5" />
-                                    </button>
-                                    {/* Dot Indicators */}
-                                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                        {banners.map((_, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => { setCurrentBannerIndex(idx); setIsPaused(true); }}
-                                                className={cn(
-                                                    "w-2 h-2 rounded-full transition-all",
-                                                    idx === currentBannerIndex
-                                                        ? "bg-white w-4"
-                                                        : "bg-white/50 hover:bg-white/70"
-                                                )}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Menu Items */}
-            <main className="max-w-2xl mx-auto px-4 py-4 pb-36">
-                {filteredItems.length === 0 ? (
-                    <div className="text-center py-12">
-                        <Search className="w-12 h-12 mx-auto mb-4 text-orange-300" />
-                        <p className="text-orange-600">No items found for "{searchQuery}"</p>
-                        <button
-                            onClick={() => setSearchQuery('')}
-                            className="mt-2 text-orange-500 hover:text-orange-700 underline text-sm"
-                        >
-                            Show all items
-                        </button>
-                    </div>
-                ) : (
-                    Object.entries(groupedItems).map(([category, categoryItems]) => {
-                        const isCollapsed = collapsedCategories.has(category);
-                        return (
-                            <div key={category} className="mb-8">
-                                {/* Clickable category header */}
-                                <button
-                                    onClick={() => toggleCategory(category)}
-                                    className="w-full text-left text-base font-bold mb-3 flex items-center gap-2.5 sticky top-[114px] py-2.5 z-10 cursor-pointer transition-colors"
-                                    style={{ color: shopSettings?.menu_primary_color || '#9a3412' }}
-                                >
-                                    <span className="w-8 h-0.5 rounded-full" style={{ background: `linear-gradient(to right, ${shopSettings?.menu_primary_color || '#ea580c'}, transparent)` }} />
-                                    <span className="text-[15px] tracking-tight">{category}</span>
-                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: `${shopSettings?.menu_primary_color || '#ea580c'}15`, color: shopSettings?.menu_primary_color || '#ea580c' }}>({categoryItems.length})</span>
-                                    <span className="ml-auto pr-2">
-                                        {isCollapsed ? (
-                                            <ChevronDown className="w-4 h-4" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
-                                        ) : (
-                                            <ChevronUp className="w-4 h-4" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
-                                        )}
-                                    </span>
-                                </button>
-
-                                {/* Collapsible items section */}
-                                {shopSettings?.menu_items_per_row === 4 ? (
-                                    /* ===== MODE 4: HORIZONTAL SCROLL PER CATEGORY ===== */
-                                    <div
-                                        className={cn(
-                                            "transition-all duration-300 ease-in-out overflow-hidden",
-                                            isCollapsed ? "max-h-0 opacity-0" : "max-h-[5000px] opacity-100"
-                                        )}
-                                    >
-                                        <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                                            {categoryItems.map(item => (
-                                                <div
-                                                    key={item.id}
-                                                    className={cn(
-                                                        "flex-shrink-0 w-[140px] snap-start bg-white rounded-2xl shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col",
-                                                        shopSettings?.menu_primary_color ? 'border-orange-100' : 'border-orange-50'
-                                                    )}
-                                                >
-                                                    <div className="aspect-square bg-orange-50 relative overflow-hidden">
-                                                        {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
-                                                            item.media_type === 'gif' ? (
-                                                                <img src={item.video_url || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.video_url || item.image_url)} />
-                                                            ) : (
-                                                                <video src={item.video_url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
-                                                            )
-                                                        ) : item.image_url ? (
-                                                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.image_url)} />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-orange-300">
-                                                                <Utensils className="w-10 h-10" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="p-2 text-center flex flex-col flex-1 justify-between">
-                                                        <h3 className="font-semibold text-gray-800 text-xs leading-tight line-clamp-2">{item.name}</h3>
-                                                        <div className="mt-1">
-                                                            <span className="text-sm font-extrabold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                ₹{item.price}
-                                                                <span className="text-[9px] font-medium text-gray-400 ml-0.5">
-                                                                    /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
-                                                                </span>
-                                                            </span>
-                                                        </div>
-                                                        {isTableMode && (
-                                                            <div className="mt-1.5">
-                                                                {getCartQuantity(item.id) > 0 ? (
-                                                                    <div className="flex items-center justify-center gap-1">
-                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
-                                                                            <Minus className="w-3.5 h-3.5" />
-                                                                        </button>
-                                                                        <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                            <Plus className="w-3.5 h-3.5" />
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                        {t('common.add') || 'ADD'}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    /* ===== MODE 1/2/3: GRID LAYOUT ===== */
-                                    <div
-                                        className={cn(
-                                            "grid gap-3 transition-all duration-300 ease-in-out overflow-hidden",
-                                            shopSettings?.menu_items_per_row === 3 ? "grid-cols-3" :
-                                                shopSettings?.menu_items_per_row === 2 ? "grid-cols-2" :
-                                                    "grid-cols-1",
-                                            isCollapsed ? "max-h-0 opacity-0" : "max-h-[5000px] opacity-100"
-                                        )}
-                                    >
-                                        {categoryItems.map(item => {
-                                            const borderRadiusClass = 
-                                                shopSettings?.menu_border_radius === 'none' ? 'rounded-none' :
-                                                shopSettings?.menu_border_radius === 'sm' ? 'rounded-md' :
-                                                shopSettings?.menu_border_radius === 'lg' ? 'rounded-3xl' :
-                                                shopSettings?.menu_border_radius === 'full' ? 'rounded-[2rem]' :
-                                                'rounded-2xl'; // default md
-                                            
-                                            const [layoutBase, shadowStyle] = (shopSettings?.menu_layout_style || 'classic').split(':');
-                                            
-                                            // Determine if we should use horizontal (classic) or vertical (modern_cards) layout for single row
-                                            const isSingleColumn = shopSettings?.menu_items_per_row === 1;
-                                            const useHorizontalLayout = isSingleColumn && layoutBase !== 'modern_cards';
-                                            
-                                            const shadowClass = 
-                                                shadowStyle === 'none' ? 'shadow-none hover:shadow-none hover:translate-y-0 border-gray-100' :
-                                                shadowStyle === 'glow' ? 'menu-card-glow' :
-                                                'shadow-sm border hover:shadow-lg hover:-translate-y-0.5'; // default/subtle
-
-                                            return (
-                                            <div
-                                                key={item.id}
-                                                className={cn(
-                                                    `bg-white transition-all duration-300 overflow-hidden group ${borderRadiusClass} ${shadowClass}`,
-                                                    useHorizontalLayout ? "flex items-center p-3.5 gap-3.5" : "flex flex-col"
-                                                )}
-                                                style={{ borderColor: shadowStyle !== 'glow' && shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : undefined }}
-                                            >
-                                                {/* Image */}
-                                                {useHorizontalLayout ? (
-                                                    // Single column: Classic Horizontal Layout
-                                                    <>
-                                                        <ItemMedia item={item} />
-                                                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                                                            <div>
-                                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                                    <h3 className="font-semibold text-gray-900 text-sm leading-tight">
-                                                                        {item.name}
-                                                                    </h3>
-                                                                    {((item as any).is_popular || (item as any).popular || (item as any).bestseller) && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                                                            🔥 Popular
-                                                                        </span>
-                                                                    )}
-                                                                    {((item as any).is_special || (item as any).chef_special) && (
-                                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                                                                            👨‍🍳 Chef Special
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                                <span className="text-base font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                    ₹{item.price}
-                                                                    <span className="text-xs font-medium text-gray-400 ml-0.5">
-                                                                        /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
-                                                                    </span>
-                                                                </span>
-                                                                {isTableMode && (
-                                                                    getCartQuantity(item.id) > 0 ? (
-                                                                        <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
-                                                                                <Minus className="w-3.5 h-3.5" />
-                                                                            </button>
-                                                                            <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                                <Plus className="w-3.5 h-3.5" />
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                            {t('common.add') || 'ADD'}
-                                                                        </button>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    // Multi-column: vertical card with large image on top
-                                                    <>
-                                                        <div className="aspect-square bg-orange-50 relative overflow-hidden">
-                                                            {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
-                                                                item.media_type === 'gif' ? (
-                                                                    <img
-                                                                        src={item.video_url || item.image_url}
-                                                                        alt={item.name}
-                                                                        className="w-full h-full object-cover"
-                                                                        loading="lazy"
-                                                                        draggable={false}
-                                                                        onContextMenu={(e) => e.preventDefault()}
-                                                                        onError={(e) => handleImageError(e, item.video_url || item.image_url)}
-                                                                    />
-                                                                ) : (
-                                                                    <video
-                                                                        src={item.video_url}
-                                                                        className="w-full h-full object-cover"
-                                                                        autoPlay
-                                                                        loop
-                                                                        muted
-                                                                        playsInline
-                                                                    />
-                                                                )
-                                                            ) : item.image_url ? (
-                                                                <img
-                                                                    src={item.image_url}
-                                                                    alt={item.name}
-                                                                    className="w-full h-full object-cover"
-                                                                    loading="lazy"
-                                                                    draggable={false}
-                                                                    onContextMenu={(e) => e.preventDefault()}
-                                                                    onError={(e) => handleImageError(e, item.image_url)}
-                                                                />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-orange-300">
-                                                                    <Utensils className="w-12 h-12" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="p-2.5 text-center flex flex-col flex-1 justify-between">
-                                                            <h3 className={cn(
-                                                                "font-semibold text-gray-800 leading-tight line-clamp-2",
-                                                                shopSettings?.menu_items_per_row === 3 ? "text-xs" : "text-sm"
-                                                            )}>
-                                                                {item.name}
-                                                            </h3>
-                                                            <div className="mt-1.5 flex items-center justify-center gap-2">
-                                                                <span
-                                                                    className={cn(
-                                                                        "font-extrabold",
-                                                                        shopSettings?.menu_items_per_row === 3 ? "text-sm" : "text-base"
-                                                                    )}
-                                                                    style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}
-                                                                >
-                                                                    ₹{item.price}
-                                                                    <span className="text-[10px] font-medium text-gray-400 ml-0.5">
-                                                                        /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
-                                                                    </span>
-                                                                </span>
-                                                            </div>
-                                                            {isTableMode && (
-                                                                <div className="mt-2">
-                                                                    {getCartQuantity(item.id) > 0 ? (
-                                                                        <div className="flex items-center justify-center gap-1.5">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
-                                                                                <Minus className="w-3.5 h-3.5" />
-                                                                            </button>
-                                                                            <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                                <Plus className="w-3.5 h-3.5" />
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                                            {t('common.add') || 'ADD'}
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
-            </main>
-
-            {/* ========== TABLE ORDERING UI ========== */}
-
-            {/* My Orders Section (when table mode + has orders) */}
-            {
-                isTableMode && sessionOrders.length > 0 && showMyOrders && (
-                    <div className="max-w-2xl mx-auto px-4 pb-4">
-                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                            <button
-                                onClick={() => setShowMyOrders(!showMyOrders)}
-                                className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <ChefHat className="w-5 h-5 text-blue-600" />
-                                    <span className="font-bold text-blue-900">
-                                        {t('menu.yourOrders') || 'Your Orders'} — Table {tableNo}{seatId ? ` (Seat ${seatId})` : ''}
-                                    </span>
-                                    <Badge className="bg-blue-100 text-blue-700 text-xs">{sessionOrders.length}</Badge>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold text-blue-700">₹{sessionTotal.toFixed(0)}</span>
-                                    <ChevronUp className="w-4 h-4 text-blue-500" />
-                                </div>
-                            </button>
-
-                            <div className="divide-y divide-gray-50">
-                                {sessionOrders.map(order => (
-                                    <div key={order.id} className="p-4">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-gray-800 text-sm">Order #{order.order_number}</span>
-                                            <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(order.status))}>
-                                                {getStatusIcon(order.status)}
-                                                <span>{getStatusLabel(order.status)}</span>
-                                            </div>
-                                        </div>
-                                        {order.items.map((item: any, idx: number) => (
-                                            <div key={idx} className="flex justify-between text-sm text-gray-600 py-0.5">
-                                                <div>
-                                                    <span>{item.name} ×{item.quantity}</span>
-                                                    {item.instructions && (
-                                                        <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
-                                                            <MessageSquare className="w-3 h-3" /> {item.instructions}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <span className="font-medium">₹{((item.quantity / (item.base_value || 1)) * item.price).toFixed(0)}</span>
-                                            </div>
-                                        ))}
-                                        {order.customer_note && (
-                                            <p className="text-xs text-gray-400 mt-1 italic">Note: {order.customer_note}</p>
-                                        )}
-                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                                            <span className="text-xs text-gray-400">
-                                                {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                            <span className="font-bold text-sm" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{order.total_amount.toFixed(0)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            {shopSettings?.qr_payment_enabled && (
-                                <div className="p-4 bg-slate-50 border-t border-gray-100 flex flex-col gap-2">
-                                    <div className="flex justify-between items-center text-sm font-semibold text-gray-700 mb-1">
-                                        <span>{t('menu.outstandingBill') || 'Total Outstanding Bill'}:</span>
-                                        <span className="text-base text-gray-900 font-bold">₹{sessionTotal.toFixed(0)}</span>
-                                    </div>
-                                    <Button
-                                        onClick={() => setShowCheckoutDialog(true)}
-                                        className="w-full py-2.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md animate-pulse"
-                                        style={{
-                                            background: shopSettings?.menu_primary_color
-                                                ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
-                                                : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                                        }}
-                                    >
-                                        <QrCode className="w-5 h-5" />
-                                        <span>{t('menu.payViaUPI') || 'Pay Bill via UPI'} (₹{sessionTotal.toFixed(0)})</span>
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Cart Overlay */}
-            {
-                isTableMode && showCart && cart.length > 0 && (
-                    <div className="fixed inset-0 z-[60] bg-black/50 flex items-end" onClick={() => setShowCart(false)}>
-                        <div className="w-full max-w-2xl mx-auto bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between p-4 border-b">
-                                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                    <ShoppingCart className="w-5 h-5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
-                                    {t('menu.yourCart') || 'Your Cart'}
-                                </h2>
-                                <div className="flex items-center gap-2">
-                                    <button 
-                                        onClick={clearCart} 
-                                        className="text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        {t('menu.clearCart') || 'Clear Cart'}
-                                    </button>
-                                    <button onClick={() => setShowCart(false)} className="p-1 rounded-full hover:bg-gray-100">
-                                        <X className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                {cart.map(item => (
-                                    <div key={item.id} className="bg-gray-50 rounded-xl p-3">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-semibold text-sm text-gray-800 truncate">{item.name}</h4>
-                                                <span className="text-xs text-gray-500">₹{item.price}/{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-white border flex items-center justify-center hover:bg-gray-100">
-                                                    <Minus className="w-3.5 h-3.5" />
-                                                </button>
-                                                <span className="text-sm font-bold w-5 text-center">{item.quantity / (item.base_value || 1)}</span>
-                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                    <Plus className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button onClick={() => removeFromCart(item.id)} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center hover:bg-red-100">
-                                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {/* Per-item instructions */}
-                                        <div className="mt-2">
-                                            {instructionItemId === item.id ? (
-                                                <div className="flex gap-1">
-                                                    <Input
-                                                        placeholder="e.g. Extra spicy, no onion..."
-                                                        value={item.instructions}
-                                                        onChange={e => setItemInstructions(item.id, e.target.value)}
-                                                        className="h-8 text-xs"
-                                                        autoFocus
-                                                    />
-                                                    <button onClick={() => setInstructionItemId(null)} className="px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300">
-                                                        {t('menu.done') || 'Done'}
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    onClick={() => setInstructionItemId(item.id)}
-                                                    className="text-xs text-amber-600 flex items-center gap-1 hover:text-amber-700"
-                                                >
-                                                    <MessageSquare className="w-3 h-3" />
-                                                    {item.instructions || t('menu.addInstructions')}
-                                                </button>
-                                            )}
-                                        </div>
-                                        <div className="text-right mt-1">
-                                            <span className="font-bold text-sm" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
-                                                ₹{((item.quantity / (item.base_value || 1)) * item.price).toFixed(0)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
- 
-                                {/* General order note */}
-                                <div className="pt-2">
-                                    <label className="text-xs font-medium text-gray-500 mb-1 block">{t('menu.kitchenNote') || 'Note for kitchen (optional)'}</label>
-                                    <Input
-                                        placeholder={t('menu.generalInstructionsPlaceholder') || "Any general instructions..."}
-                                        value={orderNote}
-                                        onChange={e => setOrderNote(e.target.value)}
-                                        className="h-9 text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Cart summary + Place Order */}
-                            <div className="p-4 border-t bg-white space-y-2">
-                                <div className="space-y-1 text-xs text-gray-500">
-                                    <div className="flex justify-between">
-                                        <span>{t('menu.subtotal') || 'Subtotal'}:</span>
-                                        <span>₹{cartSubtotal.toFixed(2)}</span>
-                                    </div>
-                                    {cartExclusiveTax > 0 && (
-                                        <div className="flex justify-between text-amber-600 font-medium">
-                                            <span>{t('menu.tax') || 'Tax (Exclusive)'}:</span>
-                                            <span>+₹{cartExclusiveTax.toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                    {gstEnabled && cartTaxesList.map((entry: any) => (
-                                        <div key={entry.rate} className="flex justify-between pl-2 text-[10px] text-gray-400">
-                                            <span>{entry.name} (Taxable ₹{entry.taxable.toFixed(2)}):</span>
-                                            <span>₹{entry.tax.toFixed(2)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between items-center mb-1.5 pt-1.5 border-t">
-                                    <span className="text-sm text-gray-600 font-semibold">
-                                        {cartItemCount} {cartItemCount !== 1 ? (t('menu.items') || 'items') : (t('menu.item') || 'item')}
-                                    </span>
-                                    <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{cartTotal.toFixed(2)}</span>
-                                </div>
-                                <Button
-                                    onClick={placeOrder}
-                                    disabled={isPlacingOrder || cart.length === 0}
-                                    className="w-full h-12 text-base font-bold rounded-xl text-white"
-                                    style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
-                                >
-                                    {isPlacingOrder ? (
-                                        <><Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('menu.placingOrder') || 'Placing Order...'}</>
-                                    ) : (
-                                        <><Send className="w-5 h-5 mr-2" /> {t('menu.placeOrder') || 'Place Order'} ₹{cartTotal.toFixed(2)}</>
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Floating Cart Bar (when table mode + items in cart) */}
-            {
-                isTableMode && cartItemCount > 0 && !showCart && (
-                    <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
-                        <button
-                            onClick={() => setShowCart(true)}
                             className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3.5 rounded-2xl shadow-xl text-white transition-transform active:scale-[0.98] floating-cart-bar-btn"
                             style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                         >
@@ -3103,6 +2373,41 @@ const PublicMenu = () => {
                     </div>
                 </div>
             )}
+
+            {/* Remote Checkout Modal */}
+            {showRemoteCheckout && (
+                <RemoteCheckout
+                    isOpen={showRemoteCheckout}
+                    onClose={() => setShowRemoteCheckout(false)}
+                    cart={cart}
+                    adminId={adminId || ''}
+                    branchId={branchId || ''}
+                    shopSettings={rawShopSettings as any}
+                    taxRates={Object.values(taxRatesMap).map((t: any) => ({ id: '', rate: t.rate, name: t.name, cess: t.cess || 0 }))}
+                    onOrderPlaced={(orderId) => {
+                        setActiveRemoteOrderId(orderId);
+                        setShowRemoteCheckout(false);
+                        setShowRemoteTracker(true);
+                        setCart([]);
+                        const deviceId = localStorage.getItem('zenpos_remote_device_id') || 'anon';
+                        localStorage.removeItem(`zenpos_remote_cart_${deviceId}`);
+                    }}
+                />
+            )}
+
+            {/* Live Order Tracker */}
+            {showRemoteTracker && activeRemoteOrderId && (
+                <LiveOrderTracker
+                    isOpen={showRemoteTracker}
+                    onClose={() => setShowRemoteTracker(false)}
+                    orderId={activeRemoteOrderId}
+                    onOrderComplete={() => {
+                        setShowRemoteTracker(false);
+                        setActiveRemoteOrderId(null);
+                    }}
+                />
+            )}
+
         </div>
     );
 };
