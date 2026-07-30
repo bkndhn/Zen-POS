@@ -86,8 +86,10 @@ interface Row {
   subscription_amount?: number;
   force_logout?: boolean;
   force_logout_reason: string | null;
-  business_type?: string;
   max_branches?: number;
+  max_sub_users?: number;
+}
+
 interface ClientLimitsModalProps {
   target: Row;
   onClose: () => void;
