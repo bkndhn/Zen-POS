@@ -26,8 +26,9 @@ const Auth = () => {
     email: '',
     password: '',
     name: '',
-    role: 'admin', // Only admins can signup from login page
-    hotelName: ''
+    role: 'admin',
+    hotelName: '',
+    businessType: 'restaurant'
   });
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -255,7 +256,7 @@ const Auth = () => {
           formData.role,
           formData.hotelName,
           undefined,
-          { captchaToken: captchaToken || undefined }
+          { captchaToken: captchaToken || undefined, businessType: formData.businessType }
         );
 
         if (error) {
@@ -341,7 +342,22 @@ const Auth = () => {
 
                 {/* Hotel Name - Required for admin signup */}
                 <div className="space-y-2">
-                  <Label htmlFor="hotelName" className="text-sm font-medium text-gray-700 dark:text-gray-300">Hotel Name</Label>
+                                  {/* Business Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessType" className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Type</Label>
+                  <select
+                    id="businessType"
+                    value={formData.businessType || 'restaurant'}
+                    onChange={(e) => setFormData({ ...formData, businessType: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="restaurant">Restaurant / Cafe</option>
+                    <option value="services">Services (Salon, Spa, Clinic)</option>
+                    <option value="pharmacy">Pharmacy</option>
+                    <option value="retail">Retail / Grocery</option>
+                  </select>
+                </div>
+                
                   <Input
                     id="hotelName"
                     type="text"
@@ -469,7 +485,7 @@ const Auth = () => {
                   } else {
                     if (isLogin && !signupEnabled) return;
                     setIsLogin(!isLogin);
-                    setFormData({ email: '', password: '', name: '', role: 'user', hotelName: '' });
+                    setFormData({ email: '', password: '', name: '', role: 'user', hotelName: '', businessType: 'restaurant' });
                   }
                 }}
                 className="text-sm text-gray-600 dark:text-gray-400"
@@ -491,3 +507,5 @@ const Auth = () => {
 };
 
 export default Auth;
+
+

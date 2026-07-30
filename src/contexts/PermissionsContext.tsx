@@ -25,6 +25,8 @@ export interface UserPermissions {
     bottomNavCustomize: boolean;
     calci_billing: boolean;
     onlineOrders: boolean;
+    providers: boolean;
+    appointments: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -50,6 +52,8 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     bottomNavCustomize: false,
     calci_billing: false,
     onlineOrders: false,
+    providers: false,
+    appointments: false,
 };
 
 const ADMIN_PERMISSIONS: UserPermissions = {
@@ -75,6 +79,8 @@ const ADMIN_PERMISSIONS: UserPermissions = {
     bottomNavCustomize: true,
     calci_billing: true,
     onlineOrders: true,
+    providers: true,
+    appointments: true,
 };
 
 interface PermissionsContextType {
@@ -110,6 +116,8 @@ const routeToPageKey: Record<string, keyof UserPermissions> = {
     '/online-orders': 'onlineOrders',
     '/users': 'users',
     '/settings': 'settings',
+    '/providers': 'providers',
+    '/appointments': 'appointments',
     // Special feature toggle aliases (super admin uses these keys)
     'allow_online_orders': 'onlineOrders',
 };
@@ -339,6 +347,8 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
             purchases: '/purchases',
             stock: '/stock',
             waiterCompanion: '/waiter',
+            providers: '/providers',
+            appointments: '/appointments',
         };
 
         const handlePermissionChange = (userId: string, pageName: string, hasAccess: boolean) => {

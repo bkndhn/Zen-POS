@@ -85,6 +85,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   const [formData, setFormData] = useState({
     name: item.name,
+    barcode: (item as any).barcode || '',
     description: item.description || '',
     price: item.price.toString(),
     price_zomato: item.price_zomato?.toString() || '',
@@ -145,6 +146,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
       // Reset form data with current item values when dialog opens (empty stock_quantity for add mode)
       setFormData({
         name: item.name,
+        barcode: (item as any).barcode || '',
         description: item.description || '',
         price: item.price.toString(),
         price_zomato: item.price_zomato?.toString() || '',
@@ -313,6 +315,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
       const updatePayload: any = {
         name: sanitizeString(formData.name, 200),
+        barcode: formData.barcode.trim() || null,
         description: sanitizeString(formData.description || '', 500) || null,
         price: parseFloat(formData.price),
         price_zomato: formData.price_zomato ? parseFloat(formData.price_zomato) : null,
@@ -395,6 +398,16 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter item name"
                 required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="barcode">Barcode</Label>
+              <Input
+                id="barcode"
+                value={formData.barcode}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                placeholder="Scan or enter barcode"
               />
             </div>
 

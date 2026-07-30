@@ -57,9 +57,7 @@ const Users: React.FC = () => {
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
 
-  if (isSuperAdmin) {
-    return <Navigate to="/super-admin/users?tab=users" replace />;
-  }
+
 
   useEffect(() => {
     fetchUsers();
@@ -357,6 +355,10 @@ const Users: React.FC = () => {
       return newSet;
     });
   };
+
+  if (isSuperAdmin) {
+    return <Navigate to="/super-admin/users?tab=users" replace />;
+  }
 
   if (loading) {
     return (

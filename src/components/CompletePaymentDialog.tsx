@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -69,6 +71,10 @@ interface CompletePaymentDialogProps {
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
+    doctorName?: string;
+    providerId?: string;
+    paidAmount?: number;
+    prescriptionImage?: string;
     printAction?: 'print' | 'no-print';
   }) => void;
   whatsappEnabled?: boolean;
@@ -78,6 +84,7 @@ interface CompletePaymentDialogProps {
   defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
   autoPrintEnabled?: boolean;
+  businessType?: string;
 }
 
 // Strong name validation logic (excludes dummy words, repetitive/sequential characters)
@@ -126,7 +133,8 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   showOrderType = false,
   defaultOrderType,
   taxRatesMap = {},
-  autoPrintEnabled = false
+  autoPrintEnabled = false,
+  businessType
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState(0);
@@ -141,6 +149,19 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [customerGstin, setCustomerGstin] = useState('');
   const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>(defaultOrderType || 'dine_in');
+  const [doctorName, setDoctorName] = useState('');
+  const [providers, setProviders] = useState<any[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('none');
+  const [isKhata, setIsKhata] = useState(false);
+  const [paidAmount, setPaidAmount] = useState<string>('');
+  const { adminProfileId } = useAuth();
+
+  useEffect(() => {
+    if (open && adminProfileId && businessType === 'services') {
+      supabase.from('providers').select('id, name').eq('admin_id', adminProfileId).eq('is_active', true).then(({ data }) => setProviders(data || []));
+    }
+  }, [open, adminProfileId, businessType]);
+  const [prescriptionImage, setPrescriptionImage] = useState('');
 
   // When dialog opens, sync orderType to configured default (per branch)
   useEffect(() => {
@@ -387,6 +408,10 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       sendWhatsApp: whatsappShareMode === 'image' ? whatsappEnabled : (sendWhatsApp && customerMobile.trim().length > 0),
       customerGstin: customerGstin.trim() || undefined,
       orderType: showOrderType ? orderType : undefined,
+      doctorName: doctorName.trim() || undefined,
+      providerId: selectedProviderId !== 'none' ? selectedProviderId : undefined,
+      paidAmount: isKhata ? (paidAmount === '' ? total : parseFloat(paidAmount)) : -1,
+      prescriptionImage: prescriptionImage || undefined,
       printAction
     });
   };
@@ -408,6 +433,11 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       setShowDiscount(false);
       setCustomerMobile('');
       setCustomerName('');
+      setDoctorName('');
+      setSelectedProviderId('none');
+      setIsKhata(false);
+      setPaidAmount('');
+      setPrescriptionImage('');
       setSendWhatsApp(false);
       setOrderType('dine_in');
     }
@@ -675,6 +705,36 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                     max={discountType === 'percentage' ? '100' : undefined}
                   />
                 </div>
+
+                {businessType === 'pharmacy' && (
+                  <div className="pt-2 border-t mt-2">
+                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Doctor & Prescription</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-[11px] mb-1">Doctor Name (Opt)</Label>
+                        <div className="relative">
+                          <Input
+                            placeholder="Dr. Smith"
+                            value={doctorName}
+                            onChange={(e) => setDoctorName(e.target.value)}
+                            className="h-8 pl-2 pr-2 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-[11px] mb-1">Prescription Image URL (Opt)</Label>
+                        <div className="relative">
+                          <Input
+                            placeholder="https://.../img.jpg"
+                            value={prescriptionImage}
+                            onChange={(e) => setPrescriptionImage(e.target.value)}
+                            className="h-8 pl-2 pr-2 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -738,6 +798,47 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
               </div>
               {customerGstin && customerGstin.length > 0 && customerGstin.length !== 15 && (
                 <p className="text-[10px] text-amber-500 mt-0.5">GSTIN must be 15 characters</p>
+              )}
+            </div>
+          )}
+
+          {/* Provider and Khata for Services */}
+          {businessType === 'services' && (
+            <div className="flex flex-col gap-2 p-2 border rounded-md bg-slate-50 dark:bg-slate-900/50 mt-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Service Provider</Label>
+                <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <SelectValue placeholder="Select Provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {providers.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2">
+                  <Switch id="khata-toggle" checked={isKhata} onCheckedChange={setIsKhata} />
+                  <Label htmlFor="khata-toggle" className="text-xs font-semibold">Partial Payment (Khata)</Label>
+                </div>
+              </div>
+              {isKhata && (
+                <div className="flex items-center justify-between mt-1">
+                  <Label className="text-xs text-muted-foreground">Amount Paid Now (₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={total}
+                    value={paidAmount}
+                    onChange={(e) => setPaidAmount(Number(e.target.value) || 0)}
+                    placeholder={total.toString()}
+                    className="w-[180px] h-8 text-xs bg-white"
+                  />
+                </div>
               )}
             </div>
           )}
@@ -884,3 +985,5 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     </Dialog>
   );
 };
+
+

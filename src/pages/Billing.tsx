@@ -27,6 +27,7 @@ import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { toast as sonnerToast } from 'sonner';
 import { format } from 'date-fns';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getShortUnit, formatQuantityWithUnit, formatStoredQuantity, isWeightOrVolumeUnit, parseQuickChipQuantity, calculateSmartQtyCount, convertToInventoryUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
@@ -1932,6 +1933,18 @@ const Billing = () => {
     setSearchQuery('');
   };
 
+  useBarcodeScanner({
+    onScan: (barcode) => {
+      const item = items.find((i: any) => i.barcode === barcode);
+      if (item) {
+        addToCart(item);
+        toast({ title: "Scanned", description: `${item.name} added to cart.` });
+      } else {
+        toast({ title: "Not found", description: `Barcode ${barcode} not recognized.`, variant: 'destructive' });
+      }
+    }
+  });
+
   const updateQuantity = (id: string, change: number) => {
     const cartItem = cart.find(c => c.id === id);
     if (!cartItem) return;
@@ -1972,7 +1985,7 @@ const Billing = () => {
     setTempQuantity(currentQuantity.toString());
   };
   const saveQuantity = (id: string) => {
-    const newQuantity = parseInt(tempQuantity);
+    const newQuantity = parseFloat(tempQuantity);
     if (newQuantity && newQuantity > 0) {
       const cartItem = cart.find(c => c.id === id);
       if (cartItem && cartItem.stock_quantity !== null && cartItem.stock_quantity !== undefined) {
@@ -3777,6 +3790,7 @@ const Billing = () => {
                 {editingQuantity === item.id ? <div className="flex items-center space-x-1">
                   <Input 
                     type="number" 
+                    step="any"
                     value={tempQuantity} 
                     onChange={e => setTempQuantity(e.target.value)} 
                     placeholder={getShortUnit(item.unit)}
@@ -3904,7 +3918,24 @@ const Billing = () => {
     </Dialog>
 
     {/* Payment Dialog */}
-    <CompletePaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} cart={cart} paymentTypes={paymentTypes} additionalCharges={additionalCharges} onUpdateQuantity={updateQuantity} onRemoveItem={removeFromCart} onCompletePayment={handleCompletePayment} whatsappEnabled={whatsappEnabled} whatsappShareMode={whatsappShareMode} gstEnabled={gstSettings.enabled} taxRatesMap={gstSettings.taxRatesMap} showOrderType={showOrderType} defaultOrderType={defaultOrderType} autoPrintEnabled={(localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false'} />
+    <CompletePaymentDialog 
+      open={paymentDialogOpen} 
+      onOpenChange={setPaymentDialogOpen} 
+      cart={cart} 
+      paymentTypes={paymentTypes} 
+      additionalCharges={additionalCharges} 
+      onUpdateQuantity={updateQuantity} 
+      onRemoveItem={removeFromCart} 
+      onCompletePayment={handleCompletePayment} 
+      whatsappEnabled={whatsappEnabled} 
+      whatsappShareMode={whatsappShareMode} 
+      gstEnabled={gstSettings.enabled} 
+      taxRatesMap={gstSettings.taxRatesMap} 
+      showOrderType={showOrderType} 
+      defaultOrderType={defaultOrderType} 
+      businessType={profile?.business_type}
+      autoPrintEnabled={(localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false'} 
+    />
 
     {/* Printer Error Dialog */}
     <PrinterErrorDialog

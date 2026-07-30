@@ -33,7 +33,7 @@ interface Purchase {
 interface LineDist { branch_id: string; item_id: string; quantity: number; }
 interface Line {
   item_name: string; unit: string; quantity: number; rate: number;
-  batch_no: string; expiry_date: string;
+  batch_no: string; mfg_date: string; expiry_date: string;
   expiry_mode: string;
   distributions: LineDist[];
 }
@@ -161,7 +161,7 @@ const Purchases: React.FC = () => {
 
   const blankLine = (): Line => ({
     item_name: '', unit: '', quantity: 0, rate: 0,
-    batch_no: '', expiry_date: '', expiry_mode: 'none',
+    batch_no: '', mfg_date: '', expiry_date: '', expiry_mode: 'none',
     distributions: branches.length ? [{ branch_id: branches.find(b => b.is_main)?.id || branches[0].id, item_id: '', quantity: 0 }] : []
   });
 
@@ -238,7 +238,7 @@ const Purchases: React.FC = () => {
       p_notes: notes || null,
       p_lines: lines.map(l => ({
         item_name: l.item_name, unit: l.unit, quantity: l.quantity, rate: l.rate,
-        batch_no: l.batch_no, expiry_date: l.expiry_date || null,
+        batch_no: l.batch_no, mfg_date: l.mfg_date || null, expiry_date: l.expiry_date || null,
         distributions: l.distributions.filter(d => d.quantity > 0).map(d => ({
           branch_id: d.branch_id, item_id: d.item_id || null, quantity: d.quantity
         }))
@@ -682,8 +682,12 @@ const Purchases: React.FC = () => {
                     <Label className="text-xs font-semibold">Batch No</Label>
                     <Input value={l.batch_no} onChange={e => updateLine(idx, { batch_no: e.target.value })} placeholder="e.g. BAT-01" className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
                   </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs font-semibold">Expiry {l.expiry_mode === 'mandatory' ? '*' : l.expiry_mode === 'none' ? '(disabled)' : '(optional)'}</Label>
+                  <div>
+                    <Label className="text-xs font-semibold">Mfg Date (opt)</Label>
+                    <Input type="date" value={l.mfg_date} onChange={e => updateLine(idx, { mfg_date: e.target.value })} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Expiry {l.expiry_mode === 'mandatory' ? '*' : l.expiry_mode === 'none' ? '(disabled)' : '(opt)'}</Label>
                     <Input type="date" disabled={l.expiry_mode === 'none'} value={l.expiry_date} onChange={e => updateLine(idx, { expiry_date: e.target.value })} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
                   </div>
                   <div className="flex items-end justify-end">
@@ -854,6 +858,7 @@ const Purchases: React.FC = () => {
                             {item.item_name} {item.unit ? `(${item.unit})` : ''}
                             <div className="text-[10px] text-muted-foreground font-normal mt-0.5 space-x-2">
                               {item.batch_no && <span>Batch: {item.batch_no}</span>}
+                              {item.mfg_date && <span>Mfg: {item.mfg_date}</span>}
                               {item.expiry_date && <span>Expiry: {item.expiry_date}</span>}
                             </div>
                           </td>

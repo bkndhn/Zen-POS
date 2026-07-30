@@ -72,6 +72,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
   const [taxRates, setTaxRates] = useState<TaxRateOption[]>([]);
   const [formData, setFormData] = useState({
     name: '',
+    barcode: '',
     description: '',
     price: '',
     price_zomato: '',
@@ -290,6 +291,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 
       const insertPayload: any = {
         name: sanitizeString(formData.name.trim(), 200),
+        barcode: formData.barcode.trim() || null,
         description: sanitizeString(formData.description.trim(), 500) || null,
         price: parseFloat(formData.price),
         price_zomato: formData.price_zomato ? parseFloat(formData.price_zomato) : null,
@@ -350,6 +352,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 
       setFormData({
         name: '',
+        barcode: '',
         description: '',
         price: '',
         price_zomato: '',
@@ -420,6 +423,16 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter item name"
               required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="barcode">Barcode</Label>
+            <Input
+              id="barcode"
+              value={formData.barcode}
+              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+              placeholder="Scan or enter barcode"
             />
           </div>
 

@@ -99,6 +99,8 @@ const Reports: React.FC = () => {
   const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [unpaidDues, setUnpaidDues] = useState<number>(0);
+  const [providers, setProviders] = useState<any[]>([]);
   const [itemReports, setItemReports] = useState<ItemReport[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [purchasePayments, setPurchasePayments] = useState<any[]>([]);
@@ -682,6 +684,15 @@ const Reports: React.FC = () => {
           }
 
           const { data: billsData, error: billsError } = await billsQuery;
+
+          // Fetch Khata / Unpaid Dues
+          const { data: customersData } = await supabase.from('customers').select('current_balance').eq('admin_id', adminId).gt('current_balance', 0);
+          const unpaid = customersData?.reduce((sum, c) => sum + (Number(c.current_balance) || 0), 0) || 0;
+          setUnpaidDues(unpaid);
+
+          // Fetch Providers
+          const { data: providersData } = await supabase.from('providers').select('*').eq('admin_id', adminId);
+          setProviders(providersData || []);
           if (billsError) throw billsError;
 
           let filteredBillsData = billsData || [];
@@ -1589,6 +1600,18 @@ const Reports: React.FC = () => {
             <p className="text-xs text-muted-foreground">For selected period</p>
           </div>
 
+          {/* Unpaid Dues Card */}
+          <div className="bg-card rounded-2xl p-4 shadow-lg dark:shadow-none border border-border">
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Unpaid Dues (Khata)</p>
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 dark:bg-rose-500/20 flex items-center justify-center">
+                <DollarSign className="w-4 h-4 text-rose-500" />
+              </div>
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1">₹{unpaidDues.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+            <p className="text-xs text-muted-foreground">Across all customers</p>
+          </div>
+
           {/* Total Expenses Card */}
           <div className="bg-card rounded-2xl p-4 shadow-lg dark:shadow-none border border-border">
             <div className="flex items-start justify-between mb-3">
@@ -1660,13 +1683,14 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-6 min-w-[480px] h-10">
+          <TabsList className="grid w-full grid-cols-7 min-w-[560px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
             <TabsTrigger value="profit" disabled={billFilter === 'deleted'} className="text-sm font-medium">P&L</TabsTrigger>
             <TabsTrigger value="gst" disabled={billFilter === 'deleted'} className="text-sm font-medium">GST</TabsTrigger>
             <TabsTrigger value="channels" disabled={billFilter === 'deleted'} className="text-sm font-medium">Channels</TabsTrigger>
+            <TabsTrigger value="providers" disabled={billFilter === 'deleted'} className="text-sm font-medium">Providers</TabsTrigger>
           </TabsList>
         </div>
 
@@ -2364,6 +2388,48 @@ const Reports: React.FC = () => {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Providers Tab */}
+        <TabsContent value="providers" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Provider Commissions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {providers.map(provider => {
+                  const providerBills = bills.filter(b => b.provider_id === provider.id);
+                  const billsCount = providerBills.length;
+                  const totalRevenue = providerBills.reduce((sum, b) => sum + Number(b.total_amount || 0), 0);
+                  let commission = 0;
+                  if (provider.commission_type === 'percentage') {
+                    commission = (totalRevenue * (provider.commission_rate || 0)) / 100;
+                  } else if (provider.commission_type === 'flat') {
+                    commission = (provider.commission_rate || 0) * billsCount;
+                  }
+
+                  return (
+                    <div key={provider.id} className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                      <div>
+                        <p className="font-semibold">{provider.name}</p>
+                        <p className="text-xs text-muted-foreground">{billsCount} bills • ₹{totalRevenue.toFixed(2)} revenue</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-emerald-600">₹{commission.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Commission ({provider.commission_rate}{provider.commission_type === 'percentage' ? '%' : ' flat'})</p>
+                      </div>
+                    </div>
+                  );
+                })}
+                {providers.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No providers found or no data for this period.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Bill Details Dialog */}
@@ -2760,3 +2826,5 @@ export default function ReportsProtected() {
     </PinLockGuard>
   );
 }
+
+

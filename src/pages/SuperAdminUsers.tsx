@@ -84,7 +84,8 @@ interface Row {
   subscription_end_date?: string;
   subscription_amount?: number;
   force_logout?: boolean;
-  force_logout_reason?: string;
+  force_logout_reason: string | null;
+  business_type?: string;
 }
 
 const SuperAdminUsers: React.FC = () => {
@@ -103,6 +104,7 @@ const SuperAdminUsers: React.FC = () => {
   const [aiLimitTarget, setAiLimitTarget] = useState<Row | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
+  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
 
   // Tabs & URL sync state
   const [searchParams, setSearchParams] = useSearchParams();
@@ -637,6 +639,16 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, business_type');
+        const shopSettingsMap = new Map();
+        if (shopSettingsData) {
+          shopSettingsData.forEach(s => {
+            if (s.business_type && !shopSettingsMap.has(s.user_id)) {
+              shopSettingsMap.set(s.user_id, s.business_type);
+            }
+          });
+        }
+
         const enrichedRows = (data as Row[]).map(r => {
           const prof: any = profileMap.get(r.profile_id) || {};
           return {
@@ -645,9 +657,10 @@ const SuperAdminUsers: React.FC = () => {
             subscription_plan: prof.subscription_plan || 'basic',
             subscription_status: prof.subscription_status || 'active',
             subscription_end_date: prof.subscription_end_date || null,
-            subscription_amount: prof.subscription_amount || 999,
+            subscription_amount: prof.subscription_amount || 0,
             force_logout: prof.force_logout || false,
             force_logout_reason: prof.force_logout_reason || null,
+            business_type: shopSettingsMap.get(r.profile_id) || 'restaurant'
           };
         });
 
@@ -785,6 +798,9 @@ const SuperAdminUsers: React.FC = () => {
 
   const filtered = useMemo(() => {
     let result = rows;
+    if (businessTypeFilter !== 'all') {
+      result = result.filter(r => (r.business_type || 'restaurant') === businessTypeFilter);
+    }
     if (userRoleFilter === 'admin') {
       result = result.filter(r => r.role === 'admin');
     } else if (userRoleFilter === 'staff') {
@@ -892,6 +908,20 @@ const SuperAdminUsers: React.FC = () => {
                   </button>
                 </div>
 
+                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 mr-2 border">
+                  <select
+                    value={businessTypeFilter}
+                    onChange={(e) => setBusinessTypeFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1 cursor-pointer"
+                  >
+                    <option value="all">All Business Types</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="services">Services</option>
+                    <option value="pharmacy">Pharmacy</option>
+                    <option value="retail">Retail</option>
+                  </select>
+                </div>
+
                 <Button
                   onClick={() => setAddUserDialogOpen(true)}
                   className="h-10 font-bold gap-2 rounded-xl shadow-md"
@@ -934,6 +964,7 @@ const SuperAdminUsers: React.FC = () => {
                       <TableHead className="font-bold text-xs">Email</TableHead>
                       <TableHead className="font-bold text-xs">Mobile (Click to Call)</TableHead>
                       <TableHead className="font-bold text-xs">Hotel Name</TableHead>
+                      <TableHead className="font-bold text-xs">Business</TableHead>
                       <TableHead className="font-bold text-xs">Shop Name</TableHead>
                       <TableHead className="font-bold text-xs">Address</TableHead>
                       <TableHead className="font-bold text-xs">Parent Admin</TableHead>
@@ -973,6 +1004,7 @@ const SuperAdminUsers: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell className="text-xs font-medium">{r.hotel_name || '—'}</TableCell>
+                        <TableCell className="text-xs font-medium capitalize">{r.business_type || 'Restaurant'}</TableCell>
                         <TableCell className="text-xs font-medium">{r.shop_name || '—'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={r.address || ''}>
                           {r.address || '—'}

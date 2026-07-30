@@ -29,6 +29,7 @@ interface Customer {
   total_spent: number;
   last_visit: string;
   created_at: string;
+  current_balance?: number;
 }
 
 const CRM: React.FC = () => {
@@ -72,6 +73,56 @@ const CRM: React.FC = () => {
   const [campaignType, setCampaignType] = useState<'promo' | 'birthday' | 'reengage' | 'voucher'>('promo');
   const [campaignTarget, setCampaignTarget] = useState<'all' | 'vip' | 'at_risk' | 'dormant'>('all');
   const [campaignText, setCampaignText] = useState('Hi {name}, visit us today at {shop} and get 15% OFF on your next order! Code: ZEN15');
+
+
+  // Payment Collection State
+  const [collectPaymentOpen, setCollectPaymentOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMode, setPaymentMode] = useState('cash');
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
+  const handleCollectPayment = async () => {
+    if (!historyCustomer || !adminId) return;
+    const amount = Number(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast({ title: 'Invalid amount', variant: 'destructive' });
+      return;
+    }
+    setPaymentLoading(true);
+    try {
+      // 1. Insert into customer_ledger
+      const { error: ledgerError } = await supabase.from('customer_ledger').insert({
+        customer_id: historyCustomer.id,
+        transaction_type: 'credit',
+        amount: amount,
+        payment_mode: paymentMode,
+        notes: paymentNotes || 'Payment Collected',
+        admin_id: adminId
+      });
+      if (ledgerError) throw ledgerError;
+
+      // 2. Update current_balance in customers table
+      const newBalance = (historyCustomer.current_balance || 0) - amount;
+      const { error: updateError } = await supabase.from('customers').update({
+        current_balance: newBalance
+      }).eq('id', historyCustomer.id);
+      if (updateError) throw updateError;
+
+      // Update local state
+      setHistoryCustomer({ ...historyCustomer, current_balance: newBalance });
+      setCustomers(prev => prev.map(c => c.id === historyCustomer.id ? { ...c, current_balance: newBalance } : c));
+      
+      setCollectPaymentOpen(false);
+      setPaymentAmount('');
+      setPaymentNotes('');
+      toast({ title: 'Payment Collected Successfully' });
+    } catch (err: any) {
+      toast({ title: 'Failed to collect payment', description: err.message, variant: 'destructive' });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const getCustomerSegment = (c: Customer) => {
     const daysAgo = Math.floor((Date.now() - new Date(c.last_visit).getTime()) / (1000 * 60 * 60 * 24));
@@ -135,6 +186,7 @@ const CRM: React.FC = () => {
           ...c,
           visit_count: c.visit_count ?? 0,
           total_spent: Number(c.total_spent) || 0,
+          current_balance: Number(c.current_balance) || 0,
           last_visit: c.last_visit ?? c.created_at
         })));
         loadedFromCache = true;
@@ -165,6 +217,7 @@ const CRM: React.FC = () => {
               name: c.name || `Customer (${phone.slice(-4)})`,
               visit_count: c.visit_count ?? 0,
               total_spent: Number(c.total_spent) || 0,
+              current_balance: Number(c.current_balance) || 0,
               last_visit: c.last_visit ?? c.created_at
             });
           }
@@ -936,6 +989,11 @@ const CRM: React.FC = () => {
                     <div className="text-right mr-2">
                       <p className="font-bold text-sm text-primary">₹{customer.total_spent.toFixed(0)}</p>
                       <p className="text-[10px] text-muted-foreground">total spent</p>
+                      {customer.current_balance !== undefined && customer.current_balance !== 0 && (
+                        <p className={`text-[10px] font-bold ${customer.current_balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                          {customer.current_balance > 0 ? `Dues: ₹${customer.current_balance}` : `Advance: ₹${Math.abs(customer.current_balance)}`}
+                        </p>
+                      )}
                     </div>
                     <Button
                       size="sm"
@@ -1059,6 +1117,28 @@ const CRM: React.FC = () => {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {historyCustomer ? `${historyCustomer.name || 'Customer'} (${historyCustomer.phone})` : ''}
               </p>
+              {historyCustomer?.current_balance ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${historyCustomer.current_balance > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {historyCustomer.current_balance > 0 ? `Dues: ₹${historyCustomer.current_balance}` : `Advance: ₹${Math.abs(historyCustomer.current_balance)}`}
+                  </span>
+                  {historyCustomer.current_balance > 0 && !historyCustomer.id.startsWith('bill-') && !historyCustomer.id.startsWith('remote-') && (
+                    <>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => setCollectPaymentOpen(true)}>
+                        Collect Payment
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => {
+                        const msg = encodeURIComponent(`Hi ${historyCustomer.name || 'Customer'},
+This is a gentle reminder that you have a pending due of Rs.${historyCustomer.current_balance} with us. Please clear it at your earliest convenience.
+Thank you!`);
+                        window.open(`https://wa.me/91${historyCustomer.phone}?text=${msg}`, '_blank');
+                      }}>
+                        Reminder
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : null}
             </div>
             
             {/* Tab Swapper */}
@@ -1436,6 +1516,43 @@ const CRM: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Collect Payment Dialog */}
+      <Dialog open={collectPaymentOpen} onOpenChange={setCollectPaymentOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Collect Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Amount to Collect</Label>
+              <Input type="number" placeholder="Enter amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Payment Mode</Label>
+              <Select value={paymentMode} onValueChange={setPaymentMode}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="upi">UPI / QR</SelectItem>
+                  <SelectItem value="card">Card / Swipe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (Optional)</Label>
+              <Input type="text" placeholder="e.g. Cleared pending dues" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCollectPaymentOpen(false)}>Cancel</Button>
+            <Button onClick={handleCollectPayment} disabled={paymentLoading}>
+              {paymentLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Confirm Collection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* WhatsApp Marketing Campaign Dialog */}
       <Dialog open={campaignOpen} onOpenChange={setCampaignOpen}>
         <DialogContent className="max-w-lg bg-card rounded-2xl">
