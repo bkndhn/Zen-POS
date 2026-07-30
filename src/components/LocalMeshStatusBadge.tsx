@@ -17,16 +17,7 @@ export const LocalMeshStatusBadge: React.FC<{ className?: string }> = ({ classNa
   }, []);
 
   if (status.isOnline && status.pendingCount === 0) {
-    return (
-      <Badge 
-        variant="outline" 
-        className={cn("bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[11px] gap-1 px-2 py-0.5 font-medium shadow-2xs", className)}
-        title="Connected to cloud database (Ultra-low mobile data usage)"
-      >
-        <Cloud className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-        Cloud Online
-      </Badge>
-    );
+    return null;
   }
 
   if (status.isOnline && status.pendingCount > 0) {
