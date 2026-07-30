@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/integrations/supabase/client';
 import { DollarSign, Receipt, TrendingUp, Package } from 'lucide-react';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 
 interface DashboardStats {
   todaySales: number;
@@ -26,6 +27,8 @@ interface ExpiringBatch {
 const Dashboard = () => {
   const { profile , adminProfileId } = useAuth();
   const adminId = adminProfileId;
+  const { data: shopSettings } = useBranchSettings('shop_settings');
+  const businessType = shopSettings?.business_type || profile?.business_type || 'restaurant';
   const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery(() => fetchDashboardStats());
   const [stats, setStats] = useState<DashboardStats>({
     todaySales: 0,
@@ -111,7 +114,7 @@ const Dashboard = () => {
       const totalItems = itemsData?.length || 0;
 
       // Fetch expiring batches if pharmacy
-      if (profile?.business_type === 'pharmacy') {
+      if (businessType === 'pharmacy') {
         const nextMonth = new Date();
         nextMonth.setMonth(nextMonth.getMonth() + 3); // next 3 months
         
@@ -290,7 +293,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {profile?.business_type === 'pharmacy' && (
+        {businessType === 'pharmacy' && (
           <Card className="shadow-card lg:col-span-2">
             <CardHeader>
               <CardTitle>Expiring Batches (Next 3 Months)</CardTitle>

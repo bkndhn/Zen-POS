@@ -22,13 +22,13 @@ export function useBranchSettings<T extends Record<string, any>>(
   table: 'shop_settings' | 'bluetooth_settings' | 'display_settings' | 'user_preferences',
   select: string = '*'
 ) {
-  const { profile } = useAuth();
+  const { profile, adminAuthUid } = useAuth();
   const { operatingBranchId, branches } = useBranch();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const userId = profile?.user_id ?? null;
+  const userId = adminAuthUid || profile?.user_id || null;
   const branchId = operatingBranchId ?? null;
   const mainBranchId = branches.find((b) => b.is_main)?.id ?? null;
 

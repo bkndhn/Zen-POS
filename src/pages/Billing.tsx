@@ -459,6 +459,7 @@ const Billing = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [businessType, setBusinessType] = useState<string>('restaurant');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return localStorage.getItem('billing-view-mode') as 'grid' | 'list' || 'grid';
@@ -1415,6 +1416,7 @@ const Billing = () => {
       }
 
       if (data) {
+        setBusinessType(data.business_type || profile?.business_type || 'restaurant');
         const settings = {
           shopName: (activeBranch?.shop_name && activeBranch.shop_name.trim()) || data.shop_name || '',
           address: (activeBranch?.address && activeBranch.address.trim()) || data.address || '',
@@ -3933,7 +3935,7 @@ const Billing = () => {
       taxRatesMap={gstSettings.taxRatesMap} 
       showOrderType={showOrderType} 
       defaultOrderType={defaultOrderType} 
-      businessType={profile?.business_type}
+      businessType={businessType}
       autoPrintEnabled={(localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false'} 
     />
 
