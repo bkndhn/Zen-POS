@@ -2460,16 +2460,25 @@ const Billing = () => {
         branch_id: operatingBranchId || null,
         admin_id: adminId || null,
         channel: billPayload.channel || 'store',
-        billing_type: appBillingMode
+        billing_type: appBillingMode,
+        date: format(new Date(), 'yyyy-MM-dd')
       },
-      p_cart_items: validCart.map(item => ({
-        id: String(item.id).startsWith('calci-') ? null : item.id,
-        name: item.name,
-        item_name_override: item.item_name_override,
-        price: item.price,
-        quantity: item.quantity,
-        billing_type: String(item.id).startsWith('calci-') ? 'calci' : 'pos'
-      }))
+      p_cart_items: validCart.map(item => {
+        const baseValue = item.base_value || 1;
+        const lineTotal = (item.quantity / baseValue) * item.price;
+        return {
+          id: String(item.id).startsWith('calci-') ? null : item.id,
+          name: item.name,
+          item_name_override: item.item_name_override || item.name,
+          price: item.price,
+          quantity: item.quantity,
+          base_value: baseValue,
+          unit: item.unit || (item as any).selling_unit || 'pcs',
+          selling_unit: (item as any).selling_unit || item.unit || 'pcs',
+          total: lineTotal,
+          billing_type: String(item.id).startsWith('calci-') ? 'calci' : 'pos'
+        };
+      })
     });
 
     if (rpcError) {

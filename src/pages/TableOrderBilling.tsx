@@ -857,12 +857,24 @@ const TableOrderBilling: React.FC = () => {
                     branch_id: operatingBranchId || null,
                     admin_id: adminId || null,
                     channel: 'store',
-                    billing_type: 'pos'
+                    billing_type: 'pos',
+                    date: format(new Date(), 'yyyy-MM-dd')
                 },
-                p_cart_items: validItems.map(item => ({
-                    id: item.id,
-                    quantity: item.quantity
-                }))
+                p_cart_items: validItems.map(item => {
+                    const baseValue = item.base_value || 1;
+                    const lineTotal = Math.round((item.quantity / baseValue) * item.price);
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity,
+                        base_value: baseValue,
+                        unit: item.unit || 'pcs',
+                        selling_unit: item.unit || 'pcs',
+                        total: lineTotal,
+                        billing_type: 'pos'
+                    };
+                })
             });
 
             if (rpcError) throw rpcError;

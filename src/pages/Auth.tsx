@@ -240,13 +240,26 @@ const Auth = () => {
           localStorage.removeItem('hotel_pos_saved_email');
         }
 
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-        const { data } = await supabase.rpc('get_signup_enabled');
-        if (typeof data === 'boolean') setSignupEnabled(data);
-      } catch { /* default true */ }
-    })();
-  }, []);
+      } else {
+        const { error } = await signUp(formData.email, formData.password, formData.name, formData.hotelName, captchaToken || undefined);
+        if (error) throw error;
+        toast({
+          title: "Account Created",
+          description: "Your account is pending approval.",
+        });
+      }
+    } catch (error: any) {
+      logSecurityEvent('AUTH_ERROR', { email: formData.email, error: error.message });
+      toast({
+        title: "Error",
+        description: error.message || "Authentication failed.",
+        variant: "destructive",
+      });
+    } finally {
+      resetCaptcha();
+      setLoading(false);
+    }
+  };
 
   // Show loading while authentication is being initialized
   if (authLoading) {
@@ -330,161 +343,6 @@ const Auth = () => {
       </div>
     );
   }
-
-  const resetCaptcha = () => {
-    setCaptchaToken(null);
-    try { captchaRef.current?.resetCaptcha(); } catch { /* noop */ }
-  };
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${getAppBaseUrl()}/auth`,
-        captchaToken: captchaToken || undefined,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Password Reset Email Sent",
-        description: "Check your email for a password reset link.",
-      });
-      setIsForgotPassword(false);
-    } catch (error: any) {
-      import.meta.env.DEV && console.error('Password reset error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send password reset email.",
-        variant: "destructive",
-      });
-    } finally {
-      resetCaptcha();
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Rate limiting check - prevent brute force attacks
-    if (!checkRateLimit('login_attempt', 5, 60000)) {
-      logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
-      toast({
-        title: "Too Many Attempts",
-        description: "Please wait 1 minute before trying again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate email format
-    if (!isValidEmail(formData.email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // For signup, enforce strong password requirements
-    if (!isLogin) {
-      const passwordCheck = isStrongPassword(formData.password);
-      if (!passwordCheck.valid) {
-        toast({
-          title: "Weak Password",
-          description: passwordCheck.message,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      if (isLogin) {
-        const { error } = await signIn(formData.email, formData.password, captchaToken || undefined);
-        if (error) {
-          logSecurityEvent('LOGIN_FAILED', { email: formData.email, reason: error.message });
-          if (error.message?.includes('Invalid login credentials')) {
-            throw new Error('Invalid email or password. Please check your credentials and try again.');
-          }
-          throw error;
-        }
-
-        // Clear rate limit on successful login
-        clearRateLimit('login_attempt');
-        
-        if (rememberMe) {
-          localStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
-        } else {
-          localStorage.removeItem('hotel_pos_saved_email');
-        }
-
-        toast({
-          title: "Welcome back!",
-          description: "Successfully signed in.",
-        });
-      } else {
-        if (formData.role === 'admin' && !formData.hotelName.trim()) {
-          throw new Error('Business name is required for admin accounts');
-        }
-
-        const { error } = await signUp(
-          formData.email,
-          formData.password,
-          formData.name,
-          formData.role,
-          formData.hotelName,
-          undefined,
-          { captchaToken: captchaToken || undefined, businessType: formData.businessType }
-        );
-
-        if (error) {
-          if (error.message?.includes('User already registered')) {
-            throw new Error('An account with this email already exists. Please sign in instead or use a different email address.');
-          }
-          throw error;
-        }
-
-        if (formData.role === 'admin') {
-          toast({
-            title: "Registration Successful!",
-            description: "Your admin account is pending approval. You'll be notified once activated.",
-          });
-        } else {
-          toast({
-            title: "Account Created!",
-            description: "Successfully created your account.",
-          });
-        }
-      }
-    } catch (error: any) {
-      console.error('Auth error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "An error occurred during authentication.",
-        variant: "destructive",
-      });
-    } finally {
-      resetCaptcha();
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-white to-pink-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 px-4 py-8">

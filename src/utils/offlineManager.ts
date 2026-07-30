@@ -1277,6 +1277,18 @@ class OfflineManager {
     /**
      * Merges online Supabase bills with offline pending & local-only bills from IndexedDB.
      * Deduplicates by id and bill_no so offline bills appear across Dashboard, Analytics, and Reports.
+    async markBillDeleted(billId: string): Promise<void> {
+        try {
+            await this.delete(STORES.BILLS, billId);
+            await this.delete(STORES.PENDING_BILLS, billId);
+        } catch (err) {
+            console.warn('[OfflineManager] Failed to purge deleted bill locally:', err);
+        }
+    }
+
+    /**
+     * Merge offline/pending bills into Supabase bills list for local display.
+     * Deduplicates by id and bill_no so offline bills appear across Dashboard, Analytics, and Reports.
      */
     async mergeOfflineBills(supabaseBills: any[], adminId?: string, branchId?: string | null): Promise<any[]> {
         try {
@@ -1287,15 +1299,20 @@ class OfflineManager {
 
             const existingIds = new Set((supabaseBills || []).map((b: any) => b.id));
             const existingBillNos = new Set((supabaseBills || []).map((b: any) => b.bill_no));
+            const deletedIds = new Set((supabaseBills || []).filter((b: any) => b.is_deleted).map((b: any) => b.id));
+            const deletedBillNos = new Set((supabaseBills || []).filter((b: any) => b.is_deleted).map((b: any) => b.bill_no));
 
             const offlineMerged: any[] = [];
 
             const matchesScope = (b: any) => {
+                if (!b || b.is_deleted) return false;
+                if (b.id && deletedIds.has(b.id)) return false;
+                if (b.bill_no && deletedBillNos.has(b.bill_no)) return false;
                 const bAdminId = b.admin_id;
                 const bBranchId = b.branch_id;
                 const adminMatch = !adminId || !bAdminId || bAdminId === adminId;
                 const branchMatch = !branchId || !bBranchId || bBranchId === branchId;
-                return adminMatch && branchMatch && !b.is_deleted;
+                return adminMatch && branchMatch;
             };
 
             // Pending bills (created while offline)

@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DollarSign, Receipt, TrendingUp, Package } from 'lucide-react';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranchSettings } from '@/hooks/useBranchSettings';
+import { format } from 'date-fns';
 
 interface DashboardStats {
   todaySales: number;
@@ -69,7 +70,7 @@ const Dashboard = () => {
   const fetchDashboardStats = useCallback(async () => {
     if (!adminId) return;
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(new Date(), 'yyyy-MM-dd');
 
       const { offlineManager } = await import('@/utils/offlineManager');
 
@@ -86,7 +87,7 @@ const Dashboard = () => {
       // Merge offline & pending bills from IndexedDB so stats match Reports
       const allBills = await offlineManager.mergeOfflineBills(billsData || [], adminId, branchFilterId);
       const todayFilteredBills = allBills.filter((b: any) => {
-        const bDate = b.date || b.created_at?.split('T')[0];
+        const bDate = b.date || (b.created_at ? format(new Date(b.created_at), 'yyyy-MM-dd') : '');
         return bDate === today && !b.is_deleted;
       });
 
