@@ -48,14 +48,14 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isSuperAdmin = profile?.role === 'super_admin';
-  const defaultRole = isSuperAdmin ? 'admin' : 'user';
+  const targetRole = isSuperAdmin ? 'admin' : 'user';
 
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     name: '',
-    role: defaultRole,
+    role: targetRole,
     hotelName: '',
     shopName: '',
     address: '',
@@ -63,8 +63,12 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     businessType: 'restaurant',
   });
 
+  React.useEffect(() => {
+    setFormData(p => ({ ...p, role: isSuperAdmin ? 'admin' : 'user' }));
+  }, [isSuperAdmin]);
+
   const resetForm = () => setFormData({
-    email: '', password: '', confirmPassword: '', name: '', role: defaultRole,
+    email: '', password: '', confirmPassword: '', name: '', role: isSuperAdmin ? 'admin' : 'user',
     hotelName: '', shopName: '', address: '', mobileNumber: '', businessType: 'restaurant',
   });
 
@@ -97,7 +101,9 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
       });
       return;
     }
-    if (formData.role === 'admin') {
+
+    // Require tenant fields for Client Admin accounts
+    if (targetRole === 'admin') {
       if (!formData.hotelName.trim()) {
         toast({ title: "Business Name Required", description: "Business name is required for admin accounts.", variant: "destructive" });
         return;
@@ -118,14 +124,14 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
         formData.email,
         formData.password,
         formData.name,
-        formData.role,
+        targetRole,
         formData.hotelName,
-        formData.role === 'user' ? adminId : undefined,
+        targetRole === 'user' ? adminId : undefined,
         {
           mobileNumber: formData.mobileNumber.trim(),
-          shopName: formData.role === 'admin' ? formData.shopName.trim() : undefined,
-          address: formData.role === 'admin' ? formData.address.trim() : undefined,
-          businessType: formData.role === 'admin' ? formData.businessType : undefined,
+          shopName: formData.shopName.trim(),
+          address: formData.address.trim(),
+          businessType: targetRole === 'admin' ? formData.businessType : undefined,
         }
       );
 

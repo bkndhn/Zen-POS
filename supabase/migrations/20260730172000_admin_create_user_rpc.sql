@@ -119,10 +119,11 @@ BEGIN
 
   -- Insert into shop_settings for admin
   IF p_role = 'admin' THEN
-    INSERT INTO public.shop_settings (user_id, business_type)
-    VALUES (v_user_id, p_business_type)
+    INSERT INTO public.shop_settings (user_id, shop_name, address)
+    VALUES (v_user_id, COALESCE(p_shop_name, p_hotel_name), p_address)
     ON CONFLICT (user_id, branch_id) DO UPDATE SET
-      business_type = EXCLUDED.business_type;
+      shop_name = COALESCE(EXCLUDED.shop_name, public.shop_settings.shop_name),
+      address = COALESCE(EXCLUDED.address, public.shop_settings.address);
   END IF;
 
   RETURN jsonb_build_object('id', v_user_id, 'email', LOWER(p_email), 'success', true);

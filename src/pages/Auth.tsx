@@ -48,7 +48,7 @@ const Auth = () => {
     );
   }
 
-  if (user && profile?.status === 'active') {
+  if (user && profile?.status !== 'paused' && profile?.status !== 'deleted') {
     return <Navigate to="/" replace />;
   }
 
