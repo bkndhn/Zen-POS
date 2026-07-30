@@ -42,6 +42,13 @@ interface PeriodStat {
 type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly';
 type ComparisonMode = 'day' | 'week' | 'month' | 'year';
 
+const toLocalDateString = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const DashboardAnalytics = () => {
   const { profile , adminProfileId } = useAuth();
   const adminId = adminProfileId;
@@ -269,14 +276,6 @@ const DashboardAnalytics = () => {
       // Get appropriate ranges based on mode
       const ranges = getComparisonRanges(compMode);
 
-      // Helper to format date as YYYY-MM-DD in local timezone
-      const toLocalDateString = (d: Date) => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-
       const fetchRangeData = async (start: Date, end: Date, label: string): Promise<PeriodStat> => {
         const startStr = toLocalDateString(start);
         const endStr = toLocalDateString(end);
@@ -344,8 +343,8 @@ const DashboardAnalytics = () => {
 
   // Helper for generic analytics fetch
   const fetchAndProcessData = async (start: Date, end: Date, setSales: any, setItems: any, setSt: any) => {
-    const startStr = start.toISOString().split('T')[0];
-    const endStr = end.toISOString().split('T')[0];
+    const startStr = toLocalDateString(start);
+    const endStr = toLocalDateString(end);
     const { offlineManager } = await import('@/utils/offlineManager');
 
     let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
@@ -363,14 +362,14 @@ const DashboardAnalytics = () => {
     // Merge offline/pending bills from IndexedDB
     const mergedBills = await offlineManager.mergeOfflineBills(rawBillsData || [], adminId, branchFilterId);
     const billsData = mergedBills.filter((b: any) => {
-      const bDate = b.date || b.created_at?.split('T')[0];
+      const bDate = b.date || (b.created_at ? toLocalDateString(new Date(b.created_at)) : '');
       return bDate >= startStr && bDate <= endStr && !b.is_deleted;
     });
 
     // Process Sales Chart
     const salesMap = new Map<string, { sales: number; expenses: number }>();
     billsData.forEach((b: any) => {
-      const d = b.date || b.created_at?.split('T')[0] || startStr;
+      const d = b.date || (b.created_at ? toLocalDateString(new Date(b.created_at)) : startStr);
       const c = salesMap.get(d) || { sales: 0, expenses: 0 };
       salesMap.set(d, { ...c, sales: (c.sales || 0) + Number(b.total_amount || 0) });
     });
