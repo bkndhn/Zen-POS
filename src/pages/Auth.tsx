@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Store, Clock, Loader2 } from 'lucide-react';
 import { checkRateLimit, clearRateLimit, isValidEmail, logSecurityEvent } from '@/utils/securityUtils';
+import { safeLocalStorage } from '@/utils/storageUtils';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
@@ -25,7 +26,7 @@ const Auth = () => {
   const [rememberMe, setRememberMe] = useState(false);
 
   React.useEffect(() => {
-    const savedEmail = localStorage.getItem('hotel_pos_saved_email');
+    const savedEmail = safeLocalStorage.getItem('hotel_pos_saved_email');
     if (savedEmail) {
       try {
         const decoded = decodeURIComponent(atob(savedEmail));
@@ -48,7 +49,7 @@ const Auth = () => {
     );
   }
 
-  if (user && profile?.status !== 'paused' && profile?.status !== 'deleted') {
+  if (user && profile && profile.status !== 'paused' && profile.status !== 'deleted') {
     return <Navigate to="/" replace />;
   }
 
@@ -191,9 +192,9 @@ const Auth = () => {
       clearRateLimit('login_attempt');
       
       if (rememberMe) {
-        localStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
+        safeLocalStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
       } else {
-        localStorage.removeItem('hotel_pos_saved_email');
+        safeLocalStorage.removeItem('hotel_pos_saved_email');
       }
     } catch (error: any) {
       logSecurityEvent('AUTH_ERROR', { email: formData.email, error: error.message });

@@ -75,7 +75,8 @@
     "stockLedger": "Audit Trail",
     "stockReports": "Stock Reports",
     "crm": "CRM",
-    "qrMenu": "QR Menu"
+    "qrMenu": "QR Menu",
+    "onlineOrders": "Online Orders"
   },
   "dashboard": {
     "title": "Dashboard Overview",

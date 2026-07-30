@@ -75,7 +75,8 @@
     "stockLedger": "இருப்பு தணிக்கை",
     "stockReports": "இருப்பு அறிக்கைகள்",
     "crm": "CRM",
-    "qrMenu": "QR மெனு"
+    "qrMenu": "QR மெனு",
+    "onlineOrders": "Online Orders"
   },
   "dashboard": {
     "title": "டாஷ்போர்டு கண்ணோட்டம்",

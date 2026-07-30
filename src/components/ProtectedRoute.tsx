@@ -3,6 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useLocation } from 'react-router-dom';
+import { ShieldAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 import type { UserPermissions } from '@/contexts/PermissionsContext';
 
@@ -56,8 +58,35 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 return <Navigate to={`/${page === 'billing' ? '' : page}`} replace />;
             }
         }
-        // If no access to anything, redirect to auth
-        return <Navigate to="/auth" replace />;
+        // If no access to anything, show a friendly access denied message instead of redirecting to /auth (which causes an infinite loop)
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="max-w-md w-full text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <ShieldAlert className="w-8 h-8 text-red-600 dark:text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold">Access Denied</h2>
+                    <p className="text-muted-foreground">
+                        You don't have permission to access this page, and no fallback pages are available. Please contact your administrator to assign permissions.
+                    </p>
+                    <div className="flex gap-4 justify-center mt-6">
+                        <Button variant="outline" onClick={() => window.location.href = '/'}>Try Home</Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={async () => {
+                                const { supabase } = await import('@/integrations/supabase/client');
+                                const { safeLocalStorage } = await import('@/utils/storageUtils');
+                                await supabase.auth.signOut();
+                                safeLocalStorage.clear();
+                                window.location.href = '/auth';
+                            }}
+                        >
+                            Sign Out
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return <>{children}</>;

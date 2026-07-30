@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil } from 'lucide-react';
+import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil, MapPin } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 
@@ -18,6 +18,7 @@ import { UserPermissions } from '@/components/UserPermissions';
 import { SubUserBranchAssignments } from '@/components/SubUserBranchAssignments';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
+import { cn } from '@/lib/utils';
 import type { UserProfile, UserStatus, UserRole } from '@/types/user';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -589,13 +590,38 @@ const Users: React.FC = () => {
                             <div>
                               <h4 className="font-semibold text-lg">{admin.name}</h4>
                               {admin.email && (
-                                <p className="text-xs text-blue-600 dark:text-blue-400">{admin.email}</p>
+                                <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
+                                  <Mail className="w-3.5 h-3.5" /> {admin.email}
+                                </p>
                               )}
-                              {admin.hotel_name && (
-                                <p className="text-sm text-muted-foreground">{admin.hotel_name}</p>
+                              {(admin.mobile_number || admin.shop_name || admin.hotel_name) && (
+                                <div className="mt-2 space-y-1">
+                                  {admin.shop_name ? (
+                                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                      <Package className="w-4 h-4" /> {admin.shop_name} {admin.hotel_name && <span className="text-xs opacity-70">({admin.hotel_name})</span>}
+                                    </p>
+                                  ) : admin.hotel_name && (
+                                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                                      <Package className="w-4 h-4" /> {admin.hotel_name}
+                                    </p>
+                                  )}
+                                  
+                                  {admin.mobile_number && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                      <Phone className="w-3.5 h-3.5" /> {admin.mobile_number}
+                                    </p>
+                                  )}
+                                  
+                                  {admin.address && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 line-clamp-2">
+                                      <MapPin className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{admin.address}</span>
+                                    </p>
+                                  )}
+                                </div>
                               )}
+                              
                               {admin.last_login && (
-                                <p className="text-xs text-muted-foreground mt-1">
+                                <p className="text-xs text-muted-foreground mt-2">
                                   Last login: {format(new Date(admin.last_login), 'dd MMM yyyy, hh:mm a')}
                                   {admin.login_count !== null && admin.login_count !== undefined && (
                                     <span className="ml-2">({admin.login_count} logins)</span>

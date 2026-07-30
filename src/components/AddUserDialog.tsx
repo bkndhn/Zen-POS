@@ -30,7 +30,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   onOpenChange: externalOnOpenChange,
   trigger,
 }) => {
-  const { signUp, profile } = useAuth();
+  const { signUp, profile, adminProfileId } = useAuth();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = externalOpen !== undefined;
   const isOpen = isControlled ? externalOpen : internalOpen;

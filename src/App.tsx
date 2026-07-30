@@ -13,13 +13,14 @@ import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { Layout } from "@/components/Layout";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { getStoredBillFont, getSelectedBillFont, loadGoogleFont } from "@/utils/billFontUtils";
+import { safeLocalStorage } from '@/utils/storageUtils';
 
 const ThemeLoader = () => {
   const { operatingBranchId } = useBranch();
 
   useEffect(() => {
     const applyGlobalTheme = () => {
-      const savedDarkMode = localStorage.getItem('hotel_pos_dark_mode');
+      const savedDarkMode = safeLocalStorage.getItem('hotel_pos_dark_mode');
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (savedDarkMode === 'true' || (savedDarkMode === null && prefersDark)) {
         document.documentElement.classList.add('dark');
@@ -28,9 +29,9 @@ const ThemeLoader = () => {
       }
 
       const themeKey = operatingBranchId ? `hotel_pos_theme_${operatingBranchId}` : 'hotel_pos_theme';
-      const savedTheme = localStorage.getItem(themeKey) ?? localStorage.getItem('hotel_pos_theme') ?? 'blue';
+      const savedTheme = safeLocalStorage.getItem(themeKey) ?? safeLocalStorage.getItem('hotel_pos_theme') ?? 'blue';
       const customColorKey = operatingBranchId ? `hotel_pos_custom_color_${operatingBranchId}` : 'hotel_pos_custom_color';
-      const customColor = localStorage.getItem(customColorKey) ?? localStorage.getItem('hotel_pos_custom_color') ?? '#0324fc';
+      const customColor = safeLocalStorage.getItem(customColorKey) ?? safeLocalStorage.getItem('hotel_pos_custom_color') ?? '#0324fc';
 
       const themes = [
         { id: 'blue', class: '' },
@@ -246,7 +247,7 @@ import { NativeAppController } from './components/NativeAppController';
 const App = () => {
   // Always On Display State
   const [aodEnabled, setAodEnabled] = useState(() => {
-    const saved = localStorage.getItem('hotel_pos_aod_enabled');
+    const saved = safeLocalStorage.getItem('hotel_pos_aod_enabled');
     return saved === null ? true : saved === 'true';
   });
 
@@ -270,7 +271,7 @@ const App = () => {
     window.addEventListener('font-scale-changed', handleFontScaleChange as EventListener);
 
     // Apply saved font scale on startup
-    const savedScale = localStorage.getItem('hotel_pos_font_scale') || '1';
+    const savedScale = safeLocalStorage.getItem('hotel_pos_font_scale') || '1';
     document.documentElement.style.setProperty('--app-font-scale', savedScale);
 
     return () => window.removeEventListener('font-scale-changed', handleFontScaleChange as EventListener);

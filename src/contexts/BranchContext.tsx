@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { safeLocalStorage } from '@/utils/storageUtils';
 
 export interface Branch {
   id: string;
@@ -87,7 +88,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       // Determine active branch from localStorage or default to Main
       const storedKey = `${STORAGE_KEY_PREFIX}${profile.user_id}`;
-      const stored = localStorage.getItem(storedKey);
+      const stored = safeLocalStorage.getItem(storedKey);
 
       if (stored === '__all__' && profile.role === 'admin') {
         setIsAllBranchesView(true);
@@ -116,13 +117,13 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (id === null) {
       // "All Branches" view (admin only)
       if (profile.role !== 'admin') return;
-      localStorage.setItem(storageKey, '__all__');
+      safeLocalStorage.setItem(storageKey, '__all__');
       setIsAllBranchesView(true);
       setActiveBranch(null);
     } else {
       const found = branches.find(b => b.id === id);
       if (found) {
-        localStorage.setItem(storageKey, id);
+        safeLocalStorage.setItem(storageKey, id);
         setActiveBranch(found);
         setIsAllBranchesView(false);
       }

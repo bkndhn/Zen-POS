@@ -63,17 +63,19 @@ export const useAuth = () => {
   return context;
 };
 
+import { safeLocalStorage } from '@/utils/storageUtils';
+
 const getInitialProfileState = (): { profile: Profile | null; adminProfileId: string | null; adminAuthUid: string | null } => {
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
+    const keys = safeLocalStorage.getAllKeys();
+    for (const key of keys) {
       if (key && key.startsWith('profile_')) {
-        const cachedStr = localStorage.getItem(key);
+        const cachedStr = safeLocalStorage.getItem(key);
         if (cachedStr) {
           const prof = decodeProfileCache(cachedStr);
           if (prof && prof.user_id) {
             const adminPId = prof.role === 'admin' ? prof.id : (prof.admin_id || null);
-            const adminAUid = prof.role === 'admin' ? prof.user_id : (localStorage.getItem(`adminAuthUid_${prof.admin_id}`) || null);
+            const adminAUid = prof.role === 'admin' ? prof.user_id : (safeLocalStorage.getItem(`adminAuthUid_${prof.admin_id}`) || null);
             return { profile: prof, adminProfileId: adminPId, adminAuthUid: adminAUid };
           }
         }
@@ -107,14 +109,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resolvedAdminProfileId = userProfile.admin_id || null;
       if (userProfile.admin_id) {
         try {
-          const cachedAdminStr = localStorage.getItem(`adminAuthUid_${userProfile.admin_id}`);
+          const cachedAdminStr = safeLocalStorage.getItem(`adminAuthUid_${userProfile.admin_id}`);
           if (cachedAdminStr) {
             resolvedAdminAuthUid = cachedAdminStr;
           } else {
             const { data } = await supabase.from('profiles').select('user_id').eq('id', userProfile.admin_id).maybeSingle();
             if (data?.user_id) {
               resolvedAdminAuthUid = data.user_id;
-              localStorage.setItem(`adminAuthUid_${userProfile.admin_id}`, data.user_id);
+              safeLocalStorage.setItem(`adminAuthUid_${userProfile.admin_id}`, data.user_id);
             }
           }
         } catch (e) {
@@ -144,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       devLog('Fetching profile for user:', user.id);
 
       // 1. Try to get from localStorage first (fastest & works offline)
-      const cachedProfileStr = localStorage.getItem(`profile_${user.id}`);
+      const cachedProfileStr = safeLocalStorage.getItem(`profile_${user.id}`);
       let cachedProfile: Profile | null = null;
 
       if (cachedProfileStr) {
@@ -242,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           client_permissions: clientPermissions
         };
         // Update cache
-        localStorage.setItem(`profile_${user.id}`, encodeProfileCache(profile));
+        safeLocalStorage.setItem(`profile_${user.id}`, encodeProfileCache(profile));
         
         // Seed default data for new admins (fire and forget)
         if (profile.role === 'admin' && profile.status === 'active') {
@@ -259,7 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profileData = {
           user_id: user.id,
           name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-          role: 'user' as const, // Hardcoded to 'user' for safety
+          role: (user.user_metadata?.role === 'admin' ? 'admin' : 'user') as UserRole,
           hotel_name: user.user_metadata?.hotel_name || null,
           status: 'active' as UserStatus,
           admin_id: user.user_metadata?.admin_id || null
@@ -291,7 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status: data.status as UserStatus,
             admin_id: data.admin_id || undefined
           };
-          localStorage.setItem(`profile_${user.id}`, encodeProfileCache(newProfile));
+          safeLocalStorage.setItem(`profile_${user.id}`, encodeProfileCache(newProfile));
           return newProfile;
         }
       } catch (createError) {
@@ -302,7 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       devLog('Returning basic profile from metadata');
       const basicProfile = createBasicProfile(user);
       // Even cache this basic profile so next time we load faster
-      localStorage.setItem(`profile_${user.id}`, encodeProfileCache(basicProfile));
+      safeLocalStorage.setItem(`profile_${user.id}`, encodeProfileCache(basicProfile));
       return basicProfile;
 
     } catch (error) {
@@ -479,7 +481,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               devLog('[AuthContext] Current user paused/deleted - forcing logout');
 
               // Clear cached profile
-              localStorage.removeItem(`profile_${user.id}`);
+              safeLocalStorage.removeItem(`profile_${user.id}`);
 
               // Show toast notification
               const { toast } = await import('@/hooks/use-toast');
@@ -504,7 +506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               devLog('[AuthContext] Parent admin paused/deleted - forcing sub-user logout');
 
               // Clear cached profile
-              localStorage.removeItem(`profile_${user.id}`);
+              safeLocalStorage.removeItem(`profile_${user.id}`);
 
               // Show toast notification
               const { toast } = await import('@/hooks/use-toast');
@@ -533,7 +535,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Check for force_logout flag from Super Admin subscription management
             if ((isCurrentUser || isCurrentUserAdmin) && updatedProfile.force_logout === true) {
               devLog('[AuthContext] Force logout detected via profiles table update');
-              localStorage.removeItem(`profile_${user.id}`);
+              safeLocalStorage.removeItem(`profile_${user.id}`);
               clearAllLicenseData();
               // Cache force logout so it persists offline
               cacheVerifiedLicense(updatedProfile.id || profile.id, {
@@ -569,7 +571,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const performForceLogout = async (reason?: string) => {
       devLog('[AuthContext] Force logout broadcast received!');
-      localStorage.removeItem(`profile_${user.id}`);
+      safeLocalStorage.removeItem(`profile_${user.id}`);
       clearAllLicenseData();
       if (adminId) {
         cacheVerifiedLicense(adminId, {
@@ -767,9 +769,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Clear any cached permissions before login to ensure fresh permissions
     // This helps when admin has changed permissions for this user
-    Object.keys(localStorage).forEach(key => {
+    safeLocalStorage.getAllKeys().forEach(key => {
       if (key.startsWith('hotel_pos_permissions_')) {
-        localStorage.removeItem(key);
+        safeLocalStorage.removeItem(key);
       }
     });
 
@@ -841,9 +843,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
 
     // SECURITY: Clear all cached profile data from localStorage on signOut
-    Object.keys(localStorage).forEach(key => {
+    safeLocalStorage.getAllKeys().forEach(key => {
       if (key.startsWith('profile_') || key.startsWith('hotel_pos_permissions_')) {
-        localStorage.removeItem(key);
+        safeLocalStorage.removeItem(key);
       }
     });
 
@@ -875,7 +877,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               client_permissions: payload.payload.client_permissions
             };
             // Update cache instantly
-            localStorage.setItem(`profile_${prev.user_id}`, encodeProfileCache(updated));
+            safeLocalStorage.setItem(`profile_${prev.user_id}`, encodeProfileCache(updated));
             return updated;
           });
         }
