@@ -666,42 +666,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // If signup was successful and we have a user, create the profile immediately
-    // This ensures the user appears in the Users list right away
+    // If signup was successful and we have a user, create/update the profile record immediately
+    // This ensures all entered metadata (mobile, shop, address, admin_id) is saved and user appears in directory
     if (!error && data?.user) {
-      devLog('Auth user created, now creating profile record...');
+      devLog('Auth user created, upserting complete profile record...');
       try {
+        let inheritedHotelName = hotelName || null;
+        if (role === 'user' && adminId && !inheritedHotelName) {
+          try {
+            const { data: adminProf } = await supabase
+              .from('profiles')
+              .select('hotel_name')
+              .eq('id', adminId)
+              .maybeSingle();
+            if (adminProf?.hotel_name) inheritedHotelName = adminProf.hotel_name;
+          } catch {}
+        }
+
         const profileData: any = {
           user_id: data.user.id,
+          email: email,
           name: name,
           role: role as UserRole,
-          hotel_name: role === 'admin' ? hotelName : null,
-          // New admins start as 'paused' - need Super Admin approval
-          // Sub-users created by admins start as 'active'
-          status: (role === 'admin' && !adminId ? 'paused' : 'active') as UserStatus,
+          hotel_name: inheritedHotelName,
+          status: 'active' as UserStatus,
           admin_id: adminId || null,
           mobile_number: extras?.mobileNumber || null,
-          shop_name: role === 'admin' ? (extras?.shopName || null) : null,
-          address: role === 'admin' ? (extras?.address || null) : null,
+          shop_name: extras?.shopName || null,
+          address: extras?.address || null,
+          updated_at: new Date().toISOString()
         };
 
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert([profileData]);
+          .upsert([profileData], { onConflict: 'user_id' });
 
         if (profileError) {
-          // If profile already exists (unique constraint), that's okay
-          if (!profileError.message?.includes('duplicate') && !profileError.message?.includes('unique')) {
-            devLog('Failed to create profile');
-          } else {
-            devLog('Profile already exists for this user');
-          }
+          devLog('Error upserting profile:', profileError.message);
         } else {
-          devLog('Profile created successfully for new user');
+          devLog('Profile upserted successfully for new user');
         }
       } catch (profileCreateError) {
-        devLog('Error creating profile');
-        // Don't fail the signup because of profile creation failure
+        devLog('Error creating/upserting profile:', profileCreateError);
       }
     }
 
