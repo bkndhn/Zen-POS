@@ -368,6 +368,7 @@ export type Database = {
       }
       bill_items: {
         Row: {
+          base_value: number | null
           bill_id: string
           billing_type: string | null
           created_at: string
@@ -383,8 +384,10 @@ export type Database = {
           tax_type: string | null
           taxable_amount: number | null
           total: number
+          unit: string | null
         }
         Insert: {
+          base_value?: number | null
           bill_id: string
           billing_type?: string | null
           created_at?: string
@@ -400,8 +403,10 @@ export type Database = {
           tax_type?: string | null
           taxable_amount?: number | null
           total: number
+          unit?: string | null
         }
         Update: {
+          base_value?: number | null
           bill_id?: string
           billing_type?: string | null
           created_at?: string
@@ -417,6 +422,7 @@ export type Database = {
           tax_type?: string | null
           taxable_amount?: number | null
           total?: number
+          unit?: string | null
         }
         Relationships: [
           {
@@ -1576,6 +1582,7 @@ export type Database = {
           admin_id: string | null
           client_permissions: Json | null
           created_at: string
+          email: string | null
           force_logout: boolean | null
           force_logout_reason: string | null
           has_qr_menu_access: boolean | null
@@ -1604,6 +1611,7 @@ export type Database = {
           admin_id?: string | null
           client_permissions?: Json | null
           created_at?: string
+          email?: string | null
           force_logout?: boolean | null
           force_logout_reason?: string | null
           has_qr_menu_access?: boolean | null
@@ -1632,6 +1640,7 @@ export type Database = {
           admin_id?: string | null
           client_permissions?: Json | null
           created_at?: string
+          email?: string | null
           force_logout?: boolean | null
           force_logout_reason?: string | null
           has_qr_menu_access?: boolean | null
@@ -2332,8 +2341,6 @@ export type Database = {
           bill_font_family: string | null
           bill_font_scale: number | null
           branch_id: string | null
-          business_type: string | null
-          enabled_modules: Json | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
           composition_rate: number | null
@@ -2411,8 +2418,6 @@ export type Database = {
           bill_font_family?: string | null
           bill_font_scale?: number | null
           branch_id?: string | null
-          business_type?: string | null
-          enabled_modules?: Json | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
           composition_rate?: number | null
@@ -2490,8 +2495,6 @@ export type Database = {
           bill_font_family?: string | null
           bill_font_scale?: number | null
           branch_id?: string | null
-          business_type?: string | null
-          enabled_modules?: Json | null
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
           composition_rate?: number | null
@@ -3250,6 +3253,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_user: {
+        Args: {
+          p_address?: string
+          p_admin_id?: string
+          p_business_type?: string
+          p_email: string
+          p_hotel_name?: string
+          p_mobile_number?: string
+          p_name: string
+          p_password: string
+          p_role?: string
+          p_shop_name?: string
+        }
+        Returns: Json
+      }
+      admin_delete_sub_user: {
+        Args: { p_target_user_id: string }
+        Returns: undefined
+      }
       apply_stock_adjustment: {
         Args: {
           p_branch_id: string
@@ -3381,8 +3403,6 @@ export type Database = {
           bill_font_family: string | null
           bill_font_scale: number | null
           branch_id: string | null
-          business_type: string | null
-          enabled_modules: Json | null
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
           composition_rate: number | null
@@ -3640,6 +3660,10 @@ export type Database = {
           p_user_agent: string
         }
         Returns: Json
+      }
+      super_admin_delete_client: {
+        Args: { p_target_admin_id: string }
+        Returns: undefined
       }
       user_has_branch_access: {
         Args: { p_branch_id: string }
