@@ -45,6 +45,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isSuperAdmin = profile?.role === 'super_admin';
   const defaultRole = isSuperAdmin ? 'admin' : 'user';
@@ -52,6 +53,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     name: '',
     role: defaultRole,
     hotelName: '',
@@ -62,7 +64,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
   });
 
   const resetForm = () => setFormData({
-    email: '', password: '', name: '', role: defaultRole,
+    email: '', password: '', confirmPassword: '', name: '', role: defaultRole,
     hotelName: '', shopName: '', address: '', mobileNumber: '', businessType: 'restaurant',
   });
 
@@ -76,6 +78,14 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     const passwordCheck = isStrongPassword(formData.password);
     if (!passwordCheck.valid) {
       toast({ title: "Weak Password", description: passwordCheck.message, variant: "destructive" });
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please verify that both typed passwords match.",
+        variant: "destructive",
+      });
       return;
     }
     // Mobile is required and must match the pattern
@@ -141,8 +151,8 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
       toast({
         title: "Success!",
         description: isSuperAdmin
-          ? "User account created successfully."
-          : "User account created successfully.",
+          ? "Client Admin created successfully."
+          : "Sub-user account created successfully.",
       });
       resetForm();
       setIsOpen(false);
@@ -209,6 +219,30 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
               <Input id="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))} required placeholder="Enter password" minLength={8} />
               <Button type="button" variant="ghost" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0" onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData(p => ({ ...p, confirmPassword: e.target.value }))}
+                required
+                placeholder="Re-enter password to confirm"
+                minLength={8}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
           </div>

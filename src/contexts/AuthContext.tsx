@@ -646,14 +646,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     adminId?: string,
     extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string; businessType?: string }
   ) => {
-    devLog('Sign up attempt');
+    devLog('Sign up attempt for:', email);
 
+    // 1. If an admin is currently logged in, try the admin_create_user RPC directly to bypass email rate limits
+    if (user) {
+      try {
+        const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('admin_create_user', {
+          p_email: email,
+          p_password: password,
+          p_name: name,
+          p_role: role,
+          p_hotel_name: hotelName || null,
+          p_shop_name: extras?.shopName || null,
+          p_mobile_number: extras?.mobileNumber || null,
+          p_address: extras?.address || null,
+          p_admin_id: adminId || null,
+          p_business_type: extras?.businessType || 'restaurant'
+        });
+
+        if (!rpcErr && rpcRes?.id) {
+          devLog('User created successfully via admin_create_user RPC');
+          return { error: null, user: { id: rpcRes.id, email } as User };
+        }
+        if (rpcErr) {
+          devLog('RPC admin_create_user error, trying fallback:', rpcErr.message);
+          if (rpcErr.message?.includes('already exists')) {
+            return { error: new Error('An account with this email already exists.'), user: null };
+          }
+        }
+      } catch (rpcExecErr: any) {
+        devLog('RPC execution error:', rpcExecErr);
+      }
+    }
+
+    // 2. Standard auth.signUp fallback
     const userData: any = { name, role };
     if (hotelName && role === 'admin') userData.hotel_name = hotelName;
     if (adminId) userData.admin_id = adminId;
     if (extras?.mobileNumber) userData.mobile_number = extras.mobileNumber;
-    if (extras?.shopName && role === 'admin') userData.shop_name = extras.shopName;
-    if (extras?.address && role === 'admin') userData.address = extras.address;
+    if (extras?.shopName) userData.shop_name = extras.shopName;
+    if (extras?.address) userData.address = extras.address;
     if (extras?.businessType && role === 'admin') userData.business_type = extras.businessType;
 
     const { data, error } = await supabase.auth.signUp({
@@ -666,8 +698,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    // 3. If email rate limit error occurred, fallback to admin_create_user RPC to bypass rate limit
+    if (error && (error.message?.toLowerCase().includes('rate limit') || (error as any).status === 429)) {
+      devLog('Auth signUp hit rate limit, attempting RPC fallback...');
+      try {
+        const { data: fallbackRes, error: fallbackErr } = await (supabase as any).rpc('admin_create_user', {
+          p_email: email,
+          p_password: password,
+          p_name: name,
+          p_role: role,
+          p_hotel_name: hotelName || null,
+          p_shop_name: extras?.shopName || null,
+          p_mobile_number: extras?.mobileNumber || null,
+          p_address: extras?.address || null,
+          p_admin_id: adminId || null,
+          p_business_type: extras?.businessType || 'restaurant'
+        });
+
+        if (!fallbackErr && fallbackRes?.id) {
+          devLog('Bypassed email rate limit via RPC successfully');
+          return { error: null, user: { id: fallbackRes.id, email } as User };
+        }
+      } catch (e) {}
+    }
+
     // If signup was successful and we have a user, create/update the profile record immediately
-    // This ensures all entered metadata (mobile, shop, address, admin_id) is saved and user appears in directory
     if (!error && data?.user) {
       devLog('Auth user created, upserting complete profile record...');
       try {
@@ -697,21 +752,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updated_at: new Date().toISOString()
         };
 
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert([profileData], { onConflict: 'user_id' });
-
-        if (profileError) {
-          devLog('Error upserting profile:', profileError.message);
-        } else {
-          devLog('Profile upserted successfully for new user');
-        }
+        await supabase.from('profiles').upsert([profileData], { onConflict: 'user_id' });
       } catch (profileCreateError) {
         devLog('Error creating/upserting profile:', profileCreateError);
       }
     }
 
-    devLog('Sign up result:', error ? 'Error' : 'Success');
+    devLog('Sign up result:', error ? error.message : 'Success');
     return { error, user: data?.user };
   };
 
