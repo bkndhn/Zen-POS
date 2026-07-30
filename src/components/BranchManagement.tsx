@@ -36,6 +36,14 @@ export const BranchManagement: React.FC = () => {
   const canAdd = usedCount < maxBranches;
 
   const handleAdd = async () => {
+    if (usedCount >= maxBranches) {
+      toast({
+        title: '⚠️ Branch Limit Reached',
+        description: `Your subscription is restricted to a maximum of ${maxBranches} branch(es). You currently have ${usedCount} active branch(es). Please contact Super Admin to upgrade your limit.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     const name = newName.trim();
     if (!name) {
       toast({ title: 'Name required', variant: 'destructive' });
@@ -107,18 +115,21 @@ export const BranchManagement: React.FC = () => {
             <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="text-base sm:text-lg">Branches</span>
           </span>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant={!canAdd ? 'destructive' : 'outline'} className="text-xs">
             {usedCount} / {maxBranches} used
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 sm:p-6 space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Each branch keeps its own bills, stock, kitchen, and reports. Switch branches from the top bar.
-          {!canAdd && (
-            <> Limit reached — contact super admin to allow more branches.</>
-          )}
-        </p>
+        {!canAdd ? (
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+            <span className="font-bold">⚠️ Branch Limit Reached:</span> Your account is limited to {maxBranches} branch(es) ({usedCount}/{maxBranches} active). Contact Super Admin to upgrade your limit.
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Each branch keeps its own bills, stock, kitchen, and reports. Switch branches from the top bar.
+          </p>
+        )}
 
         <div className="space-y-2">
           {branches.map((b) => (

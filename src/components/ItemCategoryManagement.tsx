@@ -52,10 +52,16 @@ export const ItemCategoryManagement: React.FC<ItemCategoryManagementProps> = ({ 
         .select('*')
         .eq('admin_id', adminId)
         .eq('is_deleted', false);
-      if (operatingBranchId) query = query.eq('branch_id', operatingBranchId);
       const { data, error } = await query.order('name');
       if (error) throw error;
-      setCategories(data || []);
+      const uniqueMap = new Map();
+      (data || []).forEach((cat: any) => {
+        const key = (cat.name || '').trim().toLowerCase();
+        if (key && !uniqueMap.has(key)) {
+          uniqueMap.set(key, cat);
+        }
+      });
+      setCategories(Array.from(uniqueMap.values()));
     } catch (error) {
       console.error('Error fetching item categories:', error);
       toast({ title: 'Error', description: 'Failed to fetch item categories', variant: 'destructive' });

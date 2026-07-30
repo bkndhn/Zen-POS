@@ -20,7 +20,7 @@ import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
 import { AddUserDialog } from '@/components/AddUserDialog';
-import { Pencil, Sparkles, Plus, Pause, Trash2, AlertTriangle } from 'lucide-react';
+import { Pencil, Sparkles, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function getRelativeSubscriptionText(endDateStr?: string | null): { text: string; isExpired: boolean; badgeColor: string; stage: 'active' | 'expiring' | 'expired' } {
@@ -87,7 +87,100 @@ interface Row {
   force_logout?: boolean;
   force_logout_reason: string | null;
   business_type?: string;
+  max_branches?: number;
+interface ClientLimitsModalProps {
+  target: Row;
+  onClose: () => void;
+  onSaved: () => void;
 }
+
+const ClientLimitsModal: React.FC<ClientLimitsModalProps> = ({ target, onClose, onSaved }) => {
+  const [maxBranches, setMaxBranches] = useState<number>(target.max_branches ?? 1);
+  const [maxSubUsers, setMaxSubUsers] = useState<number>(target.max_sub_users ?? 5);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const handleSave = async () => {
+    if (maxBranches < 1 || maxSubUsers < 1) {
+      toast({ title: 'Invalid limits', description: 'Limits must be at least 1.', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          max_branches: maxBranches,
+          max_sub_users: maxSubUsers,
+        })
+        .eq('id', target.profile_id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Client Limits Updated!',
+        description: `Set limits for ${target.hotel_name || target.name}: Max ${maxBranches} branch(es), Max ${maxSubUsers} staff user(s).`,
+      });
+      onSaved();
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e.message || 'Could not update limits', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-[420px] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sliders className="w-5 h-5 text-indigo-600" />
+            Configure Client Account Limits
+          </DialogTitle>
+          <DialogDescription>
+            Set maximum allowed branches and staff users for <strong>{target.hotel_name || target.name}</strong>.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold">Max Allowed Branches</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={maxBranches}
+              onChange={(e) => setMaxBranches(Math.max(1, parseInt(e.target.value) || 1))}
+              className="h-10 text-sm font-bold"
+            />
+            <p className="text-[11px] text-muted-foreground">Number of physical store branches this client can create.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold">Max Allowed Staff Users (Sub-Users)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              value={maxSubUsers}
+              onChange={(e) => setMaxSubUsers(Math.max(1, parseInt(e.target.value) || 1))}
+              className="h-10 text-sm font-bold"
+            />
+            <p className="text-[11px] text-muted-foreground">Number of staff login accounts this client admin can add.</p>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl">Cancel</Button>
+          <Button onClick={handleSave} disabled={saving} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5">
+            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Account Limits'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const SuperAdminUsers: React.FC = () => {
   const { profile, loading: authLoading } = useAuth();
@@ -103,6 +196,7 @@ const SuperAdminUsers: React.FC = () => {
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
   const [contactTarget, setContactTarget] = useState<Row | null>(null);
   const [aiLimitTarget, setAiLimitTarget] = useState<Row | null>(null);
+  const [clientLimitsTarget, setClientLimitsTarget] = useState<Row | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
   const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
@@ -719,7 +813,7 @@ const SuperAdminUsers: React.FC = () => {
         // Enriched with client_permissions & subscription fields from profiles table
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, client_permissions, subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason');
+          .select('id, client_permissions, subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason, max_branches, max_sub_users');
 
         if (profilesError) throw profilesError;
 
@@ -746,7 +840,9 @@ const SuperAdminUsers: React.FC = () => {
             subscription_amount: prof.subscription_amount || 0,
             force_logout: prof.force_logout || false,
             force_logout_reason: prof.force_logout_reason || null,
-            business_type: shopSettingsMap.get(r.profile_id) || 'restaurant'
+            business_type: shopSettingsMap.get(r.profile_id) || 'restaurant',
+            max_branches: prof.max_branches ?? 1,
+            max_sub_users: prof.max_sub_users ?? 5,
           };
         });
 
@@ -1140,6 +1236,16 @@ const SuperAdminUsers: React.FC = () => {
 
                             {r.role === 'admin' && (
                               <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setClientLimitsTarget(r)}
+                                  className="h-8 text-xs px-2.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400 rounded-xl font-bold gap-1 transition-all shadow-sm"
+                                  title="Manage Account Limits (Branches & Staff Users)"
+                                >
+                                  <Sliders className="w-3.5 h-3.5" />
+                                  Limits ({r.max_branches ?? 1}B / {r.max_sub_users ?? 5}U)
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1971,6 +2077,17 @@ const SuperAdminUsers: React.FC = () => {
             hotel_name: contactTarget.hotel_name,
           }}
           onSaved={fetchUsers}
+        />
+      )}
+
+      {clientLimitsTarget && (
+        <ClientLimitsModal
+          target={clientLimitsTarget}
+          onClose={() => setClientLimitsTarget(null)}
+          onSaved={() => {
+            fetchUsers();
+            setClientLimitsTarget(null);
+          }}
         />
       )}
 

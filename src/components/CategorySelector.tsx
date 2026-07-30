@@ -54,7 +54,16 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({ onCategories
       const { data, error } = await query.order('name');
 
       if (error) throw error;
-      setCategories(data || []);
+
+      // Deduplicate by name to guarantee unique category display
+      const uniqueMap = new Map();
+      (data || []).forEach((cat: any) => {
+        const key = (cat.name || '').trim().toLowerCase();
+        if (key && !uniqueMap.has(key)) {
+          uniqueMap.set(key, cat);
+        }
+      });
+      setCategories(Array.from(uniqueMap.values()));
     } catch (error) {
       console.error('Error fetching expense categories:', error);
       toast({

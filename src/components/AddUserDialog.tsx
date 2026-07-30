@@ -63,9 +63,40 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     businessType: 'restaurant',
   });
 
+  const [subUserLimitState, setSubUserLimitState] = useState<{ currentCount: number; maxAllowed: number } | null>(null);
+
   React.useEffect(() => {
     setFormData(p => ({ ...p, role: isSuperAdmin ? 'admin' : 'user' }));
   }, [isSuperAdmin]);
+
+  React.useEffect(() => {
+    if (open && !isSuperAdmin && adminProfileId) {
+      (async () => {
+        try {
+          const [{ count }, { data: adminProf }] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('*', { count: 'exact', head: true })
+              .eq('admin_id', adminProfileId)
+              .neq('status', 'deleted'),
+            supabase
+              .from('profiles')
+              .select('max_sub_users')
+              .eq('id', adminProfileId)
+              .maybeSingle()
+          ]);
+
+          const currentCount = count || 0;
+          const maxAllowed = (adminProf as any)?.max_sub_users ?? 5;
+          setSubUserLimitState({ currentCount, maxAllowed });
+        } catch (e) {
+          console.error('Error checking sub-user limit:', e);
+        }
+      })();
+    } else {
+      setSubUserLimitState(null);
+    }
+  }, [open, isSuperAdmin, adminProfileId]);
 
   const resetForm = () => setFormData({
     email: '', password: '', confirmPassword: '', name: '', role: isSuperAdmin ? 'admin' : 'user',
@@ -74,6 +105,15 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isSuperAdmin && subUserLimitState && subUserLimitState.currentCount >= subUserLimitState.maxAllowed) {
+      toast({
+        title: "⚠️ Staff Member Limit Reached",
+        description: `Your subscription is restricted to a maximum of ${subUserLimitState.maxAllowed} staff member(s). You currently have ${subUserLimitState.currentCount} active staff user(s). Contact Super Admin to upgrade your user limit.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!isValidEmail(formData.email)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
@@ -193,6 +233,17 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
               : 'Create a new sub-user account with contact details.'}
           </DialogDescription>
         </DialogHeader>
+
+        {subUserLimitState && subUserLimitState.currentCount >= subUserLimitState.maxAllowed && (
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">⚠️ Staff Member Limit Reached ({subUserLimitState.currentCount}/{subUserLimitState.maxAllowed})</p>
+              <p className="text-[11px] mt-0.5 text-rose-700 dark:text-rose-400">Your subscription permits up to {subUserLimitState.maxAllowed} staff members. Contact Super Admin to upgrade your user limit.</p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
@@ -304,7 +355,9 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create User'}</Button>
+            <Button type="submit" disabled={loading || (subUserLimitState !== null && subUserLimitState.currentCount >= subUserLimitState.maxAllowed)}>
+              {loading ? 'Creating...' : 'Create User'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

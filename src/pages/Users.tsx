@@ -487,6 +487,10 @@ const Users: React.FC = () => {
     ? filteredUsers.flatMap(admin => [admin, ...(admin.subUsers || [])])
     : filteredUsers.filter(u => u.user_id !== profile?.user_id);
 
+  const clientSubUsersCount = isAdmin ? users.filter(u => u.admin_id === profile?.id && u.role === 'user' && u.status !== 'deleted').length : 0;
+  const clientMaxSubUsers = profile?.max_sub_users ?? 5;
+  const isSubUserLimitReached = isAdmin && clientSubUsersCount >= clientMaxSubUsers;
+
   return (
     <div className="container mx-auto py-4 px-4 max-w-full">
       {/* Header */}
@@ -504,6 +508,16 @@ const Users: React.FC = () => {
           <AddUserDialog onUserAdded={fetchUsers} adminId={profile?.id} />
         )}
       </div>
+
+      {isSubUserLimitReached && (
+        <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-2xl text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-3 shadow-sm">
+          <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          <div>
+            <span className="font-bold text-sm text-rose-900 dark:text-rose-200">⚠️ Staff User Limit Reached ({clientSubUsersCount}/{clientMaxSubUsers})</span>
+            <p className="text-xs text-rose-700 dark:text-rose-400 mt-0.5">Your subscription permits up to {clientMaxSubUsers} staff user(s). Contact Super Admin to upgrade your staff limit.</p>
+          </div>
+        </div>
+      )}
 
       {/* Search Bar - Moved to Top */}
       <Card className="mb-6">
