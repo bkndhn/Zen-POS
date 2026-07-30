@@ -426,7 +426,7 @@ const Users: React.FC = () => {
         </CardHeader>
         <CardContent className="py-3">
           <Input
-            placeholder="Search by name, role, hotel, or status..."
+            placeholder="Search by name, role, business, or status..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"

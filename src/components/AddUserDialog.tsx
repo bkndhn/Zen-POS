@@ -89,7 +89,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     }
     if (formData.role === 'admin') {
       if (!formData.hotelName.trim()) {
-        toast({ title: "Hotel Name Required", description: "Hotel name is required for admin accounts.", variant: "destructive" });
+        toast({ title: "Business Name Required", description: "Business name is required for admin accounts.", variant: "destructive" });
         return;
       }
       if (!formData.shopName.trim()) {
@@ -228,7 +228,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                   )}
                 >
                   <span className="text-sm font-bold">Tenant Admin</span>
-                  <span className="text-[10px] font-normal text-muted-foreground">Owns hotel instance & sub-users</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">Owns business instance & sub-users</span>
                 </button>
 
                 <button
@@ -272,8 +272,8 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="hotelName">Hotel Name</Label>
-                <Input id="hotelName" value={formData.hotelName} onChange={(e) => setFormData(p => ({ ...p, hotelName: e.target.value }))} required placeholder="Enter hotel name" />
+                <Label htmlFor="hotelName">Business Name</Label>
+                <Input id="hotelName" value={formData.hotelName} onChange={(e) => setFormData(p => ({ ...p, hotelName: e.target.value }))} required placeholder="Enter business name" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="shopName">Shop Name</Label>

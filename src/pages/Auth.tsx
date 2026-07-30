@@ -85,7 +85,202 @@ const Auth = () => {
             <div className="bg-gray-50 dark:bg-zinc-800/50 border dark:border-zinc-800 rounded-xl p-4 mb-6 text-left">
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Name:</span> {profile?.name}</p>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Role:</span> {profile?.role}</p>
-              {profile?.hotel_name && <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Hotel:</span> {profile?.hotel_name}</p>}
+              {profile?.hotel_name && <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Business:</span> {profile?.hotel_name}</p>}
+              <p className="text-sm dark:text-gray-300"><span className="font-medium">Status:</span> <span className="text-orange-600 dark:text-orange-400">Pending Approval</span></p>
+            </div>
+            <button
+              onClick={signOut}
+              className="w-full py-3 px-4 border border-gray-300 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is logged in but account is deleted
+  if (user && profile?.status === 'deleted') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900 px-4">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-pink-100 dark:border-zinc-800 overflow-hidden">
+          <div className="h-2 bg-gradient-to-r from-red-500 via-red-600 to-red-500"></div>
+          <div className="p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-red-600 text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-2xl font-bold text-red-600 mb-2">Account Deactivated</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Your account has been deactivated. Please contact support.</p>
+            <button
+              onClick={signOut}
+              className="w-full py-3 px-4 border border-gray-300 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is logged in but profile is not loaded yet, show loading
+  if (user && !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-pink-600 dark:text-pink-400 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300 font-medium">Setting up your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    try { captchaRef.current?.resetCaptcha(); } catch { /* noop */ }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: `${getAppBaseUrl()}/auth`,
+        captchaToken: captchaToken || undefined,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for a password reset link.",
+      });
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      import.meta.env.DEV && console.error('Password reset error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset email.",
+        variant: "destructive",
+      });
+    } finally {
+      resetCaptcha();
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Rate limiting check - prevent brute force attacks
+    if (!checkRateLimit('login_attempt', 5, 60000)) {
+      logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
+      toast({
+        title: "Too Many Attempts",
+        description: "Please wait 1 minute before trying again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate email format
+    if (!isValidEmail(formData.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For signup, enforce strong password requirements
+    if (!isLogin) {
+      const passwordCheck = isStrongPassword(formData.password);
+      if (!passwordCheck.valid) {
+        toast({
+          title: "Weak Password",
+          description: passwordCheck.message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        const { error } = await signIn(formData.email, formData.password, captchaToken || undefined);
+        if (error) {
+          logSecurityEvent('LOGIN_FAILED', { email: formData.email, reason: error.message });
+          if (error.message?.includes('Invalid login credentials')) {
+            throw new Error('Invalid email or password. Please check your credentials and try again.');
+          }
+          throw error;
+        }
+
+        // Clear rate limit on successful login
+        clearRateLimit('login_attempt');
+        
+        if (rememberMe) {
+          localStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
+        } else {
+          localStorage.removeItem('hotel_pos_saved_email');
+        }
+
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data } = await supabase.rpc('get_signup_enabled');
+        if (typeof data === 'boolean') setSignupEnabled(data);
+      } catch { /* default true */ }
+    })();
+  }, []);
+
+  // Show loading while authentication is being initialized
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-pink-600 dark:text-pink-400 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is logged in and profile is active, redirect to main page
+  if (user && profile?.status === 'active') {
+    return <Navigate to="/" replace />;
+  }
+
+  // If user is logged in but account is paused
+  if (user && profile?.status === 'paused') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900 px-4">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-pink-100 dark:border-zinc-800 overflow-hidden">
+          <div className="h-2 bg-gradient-to-r from-pink-500 via-pink-600 to-pink-500"></div>
+          <div className="p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+              <Clock className="w-8 h-8 text-orange-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Account Pending</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Your account is awaiting approval from the administrator.</p>
+            <div className="bg-gray-50 dark:bg-zinc-800/50 border dark:border-zinc-800 rounded-xl p-4 mb-6 text-left">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Name:</span> {profile?.name}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Role:</span> {profile?.role}</p>
+              {profile?.hotel_name && <p className="text-sm text-gray-600 dark:text-gray-300 mb-1"><span className="font-medium">Business:</span> {profile?.hotel_name}</p>}
               <p className="text-sm dark:text-gray-300"><span className="font-medium">Status:</span> <span className="text-orange-600 dark:text-orange-400">Pending Approval</span></p>
             </div>
             <button
@@ -246,7 +441,7 @@ const Auth = () => {
         });
       } else {
         if (formData.role === 'admin' && !formData.hotelName.trim()) {
-          throw new Error('Hotel name is required for admin accounts');
+          throw new Error('Business name is required for admin accounts');
         }
 
         const { error } = await signUp(
@@ -316,7 +511,7 @@ const Auth = () => {
               ? 'Enter your email to receive a reset link'
               : (isLogin
                 ? 'Sign in to access your POS system'
-                : 'Register your hotel for ZenPOS'
+                : 'Register your business for ZenPOS'
               )
             }
           </p>
@@ -338,11 +533,7 @@ const Auth = () => {
                     placeholder="Enter your full name"
                     className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
                   />
-                </div>
-
-                {/* Hotel Name - Required for admin signup */}
-                <div className="space-y-2">
-                                  {/* Business Type */}
+                                {/* Business Type */}
                 <div className="space-y-2">
                   <Label htmlFor="businessType" className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Type</Label>
                   <select
@@ -357,14 +548,17 @@ const Auth = () => {
                     <option value="retail">Retail / Grocery</option>
                   </select>
                 </div>
-                
+
+                {/* Business Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="hotelName" className="text-sm font-medium text-gray-700 dark:text-gray-300">Business Name</Label>
                   <Input
                     id="hotelName"
                     type="text"
                     value={formData.hotelName}
                     onChange={(e) => setFormData(prev => ({ ...prev, hotelName: e.target.value }))}
                     required
-                    placeholder="Enter your hotel name"
+                    placeholder="Enter your business name"
                     className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
                   />
                 </div>
@@ -375,7 +569,7 @@ const Auth = () => {
                     <strong>Note:</strong> Your account will be reviewed by our team.
                     Staff members can be added after your account is activated.
                   </p>
-                </div>
+                </div>  </div>
               </>
             )}
 

@@ -868,7 +868,7 @@ const SuperAdminUsers: React.FC = () => {
             {/* Header Controls: Search + Filter Pills + Add User */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
               <Input
-                placeholder="Search name, email, mobile, hotel, shop, or admin..."
+                placeholder="Search name, email, mobile, business, shop, or admin..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="max-w-md h-10 shadow-sm bg-white dark:bg-slate-800"
@@ -963,8 +963,8 @@ const SuperAdminUsers: React.FC = () => {
                       <TableHead className="font-bold text-xs">Role</TableHead>
                       <TableHead className="font-bold text-xs">Email</TableHead>
                       <TableHead className="font-bold text-xs">Mobile (Click to Call)</TableHead>
-                      <TableHead className="font-bold text-xs">Hotel Name</TableHead>
-                      <TableHead className="font-bold text-xs">Business</TableHead>
+                      <TableHead className="font-bold text-xs">Business Name</TableHead>
+                      <TableHead className="font-bold text-xs">Business Type</TableHead>
                       <TableHead className="font-bold text-xs">Shop Name</TableHead>
                       <TableHead className="font-bold text-xs">Address</TableHead>
                       <TableHead className="font-bold text-xs">Parent Admin</TableHead>

@@ -579,7 +579,7 @@ const TableOrderBilling: React.FC = () => {
                     additionalCharges: additionalChargesData,
                     total: totalAmount,
                     paymentMethod,
-                    shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Hotel',
+                    shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Business',
                     address: billSettings?.address || activeBranch?.address || '',
                     phone: billSettings?.contactNumber || activeBranch?.contact_number || '',
                     totalItemsCount: items.length,
@@ -610,7 +610,7 @@ const TableOrderBilling: React.FC = () => {
                     additionalCharges: additionalChargesData,
                     total: totalAmount,
                     paymentMethod,
-                    shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Hotel',
+                    shopName: billSettings?.shopName || activeBranch?.shop_name || profile?.hotel_name || 'Business',
                     customerName
                 } as any);
                 shareViaWhatsApp(customerMobile, message);

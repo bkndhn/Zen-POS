@@ -96,8 +96,8 @@ export const EditContactDialog: React.FC<EditContactDialogProps> = ({
           {isAdmin && (
             <>
               <div className="space-y-1.5">
-                <Label>Hotel Name</Label>
-                <Input value={hotelName} onChange={(e) => setHotelName(e.target.value)} placeholder="Hotel name" />
+                <Label>Business Name</Label>
+                <Input value={hotelName} onChange={(e) => setHotelName(e.target.value)} placeholder="Business name" />
               </div>
               <div className="space-y-1.5">
                 <Label>Shop Name</Label>
