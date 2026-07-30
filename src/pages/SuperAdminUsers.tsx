@@ -1001,6 +1001,9 @@ const SuperAdminUsers: React.FC = () => {
   const allAdmins = useMemo(() => baseFiltered.filter(r => r.role === 'admin'), [baseFiltered]);
   const allStaff = useMemo(() => baseFiltered.filter(r => r.role === 'user'), [baseFiltered]);
 
+  const admins = allAdmins;
+  const subUsers = allStaff;
+
   const filtered = useMemo(() => {
     if (userRoleFilter === 'admin') return allAdmins;
     if (userRoleFilter === 'staff') return allStaff;
