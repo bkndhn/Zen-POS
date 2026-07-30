@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound, Activity, CreditCard, Bell, FileText, ExternalLink, PhoneCall } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
@@ -19,7 +20,7 @@ import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
 import { AddUserDialog } from '@/components/AddUserDialog';
-import { Pencil, Sparkles, Plus } from 'lucide-react';
+import { Pencil, Sparkles, Plus, Pause, Trash2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function getRelativeSubscriptionText(endDateStr?: string | null): { text: string; isExpired: boolean; badgeColor: string; stage: 'active' | 'expiring' | 'expired' } {
@@ -105,6 +106,91 @@ const SuperAdminUsers: React.FC = () => {
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
   const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
+
+  // Pause / Activate and Delete state & handlers
+  const [pauseTarget, setPauseTarget] = useState<Row | null>(null);
+  const [pauseConfirmOpen, setPauseConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleTogglePause = (userRow: Row) => {
+    setPauseTarget(userRow);
+    setPauseConfirmOpen(true);
+  };
+
+  const handleConfirmPause = async () => {
+    if (!pauseTarget) return;
+    setActionLoading(true);
+    const isPausing = pauseTarget.status !== 'paused';
+    const newStatus = isPausing ? 'paused' : 'active';
+    try {
+      const { error: pErr } = await supabase.from('profiles').update({ status: newStatus }).eq('id', pauseTarget.profile_id);
+      if (pErr) throw pErr;
+
+      if (pauseTarget.role === 'admin') {
+        await supabase.from('profiles').update({ status: newStatus }).eq('admin_id', pauseTarget.profile_id);
+      }
+
+      if (isPausing) {
+        const channel = supabase.channel(`force-logout-broadcast-${pauseTarget.profile_id}`);
+        await channel.send({
+          type: 'broadcast',
+          event: 'force_logout',
+          payload: { force: true, reason: 'Organization account has been paused by Super Admin.' }
+        });
+        supabase.removeChannel(channel);
+      }
+
+      toast({
+        title: isPausing ? "Account Paused & Force Logged Out" : "Account Activated",
+        description: isPausing
+          ? `Client admin "${pauseTarget.hotel_name || pauseTarget.name}" and sub-users force logged out.`
+          : `Client admin "${pauseTarget.hotel_name || pauseTarget.name}" activated successfully.`
+      });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update user status", variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+      setPauseConfirmOpen(false);
+      setPauseTarget(null);
+    }
+  };
+
+  const handleDeleteClientClick = (userRow: Row) => {
+    setDeleteTarget(userRow);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteClient = async () => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      const channel = supabase.channel(`force-logout-broadcast-${deleteTarget.profile_id}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'force_logout',
+        payload: { force: true, reason: 'Organization account has been deleted.' }
+      });
+      supabase.removeChannel(channel);
+
+      const { error } = await supabase.rpc('super_admin_delete_client', { p_target_admin_id: deleteTarget.profile_id });
+      if (error) throw error;
+
+      toast({
+        title: "Client Admin & Data Deleted",
+        description: `Client "${deleteTarget.hotel_name || deleteTarget.name}", sub-users, and all data permanently deleted.`
+      });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete client account", variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+      setDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+    }
+  };
 
   // Tabs & URL sync state
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1036,6 +1122,22 @@ const SuperAdminUsers: React.FC = () => {
                             >
                               <KeyRound className="w-3.5 h-3.5" />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTogglePause(r)}
+                              className={cn(
+                                "h-8 text-xs px-2.5 rounded-xl font-bold gap-1 transition-all",
+                                r.status === 'paused'
+                                  ? "border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                  : "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400"
+                              )}
+                              title={r.status === 'paused' ? "Activate Account" : "Pause Account (Force Logout)"}
+                            >
+                              {r.status === 'paused' ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                              {r.status === 'paused' ? "Activate" : "Pause"}
+                            </Button>
+
                             {r.role === 'admin' && (
                               <>
                                 <Button
@@ -1058,6 +1160,16 @@ const SuperAdminUsers: React.FC = () => {
                                 >
                                   <Shield className="w-3.5 h-3.5" />
                                   Permissions
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteClientClick(r)}
+                                  className="h-8 text-xs px-2.5 border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white dark:border-rose-900 dark:text-rose-400 rounded-xl font-bold gap-1 transition-all"
+                                  title="Delete Client & Entire Data (Force Logout)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Delete
                                 </Button>
                               </>
                             )}
@@ -1875,6 +1987,78 @@ const SuperAdminUsers: React.FC = () => {
         onOpenChange={setAddUserDialogOpen}
         onUserAdded={fetchUsers}
       />
+
+      {/* Confirm Pause / Activate Modal */}
+      <AlertDialog open={pauseConfirmOpen} onOpenChange={setPauseConfirmOpen}>
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {pauseTarget?.status === 'paused' ? 'Activate Client Account?' : 'Pause Client & Force Log Out?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-300 space-y-2 pt-2">
+              {pauseTarget?.status === 'paused' ? (
+                <p>
+                  Are you sure you want to activate <strong>{pauseTarget?.hotel_name || pauseTarget?.name || pauseTarget?.email}</strong>? They will be able to log in to Zen POS again.
+                </p>
+              ) : (
+                <p>
+                  Are you sure you want to pause <strong>{pauseTarget?.hotel_name || pauseTarget?.name || pauseTarget?.email}</strong>?
+                  This will <strong className="text-amber-700 dark:text-amber-400">INSTANTLY FORCE LOG OUT</strong> the Client Admin and all of their sub-users across all active browser tabs and devices without needing a page refresh.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 pt-2">
+            <AlertDialogCancel disabled={actionLoading} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmPause(); }}
+              disabled={actionLoading}
+              className={cn(
+                "rounded-xl font-bold text-white",
+                pauseTarget?.status === 'paused' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"
+              )}
+            >
+              {actionLoading ? "Processing..." : pauseTarget?.status === 'paused' ? "Activate Now" : "Pause & Force Logout"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Delete Client Modal */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
+              <Trash2 className="w-5 h-5 text-rose-500" />
+              Permanently Delete Client & All Data?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-300 space-y-2 pt-2">
+              <p>
+                Are you sure you want to PERMANENTLY delete <strong>{deleteTarget?.hotel_name || deleteTarget?.name || deleteTarget?.email}</strong>?
+              </p>
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3 rounded-xl text-xs text-rose-800 dark:text-rose-300 space-y-1">
+                <p className="font-bold">⚠️ CRITICAL WARNING:</p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li>Deletes Client Admin and all sub-user login authentication accounts from Supabase Backend.</li>
+                  <li>Deletes all bills, items, customers, tables, branches, and settings.</li>
+                  <li>Instantly force logs out all active user sessions across all devices.</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 pt-2">
+            <AlertDialogCancel disabled={actionLoading} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDeleteClient(); }}
+              disabled={actionLoading}
+              className="rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {actionLoading ? "Deleting..." : "Permanently Delete Everything"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

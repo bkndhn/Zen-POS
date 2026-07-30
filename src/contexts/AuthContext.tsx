@@ -562,36 +562,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         devLog('[AuthContext] Force logout subscription status:', status);
       });
 
-    // Also subscribe to broadcast channel for instant force logout from Super Admin
+    // Also subscribe to broadcast channel for instant force logout from Super Admin or Client Admin
     const adminId = profile.role === 'admin' ? profile.id : profile.admin_id;
     let broadcastChannel: any = null;
+    let userBroadcastChannel: any = null;
+
+    const performForceLogout = async (reason?: string) => {
+      devLog('[AuthContext] Force logout broadcast received!');
+      localStorage.removeItem(`profile_${user.id}`);
+      clearAllLicenseData();
+      if (adminId) {
+        cacheVerifiedLicense(adminId, {
+          status: 'locked',
+          forceLogout: true,
+          forceLogoutReason: reason || 'Account suspended',
+        });
+      }
+      const { toast } = await import('@/hooks/use-toast');
+      toast({
+        title: 'Account Paused',
+        description: reason || 'Your account access has been revoked or paused by an administrator.',
+        variant: 'destructive',
+      });
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setAdminProfileId(null);
+      setAdminAuthUid(null);
+      setProfile(null);
+      window.location.href = '/auth';
+    };
+
     if (adminId) {
       broadcastChannel = supabase
         .channel(`force-logout-broadcast-${adminId}`)
-        .on('broadcast', { event: 'force_logout' }, async (payload: any) => {
+        .on('broadcast', { event: 'force_logout' }, (payload: any) => {
           const { force, reason } = payload.payload || {};
-          if (force) {
-            devLog('[AuthContext] Force logout broadcast received!');
-            localStorage.removeItem(`profile_${user.id}`);
-            clearAllLicenseData();
-            cacheVerifiedLicense(adminId, {
-              status: 'locked',
-              forceLogout: true,
-              forceLogoutReason: reason || 'Account suspended',
-            });
-            const { toast } = await import('@/hooks/use-toast');
-            toast({
-              title: 'Account Suspended',
-              description: reason || 'Your subscription has been paused.',
-              variant: 'destructive',
-            });
-            await supabase.auth.signOut();
-            setUser(null);
-            setSession(null);
-            setAdminProfileId(null);
-            setAdminAuthUid(null);
-            setProfile(null);
-          }
+          if (force) performForceLogout(reason);
+        })
+        .subscribe();
+    }
+
+    if (user?.id) {
+      userBroadcastChannel = supabase
+        .channel(`force-logout-user-${user.id}`)
+        .on('broadcast', { event: 'force_logout' }, (payload: any) => {
+          const { force, reason } = payload.payload || {};
+          if (force) performForceLogout(reason);
         })
         .subscribe();
     }
@@ -616,6 +633,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       devLog('[AuthContext] Cleaning up force-logout realtime subscription');
       supabase.removeChannel(channel);
       if (broadcastChannel) supabase.removeChannel(broadcastChannel);
+      if (userBroadcastChannel) supabase.removeChannel(userBroadcastChannel);
     };
   }, [user?.id, profile?.id, profile?.admin_id, profile?.status]);
 

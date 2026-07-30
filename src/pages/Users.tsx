@@ -7,7 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 
@@ -15,7 +18,6 @@ import { UserPermissions } from '@/components/UserPermissions';
 import { SubUserBranchAssignments } from '@/components/SubUserBranchAssignments';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
-import { Pencil } from 'lucide-react';
 import type { UserProfile, UserStatus, UserRole } from '@/types/user';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
@@ -54,8 +56,95 @@ const Users: React.FC = () => {
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
   const [contactTarget, setContactTarget] = useState<ExtendedUserProfile | null>(null);
 
+  // Pause / Activate and Delete Sub-User State & Handlers
+  const [pauseSubTarget, setPauseSubTarget] = useState<ExtendedUserProfile | null>(null);
+  const [pauseSubConfirmOpen, setPauseSubConfirmOpen] = useState(false);
+  const [deleteSubTarget, setDeleteSubTarget] = useState<ExtendedUserProfile | null>(null);
+  const [deleteSubConfirmOpen, setDeleteSubConfirmOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const isSuperAdmin = profile?.role === 'super_admin';
   const isAdmin = profile?.role === 'admin';
+
+  const handleToggleSubUserPause = (subUser: ExtendedUserProfile) => {
+    setPauseSubTarget(subUser);
+    setPauseSubConfirmOpen(true);
+  };
+
+  const handleConfirmSubUserPause = async () => {
+    if (!pauseSubTarget) return;
+    setActionLoading(true);
+    const isPausing = pauseSubTarget.status !== 'paused';
+    const newStatus = isPausing ? 'paused' : 'active';
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', pauseSubTarget.id);
+
+      if (error) throw error;
+
+      if (isPausing) {
+        const userAuthId = pauseSubTarget.user_id || pauseSubTarget.id;
+        const channel = supabase.channel(`force-logout-user-${userAuthId}`);
+        await channel.send({
+          type: 'broadcast',
+          event: 'force_logout',
+          payload: { force: true, reason: 'Your account has been paused by your administrator.' }
+        });
+        supabase.removeChannel(channel);
+      }
+
+      toast({
+        title: isPausing ? "Sub-User Paused & Force Logged Out" : "Sub-User Activated",
+        description: isPausing
+          ? `Sub-user "${pauseSubTarget.name}" force logged out across all devices.`
+          : `Sub-user "${pauseSubTarget.name}" activated successfully.`
+      });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update sub-user status", variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+      setPauseSubConfirmOpen(false);
+      setPauseSubTarget(null);
+    }
+  };
+
+  const handleDeleteSubUserClick = (subUser: ExtendedUserProfile) => {
+    setDeleteSubTarget(subUser);
+    setDeleteSubConfirmOpen(true);
+  };
+
+  const handleConfirmDeleteSubUser = async () => {
+    if (!deleteSubTarget) return;
+    setActionLoading(true);
+    try {
+      const userAuthId = deleteSubTarget.user_id || deleteSubTarget.id;
+      const channel = supabase.channel(`force-logout-user-${userAuthId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'force_logout',
+        payload: { force: true, reason: 'Your account has been deleted.' }
+      });
+      supabase.removeChannel(channel);
+
+      const { error } = await supabase.rpc('admin_delete_sub_user', { p_target_user_id: deleteSubTarget.id });
+      if (error) throw error;
+
+      toast({
+        title: "Sub-User Deleted",
+        description: `Sub-user "${deleteSubTarget.name}" and authentication account permanently deleted.`
+      });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete sub-user", variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+      setDeleteSubConfirmOpen(false);
+      setDeleteSubTarget(null);
+    }
+  };
 
 
 
@@ -773,43 +862,47 @@ const Users: React.FC = () => {
                             className="pt-2 border-t"
                           />
                         )}
-                        <div className="flex flex-wrap gap-1 pt-2">
+                        <div className="flex flex-wrap gap-1.5 pt-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateUserStatus(user.id, user.status === 'active' ? 'paused' : 'active')}
-                            className="text-xs flex-1 sm:flex-none"
+                            onClick={() => handleToggleSubUserPause(user)}
+                            className={cn(
+                              "text-xs font-bold gap-1 rounded-xl flex-1 sm:flex-none",
+                              user.status === 'paused'
+                                ? "border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : "border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400"
+                            )}
                           >
-                            {user.status === 'active' ? 'Pause' : 'Activate'}
+                            {user.status === 'paused' ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                            {user.status === 'paused' ? 'Activate' : 'Pause'}
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => setContactTarget(user)}
-                            className="text-xs flex-1 sm:flex-none"
+                            className="text-xs rounded-xl flex-1 sm:flex-none"
                             title="Edit contact"
                           >
-                            <Pencil className="w-3.5 h-3.5 mr-1" /> Edit contact
+                            <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => setPwdTarget({ id: user.id, label: user.name || user.email || 'user' })}
-                            className="text-xs flex-1 sm:flex-none"
+                            className="text-xs rounded-xl flex-1 sm:flex-none"
                             title="Reset password"
                           >
-                            <KeyRound className="w-3.5 h-3.5 mr-1" /> Reset password
+                            <KeyRound className="w-3.5 h-3.5 mr-1" /> Reset Pwd
                           </Button>
-                          {user.status !== 'deleted' && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => updateUserStatus(user.id, 'deleted')}
-                              className="text-xs flex-1 sm:flex-none"
-                            >
-                              Delete
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteSubUserClick(user)}
+                            className="text-xs font-bold rounded-xl flex-1 sm:flex-none gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </Button>
                         </div>
                       </>
                     )}
@@ -844,6 +937,77 @@ const Users: React.FC = () => {
           onSaved={fetchUsers}
         />
       )}
+
+      {/* Sub-User Pause / Activate Confirmation Modal */}
+      <AlertDialog open={pauseSubConfirmOpen} onOpenChange={setPauseSubConfirmOpen}>
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {pauseSubTarget?.status === 'paused' ? 'Activate Sub-User Account?' : 'Pause Sub-User & Force Log Out?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-300 space-y-2 pt-2">
+              {pauseSubTarget?.status === 'paused' ? (
+                <p>
+                  Are you sure you want to activate sub-user <strong>{pauseSubTarget?.name || pauseSubTarget?.email}</strong>? They will be able to access their assigned branch pages again.
+                </p>
+              ) : (
+                <p>
+                  Are you sure you want to pause sub-user <strong>{pauseSubTarget?.name || pauseSubTarget?.email}</strong>?
+                  This will <strong className="text-amber-700 dark:text-amber-400">INSTANTLY FORCE LOG OUT</strong> this sub-user across all active devices without needing a page refresh.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 pt-2">
+            <AlertDialogCancel disabled={actionLoading} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmSubUserPause(); }}
+              disabled={actionLoading}
+              className={cn(
+                "rounded-xl font-bold text-white",
+                pauseSubTarget?.status === 'paused' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"
+              )}
+            >
+              {actionLoading ? "Processing..." : pauseSubTarget?.status === 'paused' ? "Activate Now" : "Pause & Force Logout"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Sub-User Delete Confirmation Modal */}
+      <AlertDialog open={deleteSubConfirmOpen} onOpenChange={setDeleteSubConfirmOpen}>
+        <AlertDialogContent className="rounded-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
+              <Trash2 className="w-5 h-5 text-rose-500" />
+              Permanently Delete Sub-User?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-300 space-y-2 pt-2">
+              <p>
+                Are you sure you want to PERMANENTLY delete sub-user <strong>{deleteSubTarget?.name || deleteSubTarget?.email}</strong>?
+              </p>
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3 rounded-xl text-xs text-rose-800 dark:text-rose-300 space-y-1">
+                <p className="font-bold">⚠️ PERMANENT ACTION:</p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li>Deletes user profile and login authentication account from the backend.</li>
+                  <li>Instantly force logs out any active browser sessions.</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 pt-2">
+            <AlertDialogCancel disabled={actionLoading} className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDeleteSubUser(); }}
+              disabled={actionLoading}
+              className="rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {actionLoading ? "Deleting..." : "Permanently Delete Sub-User"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

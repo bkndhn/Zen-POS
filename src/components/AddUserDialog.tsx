@@ -216,41 +216,17 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
           {isSuperAdmin ? (
             <div className="space-y-2">
               <Label className="text-xs font-bold">Account Role</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData(p => ({ ...p, role: 'admin' }))}
-                  className={cn(
-                    'p-3 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5',
-                    formData.role === 'admin'
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                  )}
-                >
-                  <span className="text-sm font-bold">Tenant Admin</span>
-                  <span className="text-[10px] font-normal text-muted-foreground">Owns business instance & sub-users</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFormData(p => ({ ...p, role: 'user' }))}
-                  className={cn(
-                    'p-3 rounded-xl border text-xs font-bold transition-all text-left flex flex-col gap-0.5',
-                    formData.role === 'user'
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                  )}
-                >
-                  <span className="text-sm font-bold">Branch Staff</span>
-                  <span className="text-[10px] font-normal text-muted-foreground">Sub-user with restricted permissions</span>
-                </button>
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl">
+                <span className="text-sm font-bold text-primary block">Client Admin</span>
+                <span className="text-[11px] text-muted-foreground">Creates and manages business instance & sub-users</span>
               </div>
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Role</Label>
-              <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg border">
-                <span className="text-sm font-medium">Staff Member</span>
+              <Label className="text-xs font-bold">Account Role</Label>
+              <div className="p-3 bg-secondary/50 rounded-xl border">
+                <span className="text-sm font-bold block">Branch Sub-User</span>
+                <span className="text-[11px] text-muted-foreground">Staff member with branch & page permissions</span>
               </div>
             </div>
           )}
