@@ -1439,6 +1439,9 @@ const Billing = () => {
           receiptQrType: data.receipt_qr_type || 'payment',
           upiId: data.upi_id || '',
           upiName: data.upi_name || '',
+          billBottomText: data.bill_bottom_text || '',
+          billFontFamily: data.bill_font_family || '',
+          billFontScale: data.bill_font_scale || 1,
           quickBillEnabled: data.quick_bill_enabled || false
         };
         setBillSettings(settings);
@@ -3138,6 +3141,10 @@ const Billing = () => {
         taxSummary: billPayload.tax_summary || undefined,
         totalTax: billPayload.total_tax || undefined,
         isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
+        footerMessage: settingsToUse?.billBottomText || getStoredFooterMessage(operatingBranchId),
+        fontFamily: settingsToUse?.billFontFamily || getStoredBillFont(operatingBranchId),
+        fontScale: settingsToUse?.billFontScale ? Number(settingsToUse.billFontScale) : getStoredBillFontScale(operatingBranchId),
+        branchId: operatingBranchId || undefined,
         roundOff: roundOff !== 0 ? roundOff : undefined,
         orderType: paymentData.orderType
       };

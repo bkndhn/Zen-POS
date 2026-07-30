@@ -11,9 +11,9 @@ const escapeHtml = (str: string | undefined | null): string => {
 
 export const printBrowserReceipt = async (data: PrintData) => {
   const width = data.printerWidth || '58mm';
+  const branchId = data.branchId || localStorage.getItem('hotel_pos_active_branch_id') || undefined;
   const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
-  const widthValue = width === '80mm' ? '80mm' : '58mm';
-  const fontMetrics = calculateBillTypography(width);
+  const fontMetrics = calculateBillTypography(width, data.fontScale, branchId, data.fontFamily);
 
   let qrCodeDataUrl = '';
   try {
@@ -157,7 +157,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
     </table>`;
   }
 
-  const customFooterMsg = getStoredFooterMessage();
+  const customFooterMsg = data.footerMessage || getStoredFooterMessage(branchId);
 
   const html = `<!DOCTYPE html>
 <html>
@@ -165,7 +165,7 @@ export const printBrowserReceipt = async (data: PrintData) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bill Receipt</title>
-  ${generatePrintStyleHeader(width)}
+  ${generatePrintStyleHeader(width, data.fontScale, branchId, data.fontFamily)}
   <style>
     .center { text-align: center; }
     .shop-name { font-size: ${fontMetrics.shopTitleFontSizePx}px !important; font-weight: bold; margin-bottom: ${paperSaving ? '2px' : '4px'}; }

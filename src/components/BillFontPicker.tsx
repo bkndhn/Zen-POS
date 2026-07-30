@@ -38,28 +38,41 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
   const [footerMessage, setFooterMessage] = useState<string>(DEFAULT_FOOTER_MESSAGE);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [paperPreviewWidth, setPaperPreviewWidth] = useState<'58mm' | '80mm'>('58mm');
-  const { save: saveSettings } = useBranchSettings('shop_settings');
+  const { data: shopSettings, save: saveSettings } = useBranchSettings('shop_settings');
 
   useEffect(() => {
-    const savedFont = getStoredBillFont(activeBranchId);
-    const savedScale = getStoredBillFontScale(activeBranchId);
-    const savedFooter = getStoredFooterMessage(activeBranchId);
+    const dbFont = shopSettings?.bill_font_family;
+    const dbScale = shopSettings?.bill_font_scale;
+    const dbFooter = shopSettings?.bill_bottom_text;
+
+    const savedFont = dbFont || getStoredBillFont(activeBranchId);
+    const savedScale = dbScale ? Number(dbScale) : getStoredBillFontScale(activeBranchId);
+    const savedFooter = dbFooter !== undefined && dbFooter !== null ? dbFooter : getStoredFooterMessage(activeBranchId);
+
     setSelectedFontId(savedFont);
     setFontScale(savedScale);
     setFooterMessage(savedFooter);
+
+    if (activeBranchId) {
+      if (savedFont) localStorage.setItem(`hotel_pos_bill_font_family_${activeBranchId}`, savedFont);
+      if (savedScale) localStorage.setItem(`hotel_pos_bill_font_scale_${activeBranchId}`, savedScale.toString());
+      if (savedFooter !== undefined) localStorage.setItem(`hotel_pos_footer_message_${activeBranchId}`, savedFooter);
+    }
+
     loadGoogleFont(getSelectedBillFont(savedFont, activeBranchId));
-  }, [activeBranchId]);
+  }, [activeBranchId, shopSettings]);
 
   const handleFontSelect = (fontId: string) => {
     setSelectedFontId(fontId);
-    const fontObj = getSelectedBillFont(fontId);
+    const fontObj = getSelectedBillFont(fontId, activeBranchId);
     loadGoogleFont(fontObj);
 
-    // Save branch-scoped and global
+    if (activeBranchId) {
+      localStorage.setItem(`hotel_pos_bill_font_family_${activeBranchId}`, fontId);
+    }
     localStorage.setItem(getBranchKey('hotel_pos_bill_font_family'), fontId);
     localStorage.setItem('hotel_pos_bill_font_family', fontId);
 
-    // Broadcast change
     window.dispatchEvent(new CustomEvent('bill-font-changed', { detail: { fontId, fontScale } }));
     if (onFontChange) onFontChange(fontId, fontScale);
     saveSettings({ bill_font_family: fontId });
@@ -69,6 +82,9 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
     const scale = newScaleArr[0];
     setFontScale(scale);
 
+    if (activeBranchId) {
+      localStorage.setItem(`hotel_pos_bill_font_scale_${activeBranchId}`, scale.toString());
+    }
     localStorage.setItem(getBranchKey('hotel_pos_bill_font_scale'), scale.toString());
     localStorage.setItem('hotel_pos_bill_font_scale', scale.toString());
 
@@ -108,6 +124,10 @@ export const BillFontPicker: React.FC<BillFontPickerProps> = ({ onFontChange, co
       printerWidth: paperPreviewWidth,
       totalItemsCount: 2,
       smartQtyCount: 6,
+      footerMessage: footerMessage,
+      fontFamily: selectedFontId,
+      fontScale: fontScale,
+      branchId: activeBranchId,
     };
 
     const canThermal = printerManager.isConnected() || printerManager.hasNativePrinterBridge();

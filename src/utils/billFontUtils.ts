@@ -219,10 +219,15 @@ export interface BillTypographyMetrics {
   valColWidthPct: number;
 }
 
-export function calculateBillTypography(paperWidth: string = '58mm', customScale?: number): BillTypographyMetrics {
-  const font = getSelectedBillFont();
+export function calculateBillTypography(
+  paperWidth: string = '58mm',
+  customScale?: number,
+  branchId?: string,
+  customFontId?: string
+): BillTypographyMetrics {
+  const font = getSelectedBillFont(customFontId, branchId);
   const fontUrl = loadGoogleFont(font);
-  const scale = customScale ?? getStoredBillFontScale();
+  const scale = customScale ?? getStoredBillFontScale(branchId);
   const is80mm = paperWidth === '80mm' || paperWidth === '3inch';
   const isCondensed = font.category === 'condensed';
 
@@ -274,8 +279,13 @@ export function calculateBillTypography(paperWidth: string = '58mm', customScale
 /**
  * Generate CSS style block for Thermal Printing HTML to ensure text never overflows page bounds
  */
-export function generatePrintStyleHeader(paperWidth: string = '58mm', customScale?: number): string {
-  const metrics = calculateBillTypography(paperWidth, customScale);
+export function generatePrintStyleHeader(
+  paperWidth: string = '58mm',
+  customScale?: number,
+  branchId?: string,
+  customFontId?: string
+): string {
+  const metrics = calculateBillTypography(paperWidth, customScale, branchId, customFontId);
   const widthCss = paperWidth === '80mm' || paperWidth === '3inch' ? '80mm' : '58mm';
 
   return `

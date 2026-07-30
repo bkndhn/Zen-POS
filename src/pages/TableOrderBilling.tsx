@@ -1073,7 +1073,11 @@ const TableOrderBilling: React.FC = () => {
                 totalTax: billPayload.total_tax || undefined,
                 isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
                 roundOff: roundOff !== 0 ? roundOff : undefined,
-                orderType: paymentData.orderType
+                orderType: paymentData.orderType,
+                footerMessage: (billSettings as any)?.billBottomText || getStoredFooterMessage(operatingBranchId),
+                fontFamily: (billSettings as any)?.billFontFamily || getStoredBillFont(operatingBranchId),
+                fontScale: (billSettings as any)?.billFontScale ? Number((billSettings as any).billFontScale) : getStoredBillFontScale(operatingBranchId),
+                branchId: operatingBranchId || undefined,
             };
 
             const autoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';

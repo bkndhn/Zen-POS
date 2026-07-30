@@ -37,6 +37,10 @@ interface BillImageData {
   totalItemsCount?: number;
   smartQtyCount?: number;
   paymentDetails?: Record<string, number>;
+  footerMessage?: string;
+  fontFamily?: string;
+  fontScale?: number;
+  branchId?: string;
   // GST fields
   gstin?: string;
   taxSummary?: string;
@@ -269,7 +273,7 @@ const generateBillHtml = (data: BillImageData): string => {
 
       <!-- Footer -->
       <div style="text-align: center; padding: 12px 20px 20px; font-size: 13px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
-        ${escapeHtml(getStoredFooterMessage())}
+        ${escapeHtml(data.footerMessage || getStoredFooterMessage(data.branchId || localStorage.getItem('hotel_pos_active_branch_id') || undefined))}
       </div>
     </div>
   `;

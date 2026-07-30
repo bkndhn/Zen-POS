@@ -295,9 +295,12 @@ interface PrintData {
   upiName?: string;
   telegram?: string;
   // GST fields
-  gstin?: string;
   customerGstin?: string;
   customerMobile?: string;
+  footerMessage?: string;
+  fontFamily?: string;
+  fontScale?: number;
+  branchId?: string;
   taxSummary?: string; // JSON string of tax summary
   totalTax?: number;
   isComposition?: boolean;
@@ -649,11 +652,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Footer - minimal
   commands.push(ALIGN_CENTER);
-  if ((data as any).billBottomText) {
-    commands.push(textToBytes((data as any).billBottomText));
-  } else {
-    commands.push(textToBytes(getStoredFooterMessage()));
-  }
+  const footerMsg = data.footerMessage || (data as any).billBottomText || getStoredFooterMessage(data.branchId);
+  commands.push(textToBytes(footerMsg));
   commands.push(FEED_LINE);
 
   // Check if autoCut is enabled in localStorage
