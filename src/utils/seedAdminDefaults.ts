@@ -14,18 +14,6 @@ const DEFAULT_PAYMENT_TYPES = [
 
 export const seedAdminDefaults = async (adminProfileId: string) => {
   try {
-    // Check if admin already has item categories (skip seeding if so)
-    const { data: existingItemCats } = await supabase
-      .from('item_categories')
-      .select('id')
-      .eq('admin_id', adminProfileId)
-      .limit(1);
-
-    if (existingItemCats && existingItemCats.length > 0) {
-      console.log('[Seed] Admin already has data, skipping seeding');
-      return;
-    }
-
     // Get the Main branch for this admin
     const { data: mainBranch } = await supabase
       .from('branches')
@@ -33,36 +21,15 @@ export const seedAdminDefaults = async (adminProfileId: string) => {
       .eq('admin_id', adminProfileId)
       .eq('is_main', true)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     const branchId = mainBranch?.id || null;
 
-    console.log('[Seed] Seeding default data for admin:', adminProfileId, 'Branch:', branchId);
-
-    // Seed item categories
-    const itemCats = DEFAULT_ITEM_CATEGORIES.map(name => ({
-      name,
-      admin_id: adminProfileId,
-      branch_id: branchId,
-      is_deleted: false,
-    }));
-    await supabase.from('item_categories').insert(itemCats);
-
-    // Seed expense categories
-    const expenseCats = DEFAULT_EXPENSE_CATEGORIES.map(name => ({
-      name,
-      admin_id: adminProfileId,
-      branch_id: branchId,
-      is_deleted: false,
-    }));
-    await supabase.from('expense_categories').insert(expenseCats);
-
-    // Seed payment types (only ones that do not exist yet)
+    // Seed default payment types only (Cash, UPI, Card) if none exist yet
     const { data: existingPayments } = await supabase
       .from('payments')
       .select('payment_type')
-      .eq('admin_id', adminProfileId)
-      .eq('branch_id', branchId);
+      .eq('admin_id', adminProfileId);
 
     const existingNames = new Set((existingPayments || []).map(p => p.payment_type.toLowerCase().trim()));
     const paymentsToSeed = DEFAULT_PAYMENT_TYPES
@@ -76,10 +43,7 @@ export const seedAdminDefaults = async (adminProfileId: string) => {
     if (paymentsToSeed.length > 0) {
       await supabase.from('payments').insert(paymentsToSeed);
     }
-
-    console.log('[Seed] Default data seeded successfully');
   } catch (error) {
     console.error('[Seed] Error seeding defaults:', error);
-    // Non-critical - don't block login
   }
 };

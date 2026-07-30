@@ -882,15 +882,10 @@ const SuperAdminUsers: React.FC = () => {
     }
   };
 
-  const filtered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     let result = rows;
     if (businessTypeFilter !== 'all') {
       result = result.filter(r => (r.business_type || 'restaurant') === businessTypeFilter);
-    }
-    if (userRoleFilter === 'admin') {
-      result = result.filter(r => r.role === 'admin');
-    } else if (userRoleFilter === 'staff') {
-      result = result.filter(r => r.role === 'user');
     }
 
     const s = q.trim().toLowerCase();
@@ -903,14 +898,20 @@ const SuperAdminUsers: React.FC = () => {
       (r.shop_name || '').toLowerCase().includes(s) ||
       (r.admin_name || '').toLowerCase().includes(s)
     );
-  }, [rows, q, userRoleFilter]);
+  }, [rows, q, businessTypeFilter]);
+
+  const allAdmins = useMemo(() => baseFiltered.filter(r => r.role === 'admin'), [baseFiltered]);
+  const allStaff = useMemo(() => baseFiltered.filter(r => r.role === 'user'), [baseFiltered]);
+
+  const filtered = useMemo(() => {
+    if (userRoleFilter === 'admin') return allAdmins;
+    if (userRoleFilter === 'staff') return allStaff;
+    return baseFiltered;
+  }, [baseFiltered, allAdmins, allStaff, userRoleFilter]);
 
   if (authLoading) return null;
   if (!profile) return <Navigate to="/auth" replace />;
   if (profile.role !== 'super_admin') return <Navigate to="/" replace />;
-
-  const admins = filtered.filter(r => r.role === 'admin');
-  const subUsers = filtered.filter(r => r.role === 'user');
 
   const statusBadge = (s: string) => {
     const v = (s || 'active').toLowerCase();
@@ -950,9 +951,8 @@ const SuperAdminUsers: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="users" className="space-y-6 mt-6 focus-visible:outline-none">
-            {/* Header Controls: Search + Filter Pills + Add User */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <TabsContent value="users" className="space-y-4 mt-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <Input
                 placeholder="Search name, email, mobile, business, shop, or admin..."
                 value={q}
@@ -970,7 +970,7 @@ const SuperAdminUsers: React.FC = () => {
                       userRoleFilter === 'admin' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    Admins ({admins.length})
+                    Admins ({allAdmins.length})
                   </button>
                   <button
                     type="button"
@@ -980,7 +980,7 @@ const SuperAdminUsers: React.FC = () => {
                       userRoleFilter === 'staff' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    Staff ({subUsers.length})
+                    Staff ({allStaff.length})
                   </button>
                   <button
                     type="button"
@@ -990,7 +990,7 @@ const SuperAdminUsers: React.FC = () => {
                       userRoleFilter === 'all' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    All ({rows.length})
+                    All ({baseFiltered.length})
                   </button>
                 </div>
 
@@ -1037,7 +1037,7 @@ const SuperAdminUsers: React.FC = () => {
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="text-xs font-mono font-bold">
-                    {admins.length} Admins • {subUsers.length} Staff
+                    {allAdmins.length} Admins • {allStaff.length} Staff
                   </Badge>
                 </div>
               </CardHeader>
