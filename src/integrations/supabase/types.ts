@@ -2335,12 +2335,14 @@ export type Database = {
       shop_settings: {
         Row: {
           address: string | null
+          auto_cut: boolean
           auto_report_enabled: boolean | null
           auto_report_time: string | null
           bill_bottom_text: string | null
           bill_font_family: string | null
           bill_font_scale: number | null
           branch_id: string | null
+          business_type: string
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
           composition_rate: number | null
@@ -2412,12 +2414,14 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auto_cut?: boolean
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
           bill_bottom_text?: string | null
           bill_font_family?: string | null
           bill_font_scale?: number | null
           branch_id?: string | null
+          business_type?: string
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
           composition_rate?: number | null
@@ -2489,12 +2493,14 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auto_cut?: boolean
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
           bill_bottom_text?: string | null
           bill_font_family?: string | null
           bill_font_scale?: number | null
           branch_id?: string | null
+          business_type?: string
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
           composition_rate?: number | null
@@ -3397,12 +3403,14 @@ export type Database = {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {
           address: string | null
+          auto_cut: boolean
           auto_report_enabled: boolean | null
           auto_report_time: string | null
           bill_bottom_text: string | null
           bill_font_family: string | null
           bill_font_scale: number | null
           branch_id: string | null
+          business_type: string
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
           composition_rate: number | null

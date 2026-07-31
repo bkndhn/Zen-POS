@@ -19,7 +19,7 @@ import { useBranch } from '@/contexts/BranchContext';
  * @param select Columns to select (defaults to '*')
  */
 export function useBranchSettings<T extends Record<string, any>>(
-  table: 'shop_settings' | 'bluetooth_settings' | 'display_settings' | 'user_preferences',
+  table: 'shop_settings' | 'bluetooth_settings' | 'display_settings' | 'user_preferences' = 'shop_settings',
   select: string = '*'
 ) {
   const { profile, adminAuthUid } = useAuth();
@@ -119,5 +119,5 @@ export function useBranchSettings<T extends Record<string, any>>(
     [userId, branchId, table, fetchRow]
   );
 
-  return { data, loading, saving, save, refetch: fetchRow, branchId, userId };
+  return { data, settings: data, loading, saving, save, refetch: fetchRow, branchId, userId };
 }
