@@ -3329,7 +3329,7 @@ const Billing = () => {
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
       {/* Header & Modes */}
       <div className="flex flex-col gap-2 mb-2 w-full">
-        <div className="flex flex-nowrap items-center gap-1.5 w-full overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex flex-nowrap items-center gap-1.5 w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="flex items-center gap-1.5 shrink-0">
             <h1 className="text-xl md:text-2xl font-bold leading-none hidden xs:block">
               {isEditMode ? `Edit Bill - ${editingBill?.bill_no}` : 'Billing'}
