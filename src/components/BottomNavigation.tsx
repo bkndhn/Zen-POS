@@ -216,12 +216,6 @@ export const BottomNavigation: React.FC = () => {
                 onClick={haptic}
                 className="group relative flex flex-col items-center justify-center py-1 px-0.5 min-w-0 flex-1 select-none"
               >
-                <span
-                  className={cn(
-                    'absolute top-0 left-1/2 -translate-x-1/2 h-1 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300',
-                    isActive ? 'w-8 opacity-100' : 'w-0 opacity-0',
-                  )}
-                />
                 <div
                   className={cn(
                     'relative flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
@@ -270,13 +264,6 @@ export const BottomNavigation: React.FC = () => {
         className="group relative flex flex-col items-center justify-center py-1 px-0.5 min-w-0 flex-1 select-none"
       >
         {/* Active pill background — animates in */}
-        <span
-          className={cn(
-            'absolute top-0 left-1/2 -translate-x-1/2 h-1 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300',
-            isActive ? 'w-8 opacity-100' : 'w-0 opacity-0',
-          )}
-          aria-hidden
-        />
         <div
           className={cn(
             'relative flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
@@ -331,13 +318,6 @@ export const BottomNavigation: React.FC = () => {
                 className="group relative flex flex-col items-center justify-center py-1 px-0.5 min-w-0 flex-1 select-none"
                 aria-label="More navigation options"
               >
-                <span
-                  className={cn(
-                    'absolute top-0 left-1/2 -translate-x-1/2 h-1 rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300',
-                    isOverflowActive ? 'w-8 opacity-100' : 'w-0 opacity-0'
-                  )}
-                  aria-hidden
-                />
                 <div
                   className={cn(
                     'flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
