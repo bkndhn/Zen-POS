@@ -3324,9 +3324,9 @@ const Billing = () => {
     <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden max-w-full flex flex-col pb-[72px] md:pb-6">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
       {/* Header & Modes */}
-      <div className="flex flex-col gap-2 mb-3 w-full">
-        <div className="flex flex-wrap items-center gap-2 w-full">
-          <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-col gap-2 mb-2 w-full">
+        <div className="flex flex-nowrap items-center gap-1.5 w-full overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex items-center gap-1.5 shrink-0">
             <h1 className="text-xl md:text-2xl font-bold leading-none hidden xs:block">
               {isEditMode ? `Edit Bill - ${editingBill?.bill_no}` : 'Billing'}
             </h1>
