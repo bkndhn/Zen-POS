@@ -98,7 +98,9 @@ const CRM: React.FC = () => {
         amount: amount,
         payment_mode: paymentMode,
         notes: paymentNotes || 'Payment Collected',
-        admin_id: adminId
+        admin_id: adminId,
+        balance_after: Number((((historyCustomer.current_balance || 0) - amount)).toFixed(2)),
+        created_by: profile?.user_id || adminId
       });
       if (ledgerError) throw ledgerError;
 
