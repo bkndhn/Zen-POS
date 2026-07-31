@@ -112,7 +112,7 @@ export const TableSelector: React.FC<TableSelectorProps> = ({
               {selectedTable.table_name && ` - ${selectedTable.table_name}`}
             </span>
           ) : (
-            <span>Select Table</span>
+            <span>Table</span>
           )}
           {selectedTableId && (
             <X
