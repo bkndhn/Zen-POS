@@ -834,7 +834,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                     min="0"
                     max={total}
                     value={paidAmount}
-                    onChange={(e) => setPaidAmount(Number(e.target.value) || 0)}
+                    onChange={(e) => setPaidAmount(e.target.value)}
                     placeholder={total.toString()}
                     className="w-[180px] h-8 text-xs bg-white"
                   />

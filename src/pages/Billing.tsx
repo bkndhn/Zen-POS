@@ -1047,6 +1047,9 @@ const Billing = () => {
     upiId?: string;
     upiName?: string;
     telegram?: string;
+    billBottomText?: string;
+    billFontFamily?: string;
+    billFontScale?: number;
   } | null>(null);
 
   // Printer error dialog state
@@ -1416,7 +1419,7 @@ const Billing = () => {
       }
 
       if (data) {
-        setBusinessType(data.business_type || profile?.business_type || 'restaurant');
+        setBusinessType((data as any).business_type || (profile as any)?.business_type || 'restaurant');
         const settings = {
           shopName: (activeBranch?.shop_name && activeBranch.shop_name.trim()) || data.shop_name || '',
           address: (activeBranch?.address && activeBranch.address.trim()) || data.address || '',
