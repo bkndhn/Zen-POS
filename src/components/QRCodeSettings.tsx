@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
-import QRPosterStudio from '@/components/QRPosterStudio';
 import { StoreOperatingHours } from '@/components/StoreOperatingHours';
 import { OperatingHours, defaultOperatingHours } from '@/types/operatingHours';
 import { Geolocation } from '@capacitor/geolocation';
@@ -1637,9 +1636,6 @@ const QRCodeSettings = () => {
 
             {/* Menu Design Studio Section */}
             <MenuDesignStudio />
-
-            {/* QR Poster Studio — 10+ templates + custom design */}
-            <QRPosterStudio menuUrl={currentQrUrl} />
         </div>
     );
 };
