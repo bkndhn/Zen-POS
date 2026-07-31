@@ -80,6 +80,7 @@ interface Row {
   login_count: number;
   created_at: string;
   client_permissions?: Record<string, boolean>;
+  business_type?: string;
   subscription_plan?: string;
   subscription_status?: string;
   subscription_end_date?: string;
