@@ -10,6 +10,8 @@ export interface Profile {
   status: UserStatus;
   admin_id?: string; // For sub-users, links to their admin
   client_permissions?: Record<string, boolean>;
+  business_type?: string;
+  max_sub_users?: number;
 }
 
 export interface UserProfile extends Profile {

@@ -821,7 +821,7 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, business_type');
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, business_type') as { data: any[] | null };
         const shopSettingsMap = new Map();
         if (shopSettingsData) {
           shopSettingsData.forEach(s => {

@@ -295,6 +295,7 @@ interface PrintData {
   upiName?: string;
   telegram?: string;
   // GST fields
+  gstin?: string;
   customerGstin?: string;
   customerMobile?: string;
   footerMessage?: string;

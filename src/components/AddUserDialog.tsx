@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Eye, EyeOff } from 'lucide-react';
+import { Plus, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isStrongPassword, isValidEmail } from '@/utils/securityUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -186,7 +186,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
       if (isSuperAdmin && formData.role === 'admin' && user?.id) {
         const { error: settingsError } = await supabase
           .from('shop_settings')
-          .update({ business_type: formData.businessType })
+          .update({ business_type: formData.businessType } as any)
           .eq('user_id', user.id);
         
         if (settingsError) {
