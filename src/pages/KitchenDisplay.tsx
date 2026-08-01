@@ -959,11 +959,8 @@ const KitchenDisplay = () => {
 
                     {/* PENDING Column */}
                     <div className="space-y-3">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                            <h2 className="text-lg font-semibold">New Orders</h2>
-                            <Badge variant="secondary">{pendingBills.length}</Badge>
-                        </div>
+                        <SectionHeading title="New Orders" tone="amber" count={pendingBills.length} pulse className="mb-3 sticky top-[104px] z-10" />
+
 
                         {pendingBills.map((bill) => (
                             <KitchenOrderCard
