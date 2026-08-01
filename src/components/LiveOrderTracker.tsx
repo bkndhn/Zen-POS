@@ -97,12 +97,15 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
 
   const handleFeedbackSubmit = async () => {
     setSubmittingFeedback(true);
-    const { error } = await (supabase as any)
-      .from('remote_orders')
-      .update({ rating, feedback_text: feedback })
-      .eq('id', orderId);
-      
-    if (error) {
+    const deviceId = localStorage.getItem('zenpos_remote_device_id') || '';
+    const { data: ok, error } = await (supabase as any).rpc('submit_remote_order_feedback', {
+      p_order_id: orderId,
+      p_device_id: deviceId,
+      p_rating: rating || null,
+      p_feedback: feedback
+    });
+
+    if (error || ok === false) {
       toast({ title: 'Error', description: 'Failed to submit feedback.', variant: 'destructive' });
     } else {
       toast({ title: 'Success', description: 'Thank you for your feedback!' });
