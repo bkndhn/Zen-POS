@@ -1060,11 +1060,8 @@ const KitchenDisplay = () => {
 
                     {/* PREPARING Column */}
                     <div className="space-y-3">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
-                            <h2 className="text-lg font-semibold">Preparing</h2>
-                            <Badge variant="secondary">{preparingBills.length}</Badge>
-                        </div>
+                        <SectionHeading title="Preparing" tone="rose" count={preparingBills.length} pulse className="mb-3 sticky top-[104px] z-10" />
+
 
                         {preparingBills.map((bill) => (
                             <KitchenOrderCard
