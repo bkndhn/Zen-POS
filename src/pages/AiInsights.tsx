@@ -36,13 +36,26 @@ const AiInsights: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
   const [periodDays, setPeriodDays] = useState('30');
+  
+  const today = new Date().toISOString().split('T')[0];
+  const [customStartDate, setCustomStartDate] = useState<string>(today);
+  const [customEndDate, setCustomEndDate] = useState<string>(today);
 
   const run = async (kind: 'overview' | 'stock_forecast') => {
     if (!session) return;
     setLoading(kind); setError(null);
     try {
+      const payload: any = { kind, branch_id: operatingBranchId ?? null };
+      if (periodDays === 'custom') {
+        payload.days = 30; // default fallback
+        payload.from_date = customStartDate;
+        payload.to_date = customEndDate;
+      } else {
+        payload.days = parseInt(periodDays);
+      }
+
       const { data, error } = await supabase.functions.invoke<Response>('ai-insights', {
-        body: { kind, branch_id: operatingBranchId ?? null, days: parseInt(periodDays) },
+        body: payload,
       });
       if (error) {
         const msg = (error as any)?.context?.body ? await (error as any).context.text() : error.message;
@@ -76,7 +89,9 @@ const AiInsights: React.FC = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-primary" /> AI Business Insights
           </h1>
-          <p className="text-sm text-muted-foreground">Powered by Gemini · analysing your last {periodDays} days</p>
+          <p className="text-sm text-muted-foreground">
+            Powered by Gemini · analysing {periodDays === 'custom' ? 'your custom date range' : `your last ${periodDays} days`}
+          </p>
         </div>
         {quota && (
           <Badge variant="outline" className="text-xs">
@@ -113,6 +128,7 @@ const AiInsights: React.FC = () => {
               <SelectItem value="7">Past 7 days</SelectItem>
               <SelectItem value="30">Past 30 days</SelectItem>
               <SelectItem value="90">Past 90 days</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -127,6 +143,32 @@ const AiInsights: React.FC = () => {
         </Button>
         </div>
       </div>
+
+      {periodDays === 'custom' && (
+        <div className="flex flex-col sm:flex-row gap-3 p-3 bg-muted/20 rounded-xl border border-border/40 items-end max-w-xl">
+          <div className="flex-1 w-full">
+            <label className="text-xs text-muted-foreground font-semibold mb-1 block">From Date</label>
+            <input 
+              type="date" 
+              max={customEndDate || today} 
+              value={customStartDate} 
+              onChange={e => setCustomStartDate(e.target.value)} 
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+          <div className="flex-1 w-full">
+            <label className="text-xs text-muted-foreground font-semibold mb-1 block">To Date</label>
+            <input 
+              type="date" 
+              min={customStartDate} 
+              max={today} 
+              value={customEndDate} 
+              onChange={e => setCustomEndDate(e.target.value)} 
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+        </div>
+      )}
 
       {overview && (
         <>

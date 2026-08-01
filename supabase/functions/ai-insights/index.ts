@@ -12,6 +12,9 @@ const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
 interface Body {
   kind?: 'overview' | 'stock_forecast';
   branch_id?: string | null;
+  days?: number;
+  from_date?: string;
+  to_date?: string;
 }
 
 const json = (b: unknown, status = 200) =>
@@ -83,11 +86,24 @@ Deno.serve(async (req) => {
 
   // === Aggregate business data ===
   const periodDays = Math.min(Math.max(Number(body.days) || 30, 1), 90);
-  const since = new Date(Date.now() - periodDays * 24 * 3600 * 1000).toISOString();
+  let since = new Date(Date.now() - periodDays * 24 * 3600 * 1000).toISOString();
+  let until = new Date().toISOString();
+  let actualDays = periodDays;
+  
+  if (body.from_date && body.to_date) {
+    const fDate = new Date(body.from_date);
+    const tDate = new Date(body.to_date);
+    tDate.setHours(23, 59, 59, 999);
+    since = fDate.toISOString();
+    until = tDate.toISOString();
+    actualDays = Math.max(1, Math.ceil((tDate.getTime() - fDate.getTime()) / (24 * 3600 * 1000)));
+  }
+
   let billsQuery = svc.from('bills')
     .select('id, date, total_amount, discount, order_type, created_at, branch_id, bill_items(quantity, price, total, items(name, category, unit))')
     .eq('admin_id', adminId)
     .gte('created_at', since)
+    .lte('created_at', until)
     .eq('is_deleted', false)
     .limit(2000);
   if (body.branch_id) billsQuery = billsQuery.eq('branch_id', body.branch_id);
@@ -142,7 +158,7 @@ Deno.serve(async (req) => {
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const summary = {
-    period_days: periodDays,
+    period_days: actualDays,
     total_orders: orderCount,
     total_revenue_inr: Math.round(totalRevenue),
     total_discount_inr: Math.round(totalDiscount),
@@ -165,7 +181,7 @@ Deno.serve(async (req) => {
   if (!LOVABLE_KEY) return json({ error: 'ai_not_configured' }, 500);
 
   const prompt = kind === 'stock_forecast'
-    ? `You are a restaurant/retail inventory advisor for an Indian business. Based on this ${periodDays}-day sales summary, output ONLY valid JSON with:
+    ? `You are a restaurant/retail inventory advisor for an Indian business. Based on this ${actualDays}-day sales summary, output ONLY valid JSON with:
 {
   "recommendations": [
     { "item": string, "day": "Mon"|"Tue"|..., "keep_stock": number, "unit": string, "reason": string }
@@ -176,7 +192,7 @@ Deno.serve(async (req) => {
 Rules: recommend keep_stock per top day per top item; cite the day-of-week pattern in reason briefly; give practical INR-friendly advice. Max 15 recommendations, max 5 warnings.
 DATA:
 ${JSON.stringify(summary)}`
-    : `You are a business intelligence advisor for an Indian POS user. Analyse this ${periodDays}-day summary and reply as ONLY valid JSON:
+    : `You are a business intelligence advisor for an Indian POS user. Analyse this ${actualDays}-day summary and reply as ONLY valid JSON:
 {
   "highlights": [ { "title": string, "detail": string, "type": "good"|"warning"|"info" } ],
   "improvements": [ { "action": string, "why": string, "impact": "high"|"medium"|"low" } ],
