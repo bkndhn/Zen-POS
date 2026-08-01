@@ -1,4 +1,5 @@
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
+import { ServiceHeader, ServiceLoading, LivePill, SectionHeading, EmptyState } from '@/components/service/ServiceUI';
 import { format } from 'date-fns';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
