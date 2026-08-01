@@ -3813,6 +3813,15 @@ export type Database = {
         Args: { p_admin_id: string; p_status: string; p_table_no: string }
         Returns: undefined
       }
+      public_upsert_customer: {
+        Args: {
+          p_admin_id: string
+          p_branch_id: string
+          p_name: string
+          p_phone: string
+        }
+        Returns: undefined
+      }
       resolve_branch_menu: {
         Args: { p_branch_code: string; p_shop_slug: string }
         Returns: {
@@ -3867,6 +3876,15 @@ export type Database = {
           p_user_agent: string
         }
         Returns: Json
+      }
+      submit_remote_order_feedback: {
+        Args: {
+          p_device_id: string
+          p_feedback: string
+          p_order_id: string
+          p_rating: number
+        }
+        Returns: boolean
       }
       super_admin_delete_client: {
         Args: { p_target_admin_id: string }
