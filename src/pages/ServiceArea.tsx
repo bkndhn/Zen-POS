@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ServiceHeader, ServiceLoading, LivePill, SectionHeading, EmptyState } from '@/components/service/ServiceUI';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
