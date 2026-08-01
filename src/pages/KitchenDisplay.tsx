@@ -805,52 +805,30 @@ const KitchenDisplay = () => {
 
     // Only show loading on initial load, not on refreshes
     if (loading && !initialLoadDone) {
-        return (
-            <div className="min-h-screen bg-background p-4">
-                <div className="flex flex-col items-center justify-center h-64 gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-                    <p className="text-sm text-muted-foreground">Loading kitchen orders...</p>
-                </div>
-            </div>
-        );
+        return <ServiceLoading label="Loading kitchen orders…" cards={6} />;
     }
 
     return (
         <div className="min-h-screen bg-background">
             {/* Header Bar */}
-            <div className="bg-card border-b sticky top-0 z-10 px-4 py-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <ChefHat className="w-8 h-8 text-primary" />
-                        <div>
-                            <h1 className="text-xl font-bold">Kitchen Display</h1>
-                            <p className="text-xs text-muted-foreground">
+            <div className="bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 border-b border-border/60 sticky top-0 z-20 px-3 sm:px-4 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="grid place-items-center shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
+                            <ChefHat className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-[15px] sm:text-xl font-bold tracking-tight leading-tight">Kitchen Display</h1>
+                                <LivePill online={isOnline} />
+                            </div>
+                            <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight mt-0.5 tabular-nums">
                                 {formatTimeAMPM(currentTime)} • {bills.length + tableOrders.length} active orders
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Online/Offline Status */}
-                        <div className={cn(
-                            "flex items-center gap-1.5 px-2 py-1 rounded-full border",
-                            isOnline
-                                ? "bg-green-500/10 border-green-500/20"
-                                : "bg-orange-500/10 border-orange-500/20"
-                        )}>
-                            {isOnline ? (
-                                <>
-                                    <Wifi className="w-3.5 h-3.5 text-green-500" />
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-green-600">Live</span>
-                                </>
-                            ) : (
-                                <>
-                                    <WifiOff className="w-3.5 h-3.5 text-orange-500" />
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-orange-600">Offline</span>
-                                </>
-                            )}
-                        </div>
-
+                    <div className="flex items-center gap-1.5 shrink-0">
                         {/* Pending Sync Badge */}
                         {pendingUpdatesCount > 0 && (
                             <Button
@@ -858,7 +836,7 @@ const KitchenDisplay = () => {
                                 size="sm"
                                 onClick={handleManualSync}
                                 disabled={!isOnline || syncing}
-                                className="gap-1"
+                                className="h-8 rounded-xl gap-1"
                             >
                                 <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
                                 <Badge variant="secondary" className="text-[10px] px-1.5">
@@ -871,15 +849,16 @@ const KitchenDisplay = () => {
                             variant="outline"
                             size="icon"
                             onClick={() => setVoiceEnabled(!voiceEnabled)}
-                            className={cn(voiceEnabled && "bg-primary text-primary-foreground")}
+                            className={cn("h-8 w-8 rounded-xl", voiceEnabled && "bg-primary text-primary-foreground border-primary")}
                         >
                             {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleRefreshClick}>
+                        <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={handleRefreshClick}>
                             Refresh
                         </Button>
                     </div>
                 </div>
+
                 {/* Filters row */}
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                     <Filter className="w-3.5 h-3.5 text-muted-foreground" />
