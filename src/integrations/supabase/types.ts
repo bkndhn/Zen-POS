@@ -385,6 +385,7 @@ export type Database = {
           taxable_amount: number | null
           total: number
           unit: string | null
+          variant_id: string | null
         }
         Insert: {
           base_value?: number | null
@@ -404,6 +405,7 @@ export type Database = {
           taxable_amount?: number | null
           total: number
           unit?: string | null
+          variant_id?: string | null
         }
         Update: {
           base_value?: number | null
@@ -423,6 +425,7 @@ export type Database = {
           taxable_amount?: number | null
           total?: number
           unit?: string | null
+          variant_id?: string | null
         }
         Relationships: [
           {
@@ -437,6 +440,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "item_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -721,6 +731,51 @@ export type Database = {
         }
         Relationships: []
       }
+      brands: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brands_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brands_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_ledger: {
         Row: {
           admin_id: string
@@ -831,6 +886,51 @@ export type Database = {
           },
           {
             foreignKeyName: "customers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "departments_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
@@ -1323,16 +1423,81 @@ export type Database = {
           },
         ]
       }
+      item_variants: {
+        Row: {
+          barcode: string | null
+          color: string | null
+          created_at: string | null
+          design: string | null
+          fit: string | null
+          id: string
+          is_active: boolean | null
+          item_id: string
+          mrp: number | null
+          purchase_rate: number | null
+          rsp: number | null
+          size: string | null
+          stock_quantity: number | null
+          sub_design: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          barcode?: string | null
+          color?: string | null
+          created_at?: string | null
+          design?: string | null
+          fit?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_id: string
+          mrp?: number | null
+          purchase_rate?: number | null
+          rsp?: number | null
+          size?: string | null
+          stock_quantity?: number | null
+          sub_design?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          barcode?: string | null
+          color?: string | null
+          created_at?: string | null
+          design?: string | null
+          fit?: string | null
+          id?: string
+          is_active?: boolean | null
+          item_id?: string
+          mrp?: number | null
+          purchase_rate?: number | null
+          rsp?: number | null
+          size?: string | null
+          stock_quantity?: number | null
+          sub_design?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_variants_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           admin_id: string | null
           base_value: number | null
           branch_id: string | null
+          brand_id: string | null
           category: string | null
           created_at: string
+          department_id: string | null
           description: string | null
           display_order: number | null
           expiry_mode: string
+          has_variants: boolean | null
           hsn_code: string | null
           id: string
           image_url: string | null
@@ -1354,6 +1519,7 @@ export type Database = {
           selling_quantity: number | null
           selling_unit: string | null
           stock_quantity: number | null
+          supplier_id: string | null
           tax_rate_id: string | null
           unit: string | null
           unlimited_stock: boolean | null
@@ -1364,11 +1530,14 @@ export type Database = {
           admin_id?: string | null
           base_value?: number | null
           branch_id?: string | null
+          brand_id?: string | null
           category?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string | null
           display_order?: number | null
           expiry_mode?: string
+          has_variants?: boolean | null
           hsn_code?: string | null
           id?: string
           image_url?: string | null
@@ -1390,6 +1559,7 @@ export type Database = {
           selling_quantity?: number | null
           selling_unit?: string | null
           stock_quantity?: number | null
+          supplier_id?: string | null
           tax_rate_id?: string | null
           unit?: string | null
           unlimited_stock?: boolean | null
@@ -1400,11 +1570,14 @@ export type Database = {
           admin_id?: string | null
           base_value?: number | null
           branch_id?: string | null
+          brand_id?: string | null
           category?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string | null
           display_order?: number | null
           expiry_mode?: string
+          has_variants?: boolean | null
           hsn_code?: string | null
           id?: string
           image_url?: string | null
@@ -1426,6 +1599,7 @@ export type Database = {
           selling_quantity?: number | null
           selling_unit?: string | null
           stock_quantity?: number | null
+          supplier_id?: string | null
           tax_rate_id?: string | null
           unit?: string | null
           unlimited_stock?: boolean | null
@@ -1445,6 +1619,27 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {
@@ -2355,6 +2550,7 @@ export type Database = {
           delivery_fee_mode: string | null
           delivery_fee_per_km: number | null
           facebook: string | null
+          google_review_url: string | null
           gst_enabled: boolean | null
           gstin: string | null
           id: string
@@ -2434,6 +2630,7 @@ export type Database = {
           delivery_fee_mode?: string | null
           delivery_fee_per_km?: number | null
           facebook?: string | null
+          google_review_url?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
           id?: string
@@ -2513,6 +2710,7 @@ export type Database = {
           delivery_fee_mode?: string | null
           delivery_fee_per_km?: number | null
           facebook?: string | null
+          google_review_url?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
           id?: string
@@ -3423,6 +3621,7 @@ export type Database = {
           delivery_fee_mode: string | null
           delivery_fee_per_km: number | null
           facebook: string | null
+          google_review_url: string | null
           gst_enabled: boolean | null
           gstin: string | null
           id: string
