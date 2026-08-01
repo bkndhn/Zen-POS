@@ -731,73 +731,46 @@ const ServiceArea = () => {
 
     // Only show loading on initial load
     if (loading && !initialLoadDone) {
-        return (
-            <div className="p-4 space-y-4">
-                <h1 className="text-2xl font-bold">Service Area</h1>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {[...Array(8)].map((_, i) => (
-                        <Card key={i} className="p-4 animate-pulse h-48 bg-muted/50" />
-                    ))}
-                </div>
-            </div>
-        );
+        return <ServiceLoading label="Loading service floor…" cards={8} />;
     }
 
     return (
         <div className="p-3 sm:p-4 space-y-4">
             <AllBranchesReadOnlyBanner message="Switch to a specific branch to manage service." />
-            <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Service Area</h1>
-                        <div className={cn(
-                            "flex items-center gap-1.5 px-2 py-0.5 rounded-full border",
-                            isConnected
-                                ? "bg-green-500/10 border-green-500/20"
-                                : "bg-red-500/10 border-red-500/20"
-                        )}>
-                            {isConnected ? (
-                                <>
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-green-600">Live</span>
-                                </>
-                            ) : (
-                                <>
-                                    <WifiOff className="w-3 h-3 text-red-500" />
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-red-600">Offline</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                        {bills.filter(b => b.kitchen_status === 'ready').length + tableOrders.filter(o => o.status === 'ready').length} ready to serve
-                    </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => fetchBills()}>
-                    Refresh
-                </Button>
-            </div>
+            <ServiceHeader
+                icon={Bell}
+                title="Service Area"
+                tone="emerald"
+                badge={<LivePill online={isConnected} />}
+                subtitle={`${bills.filter(b => b.kitchen_status === 'ready').length + tableOrders.filter(o => o.status === 'ready').length} ready to serve`}
+                actions={
+                    <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={() => fetchBills()}>
+                        Refresh
+                    </Button>
+                }
+            />
 
             {/* ========== SERVICE REQUESTS NOTIFICATION SECTION ========== */}
             {serviceRequests.length > 0 && (
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Bell className="w-5 h-5 text-red-500 animate-bounce" />
-                            <h2 className="text-base font-bold text-foreground">
-                                Service Requests
-                                <Badge className="ml-2 bg-red-500 text-white">{serviceRequests.length}</Badge>
-                            </h2>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSoundEnabled(!soundEnabled)}
-                            title={soundEnabled ? 'Mute notifications' : 'Unmute notifications'}
-                        >
-                            <Volume2 className={cn("w-4 h-4", !soundEnabled && "opacity-30")} />
-                        </Button>
-                    </div>
+                    <SectionHeading
+                        title="Service Requests"
+                        icon={Bell}
+                        tone="rose"
+                        count={serviceRequests.length}
+                        actions={
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setSoundEnabled(!soundEnabled)}
+                                title={soundEnabled ? 'Mute notifications' : 'Unmute notifications'}
+                            >
+                                <Volume2 className={cn("w-4 h-4", !soundEnabled && "opacity-30")} />
+                            </Button>
+                        }
+                    />
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                         {serviceRequests.map((req) => {
                             const meta = REQUEST_LABELS[req.request_type] || REQUEST_LABELS.custom;
