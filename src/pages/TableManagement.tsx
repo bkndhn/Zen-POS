@@ -581,25 +581,27 @@ const TableManagement: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 mb-4">
           {(Object.entries(displayStatusConfig) as [DisplayStatus, typeof displayStatusConfig[DisplayStatus]][]).map(([status, config]) => {
             const count = tables.filter(t => tableDisplayStatuses[t.id] === status).length;
             const Icon = config.icon;
             return (
-              <Card key={status} className="p-2 sm:p-3">
-                <div className="flex items-center gap-2">
-                  <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0", config.color)}>
+              <div key={status} className="group relative overflow-hidden rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 transition-all duration-200 hover:border-border hover:shadow-md">
+                <span aria-hidden className={cn("absolute inset-y-0 left-0 w-[3px] rounded-r-full", config.color)} />
+                <div className="flex items-center gap-2 pl-1.5">
+                  <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm", config.color)}>
                     <Icon className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-base sm:text-lg font-bold leading-none">{count}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight truncate">{config.label}</p>
+                    <p className="text-base sm:text-lg font-bold leading-none tabular-nums">{count}</p>
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground leading-tight truncate">{config.label}</p>
                   </div>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
+
 
         {/* Section Filter & View Mode Controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
