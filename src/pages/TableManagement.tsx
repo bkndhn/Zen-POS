@@ -532,11 +532,7 @@ const TableManagement: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <ServiceLoading label="Loading tables…" cards={8} />;
   }
 
   return (
@@ -544,41 +540,40 @@ const TableManagement: React.FC = () => {
       <div className="max-w-6xl mx-auto w-full">
         <AllBranchesReadOnlyBanner message="Switch to a specific branch to add or edit tables." />
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
-              <LayoutGrid className="w-5 h-5 text-primary-foreground" />
+        <ServiceHeader
+          icon={LayoutGrid}
+          title="Table Management"
+          subtitle="Manage dine-in tables & seats"
+          tone="primary"
+          className="mb-4 sm:mb-5"
+          actions={
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReservationDialogOpen(true)}
+                className="rounded-xl h-8 text-xs font-bold border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20 shrink-0"
+              >
+                <Clock className="w-3.5 h-3.5 mr-1 text-yellow-600 shrink-0" />
+                <span>Pre-Bookings ({reservations.filter(r => r.status === 'confirmed').length})</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMergeDialogOpen(true)}
+                className="rounded-xl h-8 text-xs font-semibold shrink-0"
+              >
+                <Users className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
+                <span className="truncate">Merge / Split</span>
+              </Button>
+              <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs shrink-0">
+                <Plus className="w-4 h-4 mr-1 shrink-0" />
+                <span className="truncate">Add Table</span>
+              </Button>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">Table Management</h1>
-              <p className="text-xs text-muted-foreground truncate">Manage dine-in tables & seats</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setReservationDialogOpen(true)}
-              className="rounded-xl h-8 text-xs font-bold border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20 flex-1 sm:flex-none justify-center shrink-0"
-            >
-              <Clock className="w-3.5 h-3.5 mr-1 text-yellow-600 shrink-0" />
-              <span>📅 Pre-Bookings ({reservations.filter(r => r.status === 'confirmed').length})</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMergeDialogOpen(true)}
-              className="rounded-xl h-8 text-xs font-semibold flex-1 sm:flex-none justify-center shrink-0"
-            >
-              <Users className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
-              <span className="truncate">Merge / Split</span>
-            </Button>
-            <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs flex-1 sm:flex-none justify-center shrink-0">
-              <Plus className="w-4 h-4 mr-1 shrink-0" />
-              <span className="truncate">Add Table</span>
-            </Button>
-          </div>
-        </div>
+          }
+        />
+
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 mb-4">
