@@ -220,7 +220,14 @@ export function RetailAddItemDialog({ onItemAdded }: { onItemAdded: () => void }
             <div>
               <Label>Product Image</Label>
               <div className="mt-2">
-                <MediaUpload url={imageUrl} onUpload={(url) => setImageUrl(url)} type="image" />
+                <MediaUpload
+                  imageUrl={imageUrl}
+                  mediaType="image"
+                  onImageChange={(url) => setImageUrl(url)}
+                  onVideoChange={() => { }}
+                  onMediaTypeChange={() => { }}
+                  hasPremiumAccess={false}
+                />
               </div>
             </div>
           </div>
