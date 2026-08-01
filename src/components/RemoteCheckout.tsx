@@ -229,7 +229,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
 
       if (insertErr) throw insertErr;
 
-      // Upsert customer in customers table
+      
       // Upsert customer via safe SECURITY DEFINER RPC (no public write access to customers)
       try {
         await (supabase as any).rpc('public_upsert_customer', {
