@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ServiceHeader, ServiceLoading } from '@/components/service/ServiceUI';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -532,11 +534,7 @@ const TableManagement: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <ServiceLoading label="Loading tables…" cards={8} />;
   }
 
   return (
@@ -544,62 +542,63 @@ const TableManagement: React.FC = () => {
       <div className="max-w-6xl mx-auto w-full">
         <AllBranchesReadOnlyBanner message="Switch to a specific branch to add or edit tables." />
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
-              <LayoutGrid className="w-5 h-5 text-primary-foreground" />
+        <ServiceHeader
+          icon={LayoutGrid}
+          title="Table Management"
+          subtitle="Manage dine-in tables & seats"
+          tone="primary"
+          className="mb-4 sm:mb-5"
+          actions={
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReservationDialogOpen(true)}
+                className="rounded-xl h-8 text-xs font-bold border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20 shrink-0"
+              >
+                <Clock className="w-3.5 h-3.5 mr-1 text-yellow-600 shrink-0" />
+                <span>Pre-Bookings ({reservations.filter(r => r.status === 'confirmed').length})</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMergeDialogOpen(true)}
+                className="rounded-xl h-8 text-xs font-semibold shrink-0"
+              >
+                <Users className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
+                <span className="truncate">Merge / Split</span>
+              </Button>
+              <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs shrink-0">
+                <Plus className="w-4 h-4 mr-1 shrink-0" />
+                <span className="truncate">Add Table</span>
+              </Button>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">Table Management</h1>
-              <p className="text-xs text-muted-foreground truncate">Manage dine-in tables & seats</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setReservationDialogOpen(true)}
-              className="rounded-xl h-8 text-xs font-bold border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20 flex-1 sm:flex-none justify-center shrink-0"
-            >
-              <Clock className="w-3.5 h-3.5 mr-1 text-yellow-600 shrink-0" />
-              <span>📅 Pre-Bookings ({reservations.filter(r => r.status === 'confirmed').length})</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMergeDialogOpen(true)}
-              className="rounded-xl h-8 text-xs font-semibold flex-1 sm:flex-none justify-center shrink-0"
-            >
-              <Users className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
-              <span className="truncate">Merge / Split</span>
-            </Button>
-            <Button onClick={() => handleOpenDialog()} size="sm" className="rounded-xl h-8 text-xs flex-1 sm:flex-none justify-center shrink-0">
-              <Plus className="w-4 h-4 mr-1 shrink-0" />
-              <span className="truncate">Add Table</span>
-            </Button>
-          </div>
-        </div>
+          }
+        />
+
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 mb-4">
           {(Object.entries(displayStatusConfig) as [DisplayStatus, typeof displayStatusConfig[DisplayStatus]][]).map(([status, config]) => {
             const count = tables.filter(t => tableDisplayStatuses[t.id] === status).length;
             const Icon = config.icon;
             return (
-              <Card key={status} className="p-2 sm:p-3">
-                <div className="flex items-center gap-2">
-                  <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0", config.color)}>
+              <div key={status} className="group relative overflow-hidden rounded-xl border border-border/60 bg-card/80 px-2.5 py-2 transition-all duration-200 hover:border-border hover:shadow-md">
+                <span aria-hidden className={cn("absolute inset-y-0 left-0 w-[3px] rounded-r-full", config.color)} />
+                <div className="flex items-center gap-2 pl-1.5">
+                  <div className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm", config.color)}>
                     <Icon className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-base sm:text-lg font-bold leading-none">{count}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight truncate">{config.label}</p>
+                    <p className="text-base sm:text-lg font-bold leading-none tabular-nums">{count}</p>
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground leading-tight truncate">{config.label}</p>
                   </div>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
+
 
         {/* Section Filter & View Mode Controls */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">

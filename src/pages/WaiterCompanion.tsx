@@ -639,46 +639,53 @@ const WaiterCompanion: React.FC = () => {
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] bg-background overflow-hidden">
-            {/* Mobile Tab Header */}
-            <div className="flex border-b bg-card sticky top-0 z-10">
-                <Button
-                    variant="ghost"
-                    onClick={() => setActiveTab('tables')}
-                    className={cn(
-                        "flex-1 py-4 text-center rounded-none border-b-2 font-medium text-sm transition-all",
-                        activeTab === 'tables' ? "border-primary text-primary" : "border-transparent text-muted-foreground"
-                    )}
-                >
-                    1. Select Table {selectedTable && <Badge variant="secondary" className="ml-1.5">{selectedTable.table_number}</Badge>}
-                </Button>
-                <Button
-                    variant="ghost"
-                    onClick={() => setActiveTab('menu')}
-                    disabled={!selectedTable}
-                    className={cn(
-                        "flex-1 py-4 text-center rounded-none border-b-2 font-medium text-sm transition-all",
-                        activeTab === 'menu' ? "border-primary text-primary" : "border-transparent text-muted-foreground"
-                    )}
-                >
-                    2. Add Items
-                </Button>
-                <Button
-                    variant="ghost"
-                    onClick={() => setActiveTab('cart')}
-                    disabled={cart.length === 0}
-                    className={cn(
-                        "flex-1 py-4 text-center rounded-none border-b-2 font-medium text-sm transition-all relative",
-                        activeTab === 'cart' ? "border-primary text-primary" : "border-transparent text-muted-foreground"
-                    )}
-                >
-                    3. Cart
-                    {cart.length > 0 && (
-                        <Badge variant="destructive" className="absolute top-1.5 right-1.5 text-[10px] px-1.5 h-4 min-w-4 flex items-center justify-center">
-                            {cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)}
-                        </Badge>
-                    )}
-                </Button>
+            {/* Mobile Step Header */}
+            <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 px-2 py-2">
+                <div className="flex items-center gap-1.5">
+                    {([
+                        { key: 'tables' as const, step: 1, label: 'Table', disabled: false, badge: selectedTable ? selectedTable.table_number : null },
+                        { key: 'menu' as const, step: 2, label: 'Items', disabled: !selectedTable, badge: null },
+                        {
+                            key: 'cart' as const, step: 3, label: 'Cart', disabled: cart.length === 0,
+                            badge: cart.length > 0 ? String(cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)) : null
+                        },
+                    ]).map((t) => {
+                        const active = activeTab === t.key;
+                        return (
+                            <button
+                                key={t.key}
+                                type="button"
+                                disabled={t.disabled}
+                                onClick={() => setActiveTab(t.key)}
+                                className={cn(
+                                    'relative flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-bold transition-all duration-200 border',
+                                    active
+                                        ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-[1.02]'
+                                        : 'bg-muted/40 text-muted-foreground border-transparent hover:bg-muted active:scale-[0.97]',
+                                    t.disabled && 'opacity-40 pointer-events-none'
+                                )}
+                            >
+                                <span className={cn(
+                                    'grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-black tabular-nums',
+                                    active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background text-muted-foreground'
+                                )}>
+                                    {t.step}
+                                </span>
+                                <span className="truncate">{t.label}</span>
+                                {t.badge && (
+                                    <span className={cn(
+                                        'ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
+                                        active ? 'bg-primary-foreground text-primary' : 'bg-primary/15 text-primary'
+                                    )}>
+                                        {t.badge}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
+
 
             {/* Main Scrollable Workspace */}
             <div className="flex-1 p-4 overflow-y-auto">

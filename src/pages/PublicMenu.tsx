@@ -1624,14 +1624,39 @@ const PublicMenu = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4" />
-                    <p className="text-orange-700">Loading menu...</p>
+            <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-4">
+                {/* Brand skeleton */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="h-14 w-14 shrink-0 rounded-2xl bg-orange-200/60 animate-pulse" />
+                    <div className="space-y-2">
+                        <div className="h-4 w-44 rounded-md bg-orange-200/60 animate-pulse" />
+                        <div className="h-3 w-28 rounded-md bg-orange-200/40 animate-pulse" />
+                    </div>
                 </div>
+                {/* Category chips skeleton */}
+                <div className="flex gap-2 mb-5 overflow-hidden">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="h-8 w-24 shrink-0 rounded-full bg-orange-200/50 animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
+                    ))}
+                </div>
+                {/* Menu card skeletons */}
+                <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex gap-3 rounded-2xl border border-orange-200/60 bg-white/70 p-3" style={{ animationDelay: `${i * 80}ms` }}>
+                            <div className="h-16 w-16 shrink-0 rounded-xl bg-orange-200/50 animate-pulse" />
+                            <div className="flex-1 space-y-2 py-1">
+                                <div className="h-3.5 w-2/3 rounded-md bg-orange-200/60 animate-pulse" />
+                                <div className="h-3 w-1/3 rounded-md bg-orange-200/40 animate-pulse" />
+                                <div className="h-3 w-16 rounded-md bg-orange-200/40 animate-pulse" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <p className="mt-6 text-center text-sm font-medium text-orange-700/80">Loading menu…</p>
             </div>
         );
     }
+
 
     if (shopSettings && shopSettings.allow_qr_menu === false) {
         const shopName = shopSettings?.shop_name || 'the shop';

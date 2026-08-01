@@ -35,15 +35,18 @@ function TableSeatGroups<T extends SeatScopedOrder & { status?: string }>({
             {groups.map((group) => (
                 <div
                     key={`${keyPrefix}-t-${group.tableNumber}`}
-                    className="rounded-xl border border-dashed border-purple-300/70 dark:border-purple-800/60 bg-purple-50/30 dark:bg-purple-950/10 p-2.5"
+                    className="relative overflow-hidden rounded-2xl border border-purple-300/50 dark:border-purple-800/50 bg-gradient-to-b from-purple-50/60 to-transparent dark:from-purple-950/25 p-2.5 shadow-[0_1px_2px_hsl(var(--foreground)/0.04)]"
                 >
-                    <div className="flex items-center justify-between px-1 pb-2 border-b border-purple-200/50 dark:border-purple-900/40 mb-2">
+                    <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-purple-500 via-fuchsia-500 to-purple-500" />
+                    <div className="flex items-center justify-between px-1 pt-0.5 pb-2 border-b border-purple-200/50 dark:border-purple-900/40 mb-2">
                         <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-purple-600" />
-                            <span className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                            <div className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-500 shadow-sm">
+                                <Users className="w-3.5 h-3.5 text-white" />
+                            </div>
+                            <span className="text-sm font-bold tracking-tight text-purple-700 dark:text-purple-300">
                                 Table {group.tableNumber}
                             </span>
-                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold">
+                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold tabular-nums">
                                 {group.total} {group.total === 1 ? 'ticket' : 'tickets'}
                             </Badge>
                         </div>
@@ -59,7 +62,7 @@ function TableSeatGroups<T extends SeatScopedOrder & { status?: string }>({
 
                             return (
                                 <div key={`${keyPrefix}-t-${group.tableNumber}-${seat.key}`} className="space-y-2">
-                                    <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 bg-white/60 dark:bg-zinc-900/60 p-1.5 rounded-lg border border-purple-200/40 dark:border-purple-900/30">
+                                    <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 bg-background/70 dark:bg-zinc-900/70 backdrop-blur-sm p-1.5 rounded-xl border border-purple-200/40 dark:border-purple-900/30">
                                         <div className="flex items-center gap-1.5">
                                             <Armchair
                                                 className={cn(
@@ -79,6 +82,7 @@ function TableSeatGroups<T extends SeatScopedOrder & { status?: string }>({
                                                 ({seatOrders.length})
                                             </span>
                                         </div>
+
 
                                         {/* Quick Seat Batch Actions & KOT Print */}
                                         <div className="flex items-center gap-1">

@@ -1,4 +1,5 @@
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
+import { ServiceHeader, ServiceLoading, LivePill, SectionHeading, EmptyState } from '@/components/service/ServiceUI';
 import { format } from 'date-fns';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1224,11 +1225,7 @@ const TableOrderBilling: React.FC = () => {
     }, [selectedTable, splitType, checkedSplitItems, evenSplitTracking]);
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
+        return <ServiceLoading label="Loading table orders…" cards={6} />;
     }
 
     return (
@@ -1244,33 +1241,32 @@ const TableOrderBilling: React.FC = () => {
                     </Alert>
                 )}
                 {/* Header */}
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md shadow-purple-500/20">
-                            <Receipt className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg sm:text-xl font-bold tracking-tight">Table Billing</h1>
-                            <p className="text-xs text-muted-foreground">
-                                {tables.length} table{tables.length !== 1 ? 's' : ''} with active orders
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setMoveDialogOpen(true)}
-                            className="h-8 border-primary/40 text-primary hover:bg-primary/10 gap-1.5 shadow-2xs font-semibold text-xs"
-                        >
-                            <ArrowRightLeft className="w-3.5 h-3.5" />
-                            Move Table / Seat
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => fetchTableOrders()}>
-                            Refresh
-                        </Button>
-                    </div>
-                </div>
+                <ServiceHeader
+                    icon={Receipt}
+                    title="Table Billing"
+                    tone="purple"
+                    className="mb-4 sm:mb-5"
+                    badge={<LivePill online={isOnline} />}
+                    subtitle={`${tables.length} table${tables.length !== 1 ? 's' : ''} with active orders`}
+                    actions={
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setMoveDialogOpen(true)}
+                                className="h-8 rounded-xl border-primary/40 text-primary hover:bg-primary/10 gap-1.5 font-semibold text-xs"
+                            >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Move Table / Seat</span>
+                                <span className="sm:hidden">Move</span>
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={() => fetchTableOrders()}>
+                                Refresh
+                            </Button>
+                        </>
+                    }
+                />
+
 
                 {/* View Mode Toggle */}
                 {configuredTables.length > 0 && (
