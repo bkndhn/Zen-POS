@@ -171,8 +171,8 @@ export default function BarcodeStudio() {
             <div 
               className="bg-white shadow-xl border border-gray-300 relative flex flex-col items-center justify-center p-2 transition-all duration-200"
               style={{
-                width: \`\${labelWidth * 3.78}px\`, // Rough conversion to pixels for screen
-                height: \`\${labelHeight * 3.78}px\`,
+                width: `${labelWidth * 3.78}px`, // Rough conversion to pixels for screen
+                height: `${labelHeight * 3.78}px`,
               }}
             >
               <div className="absolute top-1 right-1 opacity-20"><Move size={12}/></div>
