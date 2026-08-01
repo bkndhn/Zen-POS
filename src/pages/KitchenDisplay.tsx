@@ -1161,11 +1161,8 @@ const KitchenDisplay = () => {
 
                     {/* READY Column */}
                     <div className="space-y-3">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-3 h-3 rounded-full bg-green-500" />
-                            <h2 className="text-lg font-semibold">Ready to Serve</h2>
-                            <Badge variant="secondary">{readyBills.length}</Badge>
-                        </div>
+                        <SectionHeading title="Ready to Serve" tone="emerald" count={readyBills.length} className="mb-3 sticky top-[104px] z-10" />
+
 
                         {readyBills.map((bill) => (
                             <Card
