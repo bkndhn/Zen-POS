@@ -46,7 +46,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const location = useLocation();
   const { hasAccess, loading } = useUserPermissions();
   const { t } = useTranslation();
@@ -175,6 +175,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           </li>
         </ul>
       </nav>
+
+      {/* User Profile Footer */}
+      <div className="p-4 border-t border-sidebar-border bg-sidebar-accent/30 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
+            {profile.name?.charAt(0) || 'U'}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-sidebar-foreground truncate">{profile.name}</p>
+            <p className="text-[10px] text-sidebar-accent-foreground truncate">{user?.email}</p>
+          </div>
+        </div>
+      </div>
 
       <ContactSupportDialog open={supportOpen} onOpenChange={setSupportOpen} />
     </div>

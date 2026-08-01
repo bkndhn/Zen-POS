@@ -52,7 +52,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapsed }) => {
   const { t } = useTranslation();
-  const { profile, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const { hasAccess, loading: permLoading } = useUserPermissions();
   const { settings } = useBranchSettings();
   const location = useLocation();
@@ -185,6 +185,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
                       </li>
                     </ul>
                   </nav>
+                  {/* User Profile Footer */}
+                  <div className="p-4 border-t border-border bg-muted/20 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase shrink-0">
+                        {profile.name?.charAt(0) || 'U'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground truncate">{profile.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                      </div>
+                    </div>
+                  </div>
                 </SheetContent>
               </Sheet>
             )}

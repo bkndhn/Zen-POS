@@ -3333,7 +3333,7 @@ const Billing = () => {
       {/* Header & Modes */}
       <div className="flex flex-col gap-2 mb-2 w-full">
         <div className="flex flex-nowrap items-center gap-1.5 w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 order-1">
             <h1 className="text-xl md:text-2xl font-bold leading-none hidden xs:block">
               {isEditMode ? `Edit Bill - ${editingBill?.bill_no}` : 'Billing'}
             </h1>
@@ -3350,7 +3350,7 @@ const Billing = () => {
             variant="outline"
             size="sm"
             onClick={() => setAggregatorDialogOpen(true)}
-            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
+            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0 order-5"
           >
             <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
             <span className="hidden sm:inline">Online Orders</span>
@@ -3368,7 +3368,7 @@ const Billing = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm"
+                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm order-6"
               >
                 <Keyboard className="w-3.5 h-3.5 text-primary" />
                 <span>Keys</span>
@@ -3409,7 +3409,7 @@ const Billing = () => {
                   } catch {}
                 }
               }}
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer order-7"
               title="Click to restore held bill (F8)"
             >
               <span>📌 Held Bill</span>
@@ -3418,7 +3418,7 @@ const Billing = () => {
           )}
 
           {calciEnabled && (
-            <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
+            <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0 order-3">
               <button
                 onClick={() => setAppBillingMode('pos')}
                 className={cn(
@@ -3447,7 +3447,7 @@ const Billing = () => {
           )}
 
           {appBillingMode !== 'calci' && (
-            <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
+            <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0 order-4">
               <Button
                 type="button"
                 variant="ghost"
@@ -3471,7 +3471,7 @@ const Billing = () => {
             </div>
           )}
 
-          <PrinterStatusPanel inline className="shrink-0" />
+          <PrinterStatusPanel inline className="shrink-0 order-2" />
         </div>
       </div>
 

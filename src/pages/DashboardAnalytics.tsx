@@ -40,7 +40,7 @@ interface PeriodStat {
   endDate?: string;
 }
 
-type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly';
+type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly' | 'custom';
 type ComparisonMode = 'day' | 'week' | 'month' | 'year';
 
 const DashboardAnalytics = () => {
@@ -71,6 +71,10 @@ const DashboardAnalytics = () => {
   // Current period date range
   const [currentFromDate, setCurrentFromDate] = useState<string>(today);
   const [currentToDate, setCurrentToDate] = useState<string>(today);
+  
+  // Custom date range state
+  const [customStartDate, setCustomStartDate] = useState<string>(today);
+  const [customEndDate, setCustomEndDate] = useState<string>(today);
 
   // Compare period date range
   const [compareFromDate, setCompareFromDate] = useState<string>(lastWeekSameDay);
@@ -111,7 +115,7 @@ const DashboardAnalytics = () => {
       fetchAnalyticsData();
       fetchHourlyFootfall();
     }
-  }, [period, adminId, branchFilterId]);
+  }, [period, adminId, branchFilterId, customStartDate, customEndDate]);
 
   useEffect(() => {
     if (adminId) fetchComparisonData();
@@ -124,7 +128,7 @@ const DashboardAnalytics = () => {
       supabase.channel('analytics-expenses').on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => { fetchAnalyticsData(); fetchComparisonData(); fetchHourlyFootfall(); }).subscribe()
     ];
     return () => { channels.forEach(c => supabase.removeChannel(c)); };
-  }, [period, compMode, currentFromDate, currentToDate, compareFromDate, compareToDate, branchFilterId]);
+  }, [period, compMode, currentFromDate, currentToDate, compareFromDate, compareToDate, branchFilterId, customStartDate, customEndDate]);
 
 
   const fetchHourlyFootfall = async () => {
@@ -177,6 +181,7 @@ const DashboardAnalytics = () => {
           startDate = new Date(today); startDate.setDate(today.getDate() - 1); endDate = new Date(startDate); break;
         case 'daily': startDate = new Date(today); startDate.setDate(today.getDate() - 6); break;
         case 'weekly': startDate = new Date(today); startDate.setDate(today.getDate() - 27); break;
+        case 'custom': startDate = new Date(customStartDate); endDate = new Date(customEndDate); break;
         case 'monthly': default: startDate = new Date(today); startDate.setMonth(today.getMonth() - 6); break;
       }
 
@@ -437,6 +442,11 @@ const DashboardAnalytics = () => {
         start.setDate(today.getDate() - 27);
         return { label: 'Last 4 Weeks', shortLabel: '4 Weeks', dateRange: `${formatDate(start)} - ${formatDate(today)}`, icon: '📈' };
       }
+      case 'custom': {
+        const start = new Date(customStartDate);
+        const end = new Date(customEndDate);
+        return { label: 'Custom Range', shortLabel: 'Custom', dateRange: `${formatDate(start)} - ${formatDate(end)}`, icon: '🔍' };
+      }
       case 'monthly':
       default: {
         const start = new Date(today);
@@ -671,8 +681,8 @@ const DashboardAnalytics = () => {
 
       {/* Period Tabs with Clear Labels */}
       <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-        <TabsList className="mb-2 w-full flex overflow-x-auto bg-muted/50 p-1 rounded-xl">
-          {(['today', 'yesterday', 'daily', 'weekly', 'monthly'] as Period[]).map(p => {
+        <TabsList className="mb-2 w-full flex overflow-x-auto bg-muted/50 p-1 rounded-xl scrollbar-hide">
+          {(['today', 'yesterday', 'daily', 'weekly', 'monthly', 'custom'] as Period[]).map(p => {
             const info = getPeriodInfo(p);
             return (
               <TabsTrigger
@@ -687,6 +697,32 @@ const DashboardAnalytics = () => {
             );
           })}
         </TabsList>
+
+        {period === 'custom' && (
+          <div className="flex flex-col sm:flex-row gap-3 mb-4 p-3 bg-muted/20 rounded-xl border border-border/40 items-end">
+            <div className="flex-1 w-full">
+              <Label className="text-xs text-muted-foreground font-semibold mb-1 block">From Date</Label>
+              <Input 
+                type="date" 
+                max={customEndDate || today} 
+                value={customStartDate} 
+                onChange={e => setCustomStartDate(e.target.value)} 
+                className="h-9 w-full bg-background"
+              />
+            </div>
+            <div className="flex-1 w-full">
+              <Label className="text-xs text-muted-foreground font-semibold mb-1 block">To Date</Label>
+              <Input 
+                type="date" 
+                min={customStartDate} 
+                max={today} 
+                value={customEndDate} 
+                onChange={e => setCustomEndDate(e.target.value)} 
+                className="h-9 w-full bg-background"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Current Period Indicator */}
         <div className="mb-4 p-3 sm:p-4 bg-gradient-to-r from-primary/10 to-muted/30 rounded-xl border border-primary/20">
