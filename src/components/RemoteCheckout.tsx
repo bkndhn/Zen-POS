@@ -229,21 +229,15 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
 
       if (insertErr) throw insertErr;
 
-      // Upsert customer in customers table
+      
+      // Upsert customer via safe SECURITY DEFINER RPC (no public write access to customers)
       try {
-        const nowIso = new Date().toISOString();
-        await (supabase as any).from('customers').upsert(
-          {
-            admin_id: adminId,
-            branch_id: branchId,
-            phone: phone.trim(),
-            name: name.trim(),
-            last_visit: nowIso,
-            updated_at: nowIso,
-            created_at: nowIso
-          },
-          { onConflict: 'admin_id,phone' }
-        );
+        await (supabase as any).rpc('public_upsert_customer', {
+          p_admin_id: adminId,
+          p_branch_id: branchId,
+          p_phone: phone.trim(),
+          p_name: name.trim()
+        });
       } catch (custErr) {
         console.warn('[RemoteCheckout] Customer upsert notice:', custErr);
       }
