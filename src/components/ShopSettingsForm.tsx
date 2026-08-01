@@ -510,7 +510,10 @@ export const ShopSettingsForm = () => {
                 }
             }
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase Save Error Details:", error);
+                throw error;
+            }
 
             // Also mirror shop details onto the branch row (for branch-wise isolated print/view/share)
             await supabase.from('branches').update({
@@ -543,11 +546,11 @@ export const ShopSettingsForm = () => {
                 title: "Settings Saved",
                 description: "Shop details updated successfully."
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving shop settings:', error);
             toast({
                 title: "Error",
-                description: "Failed to save settings.",
+                description: error?.message || error?.details || "Failed to save settings.",
                 variant: "destructive"
             });
         } finally {
