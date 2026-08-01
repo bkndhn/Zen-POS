@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Package, Search, Plus, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
+import { RetailAddItemDialog } from '@/components/RetailAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EditItemDialog } from '@/components/EditItemDialog';
@@ -17,6 +18,7 @@ import { ItemCategoryManagement } from '@/components/ItemCategoryManagement';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { getShortUnit, formatStoredQuantity } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { CopyMenuToBranchDialog } from '@/components/CopyMenuToBranchDialog';
 import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
@@ -60,6 +62,9 @@ const Items: React.FC = () => {
       fetchCategories();
     }
   });
+  const { data: shopSettings } = useBranchSettings('shop_settings');
+  const businessType = shopSettings?.business_type || profile?.business_type || 'restaurant';
+  
   const [items, setItems] = useState<Item[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -544,7 +549,7 @@ const Items: React.FC = () => {
               Items{activeBranch ? ` — ${activeBranch.name}` : ''}
             </h1>
             <p className="text-muted-foreground text-[10px] sm:text-xs">
-              {isAllBranchesView ? 'Combined view (read-only)' : 'Manage menu items for this branch'}
+              {isAllBranchesView ? 'Combined view (read-only)' : `Manage ${(businessType === 'retail' || businessType === 'pharmacy') ? 'catalog' : 'menu'} items for this branch`}
             </p>
           </div>
         </div>
@@ -552,10 +557,17 @@ const Items: React.FC = () => {
           {profile?.role === 'admin' && !isAllBranchesView && adminId && (
             <>
               <ItemCategoryManagement onCategoriesUpdated={handleCategoriesUpdated} />
-              <CopyMenuToBranchDialog sourceBranchId={branchFilterId} onCopied={fetchItems} />
-              <AiMenuImportDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
+              <CopyMenuToBranchDialog sourceBranchId={branchFilterId} onCopied={fetchItems} businessType={businessType} />
+              {businessType !== 'retail' && businessType !== 'pharmacy' && (
+                <AiMenuImportDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
+              )}
               <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
-              <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
+              {(businessType === 'retail' || businessType === 'pharmacy') && (
+                <RetailAddItemDialog onItemAdded={handleItemAdded} />
+              )}
+              {businessType !== 'retail' && businessType !== 'pharmacy' && (
+                <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
+              )}
             </>
           )}
         </div>

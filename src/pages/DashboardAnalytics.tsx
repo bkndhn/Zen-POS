@@ -10,9 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { TrendingUp, DollarSign, ShoppingBag, Package, ArrowUpRight, ArrowDownRight, Minus, Calendar, Brain } from 'lucide-react';
-import { formatQuantityWithUnit } from '@/utils/timeUtils';
+import { formatQuantityWithUnit, toLocalDateString } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { Building2 } from 'lucide-react';
+import { ExpiryAlertsWidget } from '@/components/ExpiryAlertsWidget';
 
 interface SalesData {
   date: string;
@@ -41,13 +42,6 @@ interface PeriodStat {
 
 type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly';
 type ComparisonMode = 'day' | 'week' | 'month' | 'year';
-
-const toLocalDateString = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const DashboardAnalytics = () => {
   const { profile , adminProfileId } = useAuth();
@@ -1047,6 +1041,9 @@ const DashboardAnalytics = () => {
           ) : (<div className="p-6 text-center text-muted-foreground">Select dates to compare</div>)}
         </CardContent>
       </Card>
+
+      {/* ===== Expiry Alerts (Pharmacy / FMCG) ===== */}
+      <ExpiryAlertsWidget />
 
       {/* ===== Deep Insights ===== */}
       <Card className="border-2 border-primary/20 shadow-lg">

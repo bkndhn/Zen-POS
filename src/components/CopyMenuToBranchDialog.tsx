@@ -12,6 +12,7 @@ interface CopyMenuToBranchDialogProps {
   /** Source branch (the branch we're currently viewing). */
   sourceBranchId: string | null;
   onCopied?: () => void;
+  businessType?: string;
 }
 
 /**
@@ -21,6 +22,7 @@ interface CopyMenuToBranchDialogProps {
 export const CopyMenuToBranchDialog: React.FC<CopyMenuToBranchDialogProps> = ({
   sourceBranchId,
   onCopied,
+  businessType,
 }) => {
   const { branches } = useBranch();
   const [open, setOpen] = useState(false);
@@ -43,7 +45,7 @@ export const CopyMenuToBranchDialog: React.FC<CopyMenuToBranchDialogProps> = ({
       });
       if (error) throw error;
       toast({
-        title: 'Menu copied',
+        title: `${businessType === 'retail' || businessType === 'pharmacy' ? 'Catalog' : 'Menu'} copied`,
         description: `${data ?? 0} items copied to the target branch (stock starts at 0).`,
       });
       setOpen(false);
@@ -69,16 +71,16 @@ export const CopyMenuToBranchDialog: React.FC<CopyMenuToBranchDialogProps> = ({
           variant="outline"
           size="sm"
           disabled={!sourceBranchId}
-          title={!sourceBranchId ? 'Switch to a specific branch first' : 'Copy this branch menu to another'}
+          title={!sourceBranchId ? 'Switch to a specific branch first' : `Copy this branch ${businessType === 'retail' || businessType === 'pharmacy' ? 'catalog' : 'menu'} to another`}
         >
           <Copy className="w-3.5 h-3.5 mr-1" />
-          Copy menu
+          {businessType === 'retail' || businessType === 'pharmacy' ? 'Copy catalog' : 'Copy menu'}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="w-4 h-4" /> Copy menu to another branch
+            <Building2 className="w-4 h-4" /> Copy {businessType === 'retail' || businessType === 'pharmacy' ? 'catalog' : 'menu'} to another branch
           </DialogTitle>
           <DialogDescription>
             Items will be duplicated into the target branch. Stock starts at 0 — set it from the target branch.

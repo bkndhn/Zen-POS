@@ -427,7 +427,7 @@ const BillingListItemCard = React.memo(({
                     </button>
                   );
                 })}
-                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg shrink-0">
+                <Button onClick={() => onAddToCart(item)} className={cn("bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg shrink-0", item.quick_chips && item.quick_chips.length > 0 && "ml-auto")}>
                   Add
                 </Button>
               </div>
@@ -975,12 +975,12 @@ const Billing = () => {
         case 'F2':
           e.preventDefault();
           setAppBillingMode('pos');
-          toast({ title: '⚡ Mode Switched', description: 'Standard POS Mode (F2)' });
+          toast({ title: '⚡ Mode Switched', description: businessType === 'retail' || businessType === 'pharmacy' ? 'Barcode POS Mode (F2)' : 'Standard POS Mode (F2)' });
           break;
         case 'F3':
           e.preventDefault();
           setAppBillingMode('calci');
-          toast({ title: '🧮 Mode Switched', description: 'Calci Mode (F3)' });
+          toast({ title: '🧮 Mode Switched', description: businessType === 'retail' || businessType === 'pharmacy' ? 'Bulk Entry (Calci Mode) (F3)' : 'Calci Mode (F3)' });
           break;
         case 'F4':
           e.preventDefault();
@@ -1027,7 +1027,7 @@ const Billing = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, toast]);
+  }, [cart, toast, businessType]);
   const [billSettings, setBillSettings] = useState<{
     shopName: string;
     address: string;
@@ -2465,6 +2465,7 @@ const Billing = () => {
         admin_id: adminId || null,
         channel: billPayload.channel || 'store',
         billing_type: appBillingMode,
+        provider_id: billPayload.provider_id || null,
         date: format(new Date(), 'yyyy-MM-dd')
       },
       p_cart_items: validCart.map(item => {
@@ -2822,6 +2823,7 @@ const Billing = () => {
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
     printAction?: 'print' | 'no-print';
+    providerId?: string;
   }) => {
     setPaymentDialogOpen(false);
 
@@ -2942,7 +2944,8 @@ const Billing = () => {
         order_type: paymentData.orderType || 'dine_in',
         channel: orderChannel,
         customer_mobile: paymentData.customerMobile || null,
-        customer_phone: paymentData.customerMobile || null
+        customer_phone: paymentData.customerMobile || null,
+        provider_id: paymentData.providerId || null
       };
 
       // Add GST fields to bill if enabled
@@ -3378,9 +3381,9 @@ const Billing = () => {
                 <span className="text-[10px] text-muted-foreground font-mono">F-Keys</span>
               </div>
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Focus Search:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Standard POS Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">{businessType === 'retail' || businessType === 'pharmacy' ? 'Focus Barcode/Search:' : 'Focus Search:'}</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">{businessType === 'retail' || businessType === 'pharmacy' ? 'Barcode POS Mode:' : 'Standard POS Mode:'}</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">{businessType === 'retail' || businessType === 'pharmacy' ? 'Bulk Entry (Calci):' : 'Calci Math Mode:'}</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>

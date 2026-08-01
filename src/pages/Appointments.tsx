@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, CalendarDays, Clock, User, Scissors, Pencil, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, CalendarDays, Clock, User, Scissors, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 
 interface Customer {
   id: string;
@@ -48,6 +49,7 @@ export default function Appointments() {
   
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily');
   
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -71,18 +73,29 @@ export default function Appointments() {
     if (adminId) {
       fetchData();
     }
-  }, [adminId, operatingBranchId, selectedDate]);
+  }, [adminId, operatingBranchId, selectedDate, viewMode]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // 1. Fetch appointments for the selected date
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
+      const dateObj = new Date(selectedDate);
       
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Determine query range based on viewMode
+      let queryStart: Date;
+      let queryEnd: Date;
+      
+      if (viewMode === 'monthly') {
+        const monthStart = startOfMonth(dateObj);
+        const monthEnd = endOfMonth(dateObj);
+        queryStart = startOfWeek(monthStart);
+        queryEnd = endOfWeek(monthEnd);
+      } else {
+        queryStart = new Date(dateObj);
+        queryStart.setHours(0, 0, 0, 0);
+        queryEnd = new Date(dateObj);
+        queryEnd.setHours(23, 59, 59, 999);
+      }
 
       let apptQuery = supabase
         .from('appointments')
@@ -92,8 +105,8 @@ export default function Appointments() {
           providers (name)
         `)
         .eq('admin_id', adminId)
-        .gte('start_time', startOfDay.toISOString())
-        .lte('start_time', endOfDay.toISOString())
+        .gte('start_time', queryStart.toISOString())
+        .lte('start_time', queryEnd.toISOString())
         .order('start_time');
 
       if (operatingBranchId) {
@@ -102,21 +115,14 @@ export default function Appointments() {
         apptQuery = apptQuery.is('branch_id', null);
       }
 
-      // 2. Fetch providers
+      // Fetch providers & customers
       let provQuery = supabase.from('providers').select('id, name').eq('admin_id', adminId).eq('is_active', true);
-      if (operatingBranchId) {
-        provQuery = provQuery.eq('branch_id', operatingBranchId);
-      } else {
-        provQuery = provQuery.is('branch_id', null);
-      }
+      if (operatingBranchId) provQuery = provQuery.eq('branch_id', operatingBranchId);
+      else provQuery = provQuery.is('branch_id', null);
 
-      // 3. Fetch customers
       let custQuery = supabase.from('customers').select('id, name, phone').eq('admin_id', adminId);
-      if (operatingBranchId) {
-        custQuery = custQuery.eq('branch_id', operatingBranchId);
-      } else {
-        custQuery = custQuery.is('branch_id', null);
-      }
+      if (operatingBranchId) custQuery = custQuery.eq('branch_id', operatingBranchId);
+      else custQuery = custQuery.is('branch_id', null);
 
       const [apptRes, provRes, custRes] = await Promise.all([apptQuery, provQuery, custQuery]);
 
@@ -129,17 +135,13 @@ export default function Appointments() {
       setCustomers(custRes.data || []);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to load data"
-      });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to load data" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenDialog = (appt?: Appointment) => {
+  const handleOpenDialog = (appt?: Appointment, specificDate?: string) => {
     if (appt) {
       setEditingId(appt.id);
       const startDate = new Date(appt.start_time);
@@ -161,7 +163,7 @@ export default function Appointments() {
         customer_id: '',
         provider_id: '',
         service_name: '',
-        date: selectedDate,
+        date: specificDate || selectedDate,
         start_time: '10:00',
         end_time: '11:00',
         notes: '',
@@ -173,11 +175,7 @@ export default function Appointments() {
 
   const handleSave = async () => {
     if (!formData.customer_id || !formData.provider_id || !formData.service_name) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Customer, Provider, and Service Name are required"
-      });
+      toast({ variant: "destructive", title: "Validation Error", description: "Customer, Provider, and Service Name are required" });
       return;
     }
 
@@ -198,18 +196,11 @@ export default function Appointments() {
       };
 
       if (editingId) {
-        const { error } = await supabase
-          .from('appointments')
-          .update(payload)
-          .eq('id', editingId);
-
+        const { error } = await supabase.from('appointments').update(payload).eq('id', editingId);
         if (error) throw error;
         toast({ title: "Success", description: "Appointment updated" });
       } else {
-        const { error } = await supabase
-          .from('appointments')
-          .insert([payload]);
-
+        const { error } = await supabase.from('appointments').insert([payload]);
         if (error) throw error;
         toast({ title: "Success", description: "Appointment booked" });
       }
@@ -218,33 +209,42 @@ export default function Appointments() {
       fetchData();
     } catch (error: any) {
       console.error('Error saving appointment:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to save appointment"
-      });
+      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to save appointment" });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to cancel this appointment?")) {
-      return;
-    }
+    if (!window.confirm("Are you sure you want to cancel this appointment?")) return;
 
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('appointments').delete().eq('id', id);
       if (error) throw error;
-      
       toast({ title: "Success", description: "Appointment deleted" });
       fetchData();
     } catch (error: any) {
-      console.error('Error deleting appointment:', error);
       toast({ variant: "destructive", title: "Error", description: error.message });
     }
+  };
+
+  // Pre-calculate calendar grid days
+  const calendarDays = useMemo(() => {
+    const dateObj = new Date(selectedDate);
+    const monthStart = startOfMonth(dateObj);
+    const monthEnd = endOfMonth(monthStart);
+    const gridStart = startOfWeek(monthStart);
+    const gridEnd = endOfWeek(monthEnd);
+    return eachDayOfInterval({ start: gridStart, end: gridEnd });
+  }, [selectedDate]);
+
+  // Filter daily appointments
+  const dailyAppointments = useMemo(() => {
+    const targetDate = new Date(selectedDate);
+    return appointments.filter(a => isSameDay(parseISO(a.start_time), targetDate));
+  }, [appointments, selectedDate]);
+
+  const changeMonth = (offset: number) => {
+    const newDate = offset > 0 ? addMonths(new Date(selectedDate), offset) : subMonths(new Date(selectedDate), Math.abs(offset));
+    setSelectedDate(format(newDate, 'yyyy-MM-dd'));
   };
 
   return (
@@ -264,84 +264,162 @@ export default function Appointments() {
       </div>
 
       <Card className="border-border/50 bg-background/50 backdrop-blur-sm shadow-xl">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Daily Schedule</CardTitle>
-            <CardDescription>View appointments for the selected date</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="date-picker">Date</Label>
-            <Input 
-              id="date-picker"
-              type="date" 
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-40 bg-background/50"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'daily'|'monthly')}>
+          <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
+            <div className="flex items-center gap-4">
+              <TabsList>
+                <TabsTrigger value="daily">Daily Schedule</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly Calendar</TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="flex items-center gap-2">
+              {viewMode === 'monthly' ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                  <div className="font-semibold w-[120px] text-center">{format(new Date(selectedDate), 'MMMM yyyy')}</div>
+                  <Button variant="outline" size="icon" onClick={() => changeMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+                </div>
+              ) : (
+                <>
+                  <Label htmlFor="date-picker" className="hidden md:block">Date</Label>
+                  <Input 
+                    id="date-picker"
+                    type="date" 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-[150px] bg-background/50"
+                  />
+                </>
+              )}
+            </div>
+          </CardHeader>
+          
+          <CardContent className="pt-0">
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading schedule...</div>
-            ) : appointments.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground bg-background/30 rounded-lg border border-border/50 border-dashed">
-                <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No appointments scheduled for this day.</p>
-              </div>
+              <div className="text-center py-12 text-muted-foreground animate-pulse">Loading appointments...</div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {appointments.map((appt) => (
-                  <Card key={appt.id} className="bg-background/40 hover:bg-background/60 transition-colors border-border/50">
-                    <CardContent className="p-4 flex flex-col h-full">
-                      <div className="flex justify-between items-start mb-2">
-                        <Badge variant="outline" className="bg-primary/5 font-medium flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {format(parseISO(appt.start_time), 'h:mm a')} - {format(parseISO(appt.end_time), 'h:mm a')}
-                        </Badge>
-                        <Badge 
-                          variant="secondary" 
-                          className={appt.status === 'completed' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}
-                        >
-                          {appt.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex-1 space-y-3 mt-2">
-                        <div className="font-semibold text-lg">{appt.service_name}</div>
-                        
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <User className="h-4 w-4" />
-                          <span className="truncate">{appt.customers?.name} {appt.customers?.phone ? `(${appt.customers.phone})` : ''}</span>
+              <>
+                {/* DAILY VIEW */}
+                <TabsContent value="daily" className="mt-0">
+                  {dailyAppointments.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground bg-background/30 rounded-lg border border-border/50 border-dashed">
+                      <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No appointments scheduled for {format(new Date(selectedDate), 'MMM do, yyyy')}.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {dailyAppointments.map((appt) => (
+                        <Card key={appt.id} className="bg-background/40 hover:bg-background/60 transition-colors border-border/50">
+                          <CardContent className="p-4 flex flex-col h-full">
+                            <div className="flex justify-between items-start mb-2">
+                              <Badge variant="outline" className="bg-primary/5 font-medium flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {format(parseISO(appt.start_time), 'h:mm a')} - {format(parseISO(appt.end_time), 'h:mm a')}
+                              </Badge>
+                              <Badge 
+                                variant="secondary" 
+                                className={appt.status === 'completed' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}
+                              >
+                                {appt.status}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex-1 space-y-3 mt-2">
+                              <div className="font-semibold text-lg">{appt.service_name}</div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <User className="h-4 w-4" />
+                                <span className="truncate">{appt.customers?.name} {appt.customers?.phone ? `(${appt.customers.phone})` : ''}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Scissors className="h-4 w-4" />
+                                <span className="truncate">{appt.providers?.name}</span>
+                              </div>
+                              {appt.notes && (
+                                <div className="text-sm italic text-muted-foreground mt-2 line-clamp-2 border-t border-border/30 pt-2">
+                                  "{appt.notes}"
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border/30">
+                              <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(appt)}>
+                                <Pencil className="h-4 w-4 mr-1" /> Edit
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(appt.id)}>
+                                <Trash2 className="h-4 w-4 mr-1" /> Cancel
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* MONTHLY CALENDAR VIEW */}
+                <TabsContent value="monthly" className="mt-0">
+                  <div className="border border-border/50 rounded-lg overflow-hidden bg-background">
+                    {/* Header Row */}
+                    <div className="grid grid-cols-7 bg-muted/50 border-b border-border/50">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
+                          {day}
                         </div>
+                      ))}
+                    </div>
+                    {/* Days Grid */}
+                    <div className="grid grid-cols-7">
+                      {calendarDays.map((day, idx) => {
+                        const dayString = format(day, 'yyyy-MM-dd');
+                        const isCurrentMonth = isSameMonth(day, new Date(selectedDate));
+                        const isToday = isSameDay(day, new Date());
+                        const isSelected = isSameDay(day, new Date(selectedDate));
                         
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Scissors className="h-4 w-4" />
-                          <span className="truncate">{appt.providers?.name}</span>
-                        </div>
-                        
-                        {appt.notes && (
-                          <div className="text-sm italic text-muted-foreground mt-2 line-clamp-2 border-t border-border/30 pt-2">
-                            "{appt.notes}"
+                        // Appointments for this specific cell
+                        const dayAppts = appointments.filter(a => isSameDay(parseISO(a.start_time), day));
+
+                        return (
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              setSelectedDate(dayString);
+                              setViewMode('daily'); // Switch to daily view when clicking a day
+                            }}
+                            className={`min-h-[100px] p-2 border-r border-b border-border/30 hover:bg-muted/30 cursor-pointer transition-colors ${!isCurrentMonth ? 'bg-muted/10 opacity-50' : ''} ${isSelected && !isToday ? 'bg-primary/5' : ''}`}
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-primary text-primary-foreground' : ''}`}>
+                                {format(day, 'd')}
+                              </span>
+                              {dayAppts.length > 0 && (
+                                <Badge variant="secondary" className="text-[10px] px-1 h-5 bg-indigo-100 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/40 dark:text-indigo-400">
+                                  {dayAppts.length}
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-1 mt-2">
+                              {dayAppts.slice(0, 2).map((appt) => (
+                                <div key={appt.id} className="text-[10px] truncate bg-muted px-1.5 py-0.5 rounded border border-border/50" title={`${format(parseISO(appt.start_time), 'HH:mm')} - ${appt.service_name}`}>
+                                  <span className="font-semibold">{format(parseISO(appt.start_time), 'HH:mm')}</span> {appt.service_name}
+                                </div>
+                              ))}
+                              {dayAppts.length > 2 && (
+                                <div className="text-[10px] text-muted-foreground text-center pt-1 font-medium">
+                                  +{dayAppts.length - 2} more
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border/30">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(appt)}>
-                          <Pencil className="h-4 w-4 mr-1" /> Edit
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(appt.id)}>
-                          <Trash2 className="h-4 w-4 mr-1" /> Cancel
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </TabsContent>
+              </>
             )}
-          </div>
-        </CardContent>
+          </CardContent>
+        </Tabs>
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
