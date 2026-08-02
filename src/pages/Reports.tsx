@@ -128,7 +128,29 @@ const Reports: React.FC = () => {
 
   const [selectedBillSettings, setSelectedBillSettings] = useState<any>(null);
 
-  const fetchSettingsForBill = async (bill: Bill) => {
+  // Reprint speed: shop/branch settings never change between two prints of the
+  // same branch, so resolve them once per branch and reuse (also de-dupes
+  // concurrent lookups) instead of 3-5 round trips on every print click.
+  const settingsCacheRef = useRef<Map<string, Promise<any>>>(new Map());
+
+  const fetchSettingsForBill = (bill: Bill) => {
+    const key = bill.branch_id || 'default';
+    const cached = settingsCacheRef.current.get(key);
+    if (cached) return cached;
+    const promise = fetchSettingsForBillUncached(bill).then((res) => {
+      // Don't cache failures — retry next time.
+      if (!res) settingsCacheRef.current.delete(key);
+      return res;
+    }).catch((e) => {
+      settingsCacheRef.current.delete(key);
+      throw e;
+    });
+    settingsCacheRef.current.set(key, promise);
+    return promise;
+  };
+
+  const fetchSettingsForBillUncached = async (bill: Bill) => {
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
