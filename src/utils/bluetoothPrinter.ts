@@ -273,7 +273,10 @@ const generateSocialMediaImage = async (
       return null;
     }
   })();
+  if (built) rasterCache.set(socialKey, built);
+  return built;
 };
+
 
 interface BillItem {
   name: string;
