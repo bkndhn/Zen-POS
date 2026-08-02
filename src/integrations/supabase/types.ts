@@ -1488,6 +1488,7 @@ export type Database = {
       items: {
         Row: {
           admin_id: string | null
+          barcode: string | null
           base_value: number | null
           branch_id: string | null
           brand_id: string | null
@@ -1528,6 +1529,7 @@ export type Database = {
         }
         Insert: {
           admin_id?: string | null
+          barcode?: string | null
           base_value?: number | null
           branch_id?: string | null
           brand_id?: string | null
@@ -1568,6 +1570,7 @@ export type Database = {
         }
         Update: {
           admin_id?: string | null
+          barcode?: string | null
           base_value?: number | null
           branch_id?: string | null
           brand_id?: string | null
