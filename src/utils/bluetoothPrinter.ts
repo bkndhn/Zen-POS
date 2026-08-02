@@ -150,7 +150,10 @@ const generateSocialMediaImage = async (
   whatsapp?: string,
   targetWidth: number = 384
 ): Promise<Uint8Array | null> => {
-  return (async () => {
+  const socialKey = `social:${targetWidth}:${facebook || ''}|${instagram || ''}|${whatsapp || ''}`;
+  if (rasterCache.has(socialKey)) return rasterCache.get(socialKey) ?? null;
+  const built = await (async () => {
+
     // 1. Create a canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
