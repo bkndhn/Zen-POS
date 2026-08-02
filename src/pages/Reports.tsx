@@ -252,6 +252,26 @@ const Reports: React.FC = () => {
     loadSelectedBillSettings();
   }, [selectedBill]);
 
+  // Warm the print path (settings + logo bitmap) as soon as the page is idle,
+  // so the first "reprint" click goes straight to the printer.
+  useEffect(() => {
+    if (!profile) return;
+    const warm = async () => {
+      try {
+        const settings = await fetchSettingsForBill({ branch_id: null } as any);
+        if (settings?.logoUrl) {
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.src = settings.logoUrl;
+        }
+      } catch { /* warming is best-effort */ }
+    };
+    const id = window.setTimeout(warm, 400);
+    return () => window.clearTimeout(id);
+  }, [profile]);
+
+
+
   // Delete confirmation dialog state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [billToDelete, setBillToDelete] = useState<string | null>(null);
