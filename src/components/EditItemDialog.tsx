@@ -366,13 +366,17 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
       setOpen(false);
       onItemUpdated();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating item:', error);
+      const details = [error?.message, error?.details, error?.hint]
+        .filter(Boolean)
+        .join(' — ');
       toast({
-        title: "Error",
-        description: "Failed to update item",
+        title: error?.code ? `Update failed (${error.code})` : "Failed to update item",
+        description: details || "Unknown error. Please try again.",
         variant: "destructive",
       });
+
     } finally {
       setLoading(false);
     }
