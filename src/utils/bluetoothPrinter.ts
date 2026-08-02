@@ -32,9 +32,15 @@ const FB_SVG = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcm
 const IG_SVG = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDIuMTYzYzMuMjA0IDAgMy41ODQuMDEyIDQuODUuMDcgMy4yNTIuMTQ4IDQuNzcxIDEuNjkxIDQuOTE5IDQuOTE5LjA1OCAxLjI2NS4wNjkgMS42NDUuMDY5IDQuODQ5IDAgMy4yMDUtLjAxMiAzLjU4NC0uMDY5IDQuODQ5LS4xNDkgMy4yMjUtMS42NjQgNC43NzEtNC45MTkgNC45MTktMS4yNjYuMDU4LTEuNjQ0LjA3LTQuODUuMDctMy4yMDQgMC0zLjU4NC0uMDEyLTQuODQ5LS4wNy0zLjI2LS4xNDktNC43NzEtMS42OTktNC45MTktNC45MjAtLjA1OC0xLjI2NS0uMDctMS42NDQtLjA3LTQuODQ5IDAtMy4yMDQuMDEzLTMuNTgzLjA3LTQuODQ5LjE0OS0zLjIyNyAxLjY2NC00Ljc3MSA0LjkxOS00LjkxOSAxLjI2Ni0uMDU3IDEuNjQ1LS4wNjkgNC44NDktLjA2OXptMC0yLjE2M2MtMy4yNTkgMC0zLjY2Ny4wMTQtNC45NDcuMDcyLTQuMzU4LjItNi43OCAyLjYxOC02Ljk4IDYuOTgtLjA1OSAxLjI4MS0uMDczIDEuNjg5LS4wNzMgNC45NDggMCAzLjI1OS4wMTQgMy42NjguMDcyIDQuOTQ4LjIgNC4zNTggMi42MTggNi43OCA2Ljk4IDYuOTggMS4yODEuMDU4IDEuNjg5LjA3MiA0Ljk0OC4wNzIgMy4yNTkgMCAzLjY2OC0uMDE0IDQuOTQ4LS4wNzIgNC4zNTQtLjIgNi43ODItMi42MTggNi45NzktNi45OC4wNTktMS4yOC4wNzMtMS42ODkuMDczLTQuOTQ4IDAtMy4yNTktLjAxNC0zLjY2Ny0uMDcyLTQuOTQ3LS4xOTYtNC4zNTQtMi42MTctNi43OC02Ljk3OS02Ljk4LTEuMjgxLS4wNTktMS42OS0uMDczLTQuOTQ5LS4wNzN6bTAgNS44MzhjLTMuNDAzIDAtNi4xNjIgMi43NTktNi4xNjIgNi4xNjJzMi43NTkgNi4xNjMgNi4xNjIgNi4xNjMgNi4xNjItMi43NTkgNi4xNjItNi4xNjNjMC0zLjQwMy0yLjc1OS02LjE2Mi02LjE2Mi02LjE2MnptMCAxMC4xNjJjLTIuMjA5IDAtNC0xLjc5LTQtNCAwLTIuMjA5IDEuNzkxLTQgNC00czQgMS43OTEgNCA0YzAgMi4yMS0xLjc5MSA0LTQgNHptNi40MDYtMTEuODQ1Yy0uNzk2IDAtMS40NDEuNjQ1LTEuNDQxIDEuNDRzLjY0NSAxLjQ0IDEuNDQxIDEuNDRjLjc5NSAwIDEuNDM5LS42NDUgMS40MzktMS40NHMtLjY0NC0xLjQ0LTEuNDM5LTEuNDR6Ii8+PC9zdmc+`;
 const WA_SVG = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTS4wNTcgMjRsMS42ODctNi4xNjNjLTEuMDQxLTEuODA0LTEuNTg4LTMuODQ5LTEuNTg3LTUuOTQ2LjAwMy02LjU1NiA1LjMzOC0xMS44OTEgMTEuODkzLTExLjg5MSAzLjE4MS4wMDEgNi4xNjcgMS4yNCA4LjQxMyAzLjQ4OCAyLjI0NSAyLjI0OCAzLjQ4MSA1LjIzNiAzLjQ4IDguNDE0LS4wMDMgNi41NTctNS4zMzggMTEuODkyLTExLjg5MyAxMS44OTItMS45OS0uMDAxLTMuOTUxLS41LTUuNjg4LTEuNDQ4bC02LjMwNSAxLjY1NHptNi41OTctMy44MDdjMS42NzYuOTk1IDMuMjc2IDEuNTkxIDUuMzkyIDEuNTkyIDUuNDQ4IDAgOS44ODYtNC40MzQgOS44ODktOS44ODUuMDAyLTUuNDYyLTQuNDE1LTkuODktOS44ODEtOS44OTItNS40NTIgMC05Ljg4NyA0LjQzNC05Ljg4OSA5Ljg4NC0uMDAxIDIuMjI1LjY1MSAzLjg5MSAxLjc0NiA1LjYzNGwtLjk5OSAzLjY0OCAzLjc0Mi0uOTgxeiIvPjwvc3ZnPg==`;
 
+// Raster caches: converting a logo/social row to ESC/POS bitmap costs a network
+// fetch + canvas pass. The output is deterministic, so cache it per session and
+// keep repeat prints (e.g. reprint from Reports) near-instant.
+const rasterCache = new Map<string, Uint8Array | null>();
+
 // Helper to convert Base64 to bitmap data for ESC/POS
-const processImageForPrinting = async (base64Url: string, targetWidth: number = 384): Promise<Uint8Array | null> => {
+const processImageForPrintingUncached = async (base64Url: string, targetWidth: number = 384): Promise<Uint8Array | null> => {
   return new Promise((resolve) => {
+
     const img = new Image();
     img.crossOrigin = "Anonymous";
     // Hard timeout: a slow/blocked image must never stall the whole receipt.
@@ -125,6 +131,18 @@ const processImageForPrinting = async (base64Url: string, targetWidth: number = 
   });
 };
 
+/** Cached wrapper: same URL + width always yields the same bitmap. */
+const processImageForPrinting = async (base64Url: string, targetWidth: number = 384): Promise<Uint8Array | null> => {
+  const key = `img:${targetWidth}:${base64Url}`;
+  if (rasterCache.has(key)) return rasterCache.get(key) ?? null;
+  const bytes = await processImageForPrintingUncached(base64Url, targetWidth);
+  // Only cache successes; a transient failure should be retried next print.
+  if (bytes) rasterCache.set(key, bytes);
+  return bytes;
+};
+
+
+
 // Helper: Generate Social Media Row Image
 const generateSocialMediaImage = async (
   facebook?: string,
@@ -132,7 +150,10 @@ const generateSocialMediaImage = async (
   whatsapp?: string,
   targetWidth: number = 384
 ): Promise<Uint8Array | null> => {
-  return (async () => {
+  const socialKey = `social:${targetWidth}:${facebook || ''}|${instagram || ''}|${whatsapp || ''}`;
+  if (rasterCache.has(socialKey)) return rasterCache.get(socialKey) ?? null;
+  const built = await (async () => {
+
     // 1. Create a canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -252,7 +273,10 @@ const generateSocialMediaImage = async (
       return null;
     }
   })();
+  if (built) rasterCache.set(socialKey, built);
+  return built;
 };
+
 
 interface BillItem {
   name: string;
