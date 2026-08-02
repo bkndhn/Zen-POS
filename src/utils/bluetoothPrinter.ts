@@ -131,6 +131,18 @@ const processImageForPrintingUncached = async (base64Url: string, targetWidth: n
   });
 };
 
+/** Cached wrapper: same URL + width always yields the same bitmap. */
+const processImageForPrinting = async (base64Url: string, targetWidth: number = 384): Promise<Uint8Array | null> => {
+  const key = `img:${targetWidth}:${base64Url}`;
+  if (rasterCache.has(key)) return rasterCache.get(key) ?? null;
+  const bytes = await processImageForPrintingUncached(base64Url, targetWidth);
+  // Only cache successes; a transient failure should be retried next print.
+  if (bytes) rasterCache.set(key, bytes);
+  return bytes;
+};
+
+
+
 // Helper: Generate Social Media Row Image
 const generateSocialMediaImage = async (
   facebook?: string,
