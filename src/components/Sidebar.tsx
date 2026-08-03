@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next';
 import { ContactSupportDialog } from './ContactSupportDialog';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { useBranchSettings } from '@/hooks/useBranchSettings';
+import { useBranch } from '@/contexts/BranchContext';
+import { prefetchAll } from '@/utils/routePrefetch';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
