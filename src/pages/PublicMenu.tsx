@@ -313,7 +313,10 @@ const PublicMenu = () => {
     // ========== REMOTE ORDERING STATE ==========
     // isTableMode declared at ~line 224, cart at ~line 304 — both initialized before these hooks (no TDZ)
     const isRemoteMode = !isTableMode && !!(rawShopSettings as any)?.remote_ordering_enabled && !(rawShopSettings as any)?.remote_ordering_paused;
-    const isOrderingMode = isTableMode || isRemoteMode;
+    // Store must be open (manual override, daily hours, breaks, holidays) to accept orders.
+    // When closed the menu stays fully browsable but every add/qty control is hidden.
+    const ordersOpen = !storeStatus || storeStatus.status === 'open';
+    const isOrderingMode = (isTableMode || isRemoteMode) && ordersOpen;
     const [showRemoteCheckout, setShowRemoteCheckout] = useState(false);
     const [activeRemoteOrderId, setActiveRemoteOrderId] = useState<string | null>(null);
     const [showRemoteTracker, setShowRemoteTracker] = useState(false);
