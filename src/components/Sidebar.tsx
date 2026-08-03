@@ -53,8 +53,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { hasAccess, loading } = useUserPermissions();
   const { t } = useTranslation();
   const { settings } = useBranchSettings();
+  const { operatingBranchId } = useBranch();
   const [supportOpen, setSupportOpen] = useState(false);
   const allNavItems = getFilteredNavItems(settings?.business_type);
+  const prefetchAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
+  const warmRoute = (path: string) => prefetchAll(path, { adminId: prefetchAdminId, branchId: operatingBranchId });
 
   if (!profile || loading) return null;
 
