@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { MoreHorizontal, CreditCard, Users as UsersIcon, Database, Settings, FileText, Shield, Activity, LayoutDashboard, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
+import { prefetchAll } from '@/utils/routePrefetch';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
