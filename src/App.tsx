@@ -174,6 +174,32 @@ const ThemeLoader = () => {
   return null;
 };
 
+/**
+ * Times every route transition (see perfProfiler) and warms the chunks + data
+ * caches of the most-used screens while the browser is idle, so navigation
+ * paints from cache instead of waiting on Supabase.
+ */
+const RoutePerfWarmer = () => {
+  const location = useLocation();
+  const { profile } = useAuth();
+  const { operatingBranchId } = useBranch();
+  const adminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
+
+  useEffect(() => {
+    markNavigation(location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!profile) return;
+    idlePrefetch(
+      ['/billing', '/dashboard', '/items', '/reports', '/tables', '/kitchen'],
+      { adminId, branchId: operatingBranchId }
+    );
+  }, [profile?.id, adminId, operatingBranchId]);
+
+  return null;
+};
+
 // Keep Auth as direct import for instant login screen
 import Auth from "./pages/Auth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
