@@ -124,6 +124,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               <li key={to}>
                 <NavLink
                   to={to}
+                  onPointerEnter={() => warmRoute(to)}
+                  onFocus={() => warmRoute(to)}
                   className={cn(
                     "flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm",
                     isActive
