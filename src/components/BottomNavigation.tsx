@@ -151,10 +151,10 @@ export const BottomNavigation: React.FC = () => {
 
   const isOverflowActive = overflow.some(i => location.pathname === i.to);
 
+  const prefetchAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
   const prefetch = useCallback((path: string) => {
-    const fn = routePrefetch[path];
-    if (fn) fn().catch(() => { /* prefetch is best-effort */ });
-  }, []);
+    prefetchAll(path, { adminId: prefetchAdminId, branchId: operatingBranchId });
+  }, [prefetchAdminId, operatingBranchId]);
 
   if (!profile || loading) return null;
 
