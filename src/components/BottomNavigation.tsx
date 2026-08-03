@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { MoreHorizontal, CreditCard, Users as UsersIcon, Database, Settings, FileText, Shield, Activity, LayoutDashboard, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
+import { prefetchAll } from '@/utils/routePrefetch';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -44,30 +45,7 @@ const haptic = () => {
   try { (navigator as any).vibrate?.(8); } catch { /* noop */ }
 };
 
-// Best-effort route chunk prefetch — matches App.tsx lazy() imports.
-const routePrefetch: Record<string, () => Promise<any>> = {
-  '/dashboard': () => import('@/pages/Dashboard'),
-  '/analytics': () => import('@/pages/DashboardAnalytics'),
-  '/billing': () => import('@/pages/Billing'),
-  '/items': () => import('@/pages/Items'),
-  '/expenses': () => import('@/pages/Expenses'),
-  '/reports': () => import('@/pages/Reports'),
-  '/settings': () => import('@/pages/Settings'),
-  '/service-area': () => import('@/pages/ServiceArea'),
-  '/kitchen': () => import('@/pages/KitchenDisplay'),
-  '/tables': () => import('@/pages/TableManagement'),
-  '/crm': () => import('@/pages/CRM'),
-  '/qr-menu': () => import('@/pages/QRMenu'),
-  '/table-billing': () => import('@/pages/TableOrderBilling'),
-  '/waiter': () => import('@/pages/WaiterCompanion'),
-  '/suppliers': () => import('@/pages/Suppliers'),
-  '/purchases': () => import('@/pages/Purchases'),
-  '/stock': () => import('@/pages/StockManagement'),
-  '/stock-reports': () => import('@/pages/StockReports'),
-  '/stock-transfers': () => import('@/pages/StockTransfers'),
-  '/users': () => import('@/pages/Users'),
-  '/online-orders': () => import('@/pages/OnlineOrders'),
-};
+// Route chunk + data prefetch live in a single shared module (see routePrefetch.ts).
 
 export const BottomNavigation: React.FC = () => {
   const { profile } = useAuth();
@@ -174,10 +152,10 @@ export const BottomNavigation: React.FC = () => {
 
   const isOverflowActive = overflow.some(i => location.pathname === i.to);
 
+  const prefetchAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
   const prefetch = useCallback((path: string) => {
-    const fn = routePrefetch[path];
-    if (fn) fn().catch(() => { /* prefetch is best-effort */ });
-  }, []);
+    prefetchAll(path, { adminId: prefetchAdminId, branchId: operatingBranchId });
+  }, [prefetchAdminId, operatingBranchId]);
 
   if (!profile || loading) return null;
 

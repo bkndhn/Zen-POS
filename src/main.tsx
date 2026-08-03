@@ -4,7 +4,9 @@ import './index.css'
 import './i18n'
 import { startRum } from './utils/rum'
 import { initStoragePersistence } from './utils/nativeStorage'
+import { installPerfProfiler } from './utils/perfProfiler'
 
+installPerfProfiler();
 startRum();
 initStoragePersistence().catch(() => {});
 

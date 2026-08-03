@@ -6,10 +6,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createIDBPersister } from './utils/queryPersister';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { BranchProvider, useBranch } from "@/contexts/BranchContext";
+import { markNavigation } from "@/utils/perfProfiler";
+import { idlePrefetch } from "@/utils/routePrefetch";
 import { Layout } from "@/components/Layout";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { getStoredBillFont, getSelectedBillFont, loadGoogleFont } from "@/utils/billFontUtils";
@@ -170,6 +172,32 @@ const ThemeLoader = () => {
       window.removeEventListener('bill-font-changed', loadBillFont);
     };
   }, [operatingBranchId]);
+
+  return null;
+};
+
+/**
+ * Times every route transition (see perfProfiler) and warms the chunks + data
+ * caches of the most-used screens while the browser is idle, so navigation
+ * paints from cache instead of waiting on Supabase.
+ */
+const RoutePerfWarmer = () => {
+  const location = useLocation();
+  const { profile } = useAuth();
+  const { operatingBranchId } = useBranch();
+  const adminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
+
+  useEffect(() => {
+    markNavigation(location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!profile) return;
+    idlePrefetch(
+      ['/billing', '/dashboard', '/items', '/reports', '/tables', '/kitchen'],
+      { adminId, branchId: operatingBranchId }
+    );
+  }, [profile?.id, adminId, operatingBranchId]);
 
   return null;
 };
@@ -348,6 +376,7 @@ const App = () => {
               <PermissionsProvider>
                 <BranchProvider>
                   <ThemeLoader />
+                  <RoutePerfWarmer />
                   <GlobalSettingsSync />
                   <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
                   <Routes>

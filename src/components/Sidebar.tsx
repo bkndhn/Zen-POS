@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next';
 import { ContactSupportDialog } from './ContactSupportDialog';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { useBranchSettings } from '@/hooks/useBranchSettings';
+import { useBranch } from '@/contexts/BranchContext';
+import { prefetchAll } from '@/utils/routePrefetch';
 
 const labelMap: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -51,8 +53,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { hasAccess, loading } = useUserPermissions();
   const { t } = useTranslation();
   const { settings } = useBranchSettings();
+  const { operatingBranchId } = useBranch();
   const [supportOpen, setSupportOpen] = useState(false);
   const allNavItems = getFilteredNavItems(settings?.business_type);
+  const prefetchAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
+  const warmRoute = (path: string) => prefetchAll(path, { adminId: prefetchAdminId, branchId: operatingBranchId });
 
   if (!profile || loading) return null;
 
@@ -119,6 +124,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               <li key={to}>
                 <NavLink
                   to={to}
+                  onPointerEnter={() => warmRoute(to)}
+                  onFocus={() => warmRoute(to)}
                   className={cn(
                     "flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 text-sm",
                     isActive
