@@ -1342,10 +1342,27 @@ class PrinterManager {
         }
         report.push({ step: 'HTTPS / Secure Context', ok: typeof window !== 'undefined' ? window.isSecureContext : false, detail: window.isSecureContext ? 'ok' : 'must be HTTPS' });
 
-        const permitted = Capacitor.isNativePlatform()
+        const nativeMode = Capacitor.isNativePlatform();
+        const permitted = nativeMode
             ? (await this.getNativePairedDevices()).map(device => device.name)
             : await this.getPermittedBluetoothDeviceNames();
-        report.push({ step: 'Paired Devices', ok: permitted.length > 0, detail: permitted.length ? permitted.join(', ') : 'none paired in Android settings' });
+        // In a PWA/browser, navigator.bluetooth.getDevices() is unavailable or returns []
+        // unless the persistent-permissions flag is on — that is NOT an error when we already
+        // hold a live/remembered device, so fall back to it before reporting a failure.
+        const remembered = this.device?.name || this.deviceName || '';
+        const effective = permitted.length ? permitted : (remembered ? [remembered] : []);
+        const getDevicesSupported = nativeMode || typeof (navigator as any)?.bluetooth?.getDevices === 'function';
+        report.push({
+            step: 'Paired Devices',
+            ok: effective.length > 0,
+            detail: effective.length
+                ? effective.join(', ')
+                : nativeMode
+                    ? 'none paired in Android settings'
+                    : getDevicesSupported
+                        ? 'no remembered device — tap Connect and pick your printer once'
+                        : 'browser cannot list saved devices (PWA limitation) — tap Connect and pick your printer',
+        });
 
         report.push({ step: 'Active Printer', ok: !!this.deviceName, detail: this.deviceName || 'not selected' });
         report.push({ step: 'Trusted Authorization', ok: this.isPrinterTrusted() || this.hasNativePrinterBridge(), detail: this.hasNativePrinterBridge() ? 'native Android bridge' : (this.isPrinterTrusted() ? 'saved for silent reconnect' : 'tap Trust this printer once') });
