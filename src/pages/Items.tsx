@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download } from 'lucide-react';
+import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download, Clock } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
@@ -52,6 +52,8 @@ interface Item {
   price_zomato?: number;
   price_swiggy?: number;
   is_veg?: boolean;
+  available_from?: string | null;
+  available_until?: string | null;
 }
 
 const Items: React.FC = () => {
@@ -76,6 +78,10 @@ const Items: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'default' | 'name' | 'price_asc' | 'price_desc' | 'stock_low' | 'newest' | 'bestseller'>('default');
   const [showSortMenu, setShowSortMenu] = useState(false);
+
+  // Inline price editing
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+  const [editingPriceValue, setEditingPriceValue] = useState('');
 
   // Bulk selection state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -609,6 +615,65 @@ const Items: React.FC = () => {
     return Math.round(((item.price - item.purchase_rate) / item.price) * 100);
   };
 
+  // Quick inline price update
+  const startPriceEdit = (item: Item) => {
+    if (profile?.role !== 'admin' || isAllBranchesView) return;
+    setEditingPriceId(item.id);
+    setEditingPriceValue(item.price.toString());
+  };
+
+  const savePriceEdit = async (itemId: string) => {
+    const newPrice = parseFloat(editingPriceValue);
+    if (isNaN(newPrice) || newPrice < 0) {
+      setEditingPriceId(null);
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ price: newPrice })
+        .eq('id', itemId);
+      if (error) throw error;
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, price: newPrice } : i));
+      toast({ title: 'Price updated', description: `New price: ₹${newPrice}` });
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to update price', variant: 'destructive' });
+    }
+    setEditingPriceId(null);
+  };
+
+  // Check if item is currently available based on schedule
+  const isItemAvailableNow = (item: Item) => {
+    if (!item.available_from && !item.available_until) return true; // Always available
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    if (item.available_from && item.available_until) {
+      if (item.available_from <= item.available_until) {
+        return currentTime >= item.available_from && currentTime <= item.available_until;
+      } else {
+        // Overnight schedule (e.g., 22:00 to 06:00)
+        return currentTime >= item.available_from || currentTime <= item.available_until;
+      }
+    }
+    if (item.available_from) return currentTime >= item.available_from;
+    if (item.available_until) return currentTime <= item.available_until;
+    return true;
+  };
+
+  // Format schedule for display
+  const formatSchedule = (item: Item) => {
+    if (!item.available_from && !item.available_until) return null;
+    const fmt = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    };
+    if (item.available_from && item.available_until) return `${fmt(item.available_from)} - ${fmt(item.available_until)}`;
+    if (item.available_from) return `From ${fmt(item.available_from)}`;
+    return `Until ${fmt(item.available_until!)}`;
+  };
+
   const getCategoryCount = (category: string) => {
     return items.filter(item => item.category === category).length;
   };
@@ -731,16 +796,42 @@ const Items: React.FC = () => {
                 </span>
               )}
             </div>
+            {formatSchedule(item) && (
+              <div className={`flex items-center gap-1 mt-0.5 text-[9px] font-medium ${isItemAvailableNow(item) ? 'text-blue-600' : 'text-red-500'}`}>
+                <Clock className="w-2.5 h-2.5" />
+                {formatSchedule(item)}
+                {!isItemAvailableNow(item) && <span className="text-red-500">(Closed)</span>}
+              </div>
+            )}
           </div>
 
           <div className="mt-auto pt-1 flex items-end justify-between">
             <div>
-              <span className={`font-bold text-base block leading-none ${isInactive ? 'text-muted-foreground' : 'text-primary'}`}>
-                ₹{item.price.toFixed(0)}
-                <span className={`text-base ${isInactive ? '' : 'text-primary'}`}>
-                  /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
+              {editingPriceId === item.id ? (
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-base text-primary">₹</span>
+                  <input
+                    type="number"
+                    value={editingPriceValue}
+                    onChange={e => setEditingPriceValue(e.target.value)}
+                    onBlur={() => savePriceEdit(item.id)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePriceEdit(item.id); if (e.key === 'Escape') setEditingPriceId(null); }}
+                    autoFocus
+                    className="w-16 h-6 text-base font-bold text-primary bg-primary/5 border border-primary/30 rounded px-1 outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              ) : (
+                <span
+                  className={`font-bold text-base block leading-none ${isInactive ? 'text-muted-foreground' : 'text-primary'} ${profile?.role === 'admin' && !isAllBranchesView ? 'cursor-pointer hover:underline decoration-dashed underline-offset-2' : ''}`}
+                  onClick={() => startPriceEdit(item)}
+                  title={profile?.role === 'admin' ? 'Click to edit price' : undefined}
+                >
+                  ₹{item.price.toFixed(0)}
+                  <span className={`text-base ${isInactive ? '' : 'text-primary'}`}>
+                    /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
+                  </span>
                 </span>
-              </span>
+              )}
               {(item.price_zomato || item.price_swiggy) && (
                 <div className="flex gap-1.5 text-[10px] text-muted-foreground mt-1">
                   {item.price_zomato && <span className="bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 px-1 rounded font-medium border border-red-100 dark:border-red-900/30">Z: ₹{item.price_zomato}</span>}
@@ -833,10 +924,36 @@ const Items: React.FC = () => {
               {getMargin(item)}%
             </span>
           )}
+          {formatSchedule(item) && (
+            <span className={`text-[9px] font-medium flex items-center gap-0.5 ${isItemAvailableNow(item) ? 'text-blue-500' : 'text-red-500'}`}>
+              <Clock className="w-2 h-2" />
+              {!isItemAvailableNow(item) && 'Closed'}
+            </span>
+          )}
         </div>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="font-bold text-sm text-primary">₹{item.price.toFixed(0)}</p>
+        {editingPriceId === item.id ? (
+          <div className="flex items-center gap-1 justify-end">
+            <span className="font-bold text-sm text-primary">₹</span>
+            <input
+              type="number"
+              value={editingPriceValue}
+              onChange={e => setEditingPriceValue(e.target.value)}
+              onBlur={() => savePriceEdit(item.id)}
+              onKeyDown={e => { if (e.key === 'Enter') savePriceEdit(item.id); if (e.key === 'Escape') setEditingPriceId(null); }}
+              autoFocus
+              className="w-14 h-5 text-sm font-bold text-primary bg-primary/5 border border-primary/30 rounded px-1 outline-none"
+            />
+          </div>
+        ) : (
+          <p
+            className={`font-bold text-sm text-primary ${profile?.role === 'admin' && !isAllBranchesView ? 'cursor-pointer hover:underline decoration-dashed' : ''}`}
+            onClick={() => startPriceEdit(item)}
+          >
+            ₹{item.price.toFixed(0)}
+          </p>
+        )}
         {item.unlimited_stock ? (
           <p className="text-[10px] text-emerald-600 font-medium">∞ Unlimited</p>
         ) : item.stock_quantity != null ? (

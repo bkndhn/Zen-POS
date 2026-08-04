@@ -95,7 +95,9 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     tax_rate_id: '',
     is_tax_inclusive: true,
     hsn_code: '',
-    is_veg: true
+    is_veg: true,
+    available_from: '',
+    available_until: ''
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
@@ -320,6 +322,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         media_type: formData.media_type,
         is_active: formData.is_active,
         is_veg: formData.is_veg,
+        available_from: formData.available_from || null,
+        available_until: formData.available_until || null,
         unlimited_stock: formData.unlimited_stock,
         admin_id: adminId,
         branch_id: operatingBranchId || null
@@ -375,7 +379,9 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         tax_rate_id: '',
         is_tax_inclusive: true,
         hsn_code: '',
-        is_veg: true
+        is_veg: true,
+        available_from: '',
+        available_until: ''
       });
       setOpen(false);
       setCurrentItemCount(prev => prev + 1);
@@ -446,6 +452,21 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
                 Non-Veg
               </button>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Availability Schedule (optional)</Label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label className="text-[10px] text-muted-foreground">From</Label>
+                <Input type="time" value={formData.available_from} onChange={e => setFormData(prev => ({...prev, available_from: e.target.value}))} className="h-8 text-xs" />
+              </div>
+              <div className="flex-1">
+                <Label className="text-[10px] text-muted-foreground">Until</Label>
+                <Input type="time" value={formData.available_until} onChange={e => setFormData(prev => ({...prev, available_until: e.target.value}))} className="h-8 text-xs" />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Leave empty = always available</p>
           </div>
 
           <div>
