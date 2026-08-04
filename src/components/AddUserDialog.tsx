@@ -324,20 +324,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
           {formData.role === 'admin' && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="businessType">Business Type</Label>
-                <Select value={formData.businessType} onValueChange={(val) => setFormData(p => ({ ...p, businessType: val }))}>
-                  <SelectTrigger id="businessType">
-                    <SelectValue placeholder="Select business type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="restaurant">Restaurant / Food</SelectItem>
-                    <SelectItem value="retail">Retail / Supermarket</SelectItem>
-                    <SelectItem value="pharmacy">Pharmacy / Medical</SelectItem>
-                    <SelectItem value="services">Services</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="hotelName">Business Name</Label>
                 <Input id="hotelName" value={formData.hotelName} onChange={(e) => setFormData(p => ({ ...p, hotelName: e.target.value }))} required placeholder="Enter business name" />

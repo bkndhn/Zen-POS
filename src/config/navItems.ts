@@ -76,19 +76,10 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/settings',         icon: Settings,        label: 'Settings',         page: 'settings',      bottomNav: true },
 ];
 
-export const getFilteredNavItems = (businessType: string | null | undefined): NavItem[] => {
-  const type = businessType || 'restaurant';
-  if (type === 'services') {
-    const hiddenPages = ['kitchen', 'waiterCompanion', 'serviceArea', 'tables', 'tableBilling', 'qrMenu'];
-    return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
-  } else if (type === 'pharmacy' || type === 'retail') {
-    const hiddenPages = ['kitchen', 'waiterCompanion', 'serviceArea', 'tables', 'tableBilling', 'qrMenu', 'providers', 'appointments'];
-    return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
-  } else {
-    // restaurant / cafe
-    const hiddenPages = ['providers', 'appointments'];
-    return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
-  }
+export const getFilteredNavItems = (businessType?: string | null): NavItem[] => {
+  // HARDCODED TO RESTAURANT MODE: Strip out other business types
+  const hiddenPages = ['providers', 'appointments'];
+  return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
 };
 
 /** Unique page keys that appear in the bottom-nav customiser based on business type. */

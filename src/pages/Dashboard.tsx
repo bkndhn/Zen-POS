@@ -39,7 +39,6 @@ const Dashboard = () => {
     todayBills: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [expiringBatches, setExpiringBatches] = useState<ExpiringBatch[]>([]);
 
   useEffect(() => {
     if (adminId) fetchDashboardStats();
@@ -113,36 +112,6 @@ const Dashboard = () => {
         .eq('is_active', true);
 
       const totalItems = itemsData?.length || 0;
-
-      // Fetch expiring batches if pharmacy
-      if (businessType === 'pharmacy') {
-        const nextMonth = new Date();
-        nextMonth.setMonth(nextMonth.getMonth() + 3); // next 3 months
-        
-        let batchQuery: any = supabase
-          .from('item_batches')
-          .select('id, item_id, batch_number, expiry_date, stock_quantity, items(name)')
-          .eq('admin_id', adminId)
-          .gt('stock_quantity', 0)
-          .lte('expiry_date', nextMonth.toISOString().split('T')[0])
-          .order('expiry_date', { ascending: true })
-          .limit(10);
-          
-        if (branchFilterId) batchQuery = batchQuery.eq('branch_id', branchFilterId);
-        
-        const { data: batchData } = await batchQuery;
-        
-        if (batchData) {
-          setExpiringBatches(batchData.map((b: any) => ({
-            id: b.id,
-            item_id: b.item_id,
-            item_name: b.items?.name || 'Unknown Item',
-            batch_number: b.batch_number,
-            expiry_date: b.expiry_date,
-            stock_quantity: b.stock_quantity
-          })));
-        }
-      }
 
       setStats({
         todaySales,
@@ -293,45 +262,6 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
-
-        {businessType === 'pharmacy' && (
-          <Card className="shadow-card lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Expiring Batches (Next 3 Months)</CardTitle>
-              <CardDescription>Items that are nearing their expiration date</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {expiringBatches.length > 0 ? (
-                <div className="space-y-3">
-                  {expiringBatches.map(batch => {
-                    const daysToExpiry = Math.ceil((new Date(batch.expiry_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-                    const isUrgent = daysToExpiry <= 30;
-                    
-                    return (
-                      <div key={batch.id} className={`flex justify-between items-center p-3 rounded-lg border ${isUrgent ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800/30' : 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800/30'}`}>
-                        <div>
-                          <p className="text-sm font-medium">{batch.item_name}</p>
-                          <p className="text-xs text-muted-foreground">Batch: {batch.batch_number} • Stock: {batch.stock_quantity}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-sm font-bold ${isUrgent ? 'text-rose-600 dark:text-rose-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                            {daysToExpiry <= 0 ? 'Expired' : `${daysToExpiry} days`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{batch.expiry_date}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                  <Package className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">No batches expiring soon</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

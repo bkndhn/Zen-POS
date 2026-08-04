@@ -202,7 +202,6 @@ const SuperAdminUsers: React.FC = () => {
   const [clientLimitsTarget, setClientLimitsTarget] = useState<Row | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
-  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
 
   // Pause / Activate and Delete state & handlers
   const [pauseTarget, setPauseTarget] = useState<Row | null>(null);
@@ -983,9 +982,7 @@ const SuperAdminUsers: React.FC = () => {
 
   const baseFiltered = useMemo(() => {
     let result = rows;
-    if (businessTypeFilter !== 'all') {
-      result = result.filter(r => (r.business_type || 'restaurant') === businessTypeFilter);
-    }
+
 
     const s = q.trim().toLowerCase();
     if (!s) return result;
@@ -997,7 +994,7 @@ const SuperAdminUsers: React.FC = () => {
       (r.shop_name || '').toLowerCase().includes(s) ||
       (r.admin_name || '').toLowerCase().includes(s)
     );
-  }, [rows, q, businessTypeFilter]);
+  }, [rows, q]);
 
   const allAdmins = useMemo(() => baseFiltered.filter(r => r.role === 'admin'), [baseFiltered]);
   const allStaff = useMemo(() => baseFiltered.filter(r => r.role === 'user'), [baseFiltered]);
@@ -1094,20 +1091,6 @@ const SuperAdminUsers: React.FC = () => {
                   >
                     All ({baseFiltered.length})
                   </button>
-                </div>
-
-                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 mr-2 border">
-                  <select
-                    value={businessTypeFilter}
-                    onChange={(e) => setBusinessTypeFilter(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 py-1 cursor-pointer"
-                  >
-                    <option value="all">All Business Types</option>
-                    <option value="restaurant">Restaurant</option>
-                    <option value="services">Services</option>
-                    <option value="pharmacy">Pharmacy</option>
-                    <option value="retail">Retail</option>
-                  </select>
                 </div>
 
                 <Button

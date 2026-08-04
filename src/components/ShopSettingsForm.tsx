@@ -590,25 +590,14 @@ export const ShopSettingsForm = () => {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="businessType" className="flex items-center gap-2">
-                            Business Type
-                            {profile?.role !== 'super_admin' && (
-                                <Badge variant="secondary" className="text-[10px]">Read Only</Badge>
-                            )}
-                        </Label>
-                        <Select 
-                            value={businessType} 
-                            onValueChange={setBusinessType}
-                            disabled={profile?.role !== 'super_admin'}
-                        >
-                            <SelectTrigger id="businessType">
-                                <SelectValue placeholder="Select business type" />
+                        <Label htmlFor="printerWidth">Printer Width</Label>
+                        <Select value={printerWidth} onValueChange={(value: '58mm' | '80mm') => setPrinterWidth(value)}>
+                            <SelectTrigger id="printerWidth">
+                                <SelectValue placeholder="Select printer width" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="restaurant">Restaurant / Food</SelectItem>
-                                <SelectItem value="retail">Retail / Supermarket</SelectItem>
-                                <SelectItem value="pharmacy">Pharmacy / Medical</SelectItem>
-                                <SelectItem value="services">Services</SelectItem>
+                                <SelectItem value="58mm">58mm</SelectItem>
+                                <SelectItem value="80mm">80mm</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

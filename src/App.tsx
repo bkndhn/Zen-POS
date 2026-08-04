@@ -248,7 +248,6 @@ const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
 const Providers = lazy(() => import("./pages/Providers"));
 const Appointments = lazy(() => import("./pages/Appointments"));
-const BarcodeStudio = lazy(() => import("./pages/BarcodeStudio"));
 import { GlobalSettingsSync } from '@/components/GlobalSettingsSync';
 
 const queryClient = new QueryClient({
@@ -398,7 +397,6 @@ const App = () => {
                   <Route path="/online-orders" element={<Layout><ProtectedRoute requiredPermission="onlineOrders"><OnlineOrders /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />
                   <Route path="/waiter" element={<Layout><ProtectedRoute requiredPermission="waiterCompanion"><WaiterCompanion /></ProtectedRoute></Layout>} />
-                  <Route path="/barcode-studio" element={<Layout><ProtectedRoute requiredPermission="items"><BarcodeStudio /></ProtectedRoute></Layout>} />
                   <Route path="/suppliers" element={<Layout><ProtectedRoute requiredPermission="suppliers"><Suppliers /></ProtectedRoute></Layout>} />
                   <Route path="/purchases" element={<Layout><ProtectedRoute requiredPermission="purchases"><Purchases /></ProtectedRoute></Layout>} />
                   <Route path="/stock" element={<Layout><ProtectedRoute requiredPermission="stock"><StockManagement /></ProtectedRoute></Layout>} />

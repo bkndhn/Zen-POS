@@ -84,7 +84,6 @@ interface CompletePaymentDialogProps {
   defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
   autoPrintEnabled?: boolean;
-  businessType?: string;
 }
 
 // Strong name validation logic (excludes dummy words, repetitive/sequential characters)
@@ -134,7 +133,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   defaultOrderType,
   taxRatesMap = {},
   autoPrintEnabled = false,
-  businessType
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState(0);
@@ -156,11 +154,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [paidAmount, setPaidAmount] = useState<string>('');
   const { adminProfileId } = useAuth();
 
-  useEffect(() => {
-    if (open && adminProfileId && businessType === 'services') {
-      supabase.from('providers').select('id, name').eq('admin_id', adminProfileId).eq('is_active', true).then(({ data }) => setProviders(data || []));
-    }
-  }, [open, adminProfileId, businessType]);
+
   const [prescriptionImage, setPrescriptionImage] = useState('');
 
   // When dialog opens, sync orderType to configured default (per branch)
@@ -706,35 +700,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                   />
                 </div>
 
-                {businessType === 'pharmacy' && (
-                  <div className="pt-2 border-t mt-2">
-                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Doctor & Prescription</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-[11px] mb-1">Doctor Name (Opt)</Label>
-                        <div className="relative">
-                          <Input
-                            placeholder="Dr. Smith"
-                            value={doctorName}
-                            onChange={(e) => setDoctorName(e.target.value)}
-                            className="h-8 pl-2 pr-2 text-xs"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-[11px] mb-1">Prescription Image URL (Opt)</Label>
-                        <div className="relative">
-                          <Input
-                            placeholder="https://.../img.jpg"
-                            value={prescriptionImage}
-                            onChange={(e) => setPrescriptionImage(e.target.value)}
-                            className="h-8 pl-2 pr-2 text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+
               </div>
             )}
           </div>
@@ -802,46 +768,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             </div>
           )}
 
-          {/* Provider and Khata for Services */}
-          {businessType === 'services' && (
-            <div className="flex flex-col gap-2 p-2 border rounded-md bg-slate-50 dark:bg-slate-900/50 mt-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold">Service Provider</Label>
-                <Select value={selectedProviderId} onValueChange={setSelectedProviderId}>
-                  <SelectTrigger className="w-[180px] h-8 text-xs">
-                    <SelectValue placeholder="Select Provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {providers.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-2">
-                  <Switch id="khata-toggle" checked={isKhata} onCheckedChange={setIsKhata} />
-                  <Label htmlFor="khata-toggle" className="text-xs font-semibold">Partial Payment (Khata)</Label>
-                </div>
-              </div>
-              {isKhata && (
-                <div className="flex items-center justify-between mt-1">
-                  <Label className="text-xs text-muted-foreground">Amount Paid Now (₹)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max={total}
-                    value={paidAmount}
-                    onChange={(e) => setPaidAmount(e.target.value)}
-                    placeholder={total.toString()}
-                    className="w-[180px] h-8 text-xs bg-white"
-                  />
-                </div>
-              )}
-            </div>
-          )}
+
         </div>
 
         <div className="border-t border-primary/10 bg-muted/40 p-3 pb-3.5 flex-shrink-0 space-y-3">
