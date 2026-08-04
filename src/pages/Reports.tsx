@@ -2119,6 +2119,83 @@ const Reports: React.FC = () => {
                   </div>
                 )}
 
+                {/* Visual P&L Summary */}
+                <div className="grid grid-cols-4 gap-3 mb-4">
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3 text-center border border-emerald-200 dark:border-emerald-800/30">
+                    <p className="text-lg font-black text-emerald-600">₹{totalSales.toFixed(0)}</p>
+                    <p className="text-[10px] text-emerald-600/70 font-medium">Revenue</p>
+                  </div>
+                  <div className="bg-rose-50 dark:bg-rose-950/20 rounded-xl p-3 text-center border border-rose-200 dark:border-rose-800/30">
+                    <p className="text-lg font-black text-rose-600">₹{totalCOGS.toFixed(0)}</p>
+                    <p className="text-[10px] text-rose-600/70 font-medium">COGS</p>
+                  </div>
+                  <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-3 text-center border border-amber-200 dark:border-amber-800/30">
+                    <p className="text-lg font-black text-amber-600">₹{totalExpenses.toFixed(0)}</p>
+                    <p className="text-[10px] text-amber-600/70 font-medium">Expenses</p>
+                  </div>
+                  <div className={`${netProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'} rounded-xl p-3 text-center border`}>
+                    <p className={`text-lg font-black ${netProfit >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>₹{netProfit.toFixed(0)}</p>
+                    <p className={`text-[10px] font-medium ${netProfit >= 0 ? 'text-blue-600/70' : 'text-rose-600/70'}`}>Net Profit</p>
+                  </div>
+                </div>
+
+                {/* Profit Waterfall Bar */}
+                {totalSales > 0 && (
+                  <div className="mb-4 bg-muted/30 rounded-xl p-3 border">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-2">Profit Waterfall</p>
+                    <div className="flex h-6 rounded-lg overflow-hidden">
+                      {totalCOGS > 0 && (
+                        <div className="bg-rose-400 flex items-center justify-center" style={{ width: `${(totalCOGS / totalSales * 100).toFixed(1)}%` }}>
+                          <span className="text-[8px] text-white font-bold">{(totalCOGS / totalSales * 100).toFixed(0)}%</span>
+                        </div>
+                      )}
+                      {totalExpenses > 0 && (
+                        <div className="bg-amber-400 flex items-center justify-center" style={{ width: `${(totalExpenses / totalSales * 100).toFixed(1)}%` }}>
+                          <span className="text-[8px] text-white font-bold">{(totalExpenses / totalSales * 100).toFixed(0)}%</span>
+                        </div>
+                      )}
+                      {netProfit > 0 && (
+                        <div className="bg-emerald-500 flex items-center justify-center" style={{ width: `${(netProfit / totalSales * 100).toFixed(1)}%` }}>
+                          <span className="text-[8px] text-white font-bold">{(netProfit / totalSales * 100).toFixed(0)}%</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 mt-1.5 text-[9px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-400" /> COGS</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-400" /> Expenses</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-500" /> Profit</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Expense Category Breakdown */}
+                {(() => {
+                  const expenseByCat = new Map<string, number>();
+                  expenses.forEach(e => {
+                    const cat = (e as any).category || 'Other';
+                    expenseByCat.set(cat, (expenseByCat.get(cat) || 0) + Number((e as any).amount || 0));
+                  });
+                  const sorted = [...expenseByCat.entries()].sort(([,a], [,b]) => b - a);
+                  if (sorted.length === 0) return null;
+                  const maxExp = sorted[0]?.[1] || 1;
+                  return (
+                    <div className="mb-4 bg-muted/30 rounded-xl p-3 border">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-2">Expense Breakdown</p>
+                      <div className="space-y-1.5">
+                        {sorted.slice(0, 5).map(([cat, amount]) => (
+                          <div key={cat} className="flex items-center gap-2">
+                            <span className="text-xs w-24 truncate text-muted-foreground">{cat}</span>
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(amount / maxExp) * 100}%` }} />
+                            </div>
+                            <span className="text-xs font-semibold w-16 text-right">₹{amount.toFixed(0)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Accrual P&L */}
                   <div className="bg-muted/40 rounded-2xl p-4 border border-border space-y-4">
