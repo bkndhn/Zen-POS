@@ -94,7 +94,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     unlimited_stock: false,
     tax_rate_id: '',
     is_tax_inclusive: true,
-    hsn_code: ''
+    hsn_code: '',
+    is_veg: true
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
@@ -318,6 +319,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         video_url: formData.video_url.trim() || null,
         media_type: formData.media_type,
         is_active: formData.is_active,
+        is_veg: formData.is_veg,
         unlimited_stock: formData.unlimited_stock,
         admin_id: adminId,
         branch_id: operatingBranchId || null
@@ -372,7 +374,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         unlimited_stock: false,
         tax_rate_id: '',
         is_tax_inclusive: true,
-        hsn_code: ''
+        hsn_code: '',
+        is_veg: true
       });
       setOpen(false);
       setCurrentItemCount(prev => prev + 1);
@@ -421,6 +424,28 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
               placeholder="Enter item name"
               required
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium">Type</Label>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({...prev, is_veg: true}))}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${formData.is_veg ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-green-500' : 'bg-muted text-muted-foreground'}`}
+              >
+                <span className="w-2.5 h-2.5 rounded-sm border-2 border-green-600 bg-green-500"></span>
+                Veg
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({...prev, is_veg: false}))}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${!formData.is_veg ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-red-500' : 'bg-muted text-muted-foreground'}`}
+              >
+                <span className="w-2.5 h-2.5 rounded-sm border-2 border-red-600 bg-red-500"></span>
+                Non-Veg
+              </button>
+            </div>
           </div>
 
           <div>
