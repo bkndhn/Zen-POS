@@ -22,6 +22,7 @@ interface TopItem {
   name: string;
   quantity: number;
   revenue: number;
+  unit: string;
 }
 
 interface HourlyData {
@@ -132,11 +133,11 @@ const Dashboard = () => {
       const totalItems = itemsData?.length || 0;
 
       // Process top items from bill_items
-      const itemSalesMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+      const itemSalesMap = new Map<string, { name: string; quantity: number; revenue: number; unit: string }>();
       todayBills.forEach((bill: any) => {
         (bill.bill_items || []).forEach((bi: any) => {
           const name = bi.item_name_override || bi.items?.name || 'Unknown';
-          const existing = itemSalesMap.get(name) || { name, quantity: 0, revenue: 0 };
+          const existing = itemSalesMap.get(name) || { name, quantity: 0, revenue: 0, unit: bi.items?.unit || 'pc' };
           existing.quantity += Number(bi.quantity) || 0;
           existing.revenue += Number(bi.total) || 0;
           itemSalesMap.set(name, existing);
@@ -324,7 +325,9 @@ const Dashboard = () => {
                           <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all" style={{ width: `${(item.revenue / maxRevenue) * 100}%` }} />
                           </div>
-                          <span className="text-[10px] text-muted-foreground flex-shrink-0">{item.quantity} sold</span>
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                            {item.quantity % 1 !== 0 ? item.quantity.toFixed(3) : item.quantity} {item.unit} sold
+                          </span>
                         </div>
                       </div>
                     </div>
