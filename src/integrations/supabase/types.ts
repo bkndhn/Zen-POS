@@ -976,6 +976,39 @@ export type Database = {
           },
         ]
       }
+      expense_budgets: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          category: string
+          created_at: string
+          id: string
+          limit_amount: number
+          month: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          month: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          month?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           admin_id: string | null
@@ -1025,40 +1058,58 @@ export type Database = {
         Row: {
           admin_id: string | null
           amount: number
+          attachment_url: string | null
           branch_id: string | null
           category: string
+          client_uuid: string | null
           created_at: string
           created_by: string
           date: string
           expense_name: string | null
           id: string
+          is_recurring: boolean
           note: string | null
+          paid_to: string | null
+          payment_mode: string | null
+          recurrence: string | null
           updated_at: string
         }
         Insert: {
           admin_id?: string | null
           amount: number
+          attachment_url?: string | null
           branch_id?: string | null
           category: string
+          client_uuid?: string | null
           created_at?: string
           created_by: string
           date?: string
           expense_name?: string | null
           id?: string
+          is_recurring?: boolean
           note?: string | null
+          paid_to?: string | null
+          payment_mode?: string | null
+          recurrence?: string | null
           updated_at?: string
         }
         Update: {
           admin_id?: string | null
           amount?: number
+          attachment_url?: string | null
           branch_id?: string | null
           category?: string
+          client_uuid?: string | null
           created_at?: string
           created_by?: string
           date?: string
           expense_name?: string | null
           id?: string
+          is_recurring?: boolean
           note?: string | null
+          paid_to?: string | null
+          payment_mode?: string | null
+          recurrence?: string | null
           updated_at?: string
         }
         Relationships: [
