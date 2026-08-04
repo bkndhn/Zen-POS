@@ -10,7 +10,6 @@ import { toast } from '@/hooks/use-toast';
 import { Package, Search, Plus, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
-import { RetailAddItemDialog } from '@/components/RetailAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EditItemDialog } from '@/components/EditItemDialog';
@@ -562,12 +561,7 @@ const Items: React.FC = () => {
                 <AiMenuImportDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
               )}
               <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
-              {(businessType === 'retail' || businessType === 'pharmacy') && (
-                <RetailAddItemDialog onItemAdded={handleItemAdded} />
-              )}
-              {businessType !== 'retail' && businessType !== 'pharmacy' && (
-                <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
-              )}
+              <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
             </>
           )}
         </div>

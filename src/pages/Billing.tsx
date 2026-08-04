@@ -427,7 +427,7 @@ const BillingListItemCard = React.memo(({
                     </button>
                   );
                 })}
-                <Button onClick={() => onAddToCart(item)} className={cn("bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg shrink-0", item.quick_chips && item.quick_chips.length > 0 && "ml-auto")}>
+                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg shrink-0">
                   Add
                 </Button>
               </div>
@@ -975,12 +975,12 @@ const Billing = () => {
         case 'F2':
           e.preventDefault();
           setAppBillingMode('pos');
-          toast({ title: '⚡ Mode Switched', description: businessType === 'retail' || businessType === 'pharmacy' ? 'Barcode POS Mode (F2)' : 'Standard POS Mode (F2)' });
+          toast({ title: '⚡ Mode Switched', description: 'Standard POS Mode (F2)' });
           break;
         case 'F3':
           e.preventDefault();
           setAppBillingMode('calci');
-          toast({ title: '🧮 Mode Switched', description: businessType === 'retail' || businessType === 'pharmacy' ? 'Bulk Entry (Calci Mode) (F3)' : 'Calci Mode (F3)' });
+          toast({ title: '🧮 Mode Switched', description: 'Calci Mode (F3)' });
           break;
         case 'F4':
           e.preventDefault();
@@ -1027,7 +1027,7 @@ const Billing = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, toast, businessType]);
+  }, [cart, toast]);
   const [billSettings, setBillSettings] = useState<{
     shopName: string;
     address: string;
@@ -2465,7 +2465,6 @@ const Billing = () => {
         admin_id: adminId || null,
         channel: billPayload.channel || 'store',
         billing_type: appBillingMode,
-        provider_id: billPayload.provider_id || null,
         date: format(new Date(), 'yyyy-MM-dd')
       },
       p_cart_items: validCart.map(item => {
@@ -2823,7 +2822,6 @@ const Billing = () => {
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
     printAction?: 'print' | 'no-print';
-    providerId?: string;
   }) => {
     setPaymentDialogOpen(false);
 
@@ -2944,8 +2942,7 @@ const Billing = () => {
         order_type: paymentData.orderType || 'dine_in',
         channel: orderChannel,
         customer_mobile: paymentData.customerMobile || null,
-        customer_phone: paymentData.customerMobile || null,
-        provider_id: paymentData.providerId || null
+        customer_phone: paymentData.customerMobile || null
       };
 
       // Add GST fields to bill if enabled
@@ -3321,6 +3318,26 @@ const Billing = () => {
 
 
 
+  // --- PERFORMANCE FIX: STABILIZE CALLBACKS ---
+  // These refs hold the latest closures of the functions so the memoized cards don't constantly re-render
+  const addToCartRef = useRef(addToCart);
+  const addToCartWithChipRef = useRef(addToCartWithChip);
+  const addToCartWithAmountRef = useRef(addToCartWithAmount);
+  const updateQuantityRef = useRef(updateQuantity);
+
+  useEffect(() => {
+    addToCartRef.current = addToCart;
+    addToCartWithChipRef.current = addToCartWithChip;
+    addToCartWithAmountRef.current = addToCartWithAmount;
+    updateQuantityRef.current = updateQuantity;
+  });
+
+  const stableAddToCart = useCallback((item: Item) => addToCartRef.current(item), []);
+  const stableAddToCartWithChip = useCallback((item: Item, chip: string) => addToCartWithChipRef.current(item, chip), []);
+  const stableAddToCartWithAmount = useCallback((item: Item, amount: number) => addToCartWithAmountRef.current(item, amount), []);
+  const stableUpdateQuantity = useCallback((id: string, change: number) => updateQuantityRef.current(id, change), []);
+  // ------------------------------------------
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -3332,8 +3349,8 @@ const Billing = () => {
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
       {/* Header & Modes */}
       <div className="flex flex-col gap-2 mb-2 w-full">
-        <div className="flex flex-nowrap items-center gap-1.5 w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="flex items-center gap-1.5 shrink-0 order-1">
+        <div className="flex flex-nowrap items-center gap-1.5 w-full overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex items-center gap-1.5 shrink-0">
             <h1 className="text-xl md:text-2xl font-bold leading-none hidden xs:block">
               {isEditMode ? `Edit Bill - ${editingBill?.bill_no}` : 'Billing'}
             </h1>
@@ -3350,7 +3367,7 @@ const Billing = () => {
             variant="outline"
             size="sm"
             onClick={() => setAggregatorDialogOpen(true)}
-            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0 order-5"
+            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
           >
             <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
             <span className="hidden sm:inline">Online Orders</span>
@@ -3368,7 +3385,7 @@ const Billing = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm order-6"
+                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm"
               >
                 <Keyboard className="w-3.5 h-3.5 text-primary" />
                 <span>Keys</span>
@@ -3381,9 +3398,9 @@ const Billing = () => {
                 <span className="text-[10px] text-muted-foreground font-mono">F-Keys</span>
               </div>
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">{businessType === 'retail' || businessType === 'pharmacy' ? 'Focus Barcode/Search:' : 'Focus Search:'}</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">{businessType === 'retail' || businessType === 'pharmacy' ? 'Barcode POS Mode:' : 'Standard POS Mode:'}</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">{businessType === 'retail' || businessType === 'pharmacy' ? 'Bulk Entry (Calci):' : 'Calci Math Mode:'}</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Focus Search:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Standard POS Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
@@ -3409,7 +3426,7 @@ const Billing = () => {
                   } catch {}
                 }
               }}
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer order-7"
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
               title="Click to restore held bill (F8)"
             >
               <span>📌 Held Bill</span>
@@ -3418,7 +3435,7 @@ const Billing = () => {
           )}
 
           {calciEnabled && (
-            <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0 order-3">
+            <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
               <button
                 onClick={() => setAppBillingMode('pos')}
                 className={cn(
@@ -3447,7 +3464,7 @@ const Billing = () => {
           )}
 
           {appBillingMode !== 'calci' && (
-            <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0 order-4">
+            <div className="flex bg-muted/60 p-0.5 rounded-lg border shrink-0">
               <Button
                 type="button"
                 variant="ghost"
@@ -3471,7 +3488,7 @@ const Billing = () => {
             </div>
           )}
 
-          <PrinterStatusPanel inline className="shrink-0 order-2" />
+          <PrinterStatusPanel inline className="shrink-0" />
         </div>
       </div>
 
@@ -3635,10 +3652,10 @@ const Billing = () => {
                 item={item}
                 cartQuantity={cartQuantity}
                 orderChannel={orderChannel}
-                onAddToCart={addToCart}
-                onAddToCartWithChip={addToCartWithChip}
-                onAddToCartWithAmount={addToCartWithAmount}
-                onUpdateQuantity={updateQuantity}
+                onAddToCart={stableAddToCart}
+                onAddToCartWithChip={stableAddToCartWithChip}
+                onAddToCartWithAmount={stableAddToCartWithAmount}
+                onUpdateQuantity={stableUpdateQuantity}
               />
             );
           })}
@@ -3654,10 +3671,10 @@ const Billing = () => {
                   item={item}
                   cartQuantity={cartQuantity}
                   orderChannel={orderChannel}
-                  onAddToCart={addToCart}
-                  onAddToCartWithChip={addToCartWithChip}
-                  onAddToCartWithAmount={addToCartWithAmount}
-                  onUpdateQuantity={updateQuantity}
+                  onAddToCart={stableAddToCart}
+                  onAddToCartWithChip={stableAddToCartWithChip}
+                  onAddToCartWithAmount={stableAddToCartWithAmount}
+                  onUpdateQuantity={stableUpdateQuantity}
                 />
               );
             })}
