@@ -3096,9 +3096,9 @@ const Billing = () => {
               isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
               roundOff: roundOff !== 0 ? roundOff : undefined,
               orderType: paymentData.orderType,
-              fontFamily: settingsToUse?.billFontFamily || getStoredBillFont(operatingBranchId),
-              fontScale: settingsToUse?.billFontScale ? Number(settingsToUse.billFontScale) : getStoredBillFontScale(operatingBranchId),
-              footerMessage: settingsToUse?.billBottomText || getStoredFooterMessage(operatingBranchId)
+              fontFamily: billSettings?.billFontFamily || getStoredBillFont(operatingBranchId),
+              fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(operatingBranchId),
+              footerMessage: billSettings?.billBottomText || getStoredFooterMessage(operatingBranchId)
             };
             await printReceipt(offlinePrintData as PrintData);
           } catch (printError) {
