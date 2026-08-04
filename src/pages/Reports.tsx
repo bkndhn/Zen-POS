@@ -47,6 +47,7 @@ interface Bill {
   channel?: string;
   branch_id?: string | null;
   provider_id?: string | null;
+  created_by?: string;
 }
 
 interface BillItem {
@@ -80,6 +81,56 @@ interface ItemReport {
   total_revenue: number;
   unit?: string;
 }
+
+// Staff row component that resolves name from UUID
+const StaffRow: React.FC<{
+  staff: { id: string; name: string; revenue: number; bills: number; items: number };
+  idx: number;
+  totalRevenue: number;
+  adminId: string | null;
+}> = ({ staff, idx, totalRevenue, adminId }) => {
+  const [staffName, setStaffName] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (staff.id === 'unknown') { setStaffName('Unknown'); return; }
+    // created_by is auth.users UUID, profiles.user_id links to it
+    supabase
+      .from('profiles')
+      .select('name')
+      .eq('user_id', staff.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setStaffName(data?.name || staff.id.slice(0, 8));
+      });
+  }, [staff.id]);
+
+  const share = totalRevenue > 0 ? (staff.revenue / totalRevenue * 100) : 0;
+
+  return (
+    <tr className={`border-b hover:bg-muted/30 ${idx === 0 ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''}`}>
+      <td className="px-3 py-2 text-muted-foreground">{idx + 1}</td>
+      <td className="px-3 py-2 font-medium flex items-center gap-1.5">
+        <span className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-[10px] text-primary-foreground font-bold">
+          {(staffName || '?')[0]?.toUpperCase()}
+        </span>
+        {staffName || '...'}
+        {idx === 0 && <Badge className="bg-amber-500 text-white text-[8px] px-1 py-0 h-3.5">Top</Badge>}
+      </td>
+      <td className="px-3 py-2 text-right">{staff.bills}</td>
+      <td className="px-3 py-2 text-right text-muted-foreground">{staff.items}</td>
+      <td className="px-3 py-2 text-right font-semibold text-primary">₹{staff.revenue.toFixed(0)}</td>
+      <td className="px-3 py-2 text-right">₹{(staff.revenue / staff.bills).toFixed(0)}</td>
+      <td className="px-3 py-2 text-right">
+        <div className="flex items-center justify-end gap-1.5">
+          <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full" style={{ width: `${share}%` }} />
+          </div>
+          <span className="text-[10px] text-muted-foreground w-8 text-right">{share.toFixed(0)}%</span>
+        </div>
+      </td>
+    </tr>
+  );
+};
 
 const Reports: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
@@ -1744,13 +1795,15 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-7 min-w-[560px] h-10">
+          <TabsList className="grid w-full grid-cols-8 min-w-[640px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
             <TabsTrigger value="profit" disabled={billFilter === 'deleted'} className="text-sm font-medium">P&L</TabsTrigger>
             <TabsTrigger value="gst" disabled={billFilter === 'deleted'} className="text-sm font-medium">GST</TabsTrigger>
             <TabsTrigger value="channels" disabled={billFilter === 'deleted'} className="text-sm font-medium">Channels</TabsTrigger>
+            <TabsTrigger value="staff" disabled={billFilter === 'deleted'} className="text-sm font-medium">Staff</TabsTrigger>
+            <TabsTrigger value="tables" disabled={billFilter === 'deleted'} className="text-sm font-medium">Tables</TabsTrigger>
           </TabsList>
         </div>
 
@@ -2447,6 +2500,215 @@ const Reports: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Staff/Waiter-wise Sales Tab */}
+        <TabsContent value="staff" className="mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                👤 Staff-wise Sales Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const activeBills = bills.filter(b => !b.is_deleted);
+                const staffMap = new Map<string, { name: string; revenue: number; bills: number; items: number }>();
+                
+                activeBills.forEach(bill => {
+                  const staffId = bill.created_by || 'unknown';
+                  const existing = staffMap.get(staffId) || { name: '', revenue: 0, bills: 0, items: 0 };
+                  existing.revenue += bill.total_amount || 0;
+                  existing.bills += 1;
+                  existing.items += (bill.bill_items || []).reduce((sum, bi) => sum + bi.quantity, 0);
+                  staffMap.set(staffId, existing);
+                });
+
+                // We need to resolve staff names. Since we have created_by UUIDs,
+                // let's display them and fetch names async
+                const staffData = [...staffMap.entries()]
+                  .map(([id, data]) => ({ id, ...data }))
+                  .sort((a, b) => b.revenue - a.revenue);
+
+                const totalRevenue = staffData.reduce((s, d) => s + d.revenue, 0);
+
+                if (staffData.length === 0) {
+                  return <p className="text-center text-muted-foreground py-8">No bill data for this period</p>;
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">{staffData.length}</p>
+                        <p className="text-[10px] text-muted-foreground">Active Staff</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">₹{totalRevenue.toFixed(0)}</p>
+                        <p className="text-[10px] text-muted-foreground">Total Revenue</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">{activeBills.length}</p>
+                        <p className="text-[10px] text-muted-foreground">Total Bills</p>
+                      </div>
+                    </div>
+
+                    {/* Staff Table */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50 border-b">
+                            <th className="text-left px-3 py-2 text-xs font-medium">#</th>
+                            <th className="text-left px-3 py-2 text-xs font-medium">Staff</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Bills</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Items Sold</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Revenue</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Avg/Bill</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Share</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {staffData.map((staff, idx) => (
+                            <StaffRow key={staff.id} staff={staff} idx={idx} totalRevenue={totalRevenue} adminId={adminId} />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Table-wise Analytics Tab */}
+        <TabsContent value="tables" className="mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                🪑 Table-wise Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const activeBills = bills.filter(b => !b.is_deleted && b.table_no);
+                const tableMap = new Map<string, { revenue: number; bills: number; items: number; timestamps: string[] }>();
+                
+                activeBills.forEach(bill => {
+                  const tableNo = bill.table_no || 'Unknown';
+                  const existing = tableMap.get(tableNo) || { revenue: 0, bills: 0, items: 0, timestamps: [] };
+                  existing.revenue += bill.total_amount || 0;
+                  existing.bills += 1;
+                  existing.items += (bill.bill_items || []).reduce((sum, bi) => sum + bi.quantity, 0);
+                  if (bill.created_at) existing.timestamps.push(bill.created_at);
+                  tableMap.set(tableNo, existing);
+                });
+
+                const tableData = [...tableMap.entries()]
+                  .map(([table, data]) => {
+                    // Calculate avg gap between orders (turn time estimate)
+                    let avgTurnMins = 0;
+                    if (data.timestamps.length > 1) {
+                      const sorted = data.timestamps.map(t => new Date(t).getTime()).sort((a, b) => a - b);
+                      const gaps = sorted.slice(1).map((t, i) => t - sorted[i]);
+                      const validGaps = gaps.filter(g => g > 5 * 60 * 1000 && g < 8 * 60 * 60 * 1000); // 5 min to 8 hrs
+                      if (validGaps.length > 0) {
+                        avgTurnMins = Math.round(validGaps.reduce((a, b) => a + b, 0) / validGaps.length / 60000);
+                      }
+                    }
+                    return { table, ...data, avgTurnMins };
+                  })
+                  .sort((a, b) => b.revenue - a.revenue);
+
+                const totalRevenue = tableData.reduce((s, d) => s + d.revenue, 0);
+                const totalBills = tableData.reduce((s, d) => s + d.bills, 0);
+                const billsWithoutTable = bills.filter(b => !b.is_deleted && !b.table_no).length;
+
+                if (tableData.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No table data for this period</p>
+                      <p className="text-xs text-muted-foreground mt-1">Bills need a table number assigned to show here</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">{tableData.length}</p>
+                        <p className="text-[10px] text-muted-foreground">Tables Used</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">₹{totalRevenue.toFixed(0)}</p>
+                        <p className="text-[10px] text-muted-foreground">Table Revenue</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">₹{totalBills > 0 ? (totalRevenue / totalBills).toFixed(0) : 0}</p>
+                        <p className="text-[10px] text-muted-foreground">Avg Per Order</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-muted-foreground">{billsWithoutTable}</p>
+                        <p className="text-[10px] text-muted-foreground">Parcel / No Table</p>
+                      </div>
+                    </div>
+
+                    {/* Table Grid */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50 border-b">
+                            <th className="text-left px-3 py-2 text-xs font-medium">Table</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Orders</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Items</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Revenue</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Avg/Order</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Turn Time</th>
+                            <th className="text-right px-3 py-2 text-xs font-medium">Share</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tableData.map((row, idx) => (
+                            <tr key={row.table} className={`border-b hover:bg-muted/30 ${idx === 0 ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''}`}>
+                              <td className="px-3 py-2 font-medium flex items-center gap-1.5">
+                                <span className="text-base">🪑</span>
+                                {row.table}
+                                {idx === 0 && <Badge className="bg-amber-500 text-white text-[8px] px-1 py-0 h-3.5">Top</Badge>}
+                              </td>
+                              <td className="px-3 py-2 text-right">{row.bills}</td>
+                              <td className="px-3 py-2 text-right text-muted-foreground">{row.items}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-primary">₹{row.revenue.toFixed(0)}</td>
+                              <td className="px-3 py-2 text-right">₹{(row.revenue / row.bills).toFixed(0)}</td>
+                              <td className="px-3 py-2 text-right">
+                                {row.avgTurnMins > 0 ? (
+                                  <span className={`text-xs font-medium ${row.avgTurnMins < 45 ? 'text-green-600' : row.avgTurnMins < 90 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                    {row.avgTurnMins}m
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-primary rounded-full" style={{ width: `${totalRevenue > 0 ? (row.revenue / totalRevenue * 100) : 0}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground w-8 text-right">{totalRevenue > 0 ? (row.revenue / totalRevenue * 100).toFixed(0) : 0}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
