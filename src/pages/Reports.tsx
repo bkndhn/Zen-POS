@@ -1,3 +1,4 @@
+import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -279,7 +280,10 @@ const Reports: React.FC = () => {
           showWhatsapp: data.show_whatsapp,
           whatsappBillShareEnabled: data.whatsapp_bill_share_enabled !== false,
           gstin: data.gstin || '',
-          printerWidth: data.printer_width || '58mm'
+          printerWidth: data.printer_width || '58mm',
+          billFontFamily: data.bill_font_family || '',
+          billFontScale: data.bill_font_scale || 1,
+          billBottomText: data.bill_bottom_text || ''
         };
       }
     } catch (e) {
@@ -382,7 +386,10 @@ const Reports: React.FC = () => {
         totalTax: bill.total_tax || undefined,
         isComposition: (bill as any).is_composition || undefined,
         roundOff: (bill as any).round_off || undefined,
-        orderType: (bill as any).order_type || undefined
+        orderType: (bill as any).order_type || undefined,
+        fontFamily: settings?.billFontFamily || getStoredBillFont(bill.branch_id || undefined),
+        fontScale: settings?.billFontScale ? Number(settings.billFontScale) : getStoredBillFontScale(bill.branch_id || undefined),
+        footerMessage: settings?.billBottomText || getStoredFooterMessage(bill.branch_id || undefined)
       };
       shareBillImageViaWhatsApp('', billData).then(result => {
         setSharingImage(false);
@@ -1272,7 +1279,10 @@ const Reports: React.FC = () => {
         totalTax: bill.total_tax || undefined,
         isComposition: (bill as any).is_composition || undefined,
         customerGstin: (bill as any).customer_gstin || undefined,
-        roundOff: (bill as any).round_off || undefined
+        roundOff: (bill as any).round_off || undefined,
+        fontFamily: settings?.billFontFamily || getStoredBillFont(bill.branch_id || undefined),
+        fontScale: settings?.billFontScale ? Number(settings.billFontScale) : getStoredBillFontScale(bill.branch_id || undefined),
+        footerMessage: settings?.billBottomText || getStoredFooterMessage(bill.branch_id || undefined)
       };
 
       toast({
@@ -1336,7 +1346,10 @@ const Reports: React.FC = () => {
         totalTax: bill.total_tax || undefined,
         isComposition: (bill as any).is_composition || undefined,
         customerGstin: (bill as any).customer_gstin || undefined,
-        roundOff: (bill as any).round_off || undefined
+        roundOff: (bill as any).round_off || undefined,
+        fontFamily: settings?.billFontFamily || getStoredBillFont(bill.branch_id || undefined),
+        fontScale: settings?.billFontScale ? Number(settings.billFontScale) : getStoredBillFontScale(bill.branch_id || undefined),
+        footerMessage: settings?.billBottomText || getStoredFooterMessage(bill.branch_id || undefined)
       };
       await printBrowserReceipt(printData as any);
     }
