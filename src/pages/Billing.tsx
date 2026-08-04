@@ -2714,7 +2714,10 @@ const Billing = () => {
           roundOff: gstData?.roundOff,
           orderType: orderType,
           // Shop logo
-          logoUrl: gstData?.logoUrl
+          logoUrl: gstData?.logoUrl,
+          fontFamily: settingsToUse?.billFontFamily || getStoredBillFont(operatingBranchId),
+          fontScale: settingsToUse?.billFontScale ? Number(settingsToUse.billFontScale) : getStoredBillFontScale(operatingBranchId),
+          footerMessage: settingsToUse?.billBottomText || getStoredFooterMessage(operatingBranchId)
         };
         const result = await shareBillImageViaWhatsApp(customerMobile, billData);
         if (result.success) {
@@ -3092,7 +3095,10 @@ const Billing = () => {
               totalTax: billPayload.total_tax || undefined,
               isComposition: gstSettings.enabled ? gstSettings.isComposition : undefined,
               roundOff: roundOff !== 0 ? roundOff : undefined,
-              orderType: paymentData.orderType
+              orderType: paymentData.orderType,
+              fontFamily: settingsToUse?.billFontFamily || getStoredBillFont(operatingBranchId),
+              fontScale: settingsToUse?.billFontScale ? Number(settingsToUse.billFontScale) : getStoredBillFontScale(operatingBranchId),
+              footerMessage: settingsToUse?.billBottomText || getStoredFooterMessage(operatingBranchId)
             };
             await printReceipt(offlinePrintData as PrintData);
           } catch (printError) {

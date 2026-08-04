@@ -587,6 +587,9 @@ const TableOrderBilling: React.FC = () => {
                     phone: billSettings?.contactNumber || activeBranch?.contact_number || '',
                     totalItemsCount: items.length,
                     smartQtyCount: calculateSmartQtyCount(items),
+                    fontFamily: (billSettings as any)?.billFontFamily || getStoredBillFont(operatingBranchId),
+                    fontScale: (billSettings as any)?.billFontScale ? Number((billSettings as any).billFontScale) : getStoredBillFontScale(operatingBranchId),
+                    footerMessage: (billSettings as any)?.billBottomText || getStoredFooterMessage(operatingBranchId),
                 };
 
                 const result = await shareBillImageViaWhatsApp(customerMobile, billData);

@@ -1,3 +1,4 @@
+import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -155,7 +156,7 @@ const CRM: React.FC = () => {
         try {
           const { data } = await (supabase as any)
             .from('shop_settings')
-            .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url')
+            .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url, bill_font_family, bill_font_scale, bill_bottom_text')
             .eq('admin_id', adminId)
             .maybeSingle();
           if (data) {
@@ -166,7 +167,10 @@ const CRM: React.FC = () => {
               logoUrl: data.logo_url || '',
               whatsappBillShareEnabled: data.whatsapp_bill_share_enabled !== false,
               gstin: data.gstin || '',
-              printerWidth: data.printer_width || '58mm'
+              printerWidth: data.printer_width || '58mm',
+              billFontFamily: data.bill_font_family || '',
+              billFontScale: data.bill_font_scale || 1,
+              billBottomText: data.bill_bottom_text || ''
             });
           }
         } catch (err) {
@@ -463,7 +467,10 @@ const CRM: React.FC = () => {
           totalTax: bill.total_tax || undefined,
           isComposition: (bill as any).is_composition || undefined,
           roundOff: bill.round_off || undefined,
-          orderType: bill.order_type || undefined
+          orderType: bill.order_type || undefined,
+          fontFamily: billSettings?.billFontFamily || getStoredBillFont(bill.branch_id || undefined),
+          fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(bill.branch_id || undefined),
+          footerMessage: billSettings?.billBottomText || getStoredFooterMessage(bill.branch_id || undefined)
         };
         
         setSharingBillId(bill.id);
@@ -560,7 +567,10 @@ const CRM: React.FC = () => {
         totalTax: bill.total_tax || undefined,
         customerGstin: bill.customer_gstin || undefined,
         roundOff: bill.round_off || undefined,
-        customerMobile: bill.customer_phone || historyCustomer?.phone || undefined
+        customerMobile: bill.customer_phone || historyCustomer?.phone || undefined,
+        fontFamily: billSettings?.billFontFamily || getStoredBillFont(bill.branch_id || undefined),
+        fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(bill.branch_id || undefined),
+        footerMessage: billSettings?.billBottomText || getStoredFooterMessage(bill.branch_id || undefined)
       };
 
       toast({
@@ -618,7 +628,10 @@ const CRM: React.FC = () => {
           totalTax: bill.total_tax || undefined,
           customerGstin: bill.customer_gstin || undefined,
           roundOff: bill.round_off || undefined,
-          customerMobile: bill.customer_phone || historyCustomer?.phone || undefined
+          customerMobile: bill.customer_phone || historyCustomer?.phone || undefined,
+          fontFamily: billSettings?.billFontFamily || getStoredBillFont(bill.branch_id || undefined),
+          fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(bill.branch_id || undefined),
+          footerMessage: billSettings?.billBottomText || getStoredFooterMessage(bill.branch_id || undefined)
         };
         await printBrowserReceipt(printData as any);
       } catch (err) {
