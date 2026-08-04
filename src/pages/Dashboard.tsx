@@ -8,6 +8,7 @@ import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { formatQuantityWithUnit } from '@/utils/timeUtils';
 
 interface DashboardStats {
   todaySales: number;
@@ -94,7 +95,7 @@ const Dashboard = () => {
             price,
             total,
             item_name_override,
-            items ( name, category )
+            items ( name, category, unit )
           )
         `)
         .eq('admin_id', adminId)
@@ -326,7 +327,7 @@ const Dashboard = () => {
                             <div className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all" style={{ width: `${(item.revenue / maxRevenue) * 100}%` }} />
                           </div>
                           <span className="text-[10px] text-muted-foreground flex-shrink-0">
-                            {item.quantity % 1 !== 0 ? item.quantity.toFixed(3) : item.quantity} {item.unit} sold
+                            {formatQuantityWithUnit(item.quantity, item.unit)} sold
                           </span>
                         </div>
                       </div>

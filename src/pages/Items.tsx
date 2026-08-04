@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { EditItemDialog } from '@/components/EditItemDialog';
 import { ItemCategoryManagement } from '@/components/ItemCategoryManagement';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
-import { getShortUnit, formatStoredQuantity } from '@/utils/timeUtils';
+import { getShortUnit, formatQuantityWithUnit } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
@@ -828,7 +828,7 @@ const Items: React.FC = () => {
                 >
                   ₹{item.price.toFixed(0)}
                   <span className={`text-base ${isInactive ? '' : 'text-primary'}`}>
-                    /{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}
+                    /{formatQuantityWithUnit(item.base_value || 1, item.unit)}
                   </span>
                 </span>
               )}
@@ -850,7 +850,7 @@ const Items: React.FC = () => {
                     </button>
                   )}
                   <span className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>
-                    Stk: {formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}
+                    Stk: {formatQuantityWithUnit(item.stock_quantity || 0, item.inventory_unit || item.unit)}
                     {isAllBranchesView && item.__branchCount && item.__branchCount > 1 && (
                       <span className="ml-1 text-primary">({item.__branchCount} branches)</span>
                     )}
@@ -963,7 +963,7 @@ const Items: React.FC = () => {
                 <Minus className="w-2.5 h-2.5" />
               </button>
             )}
-            <p className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>{formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}</p>
+            <p className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>{formatQuantityWithUnit(item.stock_quantity || 0, item.inventory_unit || item.unit)}</p>
             {profile?.role === 'admin' && !isInactive && (
               <button onClick={(e) => { e.stopPropagation(); quickStockAdjust(item, 1); }} className="w-4 h-4 rounded bg-muted hover:bg-green-100 dark:hover:bg-green-900/30 flex items-center justify-center text-muted-foreground hover:text-green-600 transition-colors">
                 <Plus className="w-2.5 h-2.5" />
