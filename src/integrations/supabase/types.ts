@@ -1488,6 +1488,8 @@ export type Database = {
       items: {
         Row: {
           admin_id: string | null
+          available_from: string | null
+          available_until: string | null
           barcode: string | null
           base_value: number | null
           branch_id: string | null
@@ -1507,6 +1509,7 @@ export type Database = {
           is_active: boolean
           is_saleable: boolean | null
           is_tax_inclusive: boolean | null
+          is_veg: boolean | null
           media_type: string | null
           minimum_stock_alert: number | null
           name: string
@@ -1529,6 +1532,8 @@ export type Database = {
         }
         Insert: {
           admin_id?: string | null
+          available_from?: string | null
+          available_until?: string | null
           barcode?: string | null
           base_value?: number | null
           branch_id?: string | null
@@ -1548,6 +1553,7 @@ export type Database = {
           is_active?: boolean
           is_saleable?: boolean | null
           is_tax_inclusive?: boolean | null
+          is_veg?: boolean | null
           media_type?: string | null
           minimum_stock_alert?: number | null
           name: string
@@ -1570,6 +1576,8 @@ export type Database = {
         }
         Update: {
           admin_id?: string | null
+          available_from?: string | null
+          available_until?: string | null
           barcode?: string | null
           base_value?: number | null
           branch_id?: string | null
@@ -1589,6 +1597,7 @@ export type Database = {
           is_active?: boolean
           is_saleable?: boolean | null
           is_tax_inclusive?: boolean | null
+          is_veg?: boolean | null
           media_type?: string | null
           minimum_stock_alert?: number | null
           name?: string
