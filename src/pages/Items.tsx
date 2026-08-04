@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame } from 'lucide-react';
+import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
@@ -74,6 +74,8 @@ const Items: React.FC = () => {
   const [isReordering, setIsReordering] = useState(false);
   const [stockFilter, setStockFilter] = useState<'all' | 'limited' | 'unlimited'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<'default' | 'name' | 'price_asc' | 'price_desc' | 'stock_low' | 'newest' | 'bestseller'>('default');
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   // Bulk selection state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -342,12 +344,81 @@ const Items: React.FC = () => {
     } else if (stockFilter === 'limited') {
       filtered = filtered.filter(item => !item.unlimited_stock);
     }
+
+    // Sort
+    if (sortBy !== 'default') {
+      filtered = [...filtered].sort((a, b) => {
+        switch (sortBy) {
+          case 'name': return (a.name || '').localeCompare(b.name || '');
+          case 'price_asc': return (a.price || 0) - (b.price || 0);
+          case 'price_desc': return (b.price || 0) - (a.price || 0);
+          case 'stock_low': {
+            const sa = a.unlimited_stock ? Infinity : (a.stock_quantity ?? Infinity);
+            const sb = b.unlimited_stock ? Infinity : (b.stock_quantity ?? Infinity);
+            return sa - sb;
+          }
+          case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          case 'bestseller': {
+            const aTop = topSellerIds.has(a.id) ? 0 : 1;
+            const bTop = topSellerIds.has(b.id) ? 0 : 1;
+            return aTop - bTop;
+          }
+          default: return 0;
+        }
+      });
+    }
     
     return filtered;
-  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId, stockFilter]);
+  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId, stockFilter, sortBy, topSellerIds]);
 
   const handleItemAdded = () => {
     fetchItems();
+  };
+
+  // Duplicate item
+  const duplicateItem = async (item: Item) => {
+    try {
+      const { id, created_at, updated_at, __branchCount, __branchBreakdown, ...rest } = item as any;
+      const newItem = {
+        ...rest,
+        name: `${item.name} (Copy)`,
+        display_order: null,
+      };
+      const { error } = await supabase.from('items').insert(newItem);
+      if (error) throw error;
+      toast({ title: 'Duplicated', description: `"${item.name}" copied successfully` });
+      fetchItems();
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to duplicate item', variant: 'destructive' });
+    }
+  };
+
+  // Export menu as CSV
+  const exportMenu = () => {
+    const exportItems = filteredItems.filter(i => i.is_active);
+    if (exportItems.length === 0) {
+      toast({ title: 'No items', description: 'No active items to export', variant: 'destructive' });
+      return;
+    }
+    const headers = ['Name', 'Category', 'Price', 'Veg/Non-Veg', 'Stock', 'Unit', 'Purchase Rate', 'Margin %'];
+    const rows = exportItems.map(item => [
+      item.name,
+      item.category || '',
+      item.price?.toFixed(2) || '0',
+      item.is_veg !== false ? 'Veg' : 'Non-Veg',
+      item.unlimited_stock ? 'Unlimited' : (item.stock_quantity?.toString() || ''),
+      item.unit || 'pcs',
+      item.purchase_rate?.toFixed(2) || '',
+      getMargin(item) !== null ? `${getMargin(item)}%` : '',
+    ]);
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `menu_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast({ title: 'Exported', description: `${exportItems.length} items exported to CSV` });
   };
 
   const handleCategoriesUpdated = () => {
@@ -714,6 +785,11 @@ const Items: React.FC = () => {
                     Delete
                   </Button>
                 )}
+                {!isAllBranchesView && (
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Duplicate" onClick={() => duplicateItem(item)}>
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
               </div>
             )}
@@ -784,6 +860,11 @@ const Items: React.FC = () => {
           <Button variant={item.is_active ? 'outline' : 'default'} size="sm" className="h-7 px-2 text-[10px]" onClick={(e) => confirmToggle(item, e)}>
             {item.is_active ? <><EyeOff className="w-3 h-3 mr-1" />Hide</> : <><Eye className="w-3 h-3 mr-1" />Show</>}
           </Button>
+          {!isAllBranchesView && (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Duplicate" onClick={() => duplicateItem(item)}>
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
         </div>
       )}
@@ -817,6 +898,27 @@ const Items: React.FC = () => {
               <List className="w-4 h-4" />
             </button>
           </div>
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button onClick={() => setShowSortMenu(!showSortMenu)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy !== 'default' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              {sortBy === 'default' ? 'Sort' : sortBy === 'name' ? 'A-Z' : sortBy === 'price_asc' ? 'Price ↑' : sortBy === 'price_desc' ? 'Price ↓' : sortBy === 'stock_low' ? 'Low Stock' : sortBy === 'newest' ? 'Newest' : 'Bestseller'}
+            </button>
+            {showSortMenu && (
+              <div className="absolute top-full mt-1 right-0 bg-background border rounded-lg shadow-xl p-1 z-30 min-w-[140px]">
+                {([['default', 'Default'], ['name', 'Name A-Z'], ['price_asc', 'Price ↑ Low'], ['price_desc', 'Price ↓ High'], ['stock_low', 'Low Stock First'], ['newest', 'Recently Added'], ['bestseller', 'Bestseller First']] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => { setSortBy(val); setShowSortMenu(false); }} className={`w-full text-left px-3 py-1.5 text-xs rounded hover:bg-muted ${sortBy === val ? 'bg-primary/10 text-primary font-medium' : ''}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Export Button */}
+          <button onClick={exportMenu} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Export menu as CSV">
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </button>
           {profile?.role === 'admin' && !isAllBranchesView && adminId && (
             <>
               <ItemCategoryManagement onCategoriesUpdated={handleCategoriesUpdated} />
