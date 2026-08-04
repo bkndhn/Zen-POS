@@ -60,7 +60,6 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
     shopName: '',
     address: '',
     mobileNumber: '',
-    businessType: 'restaurant',
   });
 
   const [subUserLimitState, setSubUserLimitState] = useState<{ currentCount: number; maxAllowed: number } | null>(null);
@@ -100,7 +99,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
 
   const resetForm = () => setFormData({
     email: '', password: '', confirmPassword: '', name: '', role: isSuperAdmin ? 'admin' : 'user',
-    hotelName: '', shopName: '', address: '', mobileNumber: '', businessType: 'restaurant',
+    hotelName: '', shopName: '', address: '', mobileNumber: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,7 +170,6 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
           mobileNumber: formData.mobileNumber.trim(),
           shopName: formData.shopName.trim(),
           address: formData.address.trim(),
-          businessType: targetRole === 'admin' ? formData.businessType : undefined,
         }
       );
 
@@ -182,17 +180,7 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
         throw error;
       }
 
-      // Update shop_settings with business_type for the new tenant
-      if (isSuperAdmin && formData.role === 'admin' && user?.id) {
-        const { error: settingsError } = await supabase
-          .from('shop_settings')
-          .update({ business_type: formData.businessType } as any)
-          .eq('user_id', user.id);
-        
-        if (settingsError) {
-          console.error('Failed to update shop_settings business_type:', settingsError);
-        }
-      }
+
 
       toast({
         title: "Success!",

@@ -29,7 +29,7 @@ const Dashboard = () => {
   const { profile , adminProfileId } = useAuth();
   const adminId = adminProfileId;
   const { data: shopSettings } = useBranchSettings('shop_settings');
-  const businessType = shopSettings?.business_type || profile?.business_type || 'restaurant';
+
   const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery(() => fetchDashboardStats());
   const [stats, setStats] = useState<DashboardStats>({
     todaySales: 0,

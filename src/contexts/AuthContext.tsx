@@ -47,7 +47,7 @@ interface AuthContextType {
     role?: string,
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string; businessType?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
   ) => Promise<{ error: any; user?: any }>;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -646,7 +646,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: string = 'user',
     hotelName?: string,
     adminId?: string,
-    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string; businessType?: string }
+    extras?: { mobileNumber?: string; shopName?: string; address?: string; captchaToken?: string }
   ) => {
     devLog('Sign up attempt for:', email);
 
@@ -663,7 +663,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           p_mobile_number: extras?.mobileNumber || null,
           p_address: extras?.address || null,
           p_admin_id: adminId || null,
-          p_business_type: extras?.businessType || 'restaurant'
+          p_business_type: 'restaurant'
         });
 
         if (!rpcErr && rpcRes?.id) {
@@ -688,7 +688,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (extras?.mobileNumber) userData.mobile_number = extras.mobileNumber;
     if (extras?.shopName) userData.shop_name = extras.shopName;
     if (extras?.address) userData.address = extras.address;
-    if (extras?.businessType && role === 'admin') userData.business_type = extras.businessType;
+
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -714,7 +714,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           p_mobile_number: extras?.mobileNumber || null,
           p_address: extras?.address || null,
           p_admin_id: adminId || null,
-          p_business_type: extras?.businessType || 'restaurant'
+          p_business_type: 'restaurant'
         });
 
         if (!fallbackErr && fallbackRes?.id) {

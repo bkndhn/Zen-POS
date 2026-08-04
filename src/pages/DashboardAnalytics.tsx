@@ -13,7 +13,7 @@ import { TrendingUp, DollarSign, ShoppingBag, Package, ArrowUpRight, ArrowDownRi
 import { formatQuantityWithUnit, toLocalDateString } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { Building2 } from 'lucide-react';
-import { ExpiryAlertsWidget } from '@/components/ExpiryAlertsWidget';
+
 
 interface SalesData {
   date: string;
@@ -1077,9 +1077,6 @@ const DashboardAnalytics = () => {
           ) : (<div className="p-6 text-center text-muted-foreground">Select dates to compare</div>)}
         </CardContent>
       </Card>
-
-      {/* ===== Expiry Alerts (Pharmacy / FMCG) ===== */}
-      <ExpiryAlertsWidget />
 
       {/* ===== Deep Insights ===== */}
       <Card className="border-2 border-primary/20 shadow-lg">

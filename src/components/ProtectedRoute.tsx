@@ -52,9 +52,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/billing" replace />;
     }
 
-    // Check business_type gating first
-    const businessType = settings?.business_type || profile?.business_type || 'restaurant';
-    const allowedNavItems = getFilteredNavItems(businessType);
+    const allowedNavItems = getFilteredNavItems();
     const allowedPages = allowedNavItems.map(item => item.page as string);
 
     // Some pages are not in the main nav but are globally allowed (like settings, users)
@@ -69,7 +67,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                     </div>
                     <h2 className="text-2xl font-bold">Module Unavailable</h2>
                     <p className="text-muted-foreground">
-                        This feature is not available for your current business type ({businessType.toUpperCase()}).
+                        This feature is not available.
                     </p>
                     <div className="flex gap-4 justify-center mt-6">
                         <Button onClick={() => window.location.href = '/dashboard'}>Go to Dashboard</Button>

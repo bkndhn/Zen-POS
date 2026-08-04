@@ -76,15 +76,15 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/settings',         icon: Settings,        label: 'Settings',         page: 'settings',      bottomNav: true },
 ];
 
-export const getFilteredNavItems = (businessType?: string | null): NavItem[] => {
+export const getFilteredNavItems = (): NavItem[] => {
   // HARDCODED TO RESTAURANT MODE: Strip out other business types
   const hiddenPages = ['providers', 'appointments'];
   return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
 };
 
 /** Unique page keys that appear in the bottom-nav customiser based on business type. */
-export const getBottomNavOptions = (businessType: string | null | undefined): { id: PageKey; label: string }[] => {
-  const items = getFilteredNavItems(businessType);
+export const getBottomNavOptions = (): { id: PageKey; label: string }[] => {
+  const items = getFilteredNavItems();
   const seen = new Set<PageKey>();
   const out: { id: PageKey; label: string }[] = [];
   for (const item of items) {
@@ -97,4 +97,4 @@ export const getBottomNavOptions = (businessType: string | null | undefined): { 
 };
 
 // Kept for backward compatibility, but components should use getBottomNavOptions
-export const BOTTOM_NAV_OPTIONS = getBottomNavOptions('restaurant');
+export const BOTTOM_NAV_OPTIONS = getBottomNavOptions();
