@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Search, Plus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft } from 'lucide-react';
+import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
@@ -93,6 +93,10 @@ const Items: React.FC = () => {
   // Drag and drop refs
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
+
+  // Bestseller tracking
+  const [topSellerIds, setTopSellerIds] = useState<Set<string>>(new Set());
+
   // Enable real-time updates
   useRealTimeUpdates();
 
@@ -100,6 +104,7 @@ const Items: React.FC = () => {
     if (adminId) {
       fetchItems();
       fetchCategories();
+      fetchTopSellers();
     }
   }, [adminId, branchFilterId]);
 
@@ -125,6 +130,35 @@ const Items: React.FC = () => {
   }, []);
 
   
+  // Fetch top 5 selling items from bill_items (last 30 days)
+  const fetchTopSellers = async () => {
+    if (!adminId) return;
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data } = await supabase
+        .from('bill_items')
+        .select('item_id, quantity, bills!inner(admin_id, is_deleted, created_at)')
+        .eq('bills.admin_id', adminId)
+        .eq('bills.is_deleted', false)
+        .gte('bills.created_at', thirtyDaysAgo.toISOString())
+        .not('item_id', 'is', null);
+
+      if (data && data.length > 0) {
+        const salesMap = new Map<string, number>();
+        data.forEach((row: any) => {
+          if (row.item_id) {
+            salesMap.set(row.item_id, (salesMap.get(row.item_id) || 0) + Number(row.quantity));
+          }
+        });
+        const sorted = [...salesMap.entries()].sort((a, b) => b[1] - a[1]);
+        setTopSellerIds(new Set(sorted.slice(0, 5).map(([id]) => id)));
+      }
+    } catch (e) {
+      console.error('Failed to fetch top sellers:', e);
+    }
+  };
 
   const fetchItems = async () => {
     if (!adminId) return;
@@ -483,6 +517,27 @@ const Items: React.FC = () => {
     );
   }
 
+  // Quick inline stock adjustment
+  const quickStockAdjust = async (item: Item, delta: number) => {
+    const newStock = Math.max(0, (item.stock_quantity || 0) + delta);
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ stock_quantity: newStock })
+        .eq('id', item.id);
+      if (error) throw error;
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, stock_quantity: newStock } : i));
+    } catch (e) {
+      toast({ title: 'Error', description: 'Stock update failed', variant: 'destructive' });
+    }
+  };
+
+  // Profit margin calculator
+  const getMargin = (item: Item) => {
+    if (!item.purchase_rate || item.purchase_rate <= 0 || !item.price) return null;
+    return Math.round(((item.price - item.purchase_rate) / item.price) * 100);
+  };
+
   const getCategoryCount = (category: string) => {
     return items.filter(item => item.category === category).length;
   };
@@ -576,6 +631,11 @@ const Items: React.FC = () => {
                 Low Stock
               </Badge>
             )}
+            {topSellerIds.has(item.id) && !isInactive && (
+              <Badge className={`absolute top-1 ${isLowStock(item) ? 'right-20' : 'right-1'} bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] px-1.5 py-0.5 flex items-center gap-0.5`}>
+                <Flame className="w-2.5 h-2.5" /> Bestseller
+              </Badge>
+            )}
           </div>
         )}
 
@@ -584,11 +644,21 @@ const Items: React.FC = () => {
             <div className="flex items-center gap-1.5">
               <span className={`w-3 h-3 rounded-sm border-2 flex-shrink-0 ${item.is_veg !== false ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} title={item.is_veg !== false ? 'Vegetarian' : 'Non-Vegetarian'} />
               <h4 className="font-semibold text-sm leading-tight line-clamp-1" title={item.name}>{item.name}</h4>
+              {topSellerIds.has(item.id) && !item.image_url && !item.video_url && (
+                <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] px-1 py-0 h-3.5 flex-shrink-0 flex items-center gap-0.5">
+                  <Flame className="w-2 h-2" /> Top
+                </Badge>
+              )}
             </div>
             <div className="flex justify-between items-start mt-0.5">
               <Badge variant="outline" className="text-[10px] h-4 px-1 rounded bg-muted/50 font-normal">
                 {item.category || 'No Cat'}
               </Badge>
+              {getMargin(item) !== null && (
+                <span className={`text-[9px] font-medium px-1 rounded ${getMargin(item)! >= 50 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20' : getMargin(item)! >= 30 ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/20' : 'text-orange-600 bg-orange-50 dark:bg-orange-950/20'}`}>
+                  {getMargin(item)}% margin
+                </span>
+              )}
             </div>
           </div>
 
@@ -611,12 +681,24 @@ const Items: React.FC = () => {
                   <span className="text-sm">∞</span> Unlimited
                 </span>
               ) : item.stock_quantity !== null && item.stock_quantity !== undefined ? (
-                <span className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>
-                  Stk: {formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}
-                  {isAllBranchesView && item.__branchCount && item.__branchCount > 1 && (
-                    <span className="ml-1 text-primary">({item.__branchCount} branches)</span>
+                <div className="flex items-center gap-1">
+                  {profile?.role === 'admin' && !isInactive && (
+                    <button onClick={(e) => { e.stopPropagation(); quickStockAdjust(item, -1); }} className="w-4 h-4 rounded bg-muted hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-muted-foreground hover:text-red-600 transition-colors">
+                      <Minus className="w-2.5 h-2.5" />
+                    </button>
                   )}
-                </span>
+                  <span className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>
+                    Stk: {formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}
+                    {isAllBranchesView && item.__branchCount && item.__branchCount > 1 && (
+                      <span className="ml-1 text-primary">({item.__branchCount} branches)</span>
+                    )}
+                  </span>
+                  {profile?.role === 'admin' && !isInactive && (
+                    <button onClick={(e) => { e.stopPropagation(); quickStockAdjust(item, 1); }} className="w-4 h-4 rounded bg-muted hover:bg-green-100 dark:hover:bg-green-900/30 flex items-center justify-center text-muted-foreground hover:text-green-600 transition-colors">
+                      <Plus className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
               ) : null}
             </div>
 
@@ -660,15 +742,41 @@ const Items: React.FC = () => {
         <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" loading="lazy" onError={(e) => handleImageError(e, item.image_url)} />
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{item.name}</p>
-        <p className="text-[10px] text-muted-foreground">{item.category || 'No Cat'}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="font-medium text-sm truncate">{item.name}</p>
+          {topSellerIds.has(item.id) && (
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] px-1 py-0 h-3.5 flex-shrink-0 flex items-center gap-0.5">
+              <Flame className="w-2 h-2" /> Top
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground">{item.category || 'No Cat'}</span>
+          {getMargin(item) !== null && (
+            <span className={`text-[9px] font-medium px-1 rounded ${getMargin(item)! >= 50 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20' : getMargin(item)! >= 30 ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/20' : 'text-orange-600 bg-orange-50 dark:bg-orange-950/20'}`}>
+              {getMargin(item)}%
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-right flex-shrink-0">
         <p className="font-bold text-sm text-primary">₹{item.price.toFixed(0)}</p>
         {item.unlimited_stock ? (
           <p className="text-[10px] text-emerald-600 font-medium">∞ Unlimited</p>
         ) : item.stock_quantity != null ? (
-          <p className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>Stk: {formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}</p>
+          <div className="flex items-center gap-1 justify-end">
+            {profile?.role === 'admin' && !isInactive && (
+              <button onClick={(e) => { e.stopPropagation(); quickStockAdjust(item, -1); }} className="w-4 h-4 rounded bg-muted hover:bg-red-100 dark:hover:bg-red-900/30 flex items-center justify-center text-muted-foreground hover:text-red-600 transition-colors">
+                <Minus className="w-2.5 h-2.5" />
+              </button>
+            )}
+            <p className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>{formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}</p>
+            {profile?.role === 'admin' && !isInactive && (
+              <button onClick={(e) => { e.stopPropagation(); quickStockAdjust(item, 1); }} className="w-4 h-4 rounded bg-muted hover:bg-green-100 dark:hover:bg-green-900/30 flex items-center justify-center text-muted-foreground hover:text-green-600 transition-colors">
+                <Plus className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
         ) : null}
       </div>
       {profile?.role === 'admin' && (
