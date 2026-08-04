@@ -2715,9 +2715,9 @@ const Billing = () => {
           orderType: orderType,
           // Shop logo
           logoUrl: gstData?.logoUrl,
-          fontFamily: settingsToUse?.billFontFamily || getStoredBillFont(operatingBranchId),
-          fontScale: settingsToUse?.billFontScale ? Number(settingsToUse.billFontScale) : getStoredBillFontScale(operatingBranchId),
-          footerMessage: settingsToUse?.billBottomText || getStoredFooterMessage(operatingBranchId)
+          fontFamily: billSettings?.billFontFamily || getStoredBillFont(operatingBranchId),
+          fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(operatingBranchId),
+          footerMessage: billSettings?.billBottomText || getStoredFooterMessage(operatingBranchId)
         };
         const result = await shareBillImageViaWhatsApp(customerMobile, billData);
         if (result.success) {
