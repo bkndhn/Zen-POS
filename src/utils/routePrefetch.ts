@@ -40,9 +40,6 @@ export const ROUTE_LOADERS: Record<string, () => Promise<any>> = {
     '/stock-adjustment': () => import('@/pages/StockAdjustment'),
     '/users': () => import('@/pages/Users'),
     '/online-orders': () => import('@/pages/OnlineOrders'),
-    '/appointments': () => import('@/pages/Appointments'),
-    '/providers': () => import('@/pages/Providers'),
-    '/barcode-studio': () => import('@/pages/BarcodeStudio'),
 };
 
 const loadedChunks = new Set<string>();

@@ -23,7 +23,7 @@ interface Supplier {
   gstin: string | null;
   address: string | null;
 }
-interface ItemRow { id: string; name: string; branch_id: string; expiry_mode: string; unit: string | null; }
+interface ItemRow { id: string; name: string; branch_id: string; unit: string | null; }
 interface Purchase {
   id: string; purchase_no: string; invoice_no: string | null; purchase_date: string;
   total_amount: number; notes: string | null; supplier_id: string | null;
@@ -34,7 +34,6 @@ interface LineDist { branch_id: string; item_id: string; quantity: number; }
 interface Line {
   item_name: string; unit: string; quantity: number; rate: number;
   batch_no: string; mfg_date: string; expiry_date: string;
-  expiry_mode: string;
   distributions: LineDist[];
 }
 
@@ -88,7 +87,7 @@ const Purchases: React.FC = () => {
     const [sup, pur, itm] = await Promise.all([
       supabase.from('suppliers').select('*').eq('admin_id', adminId).eq('is_active', true).order('name'),
       supabase.from('purchases').select('*, suppliers(*)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(100),
-      supabase.from('items').select('id,name,branch_id,expiry_mode,unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
+      supabase.from('items').select('id,name,branch_id,unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
     ]);
     setSuppliers((sup.data || []) as Supplier[]);
     setPurchases((pur.data || []) as Purchase[]);
@@ -161,7 +160,7 @@ const Purchases: React.FC = () => {
 
   const blankLine = (): Line => ({
     item_name: '', unit: '', quantity: 0, rate: 0,
-    batch_no: '', mfg_date: '', expiry_date: '', expiry_mode: 'none',
+    batch_no: '', mfg_date: '', expiry_date: '',
     distributions: branches.length ? [{ branch_id: branches.find(b => b.is_main)?.id || branches[0].id, item_id: '', quantity: 0 }] : []
   });
 
@@ -179,7 +178,6 @@ const Purchases: React.FC = () => {
     updateLine(idx, {
       item_name: item.name,
       unit: item.unit || '',
-      expiry_mode: item.expiry_mode || 'none',
       distributions: lines[idx].distributions.map(d => d.branch_id === branchId ? { ...d, item_id: itemId } : d),
     });
   };
@@ -221,7 +219,6 @@ const Purchases: React.FC = () => {
     for (const [i, l] of lines.entries()) {
       if (!l.item_name.trim()) return toast({ title: `Line ${i + 1}: item name required`, variant: 'destructive' });
       if (l.quantity <= 0) return toast({ title: `Line ${i + 1}: quantity must be > 0`, variant: 'destructive' });
-      if (l.expiry_mode === 'mandatory' && !l.expiry_date) return toast({ title: `Line ${i + 1}: expiry date required`, variant: 'destructive' });
       const distSum = totalDistributed(l);
       if (Math.abs(distSum - l.quantity) > 0.01) return toast({ title: `Line ${i + 1}: distributed (${distSum}) ≠ quantity (${l.quantity})`, variant: 'destructive' });
     }
@@ -618,7 +615,6 @@ const Purchases: React.FC = () => {
                           updateLine(idx, {
                             item_name: val,
                             unit: matched.unit || '',
-                            expiry_mode: matched.expiry_mode || 'none',
                             distributions: updatedDists
                           });
                         } else {
@@ -649,7 +645,6 @@ const Purchases: React.FC = () => {
                                   updateLine(idx, {
                                     item_name: name,
                                     unit: matched?.unit || '',
-                                    expiry_mode: matched?.expiry_mode || 'none',
                                     distributions: updatedDists
                                   });
                                 }}
@@ -687,8 +682,8 @@ const Purchases: React.FC = () => {
                     <Input type="date" value={l.mfg_date} onChange={e => updateLine(idx, { mfg_date: e.target.value })} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
                   </div>
                   <div>
-                    <Label className="text-xs font-semibold">Expiry {l.expiry_mode === 'mandatory' ? '*' : l.expiry_mode === 'none' ? '(disabled)' : '(opt)'}</Label>
-                    <Input type="date" disabled={l.expiry_mode === 'none'} value={l.expiry_date} onChange={e => updateLine(idx, { expiry_date: e.target.value })} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
+                    <Label className="text-xs font-semibold">Expiry (opt)</Label>
+                    <Input type="date" value={l.expiry_date} onChange={e => updateLine(idx, { expiry_date: e.target.value })} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
                   </div>
                   <div className="flex items-end justify-end">
                     <div className="text-right pb-1">

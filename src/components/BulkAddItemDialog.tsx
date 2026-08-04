@@ -47,7 +47,6 @@ const UNIT_CATEGORIES: Record<string, string> = {
 };
 const ALLOWED_UNITS = Object.keys(UNIT_CATEGORIES);
 
-const EXPIRY_MODES = ['none', 'optional', 'mandatory'];
 const QUICK_CHIPS_MODES = ['qty', 'amount'];
 
 export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, adminId, categories = [], onItemsAdded, disabled }) => {
@@ -67,7 +66,6 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
     { header: 'STOCK (Leave blank for Unlimited)', key: 'stock_quantity', width: 35 },
     { header: 'MIN STOCK ALERT', key: 'minimum_stock_alert', width: 20 },
     { header: 'QTY STEP (e.g. 1)', key: 'quantity_step', width: 20 },
-    { header: 'EXPIRY MODE', key: 'expiry_mode', width: 15 },
     { header: 'QUICK CHIPS MODE', key: 'quick_chips_mode', width: 22 },
     { header: 'QUICK CHIPS (Comma separated)', key: 'quick_chips', width: 35 },
     { header: 'ZOMATO PRICE', key: 'price_zomato', width: 18 },
@@ -134,14 +132,8 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
           allowBlank: true,
           formulae: [`"${ALLOWED_UNITS.join(',')}"`]
         };
-        // Expiry Mode
-        sheet.getCell(`K${i}`).dataValidation = {
-          type: 'list',
-          allowBlank: true,
-          formulae: [`"${EXPIRY_MODES.join(',')}"`]
-        };
         // Quick Chips Mode
-        sheet.getCell(`L${i}`).dataValidation = {
+        sheet.getCell(`K${i}`).dataValidation = {
           type: 'list',
           allowBlank: true,
           formulae: [`"${QUICK_CHIPS_MODES.join(',')}"`]
@@ -160,7 +152,6 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
         stock_quantity: '',
         minimum_stock_alert: 5,
         quantity_step: 1,
-        expiry_mode: 'none',
         quick_chips_mode: 'qty',
         quick_chips: '100g, 250g, 500g',
         price_zomato: 180,
@@ -314,7 +305,6 @@ export const BulkAddItemDialog: React.FC<BulkAddItemDialogProps> = ({ branchId, 
           quantity_step: row.quantity_step ? parseFloat(row.quantity_step) : 1,
           price_zomato: row.price_zomato ? parseFloat(row.price_zomato) : null,
           price_swiggy: row.price_swiggy ? parseFloat(row.price_swiggy) : null,
-          expiry_mode: ['none', 'optional', 'mandatory'].includes(row.expiry_mode?.toLowerCase()) ? row.expiry_mode.toLowerCase() : 'none',
           quick_chips: parsedChips || [],
           is_active: true,
           is_saleable: true,

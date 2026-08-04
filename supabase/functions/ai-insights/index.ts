@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
   if (!LOVABLE_KEY) return json({ error: 'ai_not_configured' }, 500);
 
   const prompt = kind === 'stock_forecast'
-    ? `You are a restaurant/retail inventory advisor for an Indian business. Based on this ${actualDays}-day sales summary, output ONLY valid JSON with:
+    ? `You are a restaurant inventory advisor for an Indian business. Based on this ${actualDays}-day sales summary, output ONLY valid JSON with:
 {
   "recommendations": [
     { "item": string, "day": "Mon"|"Tue"|..., "keep_stock": number, "unit": string, "reason": string }

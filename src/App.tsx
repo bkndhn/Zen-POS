@@ -246,8 +246,6 @@ const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
-const Providers = lazy(() => import("./pages/Providers"));
-const Appointments = lazy(() => import("./pages/Appointments"));
 import { GlobalSettingsSync } from '@/components/GlobalSettingsSync';
 
 const queryClient = new QueryClient({
@@ -407,8 +405,6 @@ const App = () => {
                   <Route path="/stock-adjustment" element={<Layout><ProtectedRoute requiredPermission="stock"><StockAdjustment /></ProtectedRoute></Layout>} />
                   <Route path="/super-admin/users" element={<Layout><ProtectedRoute requiredPermission="users"><SuperAdminUsers /></ProtectedRoute></Layout>} />
                   <Route path="/super-admin/rum" element={<Layout><ProtectedRoute requiredPermission="users"><SuperAdminRum /></ProtectedRoute></Layout>} />
-                  <Route path="/providers" element={<Layout><ProtectedRoute requiredPermission="providers"><Providers /></ProtectedRoute></Layout>} />
-                  <Route path="/appointments" element={<Layout><ProtectedRoute requiredPermission="appointments"><Appointments /></ProtectedRoute></Layout>} />
                   <Route path="/diagnostics/images" element={<Layout><ProtectedRoute requiredPermission="settings"><ImageDiagnostics /></ProtectedRoute></Layout>} />
                   <Route path="/ai-insights" element={<Layout><ProtectedRoute requiredPermission="analytics"><AiInsights /></ProtectedRoute></Layout>} />
                   <Route path="/renew" element={<Layout><RenewSubscription /></Layout>} />

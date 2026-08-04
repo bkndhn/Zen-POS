@@ -54,7 +54,7 @@ export const BottomNavigation: React.FC = () => {
   const { hasAccess, loading } = useUserPermissions();
   const { operatingBranchId } = useBranch();
   const { settings } = useBranchSettings();
-  const allNavItems = getFilteredNavItems(settings?.business_type).filter(i => i.bottomNav);
+  const allNavItems = getFilteredNavItems().filter(i => i.bottomNav);
   const [visiblePages, setVisiblePages] = useState<string[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { t } = useTranslation();

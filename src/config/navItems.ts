@@ -21,8 +21,6 @@ import {
   History,
   Sliders,
   Smartphone,
-  Scissors,
-  CalendarDays,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserPermissions } from '@/contexts/PermissionsContext';
@@ -70,16 +68,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/crm',              icon: UserCircle,      label: 'CRM',              page: 'customers',     bottomNav: true },
   { to: '/qr-menu',          icon: QrCode,          label: 'QR Menu',          page: 'qrMenu',        bottomNav: true },
   { to: '/online-orders',    icon: Smartphone,      label: 'Online Orders',    shortLabel: 'Orders',  page: 'onlineOrders',  bottomNav: true },
-  { to: '/providers',        icon: Scissors,        label: 'Providers',        page: 'providers' },
-  { to: '/appointments',     icon: CalendarDays,    label: 'Appointments',     page: 'appointments',  bottomNav: true },
   { to: '/users',            icon: Users,           label: 'Users',            page: 'users' },
   { to: '/settings',         icon: Settings,        label: 'Settings',         page: 'settings',      bottomNav: true },
 ];
 
 export const getFilteredNavItems = (): NavItem[] => {
-  // HARDCODED TO RESTAURANT MODE: Strip out other business types
-  const hiddenPages = ['providers', 'appointments'];
-  return ALL_NAV_ITEMS.filter(item => !hiddenPages.includes(item.page));
+  return ALL_NAV_ITEMS;
 };
 
 /** Unique page keys that appear in the bottom-nav customiser based on business type. */

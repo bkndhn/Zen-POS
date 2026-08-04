@@ -80,7 +80,7 @@ interface Row {
   login_count: number;
   created_at: string;
   client_permissions?: Record<string, boolean>;
-  business_type?: string;
+
   subscription_plan?: string;
   subscription_status?: string;
   subscription_end_date?: string;
@@ -821,15 +821,7 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, business_type') as { data: any[] | null };
-        const shopSettingsMap = new Map();
-        if (shopSettingsData) {
-          shopSettingsData.forEach(s => {
-            if (s.business_type && !shopSettingsMap.has(s.user_id)) {
-              shopSettingsMap.set(s.user_id, s.business_type);
-            }
-          });
-        }
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id') as { data: any[] | null };
 
         const enrichedRows = (data as Row[]).map(r => {
           const prof: any = profileMap.get(r.profile_id) || {};
@@ -842,7 +834,7 @@ const SuperAdminUsers: React.FC = () => {
             subscription_amount: prof.subscription_amount || 0,
             force_logout: prof.force_logout || false,
             force_logout_reason: prof.force_logout_reason || null,
-            business_type: shopSettingsMap.get(r.profile_id) || 'restaurant',
+
             max_branches: prof.max_branches ?? 1,
             max_sub_users: prof.max_sub_users ?? 5,
           };
@@ -1175,7 +1167,7 @@ const SuperAdminUsers: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell className="text-xs font-medium">{r.hotel_name || '—'}</TableCell>
-                        <TableCell className="text-xs font-medium capitalize">{r.business_type || 'Restaurant'}</TableCell>
+                        <TableCell className="text-xs font-medium capitalize">Restaurant</TableCell>
                         <TableCell className="text-xs font-medium">{r.shop_name || '—'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate" title={r.address || ''}>
                           {r.address || '—'}

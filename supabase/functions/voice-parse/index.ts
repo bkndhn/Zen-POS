@@ -39,7 +39,7 @@ interface ParseResponse {
   raw?: string;
 }
 
-const SYSTEM = `You are a POS voice command parser for an Indian restaurant/shop.
+const SYSTEM = `You are a POS voice command parser for an Indian restaurant.
 The user speaks in English, Tamil, Hindi or a mix. Numbers may be words or digits (English/Tamil).
 Return ONLY a compact JSON object matching this TypeScript type — no prose, no markdown fence:
 {

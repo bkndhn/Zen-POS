@@ -108,8 +108,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     unlimited_stock: item.unlimited_stock || false,
     tax_rate_id: (item as any).tax_rate_id || '',
     is_tax_inclusive: (item as any).is_tax_inclusive !== false,
-    hsn_code: (item as any).hsn_code || '',
-    expiry_mode: ((item as any).expiry_mode || 'none') as 'none' | 'optional' | 'mandatory'
+    hsn_code: (item as any).hsn_code || ''
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
@@ -169,8 +168,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         unlimited_stock: item.unlimited_stock || false,
         tax_rate_id: (item as any).tax_rate_id || '',
         is_tax_inclusive: (item as any).is_tax_inclusive !== false,
-        hsn_code: (item as any).hsn_code || '',
-        expiry_mode: ((item as any).expiry_mode || 'none') as 'none' | 'optional' | 'mandatory'
+        hsn_code: (item as any).hsn_code || ''
       });
     }
   }, [open, item]);
@@ -341,8 +339,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         video_url: formData.video_url || null,
         media_type: formData.media_type,
         is_active: formData.is_active,
-        unlimited_stock: formData.unlimited_stock,
-        expiry_mode: formData.expiry_mode
+        unlimited_stock: formData.unlimited_stock
       };
 
       // Add GST fields if enabled
@@ -773,22 +770,6 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="edit_expiry_mode">Expiry Tracking</Label>
-              <Select
-                value={formData.expiry_mode}
-                onValueChange={(value) => setFormData({ ...formData, expiry_mode: value as any })}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background border shadow-lg z-50">
-                  <SelectItem value="none">No Expiry</SelectItem>
-                  <SelectItem value="optional">Optional (track when entered)</SelectItem>
-                  <SelectItem value="mandatory">Mandatory (required on purchase)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
 
             <div>

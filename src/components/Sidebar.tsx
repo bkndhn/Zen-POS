@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   const { settings } = useBranchSettings();
   const { operatingBranchId } = useBranch();
   const [supportOpen, setSupportOpen] = useState(false);
-  const allNavItems = getFilteredNavItems(settings?.business_type);
+  const allNavItems = getFilteredNavItems();
   const prefetchAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || null);
   const warmRoute = (path: string) => prefetchAll(path, { adminId: prefetchAdminId, branchId: operatingBranchId });
 

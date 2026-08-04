@@ -101,7 +101,6 @@ const Reports: React.FC = () => {
   const [bills, setBills] = useState<Bill[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [unpaidDues, setUnpaidDues] = useState<number>(0);
-  const [providers, setProviders] = useState<any[]>([]);
   const [itemReports, setItemReports] = useState<ItemReport[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [purchasePayments, setPurchasePayments] = useState<any[]>([]);
@@ -733,9 +732,6 @@ const Reports: React.FC = () => {
           const unpaid = customersData?.reduce((sum, c) => sum + (Number(c.current_balance) || 0), 0) || 0;
           setUnpaidDues(unpaid);
 
-          // Fetch Providers
-          const { data: providersData } = await supabase.from('providers').select('*').eq('admin_id', adminId);
-          setProviders(providersData || []);
           if (billsError) throw billsError;
 
           let filteredBillsData = billsData || [];
@@ -1733,7 +1729,6 @@ const Reports: React.FC = () => {
             <TabsTrigger value="profit" disabled={billFilter === 'deleted'} className="text-sm font-medium">P&L</TabsTrigger>
             <TabsTrigger value="gst" disabled={billFilter === 'deleted'} className="text-sm font-medium">GST</TabsTrigger>
             <TabsTrigger value="channels" disabled={billFilter === 'deleted'} className="text-sm font-medium">Channels</TabsTrigger>
-            <TabsTrigger value="providers" disabled={billFilter === 'deleted'} className="text-sm font-medium">Providers</TabsTrigger>
           </TabsList>
         </div>
 
@@ -2430,48 +2425,6 @@ const Reports: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        {/* Providers Tab */}
-        <TabsContent value="providers" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Provider Commissions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {providers.map(provider => {
-                  const providerBills = bills.filter(b => b.provider_id === provider.id);
-                  const billsCount = providerBills.length;
-                  const totalRevenue = providerBills.reduce((sum, b) => sum + Number(b.total_amount || 0), 0);
-                  let commission = 0;
-                  if (provider.commission_type === 'percentage') {
-                    commission = (totalRevenue * (provider.commission_rate || 0)) / 100;
-                  } else if (provider.commission_type === 'flat') {
-                    commission = (provider.commission_rate || 0) * billsCount;
-                  }
-
-                  return (
-                    <div key={provider.id} className="flex items-center justify-between p-4 border rounded-xl bg-slate-50 dark:bg-slate-900/50">
-                      <div>
-                        <p className="font-semibold">{provider.name}</p>
-                        <p className="text-xs text-muted-foreground">{billsCount} bills • ₹{totalRevenue.toFixed(2)} revenue</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-emerald-600">₹{commission.toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">Commission ({provider.commission_rate}{provider.commission_type === 'percentage' ? '%' : ' flat'})</p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {providers.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No providers found or no data for this period.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

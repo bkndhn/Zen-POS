@@ -94,8 +94,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     unlimited_stock: false,
     tax_rate_id: '',
     is_tax_inclusive: true,
-    hsn_code: '',
-    expiry_mode: 'none' as 'none' | 'optional' | 'mandatory'
+    hsn_code: ''
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
@@ -321,8 +320,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         is_active: formData.is_active,
         unlimited_stock: formData.unlimited_stock,
         admin_id: adminId,
-        branch_id: operatingBranchId || null,
-        expiry_mode: formData.expiry_mode,
+        branch_id: operatingBranchId || null
       };
 
       // Add GST fields if enabled
@@ -374,8 +372,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         unlimited_stock: false,
         tax_rate_id: '',
         is_tax_inclusive: true,
-        hsn_code: '',
-        expiry_mode: 'none'
+        hsn_code: ''
       });
       setOpen(false);
       setCurrentItemCount(prev => prev + 1);
@@ -743,25 +740,6 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="expiry_mode">Expiry Tracking</Label>
-            <Select
-              value={formData.expiry_mode}
-              onValueChange={(value) => setFormData({ ...formData, expiry_mode: value as any })}
-            >
-              <SelectTrigger className="bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-background border shadow-lg z-50">
-                <SelectItem value="none">No Expiry</SelectItem>
-                <SelectItem value="optional">Optional (track when entered)</SelectItem>
-                <SelectItem value="mandatory">Mandatory (required on purchase)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Controls whether expiry dates must be captured for this item when purchasing stock.
-            </p>
-          </div>
 
           <div>
             <Label>

@@ -71,10 +71,6 @@ interface CompletePaymentDialogProps {
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
-    doctorName?: string;
-    providerId?: string;
-    paidAmount?: number;
-    prescriptionImage?: string;
     printAction?: 'print' | 'no-print';
   }) => void;
   whatsappEnabled?: boolean;
@@ -147,15 +143,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
   const [customerGstin, setCustomerGstin] = useState('');
   const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>(defaultOrderType || 'dine_in');
-  const [doctorName, setDoctorName] = useState('');
-  const [providers, setProviders] = useState<any[]>([]);
-  const [selectedProviderId, setSelectedProviderId] = useState<string>('none');
-  const [isKhata, setIsKhata] = useState(false);
-  const [paidAmount, setPaidAmount] = useState<string>('');
   const { adminProfileId } = useAuth();
-
-
-  const [prescriptionImage, setPrescriptionImage] = useState('');
 
   // When dialog opens, sync orderType to configured default (per branch)
   useEffect(() => {
@@ -402,10 +390,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       sendWhatsApp: whatsappShareMode === 'image' ? whatsappEnabled : (sendWhatsApp && customerMobile.trim().length > 0),
       customerGstin: customerGstin.trim() || undefined,
       orderType: showOrderType ? orderType : undefined,
-      doctorName: doctorName.trim() || undefined,
-      providerId: selectedProviderId !== 'none' ? selectedProviderId : undefined,
-      paidAmount: isKhata ? (paidAmount === '' ? total : parseFloat(paidAmount)) : -1,
-      prescriptionImage: prescriptionImage || undefined,
       printAction
     });
   };
@@ -427,11 +411,6 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
       setShowDiscount(false);
       setCustomerMobile('');
       setCustomerName('');
-      setDoctorName('');
-      setSelectedProviderId('none');
-      setIsKhata(false);
-      setPaidAmount('');
-      setPrescriptionImage('');
       setSendWhatsApp(false);
       setOrderType('dine_in');
     }

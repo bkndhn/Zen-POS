@@ -35,7 +35,7 @@ export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
   const AVAILABLE_PAGES = React.useMemo(() => {
     const seen = new Set<string>();
     const out: { name: string; label: string; description: string }[] = [];
-    const allNavItems = getFilteredNavItems(settings?.business_type);
+    const allNavItems = getFilteredNavItems();
     for (const item of allNavItems) {
       if (item.page === 'users') continue; // Users page access is role-based, not toggled
       if (seen.has(item.page as string)) continue;
@@ -50,7 +50,7 @@ export const UserPermissions: React.FC<UserPermissionsProps> = ({ users }) => {
       out.push({ name: 'bottomNavCustomize', label: 'Bottom Nav Customise', description: 'Customise Bottom Navigation' });
     }
     return out;
-  }, [settings?.business_type]);
+  }, []);
 
   // Filter pages based on the viewer's role
   // Super Admin sees all pages
