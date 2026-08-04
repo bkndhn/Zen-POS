@@ -41,6 +41,7 @@ interface Item {
   base_value?: number;
   stock_quantity?: number;
   minimum_stock_alert?: number;
+  unlimited_stock?: boolean;
   quantity_step?: number;
   quick_chips?: string[];
   display_order?: number;
@@ -70,6 +71,7 @@ const Items: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [isReordering, setIsReordering] = useState(false);
+  const [stockFilter, setStockFilter] = useState<'all' | 'limited' | 'unlimited'>('all');
 
   // Permanent delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -292,9 +294,15 @@ const Items: React.FC = () => {
     if (selectedCategory && selectedCategory !== 'all') {
       filtered = filtered.filter(item => item.category === selectedCategory);
     }
+    // Stock type filter
+    if (stockFilter === 'unlimited') {
+      filtered = filtered.filter(item => item.unlimited_stock);
+    } else if (stockFilter === 'limited') {
+      filtered = filtered.filter(item => !item.unlimited_stock);
+    }
     
     return filtered;
-  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId]);
+  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId, stockFilter]);
 
   const handleItemAdded = () => {
     fetchItems();
@@ -402,6 +410,7 @@ const Items: React.FC = () => {
 
   // Helper to check if item has low stock based on minimum_stock_alert
   const isLowStock = (item: Item) => {
+    if (item.unlimited_stock) return false;
     if (item.stock_quantity === null || item.stock_quantity === undefined) return false;
     if (item.minimum_stock_alert === null || item.minimum_stock_alert === undefined) return false;
     return item.stock_quantity <= item.minimum_stock_alert;
@@ -503,14 +512,18 @@ const Items: React.FC = () => {
                   {item.price_swiggy && <span className="bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 px-1 rounded font-medium border border-orange-100 dark:border-orange-900/30">S: ₹{item.price_swiggy}</span>}
                 </div>
               )}
-              {item.stock_quantity !== null && item.stock_quantity !== undefined && (
+              {item.unlimited_stock ? (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
+                  <span className="text-sm">∞</span> Unlimited
+                </span>
+              ) : item.stock_quantity !== null && item.stock_quantity !== undefined ? (
                 <span className={`text-[10px] ${isLowStock(item) ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>
                   Stk: {formatStoredQuantity(item.stock_quantity, item.inventory_unit || item.unit)}
                   {isAllBranchesView && item.__branchCount && item.__branchCount > 1 && (
                     <span className="ml-1 text-primary">({item.__branchCount} branches)</span>
                   )}
                 </span>
-              )}
+              ) : null}
             </div>
 
             {profile?.role === 'admin' && (
@@ -598,6 +611,26 @@ const Items: React.FC = () => {
                 {category} ({getCategoryCount(category)})
               </Button>
             ))}
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setStockFilter('all')}
+              className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${stockFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              All Stock
+            </button>
+            <button
+              onClick={() => setStockFilter('unlimited')}
+              className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1 ${stockFilter === 'unlimited' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'}`}
+            >
+              <span className="text-xs">∞</span> Unlimited ({items.filter(i => i.unlimited_stock).length})
+            </button>
+            <button
+              onClick={() => setStockFilter('limited')}
+              className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${stockFilter === 'limited' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'}`}
+            >
+              Limited ({items.filter(i => !i.unlimited_stock).length})
+            </button>
           </div>
         </CardContent>
       </Card>

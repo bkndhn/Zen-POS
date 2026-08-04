@@ -970,7 +970,7 @@ const Reports: React.FC = () => {
     if (!billToDelete) return;
 
     try {
-      // Get bill items to restore stock
+      // Get bill items to restore stock (include unlimited_stock flag)
       const { data: billItems } = await supabase
         .from('bill_items')
         .select('item_id, quantity')
@@ -984,9 +984,20 @@ const Reports: React.FC = () => {
 
       if (error) throw error;
 
-      // Restore stock for each item (checking if a recipe exists first)
+      // Restore stock for each item (skip unlimited stock items)
       if (billItems) {
         for (const item of billItems) {
+          if (!item.item_id) continue;
+
+          // Check if item has unlimited stock — if so, skip restoration
+          const { data: itemData } = await supabase
+            .from('items')
+            .select('unlimited_stock')
+            .eq('id', item.item_id)
+            .single();
+
+          if (itemData?.unlimited_stock) continue; // Skip unlimited stock items
+
           const { data: recipeParts, error: recipeErr } = await supabase
             .from('recipes')
             .select('ingredient_id, quantity')
@@ -1076,9 +1087,20 @@ const Reports: React.FC = () => {
 
       if (error) throw error;
 
-      // Reduce stock for each item
+      // Reduce stock for each item (skip unlimited stock items)
       if (billItems) {
         for (const item of billItems) {
+          if (!item.item_id) continue;
+
+          // Check if item has unlimited stock — if so, skip deduction
+          const { data: itemData } = await supabase
+            .from('items')
+            .select('unlimited_stock')
+            .eq('id', item.item_id)
+            .single();
+
+          if (itemData?.unlimited_stock) continue; // Skip unlimited stock items
+
           const { data: recipeParts, error: recipeErr } = await supabase
             .from('recipes')
             .select('ingredient_id, quantity')
