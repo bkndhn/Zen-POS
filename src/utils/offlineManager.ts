@@ -1327,14 +1327,16 @@ class OfflineManager {
                 }
             });
 
-            // Local-only/cached bills
-            (cachedBills || []).forEach((cb: any) => {
-                if (matchesScope(cb) && !existingIds.has(cb.id) && (!cb.bill_no || !existingBillNos.has(cb.bill_no))) {
-                    existingIds.add(cb.id);
-                    if (cb.bill_no) existingBillNos.add(cb.bill_no);
-                    offlineMerged.push(cb);
-                }
-            });
+            // Local-only/cached bills - ONLY merge if offline, because if online, supabase is the source of truth
+            if (!this.isOnline || (supabaseBills && supabaseBills.length === 0 && !this.isOnline)) {
+                (cachedBills || []).forEach((cb: any) => {
+                    if (matchesScope(cb) && !existingIds.has(cb.id) && (!cb.bill_no || !existingBillNos.has(cb.bill_no))) {
+                        existingIds.add(cb.id);
+                        if (cb.bill_no) existingBillNos.add(cb.bill_no);
+                        offlineMerged.push(cb);
+                    }
+                });
+            }
 
             return [...(supabaseBills || []), ...offlineMerged];
         } catch (err) {
