@@ -475,7 +475,7 @@ const Purchases: React.FC = () => {
   };
 
   const generatePO = (purchase: any) => {
-    const shopName = profile?.business_name || 'Our Shop';
+    const shopName = profile?.hotel_name || 'Our Shop';
     const supplierName = purchase.suppliers?.name || 'Walk-in Supplier';
     const supplierPhone = purchase.suppliers?.phone || '';
     const itemsHtml = purchase.purchase_items?.map((item: any, i: number) => `
@@ -568,7 +568,7 @@ const Purchases: React.FC = () => {
   };
 
   const sendWhatsApp = (purchase: any) => {
-    const shopName = profile?.business_name || 'Our Shop';
+    const shopName = profile?.hotel_name || 'Our Shop';
     const supplierPhone = purchase.suppliers?.phone || '';
     
     if (!supplierPhone) {
