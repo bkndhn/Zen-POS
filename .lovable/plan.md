@@ -1,6 +1,15 @@
 # Expenses Polish + Analytics + Bulletproof Offline Licensing
 
-Three connected pieces of work. Delivered in the order below so each one can be checked before the next.
+Three connected pieces of work, plus a small pre-step. Delivered in the order below so each one can be checked before the next.
+
+## 0. Clear the existing build errors (pre-step)
+
+The project currently fails typecheck, unrelated to the new work. These get fixed first:
+
+- `DashboardAnalytics.tsx` — the three result variables (`rawBillsData`, `expensesData`, `billItemsData`) are declared as arrays but also used as an object payload when caching/restoring; the cache payload needs its own typed object instead of reusing the array variables.
+- `Purchases.tsx` — `purchaseData` is referenced after the insert block but never captured from the insert response; capture it (or drop the initial-payment block's dependency on it).
+- `Purchases.tsx` — `profile.business_name` does not exist on the `Profile` type; use the existing shop/hotel name field.
+
 
 ## 1. Expenses page — world-class UI
 
