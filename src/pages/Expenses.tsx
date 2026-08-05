@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Receipt, Search, Calendar, FileSpreadsheet, Download } from 'lucide-react';
+import { Receipt, Search, Calendar, FileSpreadsheet, Download, IndianRupee, TrendingUp, Layers } from 'lucide-react';
 import { AddExpenseDialog } from '@/components/AddExpenseDialog';
 import { EditExpenseDialog } from '@/components/EditExpenseDialog';
 import { CategorySelector } from '@/components/CategorySelector';
@@ -15,8 +15,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { exportToPDF, exportToExcel } from '@/utils/exportUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { ServiceHeader, ServiceLoading, StatTile, SectionHeading, EmptyState } from '@/components/service/ServiceUI';
+import ExpenseAnalytics from '@/components/expenses/ExpenseAnalytics';
+
 
 interface Expense {
   id: string;
@@ -40,6 +44,28 @@ const Expenses: React.FC = () => {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [dateFilter, setDateFilter] = useState('today');
+
+  // Active range (ISO dates) used by the insights tab for revenue comparison
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    const iso = (d: Date) => d.toISOString().split('T')[0];
+    const today = new Date();
+    if (dateFilter === 'custom') return { rangeStart: startDate, rangeEnd: endDate };
+    if (dateFilter === 'today') return { rangeStart: iso(today), rangeEnd: iso(today) };
+    if (dateFilter === 'yesterday') {
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      return { rangeStart: iso(y), rangeEnd: iso(y) };
+    }
+    if (dateFilter === 'week') {
+      const w = new Date(); w.setDate(w.getDate() - 7);
+      return { rangeStart: iso(w), rangeEnd: iso(today) };
+    }
+    if (dateFilter === 'month') {
+      const m = new Date(); m.setMonth(m.getMonth() - 1);
+      return { rangeStart: iso(m), rangeEnd: iso(today) };
+    }
+    return { rangeStart: null as string | null, rangeEnd: null as string | null };
+  }, [dateFilter, startDate, endDate]);
+
 
   useEffect(() => {
     if (adminId) fetchExpenses();
@@ -229,78 +255,78 @@ const Expenses: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading expenses...</p>
-        </div>
-      </div>
-    );
+    return <ServiceLoading label="Loading expenses…" cards={4} />;
   }
 
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const avgExpense = filteredExpenses.length ? totalExpenses / filteredExpenses.length : 0;
+  const topCategory = (() => {
+    const map = new Map<string, number>();
+    for (const e of filteredExpenses) map.set(e.category || '—', (map.get(e.category || '—') || 0) + e.amount);
+    const top = Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : '—';
+  })();
+
+  const money = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="p-3 sm:p-4 max-w-full overflow-x-hidden">
+    <div className="p-3 sm:p-4 max-w-full overflow-x-hidden space-y-3 animate-fade-in">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to add expenses." />
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl flex items-center justify-center shadow-md shadow-rose-500/20">
-            <Receipt className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight">Expenses</h1>
-            <p className="text-muted-foreground text-[10px] sm:text-xs">Track your business expenses</p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          {profile?.role === 'admin' && (
-            <>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportExcel}
-                  className="text-xs h-8 rounded-lg"
-                >
-                  <FileSpreadsheet className="w-4 h-4 mr-1" />
-                  Excel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportPDF}
-                  className="text-xs h-8 rounded-lg"
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  PDF
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <CategorySelector onCategoriesUpdated={handleCategoriesUpdated} />
-                <AddExpenseDialog onExpenseAdded={fetchExpenses} />
-              </div>
-            </>
-          )}
-        </div>
+
+      {/* Sticky frosted header */}
+      <ServiceHeader
+        icon={Receipt}
+        tone="rose"
+        sticky
+        title="Expenses"
+        subtitle="Track, analyse and control your business spend"
+        actions={
+          profile?.role === 'admin' ? (
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <Button variant="outline" size="sm" onClick={handleExportExcel} className="h-8 rounded-lg text-xs">
+                <FileSpreadsheet className="mr-1 h-3.5 w-3.5" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-8 rounded-lg text-xs">
+                <Download className="mr-1 h-3.5 w-3.5" />
+                PDF
+              </Button>
+              <CategorySelector onCategoriesUpdated={handleCategoriesUpdated} />
+              <AddExpenseDialog onExpenseAdded={fetchExpenses} />
+            </div>
+          ) : undefined
+        }
+      />
+
+      {/* Inline totals */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <StatTile icon={IndianRupee} tone="rose" label="Total spend" value={money(totalExpenses)} />
+        <StatTile icon={Receipt} tone="sky" label="Entries" value={filteredExpenses.length} />
+        <StatTile icon={TrendingUp} tone="amber" label="Average" value={money(avgExpense)} />
+        <StatTile icon={Layers} tone="purple" label="Top category" value={<span className="truncate text-sm">{topCategory}</span>} />
       </div>
 
-      {/* Date Filter - Updated to match Reports page styling */}
-      <Card className="mb-4 p-3 sm:p-4">
-        <CardHeader className="p-0 pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-            <Calendar className="w-4 h-4" />
-            Date Range
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* Filters */}
+      <Card className="border-border/60">
+        <CardContent className="p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="lg:col-span-2">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Search</Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Name, category, note or amount…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-9 pl-8 text-xs"
+                />
+              </div>
+            </div>
             <div>
-              <Label className="text-xs">Period</Label>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Period</Label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-9 text-xs">
+                  <Calendar className="mr-1.5 h-3.5 w-3.5 opacity-70" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -313,27 +339,15 @@ const Expenses: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-
             {dateFilter === 'custom' && (
               <>
                 <div>
-                  <Label className="text-xs">Start Date</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="h-8 text-xs"
-                  />
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-xs" />
                 </div>
                 <div>
-                  <Label className="text-xs">End Date</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    min={startDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="h-8 text-xs"
-                  />
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
+                  <Input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-xs" />
                 </div>
               </>
             )}
@@ -341,115 +355,139 @@ const Expenses: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Search Bar */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Search className="w-5 h-5" />
-            Search Expenses
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Input
-            placeholder="Search by name, category, note, or amount..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-full"
-          />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="list" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
+          <TabsTrigger value="list" className="text-xs">Expenses</TabsTrigger>
+          <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
+        </TabsList>
 
-      {/* Expenses Table */}
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
-            <span className="text-base sm:text-lg">All Expenses ({filteredExpenses.length})</span>
-            {filteredExpenses.length > 0 && (
-              <div className="text-left sm:text-right">
-                <p className="text-base sm:text-lg font-bold text-destructive">
-                  Total: ₹{totalExpenses.toFixed(2)}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-0 overflow-hidden">
+        <TabsContent value="list" className="mt-3 space-y-3">
+          <SectionHeading
+            title="All expenses"
+            tone="rose"
+            icon={Receipt}
+            count={filteredExpenses.length}
+            actions={
+              <span className="text-xs font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                {money(totalExpenses)}
+              </span>
+            }
+          />
+
           {filteredExpenses.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <Receipt className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">No Expenses Found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm || dateFilter !== 'all' ? 'No expenses match your search criteria.' : 'No expenses recorded yet.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={Receipt}
+              tone="rose"
+              title="No expenses found"
+              description={
+                searchTerm || dateFilter !== 'all'
+                  ? 'No expenses match your search criteria.'
+                  : 'No expenses recorded yet.'
+              }
+            />
           ) : (
             <>
-              {/* Mobile & Desktop Table View - Horizontal Scroll ONLY within this container */}
-              <div className="w-full overflow-hidden grid place-items-start">
-                <div className="overflow-x-auto w-full max-w-[85vw] sm:max-w-full pb-2">
-                  <Table className="min-w-[700px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">Name</TableHead>
-                        <TableHead className="whitespace-nowrap">Category</TableHead>
-                        <TableHead className="whitespace-nowrap">Amount</TableHead>
-                        <TableHead className="whitespace-nowrap">Note</TableHead>
-                        <TableHead className="whitespace-nowrap">Created</TableHead>
-                        {profile?.role === 'admin' && <TableHead className="text-right whitespace-nowrap">Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredExpenses.map((expense) => (
-                        <TableRow key={expense.id}>
-                          <TableCell className="font-medium whitespace-nowrap">{expense.expense_name || 'Unnamed Expense'}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">{expense.category}</Badge>
-                          </TableCell>
-                          <TableCell className="font-bold text-destructive whitespace-nowrap">
-                            -₹{expense.amount.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="max-w-[150px] truncate">{expense.note || '-'}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                            {new Date(expense.created_at).toLocaleString('en-US', {
-                              year: 'numeric',
-                              month: 'numeric',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: 'numeric',
-                              second: 'numeric',
-                              hour12: true
-                            })}
-                          </TableCell>
-                          {profile?.role === 'admin' && (
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <EditExpenseDialog
-                                  expense={expense}
-                                  onExpenseUpdated={fetchExpenses}
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => deleteExpense(expense.id)}
-                                >
-                                  Delete
-                                </Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              {/* Mobile cards */}
+              <div className="grid gap-2 sm:hidden">
+                {filteredExpenses.map((expense) => (
+                  <Card key={expense.id} className="border-border/60">
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{expense.expense_name || 'Unnamed Expense'}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <Badge variant="secondary" className="text-[10px]">{expense.category}</Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(expense.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          {expense.note && <p className="mt-1 truncate text-[11px] text-muted-foreground">{expense.note}</p>}
+                        </div>
+                        <p className="shrink-0 text-sm font-bold tabular-nums text-destructive">-{money(expense.amount)}</p>
+                      </div>
+                      {profile?.role === 'admin' && (
+                        <div className="mt-2 flex justify-end gap-2">
+                          <EditExpenseDialog expense={expense} onExpenseUpdated={fetchExpenses} />
+                          <Button variant="destructive" size="sm" className="h-8 text-xs" onClick={() => deleteExpense(expense.id)}>
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
 
+              {/* Desktop table */}
+              <Card className="hidden overflow-hidden sm:block">
+                <CardContent className="p-0">
+                  <div className="w-full overflow-x-auto">
+                    <Table className="min-w-[700px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap">Name</TableHead>
+                          <TableHead className="whitespace-nowrap">Category</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Amount</TableHead>
+                          <TableHead className="whitespace-nowrap">Note</TableHead>
+                          <TableHead className="whitespace-nowrap">Created</TableHead>
+                          {profile?.role === 'admin' && <TableHead className="whitespace-nowrap text-right">Actions</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredExpenses.map((expense) => (
+                          <TableRow key={expense.id} className="transition-colors hover:bg-muted/40">
+                            <TableCell className="whitespace-nowrap font-medium">{expense.expense_name || 'Unnamed Expense'}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{expense.category}</Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-bold tabular-nums text-destructive">
+                              -{money(expense.amount)}
+                            </TableCell>
+                            <TableCell className="max-w-[150px] truncate">{expense.note || '-'}</TableCell>
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                              {new Date(expense.created_at).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
+                            </TableCell>
+                            {profile?.role === 'admin' && (
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <EditExpenseDialog expense={expense} onExpenseUpdated={fetchExpenses} />
+                                  <Button variant="destructive" size="sm" onClick={() => deleteExpense(expense.id)}>
+                                    Delete
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             </>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="insights" className="mt-3">
+          <ExpenseAnalytics
+            expenses={filteredExpenses}
+            adminId={adminId}
+            branchFilterId={branchFilterId}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
+
 
 export default Expenses;
