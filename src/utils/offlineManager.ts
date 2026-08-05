@@ -1472,7 +1472,7 @@ class OfflineManager {
         }
     }
 
-    async getCachedQueryResult(table: string, key: string): Promise<{ data: any[]; updatedAt: number } | null> {
+    async getCachedQueryResult(table: string, key: string): Promise<{ data: any; updatedAt: number } | null> {
         if (!this.db) return null;
         return new Promise((resolve) => {
             try {
