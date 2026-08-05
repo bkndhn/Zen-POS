@@ -184,6 +184,26 @@ export const ShopSettingsForm = () => {
                 setAddress(data.address || '');
                 setContactNumber(data.contact_number || '');
                 setLogoUrl(data.logo_url || '');
+                if (data.logo_url && data.logo_url.startsWith('http')) {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            try {
+                                const base64DataUrl = canvas.toDataURL('image/png');
+                                localStorage.setItem('cached_logo_base64', base64DataUrl);
+                            } catch (e) {
+                                console.error('Error caching logo base64:', e);
+                            }
+                        }
+                    };
+                    img.src = data.logo_url;
+                }
                 setPrinterWidth((data.printer_width as '58mm' | '80mm') || '58mm');
 
 
@@ -375,6 +395,7 @@ export const ShopSettingsForm = () => {
 
                     const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
                     setLogoUrl(dataUrl);
+                    localStorage.setItem('cached_logo_base64', dataUrl);
                     toast({
                         title: "✅ Logo Ready",
                         description: `Compressed to ${sizeKB}KB. Shown on menu, bills & receipts.`

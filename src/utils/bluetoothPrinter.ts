@@ -127,7 +127,14 @@ const processImageForPrintingUncached = async (base64Url: string, targetWidth: n
     };
 
     img.onerror = () => finish(null);
-    img.src = base64Url;
+    let srcToUse = base64Url;
+    if (base64Url.startsWith('http')) {
+      const cachedBase64 = localStorage.getItem('cached_logo_base64');
+      if (cachedBase64) {
+        srcToUse = cachedBase64;
+      }
+    }
+    img.src = srcToUse;
   });
 };
 
@@ -135,9 +142,38 @@ const processImageForPrintingUncached = async (base64Url: string, targetWidth: n
 const processImageForPrinting = async (base64Url: string, targetWidth: number = 384): Promise<Uint8Array | null> => {
   const key = `img:${targetWidth}:${base64Url}`;
   if (rasterCache.has(key)) return rasterCache.get(key) ?? null;
+
+  const localCacheKey = 'raster_cache_' + base64Url.substring(0, 100);
+  try {
+    const cachedStr = localStorage.getItem(localCacheKey);
+    if (cachedStr) {
+      const binaryString = atob(cachedStr);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      rasterCache.set(key, bytes);
+      return bytes;
+    }
+  } catch (e) {
+    console.warn('Local cache read error:', e);
+  }
+
   const bytes = await processImageForPrintingUncached(base64Url, targetWidth);
   // Only cache successes; a transient failure should be retried next print.
-  if (bytes) rasterCache.set(key, bytes);
+  if (bytes) {
+    rasterCache.set(key, bytes);
+    try {
+      let binaryString = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binaryString += String.fromCharCode(bytes[i]);
+      }
+      localStorage.setItem(localCacheKey, btoa(binaryString));
+    } catch (e) {
+      console.warn('Local cache write error:', e);
+    }
+  }
   return bytes;
 };
 
@@ -395,7 +431,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   // Logo (only when not paper-saving and a URL is provided). Failures are silent.
   if (data.logoUrl && !paperSaving) {
     try {
-      const logoWidth = data.printerWidth === '80mm' ? 240 : 160;
+      const logoWidth = data.printerWidth === '80mm' ? 160 : 160;
       const logoBytes = await processImageForPrinting(data.logoUrl, logoWidth);
       if (logoBytes) {
         commands.push(ALIGN_CENTER);
@@ -763,8 +799,8 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
           const receiptBytes = await generateReceiptBytes(data);
 
           // Conservative BLE packets work across inexpensive 58/80mm printers.
-          // Must match printerManager chunk size (40B/15ms) for consistent output.
-          const chunkSize = 40;
+          // Must match printerManager chunk size (128B/8ms) for consistent output.
+          const chunkSize = 128;
           for (let i = 0; i < receiptBytes.length; i += chunkSize) {
             const chunk = receiptBytes.slice(i, Math.min(i + chunkSize, receiptBytes.length));
             if (char.properties.writeWithoutResponse && typeof char.writeValueWithoutResponse === 'function') {
@@ -774,7 +810,7 @@ export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
             } else {
               await char.writeValue(chunk);
             }
-            await new Promise(resolve => setTimeout(resolve, 15));
+            await new Promise(resolve => setTimeout(resolve, 8));
           }
 
           server.disconnect();

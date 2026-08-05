@@ -342,97 +342,88 @@ const BillingListItemCard = React.memo(({
   return (
     <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
       <CardContent className="p-3">
-        <div className={cn(
-          "flex justify-between gap-3",
-          (!isInCart && item.quick_chips && item.quick_chips.length > 0)
-            ? "flex-col sm:flex-row sm:items-center"
-            : "flex-row items-center"
-        )}>
-          <div className="flex items-center space-x-3 min-w-0">
-            {/* Image */}
-            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-              {item.media_type === 'video' ? (
-                <video
-                  src={item.video_url || item.image_url}
-                  className="w-full h-full object-cover"
-                  muted
-                  loop
-                  autoPlay
-                  playsInline
-                />
-              ) : (item.image_url || item.video_url) ? (
-                <img
-                  src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (imageUrl || item.image_url)}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                  onError={e => handleImageError(e, item.image_url)}
-                />
-
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <Package className="w-6 h-6" />
-                </div>
-              )}
-            </div>
-
-            {/* Name and Price */}
-            <div className="min-w-0">
-              <h3 className="font-semibold text-sm truncate">{item.name}</h3>
-              <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className={cn(
-            "flex items-center shrink-0 max-w-full",
-            (!isInCart && item.quick_chips && item.quick_chips.length > 0)
-              ? "justify-start sm:justify-end gap-2 flex-wrap w-full sm:w-auto"
-              : "justify-end gap-1.5 w-auto"
-          )}>
-            {isInCart ? (
-              <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3 ml-auto">
-                <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
-                  <Minus className="w-3 h-3" />
-                </Button>
-                <span className="font-semibold min-w-[20px] text-center">
-                  {cartQuantity}
-                </span>
-                <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full">
-                  <Plus className="w-3 h-3" />
-                </Button>
+        <div className="flex flex-col gap-1.5">
+          {/* Top row: Image + Name/Price + Add/Quantity button */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center space-x-3 min-w-0">
+              {/* Image */}
+              <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                {item.media_type === 'video' ? (
+                  <video
+                    src={item.video_url || item.image_url}
+                    className="w-full h-full object-cover"
+                    muted
+                    loop
+                    autoPlay
+                    playsInline
+                  />
+                ) : (item.image_url || item.video_url) ? (
+                  <img
+                    src={item.media_type === 'gif' ? (item.video_url || item.image_url) : (imageUrl || item.image_url)}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    onError={e => handleImageError(e, item.image_url)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <Package className="w-6 h-6" />
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className={cn(
-                "flex items-center justify-start sm:justify-end gap-1.5 max-w-full",
-                (item.quick_chips && item.quick_chips.length > 0)
-                  ? "flex-wrap w-full sm:w-auto ml-0 sm:ml-0"
-                  : "w-auto"
-              )}>
-                {item.quick_chips && item.quick_chips.length > 0 && item.quick_chips.map((chip, idx) => {
-                  const isAmt = chip.startsWith('₹');
-                  return (
-                    <button
-                      key={idx}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isAmt) {
-                          onAddToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
-                        } else {
-                          onAddToCartWithChip(item, chip);
-                        }
-                      }}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
-                    >
-                      {chip}
-                    </button>
-                  );
-                })}
-                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg shrink-0">
+
+              {/* Name and Price */}
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm truncate">{item.name}</h3>
+                <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
+              </div>
+            </div>
+
+            {/* Add / Quantity control - always pinned right */}
+            <div className="shrink-0">
+              {isInCart ? (
+                <div className="flex items-center space-x-2 bg-primary/10 rounded-full py-1 px-3">
+                  <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full">
+                    <Minus className="w-3 h-3" />
+                  </Button>
+                  <span className="font-semibold min-w-[20px] text-center">
+                    {cartQuantity}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, 1)} className="h-6 w-6 p-0 rounded-full">
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => onAddToCart(item)} className="bg-primary hover:bg-primary/90 text-white shadow-sm h-9 px-4 text-xs font-semibold rounded-lg">
                   Add
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
+          {/* Quick chips row - shown below the item when not in cart */}
+          {!isInCart && item.quick_chips && item.quick_chips.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap pl-[60px]">
+              {item.quick_chips.map((chip, idx) => {
+                const isAmt = chip.startsWith('₹');
+                return (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isAmt) {
+                        onAddToCartWithAmount(item, parseFloat(chip.replace(/[^0-9.]/g, '')));
+                      } else {
+                        onAddToCartWithChip(item, chip);
+                      }
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
+                  >
+                    {chip}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -487,32 +478,7 @@ const Billing = () => {
   const [orderChannel, setOrderChannel] = useState<'store' | 'zomato' | 'swiggy'>('store');
   const [aggregatorDialogOpen, setAggregatorDialogOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
-  const [incomingOrders, setIncomingOrders] = useState<any[]>([
-    {
-      id: 'mock-1',
-      orderId: 'ZM-4819401',
-      channel: 'zomato',
-      customerName: 'Aarav Sharma',
-      items: [
-        { name: 'Veg Biryani', quantity: 2 },
-        { name: 'Butter Naan', quantity: 3 }
-      ],
-      total: 470,
-      time: 'Just now'
-    },
-    {
-      id: 'mock-2',
-      orderId: 'SW-9810482',
-      channel: 'swiggy',
-      customerName: 'Priya Patel',
-      items: [
-        { name: 'Masala Dosa', quantity: 1 },
-        { name: 'Beverages', quantity: 2 }
-      ],
-      total: 190,
-      time: '3 mins ago'
-    }
-  ]);
+  const [incomingOrders, setIncomingOrders] = useState<any[]>([]);
 
 
 
@@ -3368,76 +3334,7 @@ const Billing = () => {
             />
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAggregatorDialogOpen(true)}
-            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
-          >
-            <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
-            <span className="hidden sm:inline">Online Orders</span>
-            <span className="sm:hidden">Online</span>
-            {incomingOrders.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
-                {incomingOrders.length}
-              </span>
-            )}
-          </Button>
-
-          {/* Desktop & Laptop Only Header Shortcut Keys Indicator */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm"
-              >
-                <Keyboard className="w-3.5 h-3.5 text-primary" />
-                <span>Keys</span>
-                <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono font-bold bg-primary/10 text-primary border-primary/20">F1-F8</Badge>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl">
-              <div className="text-xs font-bold mb-2 pb-1.5 border-b flex items-center justify-between">
-                <span className="flex items-center gap-1.5"><Keyboard className="w-3.5 h-3.5 text-primary" /> Desktop Shortcuts</span>
-                <span className="text-[10px] text-muted-foreground font-mono">F-Keys</span>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Focus Search:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Standard POS Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Item 3: Desktop/Laptop Only Held Bills Counter Badge */}
-          {heldBillCount > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                const held = localStorage.getItem('hotel_pos_held_bill');
-                if (held) {
-                  try {
-                    const parsed = JSON.parse(held);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      setCart(parsed);
-                      localStorage.removeItem('hotel_pos_held_bill');
-                      setHeldBillCount(0);
-                      toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
-                    }
-                  } catch {}
-                }
-              }}
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
-              title="Click to restore held bill (F8)"
-            >
-              <span>📌 Held Bill</span>
-              <span className="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>
-            </button>
-          )}
+          <PrinterStatusPanel inline className="shrink-0" />
 
           {calciEnabled && (
             <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
@@ -3493,7 +3390,76 @@ const Billing = () => {
             </div>
           )}
 
-          <PrinterStatusPanel inline className="shrink-0" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAggregatorDialogOpen(true)}
+            className="relative bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 text-foreground hover:from-red-500/20 hover:to-orange-500/20 rounded-xl h-8 px-2 text-xs shrink-0"
+          >
+            <Bell className="w-3.5 h-3.5 mr-1 text-red-500" />
+            <span className="hidden sm:inline">Online Orders</span>
+            <span className="sm:hidden">Online</span>
+            {incomingOrders.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white animate-pulse">
+                {incomingOrders.length}
+              </span>
+            )}
+          </Button>
+
+          {/* Desktop & Laptop Only Header Shortcut Keys Indicator */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden md:inline-flex items-center gap-1.5 rounded-xl h-8 px-2.5 text-xs font-semibold bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-foreground hover:bg-muted/50 shrink-0 cursor-pointer shadow-sm"
+              >
+                <Keyboard className="w-3.5 h-3.5 text-primary" />
+                <span>Keys</span>
+                <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono font-bold bg-primary/10 text-primary border-primary/20">F1-F8</Badge>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl">
+              <div className="text-xs font-bold mb-2 pb-1.5 border-b flex items-center justify-between">
+                <span className="flex items-center gap-1.5"><Keyboard className="w-3.5 h-3.5 text-primary" /> Desktop Shortcuts</span>
+                <span className="text-[10px] text-muted-foreground font-mono">F-Keys</span>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Focus Search:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F1</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Standard POS Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F2</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Held Bills Counter Badge */}
+          {heldBillCount > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const held = localStorage.getItem('hotel_pos_held_bill');
+                if (held) {
+                  try {
+                    const parsed = JSON.parse(held);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      setCart(parsed);
+                      localStorage.removeItem('hotel_pos_held_bill');
+                      setHeldBillCount(0);
+                      toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
+                    }
+                  } catch {}
+                }
+              }}
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
+              title="Click to restore held bill (F8)"
+            >
+              <span>📌 Held Bill</span>
+              <span className="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>
+            </button>
+          )}
         </div>
       </div>
 
