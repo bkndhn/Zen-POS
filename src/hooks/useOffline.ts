@@ -83,6 +83,104 @@ export function useOfflineData<T>(
     };
 }
 
+/**
+ * Universal offline-first query hook with stale-while-revalidate.
+ * Returns cached data instantly, then refreshes from network in background.
+ */
+export function useOfflineQuery<T>(
+    tableName: string,
+    queryFn: () => Promise<T[]>,
+    options?: {
+        cacheKey?: string;
+        staleTimeMs?: number;
+        enabled?: boolean;
+    }
+): {
+    data: T[];
+    loading: boolean;
+    isStale: boolean;
+    isOffline: boolean;
+    lastUpdated: number | null;
+    refresh: () => Promise<void>;
+    error: string | null;
+} {
+    const [data, setData] = React.useState<T[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const [isStale, setIsStale] = React.useState(false);
+    const [lastUpdated, setLastUpdated] = React.useState<number | null>(null);
+    const [error, setError] = React.useState<string | null>(null);
+    const isOnline = useNetworkStatus();
+    const staleTimeMs = options?.staleTimeMs ?? 5 * 60 * 1000;
+    const cacheKey = options?.cacheKey ?? 'default';
+    const enabled = options?.enabled ?? true;
+
+    const refresh = React.useCallback(async () => {
+        if (!enabled) return;
+
+        // Step 1: Load from cache FIRST (instant)
+        try {
+            const cached = await offlineManager.getCachedQueryResult(tableName, cacheKey);
+            if (cached && cached.data?.length > 0) {
+                setData(cached.data as T[]);
+                setLastUpdated(cached.updatedAt);
+                setLoading(false);
+                const age = Date.now() - cached.updatedAt;
+                setIsStale(age > staleTimeMs);
+            }
+        } catch {
+            // Cache read failed, continue to network
+        }
+
+        // Step 2: If online, fetch fresh data in background
+        if (isOnline || navigator.onLine) {
+            try {
+                const freshData = await queryFn();
+                setData(freshData);
+                setIsStale(false);
+                setError(null);
+                const now = Date.now();
+                setLastUpdated(now);
+                setLoading(false);
+                await offlineManager.cacheQueryResult(tableName, cacheKey, freshData);
+            } catch (err: any) {
+                console.warn(`[useOfflineQuery] Network fetch failed for ${tableName}:`, err?.message);
+                if (data.length === 0) {
+                    setError('Failed to load data. Showing cached version if available.');
+                }
+                setLoading(false);
+            }
+        } else {
+            if (data.length === 0) {
+                setError('You are offline. No cached data available for this view.');
+            }
+            setLoading(false);
+        }
+    }, [enabled, isOnline, tableName, cacheKey, staleTimeMs, queryFn]);
+
+    React.useEffect(() => {
+        refresh();
+    }, [refresh]);
+
+    return { data, loading, isStale, isOffline: !isOnline, lastUpdated, refresh, error };
+}
+
+/** Hook to track pending write queue count */
+export function useWriteQueueCount(): number {
+    const [count, setCount] = React.useState(0);
+
+    React.useEffect(() => {
+        const update = async () => {
+            const c = await offlineManager.getPendingWriteCount();
+            setCount(c);
+        };
+        update();
+        const unsub = offlineManager.onWriteQueueChange(setCount);
+        return unsub;
+    }, []);
+
+    return count;
+}
+
 // Hook for pending sync count
 export function usePendingSyncCount(): number {
     const [count, setCount] = React.useState(0);

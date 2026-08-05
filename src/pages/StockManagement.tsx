@@ -18,6 +18,7 @@ import { formatMoney } from '@/utils/formatters';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { triggerLowStockPushNotification } from '@/utils/pwaPushNotifications';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface ItemRow {
   id: string;
@@ -122,6 +123,8 @@ const StockManagement: React.FC = () => {
         .eq('is_active', true)
         .order('name');
       if (itemsError) throw itemsError;
+      
+      await offlineManager.cacheQueryResult('items', 'stock_list', itemsData || []);
       const loadedItems = (itemsData || []) as ItemRow[];
       setItems(loadedItems);
 
@@ -139,6 +142,8 @@ const StockManagement: React.FC = () => {
         .eq('admin_id', adminId)
         .order('name');
       if (ingError) throw ingError;
+      
+      await offlineManager.cacheQueryResult('ingredients', 'stock_list', ingData || []);
       setIngredients((ingData || []) as Ingredient[]);
 
       // 3. Fetch Recipes
@@ -147,6 +152,8 @@ const StockManagement: React.FC = () => {
         .select('*, ingredient:ingredients(name,unit,cost_per_unit)')
         .eq('admin_id', adminId);
       if (recError) throw recError;
+      
+      await offlineManager.cacheQueryResult('recipes', 'stock_list', recData || []);
       setRecipes((recData || []) as RecipeRow[]);
 
       // 4. Fetch Recent Sales (last 7 days) for AI predictions (including unlimited stock items)
@@ -158,6 +165,8 @@ const StockManagement: React.FC = () => {
           .select('item_id, quantity, bills!inner(admin_id)')
           .eq('bills.admin_id', adminId)
           .gte('created_at', sevenDaysAgo.toISOString());
+        
+        await offlineManager.cacheQueryResult('bill_items', 'recent_sales', salesData || []);
         setRecentSales(salesData || []);
       } catch (salesErr) {
         console.error('Error fetching recent sales for AI predictions:', salesErr);
@@ -165,6 +174,20 @@ const StockManagement: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       toast({ title: 'Error loading inventory', description: err.message, variant: 'destructive' });
+      // Offline fallback
+      try {
+        const cachedItems = await offlineManager.getCachedQueryResult('items', 'stock_list');
+        if (cachedItems?.data) setItems(cachedItems.data as ItemRow[]);
+        
+        const cachedIng = await offlineManager.getCachedQueryResult('ingredients', 'stock_list');
+        if (cachedIng?.data) setIngredients(cachedIng.data as Ingredient[]);
+        
+        const cachedRecipes = await offlineManager.getCachedQueryResult('recipes', 'stock_list');
+        if (cachedRecipes?.data) setRecipes(cachedRecipes.data as RecipeRow[]);
+        
+        const cachedSales = await offlineManager.getCachedQueryResult('bill_items', 'recent_sales');
+        if (cachedSales?.data) setRecentSales(cachedSales.data as any[]);
+      } catch {}
     } finally {
       setLoading(false);
     }

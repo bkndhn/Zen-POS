@@ -13,6 +13,7 @@ import { TrendingUp, DollarSign, ShoppingBag, Package, ArrowUpRight, ArrowDownRi
 import { formatQuantityWithUnit, toLocalDateString } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { Building2 } from 'lucide-react';
+import { offlineManager } from '@/utils/offlineManager';
 
 
 interface SalesData {
@@ -346,17 +347,34 @@ const DashboardAnalytics = () => {
     const endStr = toLocalDateString(end);
     const { offlineManager } = await import('@/utils/offlineManager');
 
-    let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
-    let expensesQ = supabase.from('expenses').select('amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).order('date');
-    let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
-    if (branchFilterId) {
-      billsQ = billsQ.eq('branch_id', branchFilterId);
-      expensesQ = expensesQ.eq('branch_id', branchFilterId);
-      billItemsQ = billItemsQ.eq('bills.branch_id', branchFilterId);
+    let rawBillsData: any = [];
+    let expensesData: any = [];
+    let billItemsData: any = [];
+
+    try {
+      let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
+      let expensesQ = supabase.from('expenses').select('amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).order('date');
+      let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
+      if (branchFilterId) {
+        billsQ = billsQ.eq('branch_id', branchFilterId);
+        expensesQ = expensesQ.eq('branch_id', branchFilterId);
+        billItemsQ = billItemsQ.eq('bills.branch_id', branchFilterId);
+      }
+      const [{ data: billsD }, { data: expensesD }, { data: billItemsD }] = await Promise.all([billsQ, expensesQ, billItemsQ]);
+      rawBillsData = billsD || [];
+      expensesData = expensesD || [];
+      billItemsData = billItemsD || [];
+
+      await offlineManager.cacheQueryResult('analytics', 'main', { rawBillsData, expensesData, billItemsData });
+    } catch (err) {
+      console.warn("Failed to fetch analytics, falling back to cache", err);
+      const cached = await offlineManager.getCachedQueryResult('analytics', 'main');
+      if (cached?.data) {
+        rawBillsData = cached.data.rawBillsData || [];
+        expensesData = cached.data.expensesData || [];
+        billItemsData = cached.data.billItemsData || [];
+      }
     }
-    const { data: rawBillsData } = await billsQ;
-    const { data: expensesData } = await expensesQ;
-    const { data: billItemsData } = await billItemsQ;
 
     // Merge offline/pending bills from IndexedDB
     const mergedBills = await offlineManager.mergeOfflineBills(rawBillsData || [], adminId, branchFilterId);

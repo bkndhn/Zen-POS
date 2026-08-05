@@ -12,7 +12,7 @@ import { initStoragePersistence, secondaryVault } from './nativeStorage';
 
 // Database configuration
 const DB_NAME = 'HotelPOS_OfflineDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 // Store names
 const STORES = {
@@ -30,7 +30,9 @@ const STORES = {
     PAYMENTS: 'payments',
     TAX_RATES: 'taxRates',
     DISPLAY_SETTINGS: 'displaySettings',
-    BRANCHES: 'branches'
+    BRANCHES: 'branches',
+    OFFLINE_CACHE: 'offlineCache',
+    WRITE_QUEUE: 'writeQueue'
 };
 
 export interface PendingBill {
@@ -195,7 +197,20 @@ class OfflineManager {
                     db.createObjectStore(STORES.BRANCHES, { keyPath: 'id' });
                 }
 
-                console.log('IndexedDB stores created/upgraded to v4');
+                if (!db.objectStoreNames.contains(STORES.OFFLINE_CACHE)) {
+                    const cacheStore = db.createObjectStore(STORES.OFFLINE_CACHE, { keyPath: 'cacheKey' });
+                    cacheStore.createIndex('table', 'table');
+                    cacheStore.createIndex('updatedAt', 'updatedAt');
+                }
+
+                if (!db.objectStoreNames.contains(STORES.WRITE_QUEUE)) {
+                    const writeStore = db.createObjectStore(STORES.WRITE_QUEUE, { keyPath: 'id' });
+                    writeStore.createIndex('table', 'table');
+                    writeStore.createIndex('status', 'status');
+                    writeStore.createIndex('timestamp', 'timestamp');
+                }
+
+                console.log('IndexedDB stores created/upgraded to v5');
             };
         });
         
@@ -281,7 +296,10 @@ class OfflineManager {
             }
             
             // Auto-sync with delay to ensure stable connection
-            setTimeout(() => this.processSyncQueue(), 1000);
+            setTimeout(() => {
+                this.processSyncQueue();
+                this.processWriteQueue();
+            }, 1000);
         });
 
         window.addEventListener('offline', () => {
@@ -1438,6 +1456,194 @@ class OfflineManager {
         } catch (err) {
             console.warn('[VaultRecovery] Failed to restore from vault mirror:', err);
         }
+    }
+
+    // ──────────── Universal Offline Cache ────────────
+
+    async cacheQueryResult(table: string, key: string, data: any[]): Promise<void> {
+        if (!this.db) return;
+        try {
+            const tx = this.db.transaction([STORES.OFFLINE_CACHE], 'readwrite');
+            const store = tx.objectStore(STORES.OFFLINE_CACHE);
+            const cacheKey = `${table}_${key}`;
+            store.put({ cacheKey, table, key, data, updatedAt: Date.now() });
+        } catch (err) {
+            console.warn('[OfflineCache] Failed to cache:', table, key, err);
+        }
+    }
+
+    async getCachedQueryResult(table: string, key: string): Promise<{ data: any[]; updatedAt: number } | null> {
+        if (!this.db) return null;
+        return new Promise((resolve) => {
+            try {
+                const tx = this.db!.transaction([STORES.OFFLINE_CACHE], 'readonly');
+                const store = tx.objectStore(STORES.OFFLINE_CACHE);
+                const cacheKey = `${table}_${key}`;
+                const request = store.get(cacheKey);
+                request.onsuccess = () => {
+                    const result = request.result;
+                    if (result) {
+                        resolve({ data: result.data, updatedAt: result.updatedAt });
+                    } else {
+                        resolve(null);
+                    }
+                };
+                request.onerror = () => resolve(null);
+            } catch {
+                resolve(null);
+            }
+        });
+    }
+
+    async clearCacheForTable(table: string): Promise<void> {
+        if (!this.db) return;
+        try {
+            const tx = this.db.transaction([STORES.OFFLINE_CACHE], 'readwrite');
+            const store = tx.objectStore(STORES.OFFLINE_CACHE);
+            const index = store.index('table');
+            const request = index.getAllKeys(table);
+            request.onsuccess = () => {
+                for (const key of request.result) {
+                    store.delete(key);
+                }
+            };
+        } catch (err) {
+            console.warn('[OfflineCache] Failed to clear cache for:', table, err);
+        }
+    }
+
+    // ──────────── Universal Write Queue ────────────
+
+    async queueWrite(entry: { table: string; operation: 'INSERT' | 'UPDATE' | 'DELETE'; data: any; adminId?: string; branchId?: string }): Promise<string> {
+        if (!this.db) throw new Error('DB not initialized');
+        const id = crypto.randomUUID();
+        const item = {
+            id,
+            table: entry.table,
+            operation: entry.operation,
+            data: entry.data,
+            adminId: entry.adminId || null,
+            branchId: entry.branchId || null,
+            timestamp: Date.now(),
+            status: 'pending' as const,
+            retries: 0,
+            error: null as string | null
+        };
+        return new Promise((resolve, reject) => {
+            const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readwrite');
+            const store = tx.objectStore(STORES.WRITE_QUEUE);
+            const request = store.put(item);
+            request.onsuccess = () => {
+                this.notifyWriteQueueListeners();
+                resolve(id);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getWriteQueue(): Promise<any[]> {
+        if (!this.db) return [];
+        return new Promise((resolve) => {
+            const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readonly');
+            const store = tx.objectStore(STORES.WRITE_QUEUE);
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => resolve([]);
+        });
+    }
+
+    async getPendingWriteCount(): Promise<number> {
+        if (!this.db) return 0;
+        return new Promise((resolve) => {
+            const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readonly');
+            const store = tx.objectStore(STORES.WRITE_QUEUE);
+            const index = store.index('status');
+            const request = index.count('pending');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(0);
+        });
+    }
+
+    async removeFromWriteQueue(id: string): Promise<void> {
+        if (!this.db) return;
+        const tx = this.db.transaction([STORES.WRITE_QUEUE], 'readwrite');
+        const store = tx.objectStore(STORES.WRITE_QUEUE);
+        store.delete(id);
+        this.notifyWriteQueueListeners();
+    }
+
+    async updateWriteQueueItem(id: string, updates: Partial<{ status: string; retries: number; error: string | null }>): Promise<void> {
+        if (!this.db) return;
+        return new Promise((resolve) => {
+            const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readwrite');
+            const store = tx.objectStore(STORES.WRITE_QUEUE);
+            const getReq = store.get(id);
+            getReq.onsuccess = () => {
+                if (getReq.result) {
+                    store.put({ ...getReq.result, ...updates });
+                }
+                resolve();
+            };
+            getReq.onerror = () => resolve();
+        });
+    }
+
+    // Write queue change listeners
+    private writeQueueListeners: Set<(count: number) => void> = new Set();
+
+    onWriteQueueChange(listener: (count: number) => void): () => void {
+        this.writeQueueListeners.add(listener);
+        return () => this.writeQueueListeners.delete(listener);
+    }
+
+    private async notifyWriteQueueListeners(): Promise<void> {
+        const count = await this.getPendingWriteCount();
+        this.writeQueueListeners.forEach(listener => listener(count));
+    }
+
+    // ──────────── Write Queue Sync Processor ────────────
+
+    async processWriteQueue(): Promise<{ synced: number; failed: number }> {
+        if (!this.db || !this.isOnline) return { synced: 0, failed: 0 };
+        
+        const items = await this.getWriteQueue();
+        const pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
+        let synced = 0;
+        let failed = 0;
+
+        for (const item of pending) {
+            try {
+                await this.updateWriteQueueItem(item.id, { status: 'syncing' });
+                
+                let result;
+                if (item.operation === 'INSERT') {
+                    const { data: d, error } = await supabase.from(item.table).insert(item.data).select();
+                    if (error) throw error;
+                    result = d;
+                } else if (item.operation === 'UPDATE') {
+                    const { id: recordId, ...updateData } = item.data;
+                    const { error } = await supabase.from(item.table).update(updateData).eq('id', recordId);
+                    if (error) throw error;
+                } else if (item.operation === 'DELETE') {
+                    const { error } = await supabase.from(item.table).delete().eq('id', item.data.id);
+                    if (error) throw error;
+                }
+
+                await this.removeFromWriteQueue(item.id);
+                synced++;
+            } catch (err: any) {
+                console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
+                await this.updateWriteQueueItem(item.id, {
+                    status: 'failed',
+                    retries: (item.retries || 0) + 1,
+                    error: err?.message || 'Unknown error'
+                });
+                failed++;
+            }
+        }
+
+        this.notifyWriteQueueListeners();
+        return { synced, failed };
     }
 }
 

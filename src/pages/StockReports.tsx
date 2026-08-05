@@ -14,6 +14,7 @@ import { BarChart3, Download, Package, AlertTriangle, XOctagon, IndianRupee } fr
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { formatStoredQuantity } from '@/utils/timeUtils';
+import { offlineManager } from '@/utils/offlineManager';
 
 const toCsv = (rows: any[], cols: { key: string; label: string }[]) => {
   const head = cols.map(c => c.label).join(',');
@@ -51,19 +52,45 @@ const StockReports: React.FC = () => {
   const load = async () => {
     if (!adminId) return;
     setLoading(true);
-    const [sup, pur, lines, itm, adj] = await Promise.all([
-      (supabase as any).from('suppliers').select('id,name').eq('admin_id', adminId).order('name'),
-      (supabase as any).from('purchases').select('id,purchase_no,purchase_date,total_amount,supplier_id,invoice_no,suppliers(name)').eq('admin_id', adminId).gte('purchase_date', from).lte('purchase_date', to).order('purchase_date', { ascending: false }),
-      (supabase as any).from('purchase_items').select('id,purchase_id,item_name,unit,quantity,rate,total,batch_no,expiry_date,purchase_distributions(branch_id,quantity)').eq('admin_id', adminId),
-      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,minimum_stock_alert,unlimited_stock,purchase_rate,price,unit,inventory_unit').eq('admin_id', adminId).eq('is_active', true),
-      (supabase as any).from('stock_adjustments').select('id,branch_id,item_id,change_qty,reason,notes,created_at').eq('admin_id', adminId).gte('created_at', from).lte('created_at', `${to}T23:59:59`).order('created_at', { ascending: false }),
-    ]);
-    setSuppliers((sup.data || []));
-    setPurchases((pur.data || []));
-    setPurchaseLines((lines.data || []));
-    setItems((itm.data || []));
-    setAdjustments((adj.data || []));
-    setLoading(false);
+    try {
+      const [sup, pur, lines, itm, adj] = await Promise.all([
+        (supabase as any).from('suppliers').select('id,name').eq('admin_id', adminId).order('name'),
+        (supabase as any).from('purchases').select('id,purchase_no,purchase_date,total_amount,supplier_id,invoice_no,suppliers(name)').eq('admin_id', adminId).gte('purchase_date', from).lte('purchase_date', to).order('purchase_date', { ascending: false }),
+        (supabase as any).from('purchase_items').select('id,purchase_id,item_name,unit,quantity,rate,total,batch_no,expiry_date,purchase_distributions(branch_id,quantity)').eq('admin_id', adminId),
+        (supabase as any).from('items').select('id,name,branch_id,stock_quantity,minimum_stock_alert,unlimited_stock,purchase_rate,price,unit,inventory_unit').eq('admin_id', adminId).eq('is_active', true),
+        (supabase as any).from('stock_adjustments').select('id,branch_id,item_id,change_qty,reason,notes,created_at').eq('admin_id', adminId).gte('created_at', from).lte('created_at', `${to}T23:59:59`).order('created_at', { ascending: false }),
+      ]);
+      
+      await Promise.all([
+        offlineManager.cacheQueryResult('stock_reports', 'suppliers', sup.data || []),
+        offlineManager.cacheQueryResult('stock_reports', 'purchases', pur.data || []),
+        offlineManager.cacheQueryResult('stock_reports', 'purchaseLines', lines.data || []),
+        offlineManager.cacheQueryResult('stock_reports', 'items', itm.data || []),
+        offlineManager.cacheQueryResult('stock_reports', 'adjustments', adj.data || []),
+      ]);
+
+      setSuppliers((sup.data || []));
+      setPurchases((pur.data || []));
+      setPurchaseLines((lines.data || []));
+      setItems((itm.data || []));
+      setAdjustments((adj.data || []));
+    } catch (error) {
+      console.warn("Failed to load stock reports, falling back to cache", error);
+      const [sup, pur, lines, itm, adj] = await Promise.all([
+        offlineManager.getCachedQueryResult('stock_reports', 'suppliers'),
+        offlineManager.getCachedQueryResult('stock_reports', 'purchases'),
+        offlineManager.getCachedQueryResult('stock_reports', 'purchaseLines'),
+        offlineManager.getCachedQueryResult('stock_reports', 'items'),
+        offlineManager.getCachedQueryResult('stock_reports', 'adjustments'),
+      ]);
+      if (sup?.data) setSuppliers(sup.data);
+      if (pur?.data) setPurchases(pur.data);
+      if (lines?.data) setPurchaseLines(lines.data);
+      if (itm?.data) setItems(itm.data);
+      if (adj?.data) setAdjustments(adj.data);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, [adminId, from, to]);
 

@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { Truck, Plus, Pencil, Trash2, Search, Building2, Phone, Mail, FileText, MapPin, ShoppingBag, IndianRupee, Star, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface Supplier {
   id: string;
@@ -58,17 +59,7 @@ const Suppliers: React.FC = () => {
 
   const load = async () => {
     if (!adminId) return;
-    let loadedFromCache = false;
     try {
-      const { dataCache } = await import('@/utils/cacheUtils');
-      const cacheKey = `suppliers_${adminId}_${branchFilterId || 'all'}`;
-      const cached = dataCache.get<Supplier[]>(cacheKey);
-      if (cached && cached.length > 0) {
-        setList(cached);
-        loadedFromCache = true;
-        setLoading(false);
-      }
-
       // Fetch suppliers
       let query = (supabase as any)
         .from('suppliers')
@@ -111,8 +102,8 @@ const Suppliers: React.FC = () => {
         };
       });
 
+      await offlineManager.cacheQueryResult('suppliers', `list_${branchFilterId || 'all'}`, enriched);
       setList(enriched);
-      dataCache.set(cacheKey, enriched);
 
       const { data: itemData } = await (supabase as any)
         .from('items')
@@ -120,13 +111,23 @@ const Suppliers: React.FC = () => {
         .eq('admin_id', adminId)
         .eq('is_active', true)
         .order('name');
-      if (itemData) setItems(itemData);
+      if (itemData) {
+        await offlineManager.cacheQueryResult('items', 'list', itemData);
+        setItems(itemData);
+      }
 
     } catch (err: any) {
-      console.warn('Error loading suppliers from network (offline mode active):', err);
-      if (!loadedFromCache) {
-        toast({ title: 'Offline Mode', description: 'Connect to internet to refresh suppliers', variant: 'destructive' });
-      }
+      console.warn('Error loading suppliers from network:', err);
+      try {
+        const cached = await offlineManager.getCachedQueryResult('suppliers', `list_${branchFilterId || 'all'}`);
+        if (cached?.data) {
+          setList(cached.data as Supplier[]);
+        }
+        const cachedItems = await offlineManager.getCachedQueryResult('items', 'list');
+        if (cachedItems?.data) {
+          setItems(cachedItems.data as any[]);
+        }
+      } catch {}
     } finally {
       setLoading(false);
     }
@@ -243,6 +244,16 @@ const Suppliers: React.FC = () => {
       setOpen(false);
       load();
     } catch (err: any) {
+      if (!navigator.onLine) {
+        await offlineManager.queueWrite({ 
+          table: 'suppliers', 
+          operation: editing ? 'UPDATE' : 'INSERT', 
+          data: editing ? { ...payload, id: editing.id } : payload 
+        });
+        toast({ title: 'Saved offline', description: 'Will sync when connection returns' });
+        setOpen(false);
+        return; // Don't show error
+      }
       toast({ title: 'Error saving supplier', description: err.message, variant: 'destructive' });
     }
   };
@@ -260,6 +271,15 @@ const Suppliers: React.FC = () => {
       toast({ title: 'Supplier deleted' });
       load();
     } catch (err: any) {
+      if (!navigator.onLine) {
+        await offlineManager.queueWrite({ 
+          table: 'suppliers', 
+          operation: 'UPDATE', 
+          data: { id: s.id, is_active: false } 
+        });
+        toast({ title: 'Saved offline', description: 'Will sync when connection returns' });
+        return; // Don't show error
+      }
       toast({ title: 'Error deleting supplier', description: err.message, variant: 'destructive' });
     }
   };

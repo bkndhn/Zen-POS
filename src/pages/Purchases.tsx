@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info, FileText, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface Supplier {
   id: string;
@@ -84,15 +85,37 @@ const Purchases: React.FC = () => {
   const load = async () => {
     if (!adminId) return;
     setLoading(true);
-    const [sup, pur, itm] = await Promise.all([
-      supabase.from('suppliers').select('*').eq('admin_id', adminId).eq('is_active', true).order('name'),
-      supabase.from('purchases').select('*, suppliers(*)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(100),
-      supabase.from('items').select('id,name,branch_id,unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
-    ]);
-    setSuppliers((sup.data || []) as Supplier[]);
-    setPurchases((pur.data || []) as Purchase[]);
-    setItems((itm.data || []) as ItemRow[]);
-    setLoading(false);
+    try {
+      const [sup, pur, itm] = await Promise.all([
+        supabase.from('suppliers').select('*').eq('admin_id', adminId).eq('is_active', true).order('name'),
+        supabase.from('purchases').select('*, suppliers(*)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(100),
+        supabase.from('items').select('id,name,branch_id,unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
+      ]);
+
+      if (sup.error) throw sup.error;
+      if (pur.error) throw pur.error;
+      if (itm.error) throw itm.error;
+
+      await offlineManager.cacheQueryResult('suppliers', 'list', sup.data || []);
+      await offlineManager.cacheQueryResult('purchases', 'list', pur.data || []);
+      await offlineManager.cacheQueryResult('items', 'list', itm.data || []);
+
+      setSuppliers((sup.data || []) as Supplier[]);
+      setPurchases((pur.data || []) as Purchase[]);
+      setItems((itm.data || []) as ItemRow[]);
+    } catch (err) {
+      console.error('Fetch failed:', err);
+      try {
+        const cachedSup = await offlineManager.getCachedQueryResult('suppliers', 'list');
+        if (cachedSup?.data) setSuppliers(cachedSup.data as Supplier[]);
+        const cachedPur = await offlineManager.getCachedQueryResult('purchases', 'list');
+        if (cachedPur?.data) setPurchases(cachedPur.data as Purchase[]);
+        const cachedItm = await offlineManager.getCachedQueryResult('items', 'list');
+        if (cachedItm?.data) setItems(cachedItm.data as ItemRow[]);
+      } catch {}
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [adminId]);
@@ -228,7 +251,7 @@ const Purchases: React.FC = () => {
     }
 
     setSaving(true);
-    const { data: purchaseData, error } = await supabase.rpc('create_purchase_transaction', {
+    const payloadData = {
       p_supplier_id: supplierId || null,
       p_invoice_no: invoiceNo || null,
       p_purchase_date: purchaseDate,
@@ -240,11 +263,38 @@ const Purchases: React.FC = () => {
           branch_id: d.branch_id, item_id: d.item_id || null, quantity: d.quantity
         }))
       }))
-    });
+    };
+    
+    try {
+      const { data: purchaseData, error } = await supabase.rpc('create_purchase_transaction', payloadData);
 
-    if (error) {
+      if (error) throw error;
+
+      // Record initial payment if specified
+      if (purchaseData && (purchaseData as any).id && paidAmount > 0) {
+        const { error: payError } = await (supabase as any).from("purchase_payments").insert({
+          admin_id: adminId,
+          purchase_id: (purchaseData as any).id,
+          payment_date: purchaseDate,
+          amount: paidAmount,
+          payment_mode: initialPaymentMode,
+          notes: 'Initial payment recorded at purchase time'
+        });
+        if (payError) {
+          console.warn('Failed to record initial purchase payment:', payError);
+        }
+      }
+    } catch (err: any) {
+      if (!navigator.onLine) {
+        await offlineManager.queueWrite({ table: 'purchases', operation: 'INSERT', data: payloadData });
+        toast({ title: 'Saved offline', description: 'Will sync when connection returns' });
+        setSaving(false);
+        setOpen(false); load();
+        window.dispatchEvent(new CustomEvent('items-updated'));
+        return; // Don't show error
+      }
       setSaving(false);
-      return toast({ title: 'Error saving purchase', description: error.message, variant: 'destructive' });
+      return toast({ title: 'Error saving purchase', description: err.message, variant: 'destructive' });
     }
 
     // Record initial payment if specified

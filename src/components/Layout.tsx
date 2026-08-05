@@ -8,6 +8,7 @@ import { Sidebar } from './Sidebar';
 import { OfflineIndicator } from './OfflineIndicator';
 import { SyncStatusBar } from './SyncStatusBar';
 import { OfflineLicenseBanner } from './OfflineLicenseBanner';
+import OfflineStatusBanner from './OfflineStatusBanner';
 import { PullToRefresh } from './PullToRefresh';
 import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData, type LicenseStatus } from '@/utils/offlineLicenseManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -226,6 +227,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
 
         {/* Offline SaaS License & Network Indicators */}
+        <OfflineStatusBanner />
         <OfflineLicenseBanner />
         <SyncStatusBar />
         <div className="px-2 sm:px-4 py-1">
