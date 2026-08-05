@@ -45,6 +45,28 @@ const Expenses: React.FC = () => {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [dateFilter, setDateFilter] = useState('today');
 
+  // Active range (ISO dates) used by the insights tab for revenue comparison
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    const iso = (d: Date) => d.toISOString().split('T')[0];
+    const today = new Date();
+    if (dateFilter === 'custom') return { rangeStart: startDate, rangeEnd: endDate };
+    if (dateFilter === 'today') return { rangeStart: iso(today), rangeEnd: iso(today) };
+    if (dateFilter === 'yesterday') {
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      return { rangeStart: iso(y), rangeEnd: iso(y) };
+    }
+    if (dateFilter === 'week') {
+      const w = new Date(); w.setDate(w.getDate() - 7);
+      return { rangeStart: iso(w), rangeEnd: iso(today) };
+    }
+    if (dateFilter === 'month') {
+      const m = new Date(); m.setMonth(m.getMonth() - 1);
+      return { rangeStart: iso(m), rangeEnd: iso(today) };
+    }
+    return { rangeStart: null as string | null, rangeEnd: null as string | null };
+  }, [dateFilter, startDate, endDate]);
+
+
   useEffect(() => {
     if (adminId) fetchExpenses();
   }, [adminId, branchFilterId]);
