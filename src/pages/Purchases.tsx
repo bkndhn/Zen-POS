@@ -299,20 +299,7 @@ const Purchases: React.FC = () => {
       return toast({ title: 'Error saving purchase', description: err.message, variant: 'destructive' });
     }
 
-    // Record initial payment if specified
-    if (purchaseData && (purchaseData as any).id && paidAmount > 0) {
-      const { error: payError } = await (supabase as any).from("purchase_payments").insert({
-        admin_id: adminId,
-        purchase_id: (purchaseData as any).id,
-        payment_date: purchaseDate,
-        amount: paidAmount,
-        payment_mode: initialPaymentMode,
-        notes: 'Initial payment recorded at purchase time'
-      });
-      if (payError) {
-        console.warn('Failed to record initial purchase payment:', payError);
-      }
-    }
+
 
     setSaving(false);
     toast({ title: 'Purchase saved successfully' });
