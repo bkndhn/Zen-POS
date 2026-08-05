@@ -1460,7 +1460,7 @@ class OfflineManager {
 
     // ──────────── Universal Offline Cache ────────────
 
-    async cacheQueryResult(table: string, key: string, data: any[]): Promise<void> {
+    async cacheQueryResult(table: string, key: string, data: any): Promise<void> {
         if (!this.db) return;
         try {
             const tx = this.db.transaction([STORES.OFFLINE_CACHE], 'readwrite');
