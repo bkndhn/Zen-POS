@@ -102,3 +102,31 @@ export function usePendingSyncCount(): number {
 
     return count;
 }
+
+// ---------------------------------------------------------------------------
+// Silent sync engine hooks
+// ---------------------------------------------------------------------------
+import { syncEngine, type SyncEngineState, type RecordSyncState } from '@/utils/syncEngine';
+
+/** Live state of the background sync engine (offline-first, never blocking). */
+export function useSyncEngine(): SyncEngineState {
+    const [state, setState] = React.useState<SyncEngineState>(() => syncEngine.getState());
+
+    React.useEffect(() => syncEngine.subscribe(setState), []);
+
+    return state;
+}
+
+/** Per-record sync ticks (pending / syncing / synced / failed), chat-app style. */
+export function useSyncState(clientUuid?: string | null): RecordSyncState | null {
+    const [state, setState] = React.useState<RecordSyncState | null>(() =>
+        syncEngine.getRecordState(clientUuid)
+    );
+
+    React.useEffect(() => {
+        setState(syncEngine.getRecordState(clientUuid));
+        return syncEngine.subscribe(() => setState(syncEngine.getRecordState(clientUuid)));
+    }, [clientUuid]);
+
+    return state;
+}
