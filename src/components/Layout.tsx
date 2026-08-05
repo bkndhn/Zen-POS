@@ -6,6 +6,7 @@ import { BottomNavigation } from './BottomNavigation';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { OfflineIndicator } from './OfflineIndicator';
+import { SyncStatusBar } from './SyncStatusBar';
 import { OfflineLicenseBanner } from './OfflineLicenseBanner';
 import { PullToRefresh } from './PullToRefresh';
 import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData, type LicenseStatus } from '@/utils/offlineLicenseManager';
