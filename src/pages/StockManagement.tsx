@@ -124,9 +124,9 @@ const StockManagement: React.FC = () => {
         .order('name');
       if (itemsError) throw itemsError;
       
-      await offlineManager.cacheQueryResult('items', 'stock_list', itemsData || []);
       const loadedItems = (itemsData || []) as ItemRow[];
       setItems(loadedItems);
+      offlineManager.cacheQueryResult('items', 'stock_list', itemsData || []).catch(() => {});
 
       // Auto-trigger Android & PWA Status Bar Push Notification for low stock items
       const lowStock = loadedItems.filter(i => !i.unlimited_stock && i.stock_quantity !== null && i.minimum_stock_alert !== null && i.stock_quantity <= i.minimum_stock_alert);
@@ -143,8 +143,8 @@ const StockManagement: React.FC = () => {
         .order('name');
       if (ingError) throw ingError;
       
-      await offlineManager.cacheQueryResult('ingredients', 'stock_list', ingData || []);
       setIngredients((ingData || []) as Ingredient[]);
+      offlineManager.cacheQueryResult('ingredients', 'stock_list', ingData || []).catch(() => {});
 
       // 3. Fetch Recipes
       const { data: recData, error: recError } = await supabase
@@ -153,8 +153,8 @@ const StockManagement: React.FC = () => {
         .eq('admin_id', adminId);
       if (recError) throw recError;
       
-      await offlineManager.cacheQueryResult('recipes', 'stock_list', recData || []);
       setRecipes((recData || []) as RecipeRow[]);
+      offlineManager.cacheQueryResult('recipes', 'stock_list', recData || []).catch(() => {});
 
       // 4. Fetch Recent Sales (last 7 days) for AI predictions (including unlimited stock items)
       try {
@@ -166,8 +166,8 @@ const StockManagement: React.FC = () => {
           .eq('bills.admin_id', adminId)
           .gte('created_at', sevenDaysAgo.toISOString());
         
-        await offlineManager.cacheQueryResult('bill_items', 'recent_sales', salesData || []);
         setRecentSales(salesData || []);
+        offlineManager.cacheQueryResult('bill_items', 'recent_sales', salesData || []).catch(() => {});
       } catch (salesErr) {
         console.error('Error fetching recent sales for AI predictions:', salesErr);
       }

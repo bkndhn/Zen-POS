@@ -84,8 +84,10 @@ export function useOfflineData<T>(
 }
 
 /**
- * Universal offline-first query hook with stale-while-revalidate.
- * Returns cached data instantly, then refreshes from network in background.
+ * Universal offline-first query hook.
+ * ONLINE:  Network fetch first → update cache → show fresh data. Cache is fallback only on failure.
+ * OFFLINE: Load from IndexedDB cache instantly.
+ * This ensures online users ALWAYS see fresh data — no stale cache flashing.
  */
 export function useOfflineQuery<T>(
     tableName: string,
@@ -110,52 +112,57 @@ export function useOfflineQuery<T>(
     const [lastUpdated, setLastUpdated] = React.useState<number | null>(null);
     const [error, setError] = React.useState<string | null>(null);
     const isOnline = useNetworkStatus();
-    const staleTimeMs = options?.staleTimeMs ?? 5 * 60 * 1000;
     const cacheKey = options?.cacheKey ?? 'default';
     const enabled = options?.enabled ?? true;
 
     const refresh = React.useCallback(async () => {
         if (!enabled) return;
+        setLoading(true);
+        setError(null);
 
-        // Step 1: Load from cache FIRST (instant)
-        try {
-            const cached = await offlineManager.getCachedQueryResult(tableName, cacheKey);
-            if (cached && cached.data?.length > 0) {
-                setData(cached.data as T[]);
-                setLastUpdated(cached.updatedAt);
-                setLoading(false);
-                const age = Date.now() - cached.updatedAt;
-                setIsStale(age > staleTimeMs);
-            }
-        } catch {
-            // Cache read failed, continue to network
-        }
-
-        // Step 2: If online, fetch fresh data in background
         if (isOnline || navigator.onLine) {
+            // ── ONLINE: Network first, cache as fallback ──
             try {
                 const freshData = await queryFn();
                 setData(freshData);
                 setIsStale(false);
-                setError(null);
                 const now = Date.now();
                 setLastUpdated(now);
-                setLoading(false);
-                await offlineManager.cacheQueryResult(tableName, cacheKey, freshData);
+                // Silently update cache in background (don't block UI)
+                offlineManager.cacheQueryResult(tableName, cacheKey, freshData).catch(() => {});
             } catch (err: any) {
-                console.warn(`[useOfflineQuery] Network fetch failed for ${tableName}:`, err?.message);
-                if (data.length === 0) {
-                    setError('Failed to load data. Showing cached version if available.');
+                console.warn(`[useOfflineQuery] Network failed for ${tableName}, trying cache:`, err?.message);
+                // Network failed — try cache as fallback
+                try {
+                    const cached = await offlineManager.getCachedQueryResult(tableName, cacheKey);
+                    if (cached?.data?.length > 0) {
+                        setData(cached.data as T[]);
+                        setLastUpdated(cached.updatedAt);
+                        setIsStale(true);
+                    } else {
+                        setError('Failed to fetch data and no cache available.');
+                    }
+                } catch {
+                    setError('Failed to load data.');
                 }
-                setLoading(false);
             }
         } else {
-            if (data.length === 0) {
-                setError('You are offline. No cached data available for this view.');
+            // ── OFFLINE: Cache only ──
+            try {
+                const cached = await offlineManager.getCachedQueryResult(tableName, cacheKey);
+                if (cached?.data?.length > 0) {
+                    setData(cached.data as T[]);
+                    setLastUpdated(cached.updatedAt);
+                    setIsStale(true);
+                } else {
+                    setError('You are offline. No cached data available.');
+                }
+            } catch {
+                setError('You are offline. Cache read failed.');
             }
-            setLoading(false);
         }
-    }, [enabled, isOnline, tableName, cacheKey, staleTimeMs, queryFn]);
+        setLoading(false);
+    }, [enabled, isOnline, tableName, cacheKey, queryFn]);
 
     React.useEffect(() => {
         refresh();

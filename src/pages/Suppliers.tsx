@@ -102,8 +102,8 @@ const Suppliers: React.FC = () => {
         };
       });
 
-      await offlineManager.cacheQueryResult('suppliers', `list_${branchFilterId || 'all'}`, enriched);
       setList(enriched);
+      offlineManager.cacheQueryResult('suppliers', `list_${branchFilterId || 'all'}`, enriched).catch(() => {});
 
       const { data: itemData } = await (supabase as any)
         .from('items')
@@ -111,9 +111,8 @@ const Suppliers: React.FC = () => {
         .eq('admin_id', adminId)
         .eq('is_active', true)
         .order('name');
-      if (itemData) {
-        await offlineManager.cacheQueryResult('items', 'list', itemData);
         setItems(itemData);
+        offlineManager.cacheQueryResult('items', 'list', itemData).catch(() => {});
       }
 
     } catch (err: any) {

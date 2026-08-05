@@ -1630,6 +1630,8 @@ class OfflineManager {
                 }
 
                 await this.removeFromWriteQueue(item.id);
+                // Invalidate cache for this table so next load gets fresh data
+                await this.clearCacheForTable(item.table);
                 synced++;
             } catch (err: any) {
                 console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);

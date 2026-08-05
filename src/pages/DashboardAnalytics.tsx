@@ -365,7 +365,7 @@ const DashboardAnalytics = () => {
       expensesData = expensesD || [];
       billItemsData = billItemsD || [];
 
-      await offlineManager.cacheQueryResult('analytics', 'main', { rawBillsData, expensesData, billItemsData });
+      offlineManager.cacheQueryResult('analytics', 'main', { rawBillsData, expensesData, billItemsData }).catch(() => {});
     } catch (err) {
       console.warn("Failed to fetch analytics, falling back to cache", err);
       const cached = await offlineManager.getCachedQueryResult('analytics', 'main');

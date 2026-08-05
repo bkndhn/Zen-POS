@@ -96,13 +96,15 @@ const Purchases: React.FC = () => {
       if (pur.error) throw pur.error;
       if (itm.error) throw itm.error;
 
-      await offlineManager.cacheQueryResult('suppliers', 'list', sup.data || []);
-      await offlineManager.cacheQueryResult('purchases', 'list', pur.data || []);
-      await offlineManager.cacheQueryResult('items', 'list', itm.data || []);
-
+      // Update UI first (instant)
       setSuppliers((sup.data || []) as Supplier[]);
       setPurchases((pur.data || []) as Purchase[]);
       setItems((itm.data || []) as ItemRow[]);
+
+      // Cache in background (non-blocking)
+      offlineManager.cacheQueryResult('suppliers', 'list', sup.data || []).catch(() => {});
+      offlineManager.cacheQueryResult('purchases', 'list', pur.data || []).catch(() => {});
+      offlineManager.cacheQueryResult('items', 'list', itm.data || []).catch(() => {});
     } catch (err) {
       console.error('Fetch failed:', err);
       try {
