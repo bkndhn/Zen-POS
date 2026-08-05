@@ -188,21 +188,16 @@ export function useWriteQueueCount(): number {
     return count;
 }
 
-// Hook for pending sync count
+// Hook for pending sync count (event-driven, no polling)
 export function usePendingSyncCount(): number {
     const [count, setCount] = React.useState(0);
 
     React.useEffect(() => {
-        const updateCount = async () => {
-            const pendingCount = await offlineManager.getPendingBillsCount();
-            setCount(pendingCount);
-        };
-
-        updateCount();
-
-        // Update count periodically
-        const interval = setInterval(updateCount, 5000);
-        return () => clearInterval(interval);
+        // Initial check
+        offlineManager.getPendingBillsCount().then(setCount).catch(() => {});
+        // Event-driven updates (no polling)
+        const unsub = offlineManager.onPendingBillsChange(setCount);
+        return unsub;
     }, []);
 
     return count;

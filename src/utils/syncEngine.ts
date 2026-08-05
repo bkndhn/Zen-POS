@@ -255,6 +255,8 @@ class SyncEngine {
       // processSyncQueue drains the outbox; BATCH_SIZE keeps each idle slice short
       const before = this.state.pending;
       const result = await offlineManager.processSyncQueue(force);
+      // Also process the universal write queue (suppliers, purchases, stock, etc.)
+      await offlineManager.processWriteQueue().catch(() => {});
       await this.refreshCounts();
 
       if (result && result.failed > 0 && result.synced === 0) {

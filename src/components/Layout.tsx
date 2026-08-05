@@ -5,10 +5,10 @@ import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { BottomNavigation } from './BottomNavigation';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { OfflineIndicator } from './OfflineIndicator';
+
 import { SyncStatusBar } from './SyncStatusBar';
 import { OfflineLicenseBanner } from './OfflineLicenseBanner';
-import OfflineStatusBanner from './OfflineStatusBanner';
+
 import { PullToRefresh } from './PullToRefresh';
 import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData, type LicenseStatus } from '@/utils/offlineLicenseManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -226,13 +226,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex flex-col flex-1 w-full min-w-0">
         <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
 
-        {/* Offline SaaS License & Network Indicators */}
-        <OfflineStatusBanner />
+        {/* Offline SaaS License & Sync — silent when online */}
         <OfflineLicenseBanner />
         <SyncStatusBar />
-        <div className="px-2 sm:px-4 py-1">
-          <OfflineIndicator />
-        </div>
 
         {showLockout ? (
           /* Full-screen lockout overlay */
