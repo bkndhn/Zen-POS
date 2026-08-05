@@ -6,6 +6,7 @@ import { BottomNavigation } from './BottomNavigation';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { OfflineIndicator } from './OfflineIndicator';
+import { SyncStatusBar } from './SyncStatusBar';
 import { OfflineLicenseBanner } from './OfflineLicenseBanner';
 import { PullToRefresh } from './PullToRefresh';
 import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData, type LicenseStatus } from '@/utils/offlineLicenseManager';
@@ -226,6 +227,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Offline SaaS License & Network Indicators */}
         <OfflineLicenseBanner />
+        <SyncStatusBar />
         <div className="px-2 sm:px-4 py-1">
           <OfflineIndicator />
         </div>

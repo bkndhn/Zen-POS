@@ -99,30 +99,26 @@ export const AddExpenseDialog: React.FC<AddExpenseDialogProps> = ({ onExpenseAdd
         branch_id: operatingBranchId || null,
       };
 
-      if (!navigator.onLine) {
-        const { offlineManager } = await import('@/utils/offlineManager');
-        await offlineManager.addToSyncQueue({
-          type: 'expense',
-          action: 'create',
-          data: expenseData
-        });
+      const { syncEngine } = await import('@/utils/syncEngine');
+      const res = await syncEngine.submit({
+        type: 'expense',
+        action: 'create',
+        data: expenseData,
+        onlineWrite: async () => {
+          const { error } = await supabase.from('expenses').insert(expenseData);
+          if (error) throw error;
+          dataCache.invalidatePattern(CACHE_KEYS.EXPENSES);
+        },
+      });
 
-        toast({
-          title: "📴 Expense Saved Offline",
-          description: "Expense queued. Will sync when online.",
-        });
-      } else {
-        const { error } = await supabase.from('expenses').insert(expenseData);
-        if (error) throw error;
+      if (res.error) throw new Error(res.error);
 
-        // Invalidate expenses cache
-        dataCache.invalidatePattern(CACHE_KEYS.EXPENSES);
-
-        toast({
-          title: "Success",
-          description: "Expense added successfully",
-        });
-      }
+      toast({
+        title: res.queued ? "Saved offline" : "Success",
+        description: res.queued
+          ? "Expense saved on this device — it will sync automatically."
+          : "Expense added successfully",
+      });
 
       setFormData({ 
         expense_name: '',
