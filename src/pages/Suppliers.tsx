@@ -498,8 +498,8 @@ const Suppliers: React.FC = () => {
               </Card>
             );
           })}
-        </TabsContent>
-          
+          </div>
+          </TabsContent>
           <TabsContent value="catalog" className="space-y-6 m-0">
             <div className="flex items-center justify-between gap-3">
               <div className="relative w-full sm:w-80">
@@ -579,10 +579,6 @@ const Suppliers: React.FC = () => {
             </div>
           </TabsContent>
         </Tabs>
-
-      </div>
-
-      </div>
 
       {/* Add / Edit Supplier Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -775,6 +771,7 @@ const Suppliers: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      </div>
     </div>
   );
 };

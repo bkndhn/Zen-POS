@@ -1467,7 +1467,11 @@ const KitchenAnalytics = ({ bills, tableOrders, onClose }: { bills: any[], table
         const h = new Date(o.created_at).getHours();
         hourCounts[h]++;
     });
-    const peakHours = hourCounts.map((count, hour) => ({ hour: `${hour}:00`, count })).filter(h => h.count > 0);
+    const peakHours = hourCounts.map((count, hour) => {
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+      return { hour: `${displayHour}:00 ${ampm}`, count };
+    }).filter(h => h.count > 0);
 
     return (
         <div className="fixed inset-y-0 right-0 w-full sm:w-[450px] bg-background/95 backdrop-blur-xl border-l z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">

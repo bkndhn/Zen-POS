@@ -753,7 +753,7 @@ const Billing = () => {
           customerName: d.customer_name || 'Online Customer',
           items: d.items,
           total: d.total,
-          time: new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: new Date(d.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
         })));
       }
     };
