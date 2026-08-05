@@ -31,6 +31,11 @@ interface MenuItem {
     is_active: boolean;
     tax_rate_id?: string | null;
     is_tax_inclusive?: boolean;
+    modifiers?: any[];
+    customization_options?: any[];
+    addons?: any[];
+    special_instructions?: string;
+    notes?: string;
 }
 
 interface PromoBanner {
@@ -92,6 +97,7 @@ interface ShopSettings {
 // Table ordering types
 interface CartItem {
     id: string;
+    item_id: string;
     name: string;
     price: number;
     quantity: number;
@@ -100,6 +106,8 @@ interface CartItem {
     instructions: string;
     tax_rate_id?: string | null;
     is_tax_inclusive?: boolean;
+    selected_modifiers?: any[];
+    customization_string?: string;
 }
 
 interface TableOrder {
@@ -139,6 +147,180 @@ interface ItemCategory {
  * - Real-time updates when items become unavailable
  * - Custom URL slug support
  */
+
+interface ModifierOption {
+    name: string;
+    price_adjustment: number;
+}
+interface ModifierGroup {
+    name: string;
+    type: 'radio' | 'checkbox';
+    options: ModifierOption[];
+}
+
+const ItemCustomizerDialog = ({ 
+    isOpen, 
+    onClose, 
+    item, 
+    onAddToCart 
+}: { 
+    isOpen: boolean; 
+    onClose: () => void; 
+    item: MenuItem | null; 
+    onAddToCart: (item: CartItem, e?: React.MouseEvent) => void; 
+}) => {
+    const { t } = useTranslation();
+    const [selections, setSelections] = useState<Record<string, string | string[]>>({});
+    const [specialInstructions, setSpecialInstructions] = useState('');
+    const [quantity, setQuantity] = useState(1);
+
+    useEffect(() => {
+        if (isOpen && item) {
+            setSelections({});
+            setSpecialInstructions('');
+            setQuantity(item.base_value || 1);
+            
+            // Auto-select first option for radio groups if any
+            const initialSelections: Record<string, string> = {};
+            const allModifiers = item.modifiers || item.customization_options || item.addons || [];
+            allModifiers.forEach((mod: any) => {
+                if (mod.type === 'radio' && mod.options?.length > 0) {
+                    initialSelections[mod.name] = mod.options[0].name;
+                }
+            });
+            setSelections(initialSelections);
+        }
+    }, [isOpen, item]);
+
+    if (!isOpen || !item) return null;
+
+    const allModifiers: ModifierGroup[] = item.modifiers || item.customization_options || item.addons || [];
+    const hasModifiers = allModifiers.length > 0;
+
+    let extraPrice = 0;
+    const selectedModsDetails: any[] = [];
+    allModifiers.forEach(mod => {
+        const sel = selections[mod.name];
+        if (!sel) return;
+        if (Array.isArray(sel)) {
+            sel.forEach(s => {
+                const opt = mod.options.find(o => o.name === s);
+                if (opt) {
+                    extraPrice += opt.price_adjustment || 0;
+                    selectedModsDetails.push({ group: mod.name, option: opt.name, price_adjustment: opt.price_adjustment });
+                }
+            });
+        } else {
+            const opt = mod.options.find(o => o.name === sel);
+            if (opt) {
+                extraPrice += opt.price_adjustment || 0;
+                selectedModsDetails.push({ group: mod.name, option: opt.name, price_adjustment: opt.price_adjustment });
+            }
+        }
+    });
+
+    const totalPrice = item.price + extraPrice;
+    
+    const handleAdd = (e: React.MouseEvent) => {
+        const customizationParts = selectedModsDetails.map(m => m.price_adjustment > 0 ? `${m.option} (+₹${m.price_adjustment})` : m.option);
+        const customizationStr = customizationParts.join(', ');
+        
+        const modsHash = selectedModsDetails.map(m => m.option).sort().join('|');
+        const cartItemId = `${item.id}-${modsHash}-${specialInstructions}`.replace(/\s+/g, '-');
+
+        onAddToCart({
+            id: cartItemId,
+            item_id: item.id,
+            name: item.name,
+            price: totalPrice,
+            quantity: quantity,
+            unit: item.unit,
+            base_value: item.base_value,
+            instructions: specialInstructions,
+            tax_rate_id: item.tax_rate_id,
+            is_tax_inclusive: item.is_tax_inclusive,
+            selected_modifiers: selectedModsDetails,
+            customization_string: customizationStr
+        }, e);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="bg-white dark:bg-gray-900 w-full sm:w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full duration-300">
+                <div className="relative shrink-0 border-b dark:border-gray-800">
+                    {item.image_url && (
+                        <div className="w-full h-48 sm:h-56 overflow-hidden rounded-t-2xl">
+                            <img src={getCDNUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover" />
+                        </div>
+                    )}
+                    <button onClick={onClose} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-black/40 text-white hover:bg-black/60 transition-colors backdrop-blur-md`}>
+                        <X className="w-5 h-5" />
+                    </button>
+                    <div className="p-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{item.name}</h2>
+                        <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">₹{item.price.toFixed(2)} Base</p>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                    {hasModifiers ? (
+                        allModifiers.map((mod, idx) => (
+                            <div key={idx} className="space-y-3">
+                                <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                    {mod.name.toLowerCase().includes('spice') && '🌶️'} {mod.name}
+                                </h3>
+                                <div className="space-y-2">
+                                    {mod.options.map(opt => {
+                                        const isChecked = mod.type === 'radio' 
+                                            ? selections[mod.name] === opt.name 
+                                            : (selections[mod.name] as string[] || []).includes(opt.name);
+                                        return (
+                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${isChecked ? 'border-orange-500 bg-orange-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                                                        {isChecked && <div className={`bg-white ${mod.type === 'radio' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 flex items-center justify-center'} `}>
+                                                            {mod.type !== 'radio' && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                        </div>}
+                                                    </div>
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{opt.name}</span>
+                                                </div>
+                                                {opt.price_adjustment > 0 && <span className="text-sm font-medium text-gray-500 dark:text-gray-400">+₹{opt.price_adjustment}</span>}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))
+                    ) : null}
+
+                    <div className="space-y-2">
+                        <Label className="font-semibold text-gray-800 dark:text-gray-200">Special Instructions</Label>
+                        <Input 
+                            value={specialInstructions} 
+                            onChange={e => setSpecialInstructions(e.target.value)} 
+                            placeholder="e.g. No onions, extra crispy..."
+                            className="bg-gray-50 dark:bg-gray-800/50"
+                        />
+                    </div>
+                </div>
+
+                <div className="p-4 border-t dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl space-y-4 shrink-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Quantity</span>
+                        <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 rounded-full p-1 border dark:border-gray-700">
+                            <button onClick={() => setQuantity(q => Math.max(item.base_value || 1, q - (item.base_value || 1)))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
+                            <span className="font-semibold w-8 text-center">{quantity} {item.unit !== 'pcs' ? item.unit : ''}</span>
+                            <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
+                        </div>
+                    </div>
+                    <Button onClick={handleAdd} className="w-full h-12 rounded-xl text-lg font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-all">
+                        Add to Cart - ₹{(totalPrice * (quantity / (item.base_value || 1))).toFixed(2)}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+};
 const PublicMenu = () => {
     const { t, i18n } = useTranslation();
     const { adminId: urlParam } = useParams<{ adminId: string }>();
@@ -153,6 +335,7 @@ const PublicMenu = () => {
     const [storeStatus, setStoreStatus] = useState<StoreStatusInfo | null>(null);
     const [isDarkMode, setIsDarkMode] = useState<boolean>(() => localStorage.getItem('public_menu_dark_mode') === 'true');
     const [showTimingsModal, setShowTimingsModal] = useState(false);
+    const [customizerItem, setCustomizerItem] = useState<{item: MenuItem, event?: React.MouseEvent} | null>(null);
 
     // Periodically check store status
     useEffect(() => {
@@ -399,7 +582,7 @@ const PublicMenu = () => {
         };
     }, []);
 
-    // Scroll listener for glassmorphic header transition
+    // Scroll listener for glassmorphic header
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
@@ -910,31 +1093,27 @@ const PublicMenu = () => {
 
     const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity / (item.base_value || 1)), 0), [cart]);
 
-    // Add item to cart
+    // Handle item click for customization or simple add
     const addToCart = useCallback((item: MenuItem, e?: React.MouseEvent) => {
         if (storeStatus && storeStatus.status !== 'open') {
             toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
             return;
         }
-        
-        const step = item.base_value || 1;
+
+        setCustomizerItem({ item, event: e });
+    }, [storeStatus]);
+
+    const confirmAddToCart = useCallback((customizedItem: CartItem, e?: React.MouseEvent) => {
         setCart(prev => {
-            const existing = prev.find(c => c.id === item.id);
+            const existing = prev.find(c => c.id === customizedItem.id);
             if (existing) {
-                return prev.map(c => c.id === item.id ? { ...c, quantity: c.quantity + step } : c);
+                return prev.map(c => c.id === customizedItem.id ? { ...c, quantity: c.quantity + customizedItem.quantity } : c);
             }
-            return [...prev, {
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: step,
-                unit: item.unit,
-                base_value: item.base_value,
-                instructions: '',
-                tax_rate_id: item.tax_rate_id,
-                is_tax_inclusive: item.is_tax_inclusive
-            }];
+            return [...prev, customizedItem];
         });
+
+        setCustomizerItem(null);
+        toast({ title: "Added to Cart", description: `${customizedItem.name} added.` });
 
         // Trigger flying animation if click event was passed
         if (e && e.clientX && e.clientY) {
@@ -952,18 +1131,16 @@ const PublicMenu = () => {
 
             const particle = document.createElement('div');
             particle.className = 'fly-cart-particle';
-            if (item.image_url) {
-                particle.style.backgroundImage = `url(${item.image_url})`;
-            } else {
-                particle.style.backgroundColor = shopSettings?.menu_primary_color || '#ea580c';
-                particle.style.display = 'flex';
-                particle.style.alignItems = 'center';
-                particle.style.justifyContent = 'center';
-                particle.style.color = 'white';
-                particle.style.fontWeight = 'bold';
-                particle.style.fontSize = '20px';
-                particle.innerHTML = '+';
-            }
+            // Use fallback or image
+            particle.style.backgroundColor = shopSettings?.menu_primary_color || '#ea580c';
+            particle.style.display = 'flex';
+            particle.style.alignItems = 'center';
+            particle.style.justifyContent = 'center';
+            particle.style.color = 'white';
+            particle.style.fontWeight = 'bold';
+            particle.style.fontSize = '20px';
+            particle.innerHTML = '+';
+            
             particle.style.left = `${startX - 24}px`;
             particle.style.top = `${startY - 24}px`;
             particle.style.setProperty('--fly-mid-x', `${midX}px`);
@@ -987,10 +1164,10 @@ const PublicMenu = () => {
         // Trigger AI Dish Pairing recommendations
         if (shopSettings?.menu_ai_features_enabled !== false) {
             // Find complementary pairings from other categories
-            const currentItemCategory = item.category || '';
+            const currentItemCategory = customizedItem.item_id ? items.find(i => i.id === customizedItem.item_id)?.category : '';
             const otherCategoryItems = items.filter(
                 i => i.is_active && 
-                     i.id !== item.id && 
+                     i.id !== customizedItem.item_id && 
                      i.category !== currentItemCategory &&
                      (i.category?.toLowerCase().includes('beverage') || 
                       i.category?.toLowerCase().includes('drink') || 
@@ -1004,7 +1181,7 @@ const PublicMenu = () => {
                 // Shuffle and pick up to 2 items
                 const shuffled = [...otherCategoryItems].sort(() => 0.5 - Math.random());
                 const suggestions = shuffled.slice(0, 2);
-                setLastPairedItem(item);
+                setLastPairedItem(items.find(it => it.id === customizedItem.item_id) || null);
                 setPairedSuggestions(suggestions);
                 // Delay slightly to allow the flying animation to finish before sliding up suggestions
                 setTimeout(() => {
@@ -1042,11 +1219,11 @@ const PublicMenu = () => {
         });
     }, []);
 
-    // Get cart quantity for an item
+    // Get cart quantity for an item (matching based on item_id to support customized variations)
     const getCartQuantity = useCallback((itemId: string) => {
-        const item = cart.find(c => c.id === itemId);
-        if (!item) return 0;
-        return item.quantity / (item.base_value || 1);
+        const cartItems = cart.filter(c => c.item_id === itemId);
+        if (cartItems.length === 0) return 0;
+        return cartItems.reduce((sum, item) => sum + (item.quantity / (item.base_value || 1)), 0);
     }, [cart]);
 
     // Set instructions for a cart item
@@ -1067,15 +1244,19 @@ const PublicMenu = () => {
         }
         setIsPlacingOrder(true);
         try {
-            const orderItems = cart.map(c => ({
-                item_id: c.id,
-                name: c.name,
-                price: c.price,
-                quantity: c.quantity,
-                unit: c.unit || 'pcs',
-                base_value: c.base_value || 1,
-                instructions: c.instructions || undefined
-            }));
+            const orderItems = cart.map(c => {
+                const combinedInstructions = [c.customization_string, c.instructions].filter(Boolean).join(' | ');
+                return {
+                    item_id: c.item_id || c.id,
+                    name: c.name,
+                    price: c.price,
+                    quantity: c.quantity,
+                    unit: c.unit || 'pcs',
+                    base_value: c.base_value || 1,
+                    instructions: combinedInstructions || undefined,
+                    selected_modifiers: c.selected_modifiers
+                };
+            });
             const totalAmount = cartTotal;
             const orderNumber = sessionOrders.length + 1;
 
@@ -1175,7 +1356,7 @@ const PublicMenu = () => {
         } finally {
             setIsPlacingOrder(false);
         }
-    }, [adminId, tableNo, sessionId, cart, cartTotal, orderNote, sessionOrders.length]);
+    }, [adminId, tableNo, sessionId, cart, cartTotal, orderNote, sessionOrders.length, seatId, branchId]);
 
     // Smart session initialization: check for active orders on this table
     useEffect(() => {
@@ -1267,7 +1448,7 @@ const PublicMenu = () => {
         };
 
         initSession();
-    }, [adminId, isTableMode, tableNo, sessionStorageKey]);
+    }, [adminId, isTableMode, tableNo, sessionStorageKey, seatId, branchId]);
 
     // Real-time subscription for order status updates (active only when user has active orders in their session)
     useEffect(() => {
@@ -1469,7 +1650,7 @@ const PublicMenu = () => {
                 variant: "destructive"
             });
         }
-    }, [adminId, tableNo, sessionId, helpCooldowns]);
+    }, [adminId, tableNo, sessionId, helpCooldowns, branchId, seatId]);
 
     const handleShareLocation = async () => {
         if (!shopSettings?.shop_latitude || !shopSettings?.shop_longitude) return;
@@ -3235,7 +3416,13 @@ const PublicMenu = () => {
                     }}
                 />
             )}
-
+            
+            <ItemCustomizerDialog 
+                isOpen={!!customizerItem}
+                onClose={() => setCustomizerItem(null)}
+                item={customizerItem?.item || null}
+                onAddToCart={confirmAddToCart}
+            />
         </div>
     );
 };

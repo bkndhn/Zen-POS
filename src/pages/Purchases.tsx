@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info, FileText, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -433,6 +433,128 @@ const Purchases: React.FC = () => {
     } catch (e: any) {
       toast({ title: 'Export failed', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const generatePO = (purchase: any) => {
+    const shopName = profile?.business_name || 'Our Shop';
+    const supplierName = purchase.suppliers?.name || 'Walk-in Supplier';
+    const supplierPhone = purchase.suppliers?.phone || '';
+    const itemsHtml = purchase.purchase_items?.map((item: any, i: number) => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${i + 1}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.item_name} ${item.unit ? `(${item.unit})` : ''}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">₹${Number(item.rate).toFixed(2)}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">₹${Number(item.total).toFixed(2)}</td>
+      </tr>
+    `).join('') || '';
+
+    const html = `
+      <html>
+        <head>
+          <title>PO-${purchase.purchase_no}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; color: #333; line-height: 1.5; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+            .title { font-size: 24px; font-weight: bold; margin: 0 0 10px 0; color: #111; }
+            .shop-name { font-size: 18px; color: #555; }
+            .details { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .box { padding: 15px; background: #f9f9f9; border-radius: 8px; min-width: 250px; }
+            .box h3 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; text-align: left; }
+            th { background: #f9f9f9; padding: 10px 8px; font-weight: 600; text-transform: uppercase; font-size: 12px; color: #555; border-bottom: 2px solid #ddd; }
+            .total { text-align: right; font-size: 18px; font-weight: bold; padding-top: 15px; border-top: 2px solid #ddd; }
+            .notes { margin-top: 40px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">PURCHASE ORDER</h1>
+            <div class="shop-name">${shopName}</div>
+          </div>
+          
+          <div class="details">
+            <div class="box">
+              <h3>Supplier Details</h3>
+              <strong>${supplierName}</strong><br>
+              ${supplierPhone ? `Phone: ${supplierPhone}<br>` : ''}
+              ${purchase.suppliers?.address ? `Address: ${purchase.suppliers.address}<br>` : ''}
+              ${purchase.suppliers?.gstin ? `GSTIN: ${purchase.suppliers.gstin}` : ''}
+            </div>
+            <div class="box">
+              <h3>Order Details</h3>
+              <strong>PO No:</strong> ${purchase.purchase_no}<br>
+              ${purchase.invoice_no ? `<strong>Invoice No:</strong> ${purchase.invoice_no}<br>` : ''}
+              <strong>Date:</strong> ${purchase.purchase_date}
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Item Description</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="total">
+            Total Amount: ₹${Number(purchase.total_amount || 0).toFixed(2)}
+          </div>
+          
+          ${purchase.notes ? `<div class="notes"><strong>Notes:</strong><br>${purchase.notes}</div>` : ''}
+        </body>
+      </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    iframe.contentWindow?.document.open();
+    iframe.contentWindow?.document.write(html);
+    iframe.contentWindow?.document.close();
+    
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
+  };
+
+  const sendWhatsApp = (purchase: any) => {
+    const shopName = profile?.business_name || 'Our Shop';
+    const supplierPhone = purchase.suppliers?.phone || '';
+    
+    if (!supplierPhone) {
+      toast({ title: 'Supplier phone number not available', variant: 'destructive' });
+      return;
+    }
+
+    let itemsText = '';
+    purchase.purchase_items?.forEach((item: any, i: number) => {
+      itemsText += `${i + 1}. ${item.item_name} - ${item.quantity} ${item.unit || ''} @ ₹${Number(item.rate).toFixed(2)}\n`;
+    });
+
+    const message = `📋 *Purchase Order - ${purchase.purchase_no}*
+From: ${shopName}
+Date: ${purchase.purchase_date}
+
+*Items:*
+${itemsText}
+*Total: ₹${Number(purchase.total_amount || 0).toFixed(2)}*
+
+Please confirm receipt of this order.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const waUrl = `https://wa.me/${supplierPhone.replace(/\D/g, '')}?text=${encodedMessage}`;
+    window.open(waUrl, '_blank');
   };
 
   return (
@@ -937,8 +1059,16 @@ const Purchases: React.FC = () => {
                 </div>
               </div>
 
-              <DialogFooter className="border-t pt-4 mt-5">
-                <Button variant="outline" className="h-9 font-semibold" onClick={() => setDetailsOpen(false)}>Close</Button>
+              <DialogFooter className="border-t pt-4 mt-5 sm:justify-between items-center w-full">
+                <div className="flex gap-2 w-full sm:w-auto mb-3 sm:mb-0">
+                  <Button variant="outline" className="h-9 font-semibold text-primary border-primary/20 hover:bg-primary/5 flex-1 sm:flex-none" onClick={() => generatePO(selectedPurchase)}>
+                    <FileText className="w-4 h-4 mr-1.5" /> PO PDF
+                  </Button>
+                  <Button variant="outline" className="h-9 font-semibold text-emerald-600 border-emerald-200 hover:bg-emerald-50 flex-1 sm:flex-none" onClick={() => sendWhatsApp(selectedPurchase)}>
+                    <Send className="w-4 h-4 mr-1.5" /> WhatsApp
+                  </Button>
+                </div>
+                <Button variant="outline" className="h-9 font-semibold w-full sm:w-auto" onClick={() => setDetailsOpen(false)}>Close</Button>
               </DialogFooter>
             </>
           )}

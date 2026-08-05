@@ -5,8 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChefHat, Clock, Bell, Volume2, VolumeX, Wifi, WifiOff, RefreshCw, Undo2, Filter, Printer, CheckCircle2 } from 'lucide-react';
+import { ChefHat, Clock, Bell, Volume2, VolumeX, Wifi, WifiOff, RefreshCw, Undo2, Filter, Printer, CheckCircle2, TrendingUp, X, Activity } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from '@/hooks/use-toast';
 import { getTimeElapsed, formatTimeAMPM, formatQuantityWithUnit } from '@/utils/timeUtils';
 import { cn } from '@/lib/utils';
@@ -95,6 +96,7 @@ const KitchenDisplay = () => {
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
     const [timeFilter, setTimeFilter] = useState<'all' | '15' | '30' | '60'>('all');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
+    const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
     // Recently processed bills/orders for undo (last 5 minutes)
     const [recentlyProcessed, setRecentlyProcessed] = useState<Array<{
@@ -854,6 +856,15 @@ const KitchenDisplay = () => {
                         >
                             {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                         </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
+                            className={cn("h-8 w-8 rounded-xl", isAnalyticsOpen && "bg-primary text-primary-foreground border-primary")}
+                            title="Analytics"
+                        >
+                            <TrendingUp className="w-4 h-4" />
+                        </Button>
                         <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs" onClick={handleRefreshClick}>
                             Refresh
                         </Button>
@@ -1303,6 +1314,14 @@ const KitchenDisplay = () => {
                     )}
 
             </div>
+
+            {/* Analytics Panel Overlay */}
+            {isAnalyticsOpen && (
+                <>
+                    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40" onClick={() => setIsAnalyticsOpen(false)} />
+                    <KitchenAnalytics bills={bills} tableOrders={tableOrders} onClose={() => setIsAnalyticsOpen(false)} />
+                </>
+            )}
         </div>
     );
 };
@@ -1400,6 +1419,127 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                 {processing ? 'Processing...' : actionLabel}
             </Button>
         </Card>
+    );
+};
+
+const KitchenAnalytics = ({ bills, tableOrders, onClose }: { bills: any[], tableOrders: any[], onClose: () => void }) => {
+    // Current Load
+    const loadData = [
+        { name: 'Pending', count: bills.filter(b => b.kitchen_status === 'pending').length + tableOrders.filter(o => o.status === 'pending').length, fill: '#f59e0b' },
+        { name: 'Preparing', count: bills.filter(b => b.kitchen_status === 'preparing').length + tableOrders.filter(o => o.status === 'preparing').length, fill: '#f43f5e' },
+        { name: 'Ready', count: bills.filter(b => b.kitchen_status === 'ready').length + tableOrders.filter(o => o.status === 'ready').length, fill: '#10b981' },
+    ];
+
+    // Item Prep Times
+    const itemStats: Record<string, { totalMs: number; count: number }> = {};
+    
+    const processItems = (items: any[], orderCreatedAt: string, orderUpdatedAt?: string) => {
+        const start = new Date(orderCreatedAt).getTime();
+        const end = orderUpdatedAt ? new Date(orderUpdatedAt).getTime() : Date.now();
+        const prepTimeMs = Math.max(0, end - start);
+        
+        items.forEach(item => {
+            const name = item.name || item.items?.name;
+            if (name) {
+                if (!itemStats[name]) itemStats[name] = { totalMs: 0, count: 0 };
+                itemStats[name].totalMs += prepTimeMs;
+                itemStats[name].count += 1;
+            }
+        });
+    };
+
+    bills.filter(b => b.kitchen_status === 'ready').forEach(b => {
+        processItems(b.bill_items || [], b.created_at, b.updated_at);
+    });
+    tableOrders.filter(o => o.status === 'ready').forEach(o => {
+        processItems(o.items || [], o.created_at, o.updated_at);
+    });
+
+    const itemPrepTimes = Object.entries(itemStats).map(([name, stats]) => ({
+        name,
+        avgMs: stats.totalMs / stats.count,
+        avgMin: Math.round((stats.totalMs / stats.count) / 60000)
+    })).sort((a, b) => b.avgMs - a.avgMs).slice(0, 10);
+
+    // Heatmap (orders by hour)
+    const hourCounts = new Array(24).fill(0);
+    [...bills, ...tableOrders].forEach(o => {
+        const h = new Date(o.created_at).getHours();
+        hourCounts[h]++;
+    });
+    const peakHours = hourCounts.map((count, hour) => ({ hour: `${hour}:00`, count })).filter(h => h.count > 0);
+
+    return (
+        <div className="fixed inset-y-0 right-0 w-full sm:w-[450px] bg-background/95 backdrop-blur-xl border-l z-50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg font-bold">Kitchen Analytics</h2>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onClose}><X className="w-5 h-5" /></Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {/* Current Load */}
+                <section>
+                    <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Current Load</h3>
+                    <div className="h-[150px] w-full bg-card rounded-xl border p-3">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={loadData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={80} fontSize={12} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={{fill: 'var(--muted)'}} contentStyle={{ borderRadius: '8px', backgroundColor: 'var(--background)' }} />
+                                <Bar dataKey="count" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </section>
+
+                {/* Avg Prep Time */}
+                <section>
+                    <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Avg Prep Time (Top 10)</h3>
+                    <div className="space-y-3 bg-card rounded-xl border p-3">
+                        {itemPrepTimes.length === 0 ? (
+                            <div className="text-sm text-muted-foreground text-center py-4">Not enough completed data</div>
+                        ) : (
+                            itemPrepTimes.map(item => (
+                                <div key={item.name} className="space-y-1">
+                                    <div className="flex justify-between text-xs">
+                                        <span className="font-medium truncate max-w-[200px]">{item.name}</span>
+                                        <span className={cn("font-bold", item.avgMin > 20 ? 'text-red-500' : item.avgMin > 10 ? 'text-orange-500' : 'text-green-500')}>
+                                            {item.avgMin} min
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                        <div 
+                                            className={cn("h-full rounded-full transition-all", item.avgMin > 20 ? 'bg-red-500' : item.avgMin > 10 ? 'bg-orange-500' : 'bg-green-500')}
+                                            style={{ width: `${Math.min(100, (item.avgMin / 30) * 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </section>
+                
+                {/* Peak Hours */}
+                <section>
+                    <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Today's Peak Hours</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {peakHours.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">No orders yet today</div>
+                        ) : (
+                            peakHours.map(ph => (
+                                <div key={ph.hour} className="flex flex-col items-center justify-center p-3 rounded-xl bg-card border min-w-[70px]">
+                                    <span className="text-xs text-muted-foreground mb-1">{ph.hour}</span>
+                                    <span className="text-xl font-bold">{ph.count}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </section>
+            </div>
+        </div>
     );
 };
 

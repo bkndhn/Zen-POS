@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Download } from 'lucide-react';
+import { BarChart3, Download, Package, AlertTriangle, XOctagon, IndianRupee } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { formatStoredQuantity } from '@/utils/timeUtils';
 
@@ -80,6 +81,7 @@ const StockReports: React.FC = () => {
   // Stock report
   const stockFiltered = items.filter(i => branchFilter === 'all' || i.branch_id === branchFilter);
   const lowStock = stockFiltered.filter(i => !i.unlimited_stock && i.minimum_stock_alert != null && Number(i.stock_quantity) <= Number(i.minimum_stock_alert));
+  const outOfStock = stockFiltered.filter(i => !i.unlimited_stock && Number(i.stock_quantity || 0) <= 0);
   const stockValue = stockFiltered.reduce((s, i) => s + (Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)), 0);
 
   // Expiring soon (next 30 days) from purchase lines
@@ -87,10 +89,81 @@ const StockReports: React.FC = () => {
   const in30 = new Date(); in30.setDate(today.getDate() + 30);
   const expiring = purchaseLines.filter(l => l.expiry_date && new Date(l.expiry_date) <= in30);
 
+  // Chart Data Preparation
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+  
+  const purchasesBySupplier = Object.values(purchaseFiltered.reduce((acc, p) => {
+    const sName = p.suppliers?.name || 'Unknown';
+    if (!acc[sName]) acc[sName] = { name: sName, amount: 0 };
+    acc[sName].amount += Number(p.total_amount || 0);
+    return acc;
+  }, {} as any)).sort((a: any, b: any) => b.amount - a.amount).slice(0, 10);
+
+  const stockValueByItem = [...stockFiltered].map(i => ({
+    name: i.name.length > 15 ? i.name.substring(0, 15) + '...' : i.name,
+    value: Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)
+  })).sort((a, b) => b.value - a.value).slice(0, 15);
+
+  const outOfStockCount = outOfStock.length;
+  const lowStockCount = lowStock.length - outOfStockCount;
+  const healthyStockCount = stockFiltered.length - outOfStockCount - lowStockCount;
+  
+  const stockHealthData = [
+    { name: 'Healthy', value: healthyStockCount, color: '#10b981' },
+    { name: 'Low Stock', value: lowStockCount, color: '#f59e0b' },
+    { name: 'Out of Stock', value: outOfStockCount, color: '#ef4444' }
+  ].filter(d => d.value > 0);
+
+  const adjustmentsByReason = Object.values(adjustments.reduce((acc, a) => {
+    const reason = (a.reason || 'Other').charAt(0).toUpperCase() + (a.reason || 'other').slice(1);
+    if (!acc[reason]) acc[reason] = { name: reason, count: 0 };
+    acc[reason].count += 1;
+    return acc;
+  }, {} as any)).sort((a: any, b: any) => b.count - a.count);
+
   return (
     <div className="min-h-screen p-4 sm:p-6 pb-24">
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex items-center gap-2"><BarChart3 className="w-5 h-5 text-primary" /><h1 className="text-xl sm:text-2xl font-bold">Stock & Purchase Reports</h1></div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 bg-primary/10 text-primary rounded-lg"><IndianRupee className="w-5 h-5" /></div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Total Stock Value</p>
+                <p className="text-xl font-bold">₹{stockValue.toFixed(2)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 bg-blue-500/10 text-blue-500 rounded-lg"><Package className="w-5 h-5" /></div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Total Items</p>
+                <p className="text-xl font-bold">{stockFiltered.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 bg-amber-500/10 text-amber-500 rounded-lg"><AlertTriangle className="w-5 h-5" /></div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Low Stock</p>
+                <p className="text-xl font-bold">{lowStock.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 bg-red-500/10 text-red-500 rounded-lg"><XOctagon className="w-5 h-5" /></div>
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Out of Stock</p>
+                <p className="text-xl font-bold">{outOfStock.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -128,6 +201,30 @@ const StockReports: React.FC = () => {
           </TabsList>
 
           <TabsContent value="purchase" className="space-y-3">
+            {purchasesBySupplier.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Top Suppliers by Spend</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={purchasesBySupplier} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
+                        <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `₹${val}`} />
+                        <Tooltip
+                          cursor={{ fill: '#f3f4f6' }}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Spend']}
+                        />
+                        <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} animationDuration={1000} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Purchases · ₹{purchaseTotal.toFixed(2)} ({purchaseFiltered.length})</CardTitle>
@@ -157,6 +254,30 @@ const StockReports: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="stock" className="space-y-3">
+            {stockValueByItem.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Top 15 Items by Stock Value</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stockValueByItem} layout="vertical" margin={{ top: 10, right: 20, left: 40, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
+                        <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(val) => `₹${val}`} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
+                        <Tooltip
+                          cursor={{ fill: '#f3f4f6' }}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Value']}
+                        />
+                        <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} animationDuration={1000} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Stock valuation · ₹{stockValue.toFixed(2)}</CardTitle>
@@ -186,6 +307,38 @@ const StockReports: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="low" className="space-y-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Stock Health Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stockHealthData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                        animationDuration={1000}
+                      >
+                        {stockHealthData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => [`${value} Items`, 'Count']}
+                      />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader><CardTitle className="text-base">Low stock ({lowStock.length})</CardTitle></CardHeader>
               <CardContent className="p-0 overflow-x-auto">
@@ -229,6 +382,30 @@ const StockReports: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="adjustments" className="space-y-3">
+            {adjustmentsByReason.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Adjustments by Reason</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={adjustmentsByReason} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                        <Tooltip
+                          cursor={{ fill: '#f3f4f6' }}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          formatter={(value: number) => [value, 'Count']}
+                        />
+                        <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} animationDuration={1000} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader><CardTitle className="text-base">Stock adjustments ({adjustments.length})</CardTitle></CardHeader>
               <CardContent className="p-0 overflow-x-auto">

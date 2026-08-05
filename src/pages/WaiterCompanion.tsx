@@ -56,6 +56,9 @@ interface MenuItem {
     is_active: boolean;
     image_url?: string;
     quick_chips?: string[] | null;
+    stock_quantity?: number;
+    min_stock_threshold?: number;
+    is_unlimited_stock?: boolean;
 }
 
 interface CartItem {
@@ -267,6 +270,47 @@ const WaiterCompanion: React.FC = () => {
         fetchMenu();
         fetchGstSettings();
     }, [fetchTables, fetchMenu, fetchGstSettings]);
+
+    // Real-time stock sync
+    useEffect(() => {
+        if (!adminId) return;
+
+        const channel = new BroadcastChannel('stock_update');
+        channel.onmessage = (event) => {
+            if (event.data?.type === 'STOCK_UPDATED') {
+                const { itemId, newStock } = event.data;
+                setMenuItems(prev => prev.map(item => 
+                    item.id === itemId ? { ...item, stock_quantity: newStock } : item
+                ));
+            }
+        };
+
+        const subscription = supabase
+            .channel('waiter_items_stock')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'items',
+                    filter: `admin_id=eq.${adminId}`
+                },
+                (payload) => {
+                    const updatedItem = payload.new as MenuItem;
+                    setMenuItems(prev => prev.map(item => 
+                        item.id === updatedItem.id 
+                            ? { ...item, stock_quantity: updatedItem.stock_quantity, min_stock_threshold: updatedItem.min_stock_threshold, is_unlimited_stock: updatedItem.is_unlimited_stock } 
+                            : item
+                    ));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.close();
+            supabase.removeChannel(subscription);
+        };
+    }, [adminId]);
 
     // Extract unique categories
     const categories = useMemo(() => {
@@ -886,9 +930,11 @@ const WaiterCompanion: React.FC = () => {
                                 )}>
                                     {filteredMenuItems.map(item => {
                                         const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
+                                        const isOutOfStock = !item.is_unlimited_stock && (item.stock_quantity ?? 0) <= 0;
+                                        const isLowStock = !item.is_unlimited_stock && !isOutOfStock && (item.stock_quantity ?? 0) <= (item.min_stock_threshold ?? 0);
                                         return (
-                                            <Card key={item.id} className="overflow-hidden border border-muted shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-                                                <div>
+                                            <Card key={item.id} className={cn("overflow-hidden border border-muted shadow-sm transition-all flex flex-col justify-between group", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
+                                                <div className="relative">
                                                     {/* Food image or fallback icon */}
                                                     <div className="w-full h-24 bg-muted/30 relative flex items-center justify-center overflow-hidden">
                                                         {item.image_url ? (
@@ -904,6 +950,21 @@ const WaiterCompanion: React.FC = () => {
                                                             </Badge>
                                                         )}
                                                     </div>
+                                                    
+                                                    {isOutOfStock && (
+                                                        <div className="absolute top-2 right-2 z-10">
+                                                            <Badge className="bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] px-1.5 py-0.5 border-none shadow-sm">
+                                                                SOLD OUT
+                                                            </Badge>
+                                                        </div>
+                                                    )}
+                                                    {isLowStock && (
+                                                        <div className="absolute top-2 right-2 z-10">
+                                                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] px-1.5 py-0.5 border-none shadow-sm">
+                                                                Only {item.stock_quantity} left
+                                                            </Badge>
+                                                        </div>
+                                                    )}
 
                                                     <div className="p-2.5">
                                                         <h4 className="font-bold text-xs line-clamp-2 leading-snug">{item.name}</h4>
@@ -956,8 +1017,9 @@ const WaiterCompanion: React.FC = () => {
                                                     ) : (
                                                         <Button
                                                             size="sm"
+                                                            disabled={isOutOfStock}
                                                             onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
-                                                            className="w-full rounded-xl h-8 text-xs font-bold gap-1"
+                                                            className={cn("w-full rounded-xl h-8 text-xs font-bold gap-1", isOutOfStock ? "bg-muted text-muted-foreground" : "")}
                                                         >
                                                             <Plus className="w-3.5 h-3.5" /> Add
                                                         </Button>
@@ -971,8 +1033,10 @@ const WaiterCompanion: React.FC = () => {
                                 <div className="grid grid-cols-1 gap-2.5">
                                     {filteredMenuItems.map(item => {
                                         const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
+                                        const isOutOfStock = !item.is_unlimited_stock && (item.stock_quantity ?? 0) <= 0;
+                                        const isLowStock = !item.is_unlimited_stock && !isOutOfStock && (item.stock_quantity ?? 0) <= (item.min_stock_threshold ?? 0);
                                         return (
-                                            <Card key={item.id} className="overflow-hidden border border-muted shadow-sm hover:shadow-md transition-all">
+                                            <Card key={item.id} className={cn("overflow-hidden border border-muted shadow-sm transition-all", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
                                                 <CardContent className="p-3 flex items-center justify-between">
                                                     <div className="flex items-center gap-3 min-w-0 pr-2">
                                                         <div className="w-12 h-12 rounded-xl bg-muted/40 shrink-0 overflow-hidden flex items-center justify-center">
@@ -983,7 +1047,11 @@ const WaiterCompanion: React.FC = () => {
                                                             )}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <h4 className="font-bold text-sm truncate">{item.name}</h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-bold text-sm truncate">{item.name}</h4>
+                                                                {isOutOfStock && <Badge className="bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] px-1 py-0 h-4 border-none shrink-0">SOLD OUT</Badge>}
+                                                                {isLowStock && <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-[9px] px-1 py-0 h-4 border-none shrink-0">Only {item.stock_quantity} left</Badge>}
+                                                            </div>
                                                             <div className="flex items-center gap-2 mt-0.5">
                                                                 <span className="text-primary font-black text-sm">₹{item.price.toFixed(0)}</span>
                                                                 {(item.selling_unit || item.unit) && (
@@ -1035,8 +1103,9 @@ const WaiterCompanion: React.FC = () => {
                                                     ) : (
                                                         <Button
                                                             size="sm"
+                                                            disabled={isOutOfStock}
                                                             onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
-                                                            className="rounded-full h-8 w-8 p-0"
+                                                            className={cn("rounded-full h-8 w-8 p-0", isOutOfStock ? "bg-muted text-muted-foreground" : "")}
                                                         >
                                                             <Plus className="w-4 h-4" />
                                                         </Button>
