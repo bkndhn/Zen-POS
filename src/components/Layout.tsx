@@ -226,6 +226,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Offline SaaS License & Network Indicators */}
         <OfflineLicenseBanner />
+        <SyncStatusBar />
         <div className="px-2 sm:px-4 py-1">
           <OfflineIndicator />
         </div>
