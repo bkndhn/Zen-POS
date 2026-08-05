@@ -111,6 +111,7 @@ const Suppliers: React.FC = () => {
         .eq('admin_id', adminId)
         .eq('is_active', true)
         .order('name');
+      if (itemData) {
         setItems(itemData);
         offlineManager.cacheQueryResult('items', 'list', itemData).catch(() => {});
       }
