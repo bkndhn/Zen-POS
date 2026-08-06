@@ -385,7 +385,7 @@ const RenewSubscription: React.FC = () => {
             {/* Preset Plan Options Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {PRESET_SUBSCRIPTION_PLANS.map((plan) => {
-                const pricing = calculatePlanPricing(baseMonthlyPrice, plan.months);
+                const pricing = resolvePackPricing(baseMonthlyPrice, plan.months, packOverrides, packBranchId);
                 const isSelected = !isCustomMode && selectedMonths === plan.months;
 
                 return (
