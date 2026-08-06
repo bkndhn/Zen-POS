@@ -807,6 +807,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Allow login if check fails
       }
 
+      // License gate — block login until an online check confirms an active subscription
+      try {
+        const { data: licProfile } = await supabase
+          .from('profiles')
+          .select('id, role, admin_id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (licProfile && licProfile.role !== 'super_admin') {
+          const licenseAdminId = licProfile.role === 'admin' ? licProfile.id : licProfile.admin_id;
+          if (licenseAdminId) {
+            const gate = await verifyLicenseForLogin(licenseAdminId);
+            if (!gate.allowed) {
+              await supabase.auth.signOut();
+              return { error: { message: gate.reason || 'Subscription verification required.' } };
+            }
+            clearLoginBlock();
+          }
+        }
+      } catch (e) {
+        console.error('License gate error:', e);
+      }
+
+
+
       // Update login stats (Fire and forget)
       try {
         // First get current count
