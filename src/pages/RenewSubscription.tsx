@@ -152,6 +152,8 @@ const RenewSubscription: React.FC = () => {
   const [customMonthsInput, setCustomMonthsInput] = useState<string>('18');
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
 
+  const [packOverrides, setPackOverrides] = useState<PackPricingOverride[]>([]);
+
   /* ---- derived ---- */
   const status = resolveStatus(license);
   const cfg = STATUS_CONFIG[status];
@@ -161,8 +163,9 @@ const RenewSubscription: React.FC = () => {
   const activeMonths = isCustomMode
     ? Math.max(1, parseInt(customMonthsInput || '1', 10))
     : selectedMonths;
-  const currentPricing = calculatePlanPricing(baseMonthlyPrice, activeMonths);
+  const currentPricing = resolvePackPricing(baseMonthlyPrice, activeMonths, packOverrides, packBranchId);
   const planAmount = currentPricing.totalAmount;
+
 
   /* ---- data fetching ---- */
   useEffect(() => {
