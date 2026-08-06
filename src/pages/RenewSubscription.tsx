@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CreditCard, Copy, ExternalLink, Clock, CheckCircle2, XCircle, AlertTriangle, Shield, Sparkles, Check, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { checkOfflineLicenseStatus, syncSubscriptionLicense, type LicenseStatus } from '@/utils/offlineLicenseManager';
-import { PRESET_SUBSCRIPTION_PLANS, calculatePlanPricing } from '@/utils/subscriptionPlans';
+import { PRESET_SUBSCRIPTION_PLANS, calculatePlanPricing, resolvePackPricing, type PackPricingOverride } from '@/utils/subscriptionPlans';
+import { useBranch } from '@/contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
