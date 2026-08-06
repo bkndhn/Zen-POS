@@ -198,6 +198,17 @@ const RenewSubscription: React.FC = () => {
             .order('created_at', { ascending: false });
           if (history) setPayments(history);
         }
+
+        // 4) Custom pack pricing set by the super admin for this client/branch
+        if (adminId) {
+          const { data: packs } = await (supabase as any)
+            .from('subscription_pack_pricing')
+            .select('*')
+            .eq('admin_id', adminId)
+            .eq('is_active', true);
+          setPackOverrides((packs || []) as PackPricingOverride[]);
+        }
+
       } catch (err) {
         console.error('RenewSubscription: load error', err);
       } finally {
