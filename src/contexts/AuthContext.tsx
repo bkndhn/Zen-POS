@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile, UserStatus, UserRole } from '@/types/user';
 import { seedAdminDefaults } from '@/utils/seedAdminDefaults';
 import { syncSubscriptionLicense, cacheVerifiedLicense, clearAllLicenseData, isForceLogoutCached } from '@/utils/offlineLicenseManager';
+import { startLicenseScheduler, verifyLicenseForLogin, clearLoginBlock } from '@/utils/licenseScheduler';
 
 // Simple obfuscation for cached profile data (defense-in-depth against casual tampering)
 const encodeProfileCache = (profile: Profile): string => {
