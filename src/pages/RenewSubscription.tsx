@@ -137,6 +137,9 @@ function getRelativeExpiryString(endDateStr?: string | null, daysRemaining?: num
 const RenewSubscription: React.FC = () => {
   const { profile } = useAuth() as any;
   const { toast } = useToast();
+  const { operatingBranchId } = useBranch();
+  const packBranchId = operatingBranchId ?? null;
+
 
   const adminId: string | undefined =
     profile?.role === 'admin' ? profile.id : profile?.admin_id;
