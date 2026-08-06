@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Profile, UserStatus, UserRole } from '@/types/user';
 import { seedAdminDefaults } from '@/utils/seedAdminDefaults';
 import { syncSubscriptionLicense, cacheVerifiedLicense, clearAllLicenseData, isForceLogoutCached } from '@/utils/offlineLicenseManager';
+import { startLicenseScheduler, verifyLicenseForLogin, clearLoginBlock } from '@/utils/licenseScheduler';
 
 // Simple obfuscation for cached profile data (defense-in-depth against casual tampering)
 const encodeProfileCache = (profile: Profile): string => {
@@ -615,20 +616,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .subscribe();
     }
 
-    // Sync subscription license status when profile is loaded
-    if (adminId && navigator.onLine) {
-      syncSubscriptionLicense(adminId).then(license => {
-        if (license.isForceLoggedOut) {
-          devLog('[AuthContext] License sync found force logout - signing out');
-          supabase.auth.signOut().then(() => {
-            setUser(null);
-            setSession(null);
-            setAdminProfileId(null);
-            setAdminAuthUid(null);
-            setProfile(null);
-          });
-        }
-      }).catch(e => devLog('[AuthContext] License sync error:', e));
+    // Weekly background license verification (resume + online + interval)
+    let schedulerStop: (() => void) | null = null;
+    if (adminId && profile.role !== 'super_admin') {
+      const handle = startLicenseScheduler(adminId, {
+        onEnforce: (_status, reason) => {
+          devLog('[AuthContext] License enforcement triggered:', reason);
+          performForceLogout(reason);
+        },
+      });
+      schedulerStop = handle.stop;
     }
 
     return () => {
@@ -636,7 +633,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       supabase.removeChannel(channel);
       if (broadcastChannel) supabase.removeChannel(broadcastChannel);
       if (userBroadcastChannel) supabase.removeChannel(userBroadcastChannel);
+      schedulerStop?.();
     };
+
   }, [user?.id, profile?.id, profile?.admin_id, profile?.status]);
 
   const signUp = async (
@@ -807,6 +806,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error in login check:', e);
         // Allow login if check fails
       }
+
+      // License gate — block login until an online check confirms an active subscription
+      try {
+        const { data: licProfile } = await supabase
+          .from('profiles')
+          .select('id, role, admin_id')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (licProfile && licProfile.role !== 'super_admin') {
+          const licenseAdminId = licProfile.role === 'admin' ? licProfile.id : licProfile.admin_id;
+          if (licenseAdminId) {
+            const gate = await verifyLicenseForLogin(licenseAdminId);
+            if (!gate.allowed) {
+              await supabase.auth.signOut();
+              return { error: { message: gate.reason || 'Subscription verification required.' } };
+            }
+            clearLoginBlock();
+          }
+        }
+      } catch (e) {
+        console.error('License gate error:', e);
+      }
+
+
 
       // Update login stats (Fire and forget)
       try {

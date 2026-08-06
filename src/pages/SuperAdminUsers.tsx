@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ALL_NAV_ITEMS } from '@/config/navItems';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SubscriptionPackPricing } from '@/components/SubscriptionPackPricing';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
@@ -1580,6 +1581,9 @@ const SuperAdminUsers: React.FC = () => {
               <div className="text-center py-12 text-muted-foreground">Loading subscription settings...</div>
             ) : (
               <div className="space-y-6">
+                {/* Per-client / per-branch pack pricing */}
+                <SubscriptionPackPricing admins={admins as any} />
+
                 {/* Payment Settings Card */}
                 <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm">
                   <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">

@@ -3035,6 +3035,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_pack_pricing: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          discount_percentage: number
+          id: string
+          is_active: boolean
+          months: number
+          price_per_month: number | null
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          discount_percentage?: number
+          id?: string
+          is_active?: boolean
+          months: number
+          price_per_month?: number | null
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          discount_percentage?: number
+          id?: string
+          is_active?: boolean
+          months?: number
+          price_per_month?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscription_payments: {
         Row: {
           admin_id: string | null

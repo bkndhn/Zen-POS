@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CreditCard, Copy, ExternalLink, Clock, CheckCircle2, XCircle, AlertTriangle, Shield, Sparkles, Check, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { checkOfflineLicenseStatus, syncSubscriptionLicense, type LicenseStatus } from '@/utils/offlineLicenseManager';
-import { PRESET_SUBSCRIPTION_PLANS, calculatePlanPricing } from '@/utils/subscriptionPlans';
+import { PRESET_SUBSCRIPTION_PLANS, calculatePlanPricing, resolvePackPricing, type PackPricingOverride } from '@/utils/subscriptionPlans';
+import { useBranch } from '@/contexts/BranchContext';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -136,6 +137,9 @@ function getRelativeExpiryString(endDateStr?: string | null, daysRemaining?: num
 const RenewSubscription: React.FC = () => {
   const { profile } = useAuth() as any;
   const { toast } = useToast();
+  const { operatingBranchId } = useBranch();
+  const packBranchId = operatingBranchId ?? null;
+
 
   const adminId: string | undefined =
     profile?.role === 'admin' ? profile.id : profile?.admin_id;
@@ -152,6 +156,8 @@ const RenewSubscription: React.FC = () => {
   const [customMonthsInput, setCustomMonthsInput] = useState<string>('18');
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
 
+  const [packOverrides, setPackOverrides] = useState<PackPricingOverride[]>([]);
+
   /* ---- derived ---- */
   const status = resolveStatus(license);
   const cfg = STATUS_CONFIG[status];
@@ -161,8 +167,9 @@ const RenewSubscription: React.FC = () => {
   const activeMonths = isCustomMode
     ? Math.max(1, parseInt(customMonthsInput || '1', 10))
     : selectedMonths;
-  const currentPricing = calculatePlanPricing(baseMonthlyPrice, activeMonths);
+  const currentPricing = resolvePackPricing(baseMonthlyPrice, activeMonths, packOverrides, packBranchId);
   const planAmount = currentPricing.totalAmount;
+
 
   /* ---- data fetching ---- */
   useEffect(() => {
@@ -191,6 +198,17 @@ const RenewSubscription: React.FC = () => {
             .order('created_at', { ascending: false });
           if (history) setPayments(history);
         }
+
+        // 4) Custom pack pricing set by the super admin for this client/branch
+        if (adminId) {
+          const { data: packs } = await (supabase as any)
+            .from('subscription_pack_pricing')
+            .select('*')
+            .eq('admin_id', adminId)
+            .eq('is_active', true);
+          setPackOverrides((packs || []) as PackPricingOverride[]);
+        }
+
       } catch (err) {
         console.error('RenewSubscription: load error', err);
       } finally {
@@ -367,7 +385,7 @@ const RenewSubscription: React.FC = () => {
             {/* Preset Plan Options Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {PRESET_SUBSCRIPTION_PLANS.map((plan) => {
-                const pricing = calculatePlanPricing(baseMonthlyPrice, plan.months);
+                const pricing = resolvePackPricing(baseMonthlyPrice, plan.months, packOverrides, packBranchId);
                 const isSelected = !isCustomMode && selectedMonths === plan.months;
 
                 return (
@@ -386,9 +404,11 @@ const RenewSubscription: React.FC = () => {
                     )}
                   >
                     {/* Badge */}
-                    {plan.badge && (
+                    {(pricing.isCustom || plan.badge) && (
                       <span className="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
-                        {plan.badge}
+                        {pricing.isCustom
+                          ? (pricing.discountPercentage > 0 ? `Special • Save ${pricing.discountPercentage}%` : 'Special Price')
+                          : plan.badge}
                       </span>
                     )}
 

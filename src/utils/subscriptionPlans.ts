@@ -48,3 +48,51 @@ export function calculateExtendedEndDate(currentEndDateStr?: string | null, addM
   newDate.setMonth(newDate.getMonth() + addMonths);
   return newDate;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Per-admin / per-branch pack pricing overrides                      */
+/* ------------------------------------------------------------------ */
+
+export interface PackPricingOverride {
+  id?: string;
+  admin_id?: string;
+  branch_id: string | null;
+  months: number;
+  /** Custom monthly rate for this pack (before discount). Null = use base price */
+  price_per_month: number | null;
+  discount_percentage: number;
+  is_active: boolean;
+}
+
+/**
+ * Pick the most specific override for a pack:
+ *   branch-specific row  →  admin-wide row (branch_id null)  →  none
+ */
+export function findPackOverride(
+  overrides: PackPricingOverride[],
+  months: number,
+  branchId?: string | null
+): PackPricingOverride | null {
+  const active = overrides.filter((o) => o.is_active && o.months === months);
+  if (branchId) {
+    const branchRow = active.find((o) => o.branch_id === branchId);
+    if (branchRow) return branchRow;
+  }
+  return active.find((o) => !o.branch_id) || null;
+}
+
+/**
+ * Resolve pricing for a pack, honouring an admin/branch override when present.
+ */
+export function resolvePackPricing(
+  baseMonthlyPrice: number,
+  months: number,
+  overrides: PackPricingOverride[] = [],
+  branchId?: string | null
+): ReturnType<typeof calculatePlanPricing> & { isCustom: boolean } {
+  const override = findPackOverride(overrides, months, branchId);
+  const monthly = override?.price_per_month ?? baseMonthlyPrice;
+  const pricing = calculatePlanPricing(monthly, months, override?.discount_percentage);
+  return { ...pricing, isCustom: !!override };
+}
+
