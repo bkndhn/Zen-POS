@@ -615,20 +615,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .subscribe();
     }
 
-    // Sync subscription license status when profile is loaded
-    if (adminId && navigator.onLine) {
-      syncSubscriptionLicense(adminId).then(license => {
-        if (license.isForceLoggedOut) {
-          devLog('[AuthContext] License sync found force logout - signing out');
-          supabase.auth.signOut().then(() => {
-            setUser(null);
-            setSession(null);
-            setAdminProfileId(null);
-            setAdminAuthUid(null);
-            setProfile(null);
-          });
-        }
-      }).catch(e => devLog('[AuthContext] License sync error:', e));
+    // Weekly background license verification (resume + online + interval)
+    let schedulerStop: (() => void) | null = null;
+    if (adminId && profile.role !== 'super_admin') {
+      const handle = startLicenseScheduler(adminId, {
+        onEnforce: (_status, reason) => {
+          devLog('[AuthContext] License enforcement triggered:', reason);
+          performForceLogout(reason);
+        },
+      });
+      schedulerStop = handle.stop;
     }
 
     return () => {
@@ -636,7 +632,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       supabase.removeChannel(channel);
       if (broadcastChannel) supabase.removeChannel(broadcastChannel);
       if (userBroadcastChannel) supabase.removeChannel(userBroadcastChannel);
+      schedulerStop?.();
     };
+
   }, [user?.id, profile?.id, profile?.admin_id, profile?.status]);
 
   const signUp = async (
