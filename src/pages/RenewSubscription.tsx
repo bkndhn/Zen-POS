@@ -404,9 +404,11 @@ const RenewSubscription: React.FC = () => {
                     )}
                   >
                     {/* Badge */}
-                    {plan.badge && (
+                    {(pricing.isCustom || plan.badge) && (
                       <span className="absolute -top-2.5 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
-                        {plan.badge}
+                        {pricing.isCustom
+                          ? (pricing.discountPercentage > 0 ? `Special • Save ${pricing.discountPercentage}%` : 'Special Price')
+                          : plan.badge}
                       </span>
                     )}
 
