@@ -1756,6 +1756,114 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_gateway_credentials: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          key_id: string | null
+          key_secret: string | null
+          merchant_id: string | null
+          mode: string
+          provider: string
+          salt_index: string | null
+          salt_key: string | null
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          key_id?: string | null
+          key_secret?: string | null
+          merchant_id?: string | null
+          mode?: string
+          provider: string
+          salt_index?: string | null
+          salt_key?: string | null
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          key_id?: string | null
+          key_secret?: string | null
+          merchant_id?: string | null
+          mode?: string
+          provider?: string
+          salt_index?: string | null
+          salt_key?: string | null
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: []
+      }
+      payment_mandates: {
+        Row: {
+          admin_id: string
+          amount: number
+          created_at: string
+          id: string
+          interval_months: number
+          last_charged_at: string | null
+          next_charge_at: string | null
+          provider: string
+          provider_customer_id: string | null
+          provider_plan_id: string | null
+          provider_subscription_id: string | null
+          raw_payload: Json | null
+          short_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          amount?: number
+          created_at?: string
+          id?: string
+          interval_months?: number
+          last_charged_at?: string | null
+          next_charge_at?: string | null
+          provider: string
+          provider_customer_id?: string | null
+          provider_plan_id?: string | null
+          provider_subscription_id?: string | null
+          raw_payload?: Json | null
+          short_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          interval_months?: number
+          last_charged_at?: string | null
+          next_charge_at?: string | null
+          provider?: string
+          provider_customer_id?: string | null
+          provider_plan_id?: string | null
+          provider_subscription_id?: string | null
+          raw_payload?: Json | null
+          short_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_settings: {
         Row: {
           default_amount: number | null
@@ -1780,6 +1888,84 @@ export type Database = {
           updated_at?: string | null
           upi_id?: string | null
           upi_qr_image_url?: string | null
+        }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          admin_id: string
+          amount: number
+          branch_id: string | null
+          created_at: string
+          currency: string
+          customer_name: string | null
+          customer_phone: string | null
+          error_message: string | null
+          id: string
+          method: string | null
+          paid_at: string | null
+          provider: string
+          provider_link_id: string | null
+          provider_order_id: string | null
+          provider_payment_id: string | null
+          purpose: string
+          raw_payload: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          short_url: string | null
+          status: string
+          updated_at: string
+          utr: string | null
+        }
+        Insert: {
+          admin_id: string
+          amount?: number
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          error_message?: string | null
+          id?: string
+          method?: string | null
+          paid_at?: string | null
+          provider: string
+          provider_link_id?: string | null
+          provider_order_id?: string | null
+          provider_payment_id?: string | null
+          purpose?: string
+          raw_payload?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          short_url?: string | null
+          status?: string
+          updated_at?: string
+          utr?: string | null
+        }
+        Update: {
+          admin_id?: string
+          amount?: number
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          error_message?: string | null
+          id?: string
+          method?: string | null
+          paid_at?: string | null
+          provider?: string
+          provider_link_id?: string | null
+          provider_order_id?: string | null
+          provider_payment_id?: string | null
+          purpose?: string
+          raw_payload?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          short_url?: string | null
+          status?: string
+          updated_at?: string
+          utr?: string | null
         }
         Relationships: []
       }
@@ -2423,6 +2609,7 @@ export type Database = {
           order_type: string
           out_for_delivery_at: string | null
           packaging_fee: number
+          payment_link_url: string | null
           payment_method: string | null
           payment_mode: string | null
           payment_reference: string | null
@@ -2470,6 +2657,7 @@ export type Database = {
           order_type: string
           out_for_delivery_at?: string | null
           packaging_fee?: number
+          payment_link_url?: string | null
           payment_method?: string | null
           payment_mode?: string | null
           payment_reference?: string | null
@@ -2517,6 +2705,7 @@ export type Database = {
           order_type?: string
           out_for_delivery_at?: string | null
           packaging_fee?: number
+          payment_link_url?: string | null
           payment_method?: string | null
           payment_mode?: string | null
           payment_reference?: string | null
@@ -2607,6 +2796,7 @@ export type Database = {
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
+          default_payment_gateway: string | null
           delivery_fee_base: number | null
           delivery_fee_flat: number | null
           delivery_fee_free_km: number | null
@@ -2667,8 +2857,12 @@ export type Database = {
           user_id: string
           visible_nav_pages: string[] | null
           whatsapp: string | null
+          whatsapp_auto_send_payment_link: boolean
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
+          whatsapp_order_number: string | null
+          whatsapp_ordering_enabled: boolean
+          whatsapp_ordering_mode: string
           whatsapp_share_mode: string | null
         }
         Insert: {
@@ -2687,6 +2881,7 @@ export type Database = {
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
+          default_payment_gateway?: string | null
           delivery_fee_base?: number | null
           delivery_fee_flat?: number | null
           delivery_fee_free_km?: number | null
@@ -2747,8 +2942,12 @@ export type Database = {
           user_id: string
           visible_nav_pages?: string[] | null
           whatsapp?: string | null
+          whatsapp_auto_send_payment_link?: boolean
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
+          whatsapp_order_number?: string | null
+          whatsapp_ordering_enabled?: boolean
+          whatsapp_ordering_mode?: string
           whatsapp_share_mode?: string | null
         }
         Update: {
@@ -2767,6 +2966,7 @@ export type Database = {
           contact_number?: string | null
           created_at?: string | null
           default_order_type?: string | null
+          default_payment_gateway?: string | null
           delivery_fee_base?: number | null
           delivery_fee_flat?: number | null
           delivery_fee_free_km?: number | null
@@ -2827,8 +3027,12 @@ export type Database = {
           user_id?: string
           visible_nav_pages?: string[] | null
           whatsapp?: string | null
+          whatsapp_auto_send_payment_link?: boolean
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
+          whatsapp_order_number?: string | null
+          whatsapp_ordering_enabled?: boolean
+          whatsapp_ordering_mode?: string
           whatsapp_share_mode?: string | null
         }
         Relationships: [
@@ -3078,6 +3282,8 @@ export type Database = {
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string | null
+          gateway_provider: string | null
+          gateway_txn_id: string | null
           id: string
           notes: string | null
           payment_method: string | null
@@ -3092,6 +3298,8 @@ export type Database = {
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string | null
+          gateway_provider?: string | null
+          gateway_txn_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -3106,6 +3314,8 @@ export type Database = {
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string | null
+          gateway_provider?: string | null
+          gateway_txn_id?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -3714,6 +3924,7 @@ export type Database = {
           contact_number: string | null
           created_at: string | null
           default_order_type: string | null
+          default_payment_gateway: string | null
           delivery_fee_base: number | null
           delivery_fee_flat: number | null
           delivery_fee_free_km: number | null
@@ -3774,8 +3985,12 @@ export type Database = {
           user_id: string
           visible_nav_pages: string[] | null
           whatsapp: string | null
+          whatsapp_auto_send_payment_link: boolean
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
+          whatsapp_order_number: string | null
+          whatsapp_ordering_enabled: boolean
+          whatsapp_ordering_mode: string
           whatsapp_share_mode: string | null
         }[]
         SetofOptions: {
