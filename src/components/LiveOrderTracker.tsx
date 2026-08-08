@@ -208,7 +208,17 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
               <span>Total</span>
               <span>₹{order.total_amount?.toFixed(2)}</span>
             </div>
+
+            {order.is_paid ? (
+              <Badge className="w-full justify-center py-2 bg-emerald-600 hover:bg-emerald-600">Payment received</Badge>
+            ) : !isCancelled && order.status !== 'completed' ? (
+              <Button className="w-full h-11 gap-2 rounded-xl" onClick={handlePayOnline} disabled={payingOnline}>
+                <CreditCard className="w-4 h-4" />
+                {payingOnline ? 'Opening secure payment…' : `Pay ₹${order.total_amount?.toFixed(2)} Online`}
+              </Button>
+            ) : null}
           </CardContent>
+
         </Card>
 
         {/* Contact Actions */}
