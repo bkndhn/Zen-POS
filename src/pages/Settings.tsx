@@ -728,6 +728,10 @@ const Settings = () => {
             </TabsContent>
 
             <TabsContent value="integrations" className="space-y-4 sm:space-y-6 mt-0">
+              {/* Payment Gateway (auto-collection) */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Payment Gateway Settings failed to load. Try refreshing.</div>}>
+            <PaymentGatewaySettings />
+          </ErrorBoundary>
               {/* WhatsApp Bill Share Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
             <WhatsAppSettings />
