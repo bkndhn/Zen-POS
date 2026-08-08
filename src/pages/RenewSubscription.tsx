@@ -152,6 +152,8 @@ const RenewSubscription: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [utrNumber, setUtrNumber] = useState('');
   const [submittingUtr, setSubmittingUtr] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
+  const [settingAutoPay, setSettingAutoPay] = useState(false);
   const [selectedMonths, setSelectedMonths] = useState<number>(12); // Default 1 Year Annual (Popular)
   const [customMonthsInput, setCustomMonthsInput] = useState<string>('18');
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
@@ -286,7 +288,7 @@ const RenewSubscription: React.FC = () => {
       setSettingAutoPay(true);
       const { data, error } = await supabase.functions.invoke('payments-create-mandate', {
         body: {
-          amount: currentPricing.monthlyPrice ?? baseMonthlyPrice,
+          amount: currentPricing.monthlyRate ?? baseMonthlyPrice,
           interval_months: 1,
           total_count: 12,
         },
