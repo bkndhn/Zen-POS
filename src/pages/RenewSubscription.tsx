@@ -251,6 +251,59 @@ const RenewSubscription: React.FC = () => {
     }
   };
 
+  /* ---- Online auto-collection (Razorpay / PhonePe) ---- */
+  const handlePayOnline = async () => {
+    try {
+      setPayingOnline(true);
+      const planLabel = isCustomMode
+        ? `${activeMonths} Month(s) Custom Plan`
+        : (PRESET_SUBSCRIPTION_PLANS.find(p => p.months === activeMonths)?.name || `${activeMonths} Months`);
+
+      const { data, error } = await supabase.functions.invoke('payments-create-link', {
+        body: {
+          amount: planAmount,
+          purpose: 'subscription',
+          description: `ZenPOS Subscription — ${planLabel}`,
+          customer_name: profile?.name || profile?.shop_name || 'Client',
+          customer_phone: (profile as any)?.mobile_number || '',
+          callback_url: `${window.location.origin}/renew-subscription`,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.short_url || (data as any)?.redirect_url;
+      if (!url) throw new Error('Payment link could not be created.');
+      window.location.href = url;
+    } catch (err: any) {
+      toast({ title: 'Online payment unavailable', description: err.message, variant: 'destructive' });
+    } finally {
+      setPayingOnline(false);
+    }
+  };
+
+  const handleEnableAutoPay = async () => {
+    try {
+      setSettingAutoPay(true);
+      const { data, error } = await supabase.functions.invoke('payments-create-mandate', {
+        body: {
+          amount: currentPricing.monthlyPrice ?? baseMonthlyPrice,
+          interval_months: 1,
+          total_count: 12,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.short_url || (data as any)?.auth_link;
+      if (!url) throw new Error('Auto-pay setup link could not be created.');
+      window.location.href = url;
+    } catch (err: any) {
+      toast({ title: 'Auto-pay setup failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSettingAutoPay(false);
+    }
+  };
+
+
   const handleSubmitPaymentRef = async () => {
     if (!utrNumber.trim()) {
       toast({ title: 'UTR Required', description: 'Please enter your 12-digit UPI UTR / Transaction reference number.', variant: 'destructive' });
