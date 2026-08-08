@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, MessageCircle, Star, X } from 'lucide-react';
+import { Phone, MessageCircle, Star, X, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LiveOrderTrackerProps {
@@ -22,6 +22,27 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
+
+  const handlePayOnline = async () => {
+    try {
+      setPayingOnline(true);
+      const deviceId = localStorage.getItem('zenpos_remote_device_id') || '';
+      const { data, error } = await supabase.functions.invoke('payments-guest-link', {
+        body: { order_id: orderId, device_id: deviceId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.short_url || (data as any)?.redirect_url;
+      if (!url) throw new Error('Payment link could not be created.');
+      window.location.href = url;
+    } catch (err: any) {
+      toast({ title: 'Online payment unavailable', description: err.message, variant: 'destructive' });
+    } finally {
+      setPayingOnline(false);
+    }
+  };
+
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -208,7 +229,17 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
               <span>Total</span>
               <span>₹{order.total_amount?.toFixed(2)}</span>
             </div>
+
+            {order.is_paid ? (
+              <Badge className="w-full justify-center py-2 bg-emerald-600 hover:bg-emerald-600">Payment received</Badge>
+            ) : !isCancelled && order.status !== 'completed' ? (
+              <Button className="w-full h-11 gap-2 rounded-xl" onClick={handlePayOnline} disabled={payingOnline}>
+                <CreditCard className="w-4 h-4" />
+                {payingOnline ? 'Opening secure payment…' : `Pay ₹${order.total_amount?.toFixed(2)} Online`}
+              </Button>
+            ) : null}
           </CardContent>
+
         </Card>
 
         {/* Contact Actions */}

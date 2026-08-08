@@ -152,6 +152,8 @@ const RenewSubscription: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [utrNumber, setUtrNumber] = useState('');
   const [submittingUtr, setSubmittingUtr] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
+  const [settingAutoPay, setSettingAutoPay] = useState(false);
   const [selectedMonths, setSelectedMonths] = useState<number>(12); // Default 1 Year Annual (Popular)
   const [customMonthsInput, setCustomMonthsInput] = useState<string>('18');
   const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
@@ -250,6 +252,59 @@ const RenewSubscription: React.FC = () => {
       }).catch(() => {});
     }
   };
+
+  /* ---- Online auto-collection (Razorpay / PhonePe) ---- */
+  const handlePayOnline = async () => {
+    try {
+      setPayingOnline(true);
+      const planLabel = isCustomMode
+        ? `${activeMonths} Month(s) Custom Plan`
+        : (PRESET_SUBSCRIPTION_PLANS.find(p => p.months === activeMonths)?.name || `${activeMonths} Months`);
+
+      const { data, error } = await supabase.functions.invoke('payments-create-link', {
+        body: {
+          amount: planAmount,
+          purpose: 'subscription',
+          description: `ZenPOS Subscription — ${planLabel}`,
+          customer_name: profile?.name || profile?.shop_name || 'Client',
+          customer_phone: (profile as any)?.mobile_number || '',
+          callback_url: `${window.location.origin}/renew-subscription`,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.short_url || (data as any)?.redirect_url;
+      if (!url) throw new Error('Payment link could not be created.');
+      window.location.href = url;
+    } catch (err: any) {
+      toast({ title: 'Online payment unavailable', description: err.message, variant: 'destructive' });
+    } finally {
+      setPayingOnline(false);
+    }
+  };
+
+  const handleEnableAutoPay = async () => {
+    try {
+      setSettingAutoPay(true);
+      const { data, error } = await supabase.functions.invoke('payments-create-mandate', {
+        body: {
+          amount: currentPricing.monthlyRate ?? baseMonthlyPrice,
+          interval_months: 1,
+          total_count: 12,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const url = (data as any)?.short_url || (data as any)?.auth_link;
+      if (!url) throw new Error('Auto-pay setup link could not be created.');
+      window.location.href = url;
+    } catch (err: any) {
+      toast({ title: 'Auto-pay setup failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSettingAutoPay(false);
+    }
+  };
+
 
   const handleSubmitPaymentRef = async () => {
     if (!utrNumber.trim()) {
@@ -551,6 +606,42 @@ const RenewSubscription: React.FC = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* ============================================================ */}
+        {/*  INSTANT ONLINE PAYMENT (Razorpay / PhonePe auto-collect)     */}
+        {/* ============================================================ */}
+        <Card className="rounded-2xl shadow-lg border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Zap className="h-5 w-5 text-primary" />
+              Instant Online Payment
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Pay securely by UPI, card or netbanking. Your subscription is activated automatically once the payment succeeds — no UTR entry needed.
+            </p>
+            <Button
+              onClick={handlePayOnline}
+              disabled={payingOnline}
+              size="lg"
+              className="w-full gap-2 rounded-xl h-12 text-base font-semibold shadow-md"
+            >
+              {payingOnline ? <Clock className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+              Pay ₹{currentPricing.totalAmount.toLocaleString('en-IN')} Online
+            </Button>
+            <Button
+              onClick={handleEnableAutoPay}
+              disabled={settingAutoPay}
+              variant="outline"
+              className="w-full gap-2 rounded-xl h-11"
+            >
+              {settingAutoPay ? <Clock className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+              Enable Auto-Pay (monthly)
+            </Button>
+          </CardContent>
+        </Card>
+
 
         {/* ============================================================ */}
         {/*  SUBMIT PAYMENT CONFIRMATION CARD                             */}
