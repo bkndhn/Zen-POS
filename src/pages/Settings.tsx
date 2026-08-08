@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DevicePrefixSettings } from '@/components/DevicePrefixSettings';
 import { LocalBackupSettings } from '@/components/LocalBackupSettings';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
+import { PaymentGatewaySettings } from '@/components/PaymentGatewaySettings';
 import { CalciBillingSettings } from '@/components/CalciBillingSettings';
 import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
 import { QuickBillSettings } from '@/components/QuickBillSettings';
