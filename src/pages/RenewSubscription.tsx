@@ -608,6 +608,42 @@ const RenewSubscription: React.FC = () => {
         )}
 
         {/* ============================================================ */}
+        {/*  INSTANT ONLINE PAYMENT (Razorpay / PhonePe auto-collect)     */}
+        {/* ============================================================ */}
+        <Card className="rounded-2xl shadow-lg border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Zap className="h-5 w-5 text-primary" />
+              Instant Online Payment
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Pay securely by UPI, card or netbanking. Your subscription is activated automatically once the payment succeeds — no UTR entry needed.
+            </p>
+            <Button
+              onClick={handlePayOnline}
+              disabled={payingOnline}
+              size="lg"
+              className="w-full gap-2 rounded-xl h-12 text-base font-semibold shadow-md"
+            >
+              {payingOnline ? <Clock className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+              Pay ₹{currentPricing.totalAmount.toLocaleString('en-IN')} Online
+            </Button>
+            <Button
+              onClick={handleEnableAutoPay}
+              disabled={settingAutoPay}
+              variant="outline"
+              className="w-full gap-2 rounded-xl h-11"
+            >
+              {settingAutoPay ? <Clock className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+              Enable Auto-Pay (monthly)
+            </Button>
+          </CardContent>
+        </Card>
+
+
+        {/* ============================================================ */}
         {/*  SUBMIT PAYMENT CONFIRMATION CARD                             */}
         {/* ============================================================ */}
         <Card className="rounded-2xl shadow-lg border-2 border-primary/20 bg-gradient-to-br from-white to-primary/5 dark:from-slate-900 dark:to-slate-900/90">
