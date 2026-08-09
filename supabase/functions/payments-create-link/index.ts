@@ -1,6 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { admin, getCreds, rzpFetch, phonepePay } from '../_shared/pg.ts';
+import { admin, getCreds, getPlatformCreds, rzpFetch, phonepePay } from '../_shared/pg.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -46,7 +46,12 @@ Deno.serve(async (req) => {
     const adminId: string = body.admin_id || profile.admin_id || profile.user_id;
     const branchId: string | null = body.branch_id || null;
 
-    const creds = await getCreds(adminId, body.provider, branchId);
+    // Subscription money is collected by the PLATFORM (super admin) account.
+    // Order money is collected by the tenant's own gateway. Fully isolated keys.
+    const scope: 'platform' | 'tenant' = purpose === 'subscription' ? 'platform' : 'tenant';
+    const creds = scope === 'platform'
+      ? await getPlatformCreds(body.provider)
+      : await getCreds(adminId, body.provider, branchId);
 
     const txnId = crypto.randomUUID();
     const callbackUrl = String(body.callback_url || '') || undefined;
@@ -82,7 +87,7 @@ Deno.serve(async (req) => {
         amount: Math.round(amount * 100),
         redirectUrl: callbackUrl || 'https://hotel-zen-pos-1.lovable.app',
         redirectMode: 'REDIRECT',
-        callbackUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payments-webhook?provider=phonepe&admin_id=${adminId}`,
+        callbackUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payments-webhook?provider=phonepe&scope=${scope}${scope === 'tenant' ? `&admin_id=${adminId}` : ''}`,
         mobileNumber: customerPhone || undefined,
         paymentInstrument: { type: 'PAY_PAGE' },
       });
@@ -97,6 +102,8 @@ Deno.serve(async (req) => {
       branch_id: branchId,
       provider: creds.provider,
       purpose,
+      scope,
+      environment: creds.mode,
       reference_type: body.reference_type || null,
       reference_id: body.reference_id || null,
       customer_name: customerName,
