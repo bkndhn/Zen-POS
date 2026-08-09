@@ -511,15 +511,11 @@ const PublicMenu = () => {
         if (!deviceId) return;
         (async () => {
             const { data } = await (supabase as any)
-                .from('remote_orders')
-                .select('id, status')
-                .eq('admin_id', adminId)
-                .eq('branch_id', branchId)
-                .eq('device_id', deviceId)
-                .not('status', 'in', '(completed,cancelled,no_show)')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+            const { data } = await (supabase as any).rpc('get_active_remote_order_for_device', {
+                p_admin_id: adminId,
+                p_branch_id: branchId ?? null,
+                p_device_id: deviceId,
+            });
             if (data?.id) {
                 setActiveRemoteOrderId(data.id);
                 setShowRemoteTracker(true);
