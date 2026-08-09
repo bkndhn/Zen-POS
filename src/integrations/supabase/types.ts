@@ -4076,6 +4076,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_active_remote_order_for_device: {
+        Args: { p_admin_id: string; p_branch_id: string; p_device_id: string }
+        Returns: Json
+      }
       get_all_users_for_super_admin: {
         Args: never
         Returns: {
@@ -4291,6 +4295,10 @@ export type Database = {
           rate: number
         }[]
       }
+      get_remote_order_for_device: {
+        Args: { p_device_id: string; p_order_id: string }
+        Returns: Json
+      }
       get_signup_enabled: { Args: never; Returns: boolean }
       get_user_admin_id: { Args: never; Returns: string }
       has_branch_read_access: {
@@ -4306,6 +4314,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_super: { Args: never; Returns: boolean }
+      is_device_blocked: {
+        Args: { p_admin_id: string; p_device_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: never; Returns: boolean }
       is_user_allowed_to_login: {
         Args: { p_user_id: string }
