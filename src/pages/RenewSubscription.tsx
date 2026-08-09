@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { SubscriptionBilling } from '@/components/SubscriptionBilling';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -630,17 +631,15 @@ const RenewSubscription: React.FC = () => {
               {payingOnline ? <Clock className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
               Pay ₹{currentPricing.totalAmount.toLocaleString('en-IN')} Online
             </Button>
-            <Button
-              onClick={handleEnableAutoPay}
-              disabled={settingAutoPay}
-              variant="outline"
-              className="w-full gap-2 rounded-xl h-11"
-            >
-              {settingAutoPay ? <Clock className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
-              Enable Auto-Pay (monthly)
-            </Button>
           </CardContent>
         </Card>
+
+        {/* Auto-pay controls, cadence, receipts & invoices */}
+        <SubscriptionBilling
+          adminId={adminId}
+          monthlyAmount={currentPricing.monthlyRate ?? baseMonthlyPrice}
+          shopName={profile?.shop_name || profile?.name}
+        />
 
 
         {/* ============================================================ */}
