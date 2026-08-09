@@ -47,6 +47,73 @@ export async function getCreds(
   return scored[0];
 }
 
+/** Resolve the PLATFORM (super admin) gateway credentials used to collect subscription money. */
+export async function getPlatformCreds(provider?: string, mode?: string): Promise<GatewayCreds> {
+  const sb = admin();
+  let q = sb.from('payment_platform_credentials').select('*').eq('is_active', true);
+  if (provider) q = q.eq('provider', provider);
+  if (mode) q = q.eq('mode', mode);
+  const { data, error } = await q;
+  if (error) throw new Error(`Platform credential lookup failed: ${error.message}`);
+  if (!data?.length)
+    throw new Error('Subscription collection is not configured yet. Super admin must add platform gateway keys.');
+  // Prefer live over test when both are active and no explicit mode was requested
+  const rows = data as GatewayCreds[];
+  const chosen = rows.find((r) => r.mode === 'live') || rows[0];
+  return { ...chosen, admin_id: 'platform', branch_id: null } as GatewayCreds;
+}
+
+/**
+ * Idempotent webhook event recorder.
+ * Returns false when the event was already recorded (duplicate delivery).
+ */
+export async function claimWebhookEvent(row: {
+  provider: string;
+  event_id: string;
+  event_type?: string | null;
+  scope?: string;
+  admin_id?: string | null;
+  payload?: unknown;
+}): Promise<boolean> {
+  const sb = admin();
+  const { error } = await sb.from('payment_webhook_events').insert({
+    provider: row.provider,
+    event_id: row.event_id,
+    event_type: row.event_type || null,
+    scope: row.scope || 'tenant',
+    admin_id: row.admin_id || null,
+    status: 'processing',
+    attempts: 1,
+    payload: row.payload as Record<string, unknown>,
+  });
+  if (error) {
+    // 23505 = unique violation -> already seen this event
+    if ((error as { code?: string }).code === '23505') return false;
+    throw new Error(`Webhook log failed: ${error.message}`);
+  }
+  return true;
+}
+
+export async function markWebhookEvent(
+  provider: string,
+  eventId: string,
+  status: 'processed' | 'failed',
+  errorMessage?: string,
+) {
+  const sb = admin();
+  await sb
+    .from('payment_webhook_events')
+    .update({
+      status,
+      last_error: errorMessage || null,
+      processed_at: status === 'processed' ? new Date().toISOString() : null,
+      next_retry_at:
+        status === 'failed' ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : null,
+    })
+    .eq('provider', provider)
+    .eq('event_id', eventId);
+}
+
 const enc = new TextEncoder();
 
 export async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
