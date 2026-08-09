@@ -45,22 +45,36 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
 
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      const { data, error } = await (supabase as any)
-        .from('remote_orders')
-        .select('*')
-        .eq('id', orderId)
-        .single();
-      
-      if (error) {
-        toast({ title: 'Error fetching order', description: error.message, variant: 'destructive' });
-      } else {
-        setOrder(data);
+    let cancelled = false;
+    const deviceId = localStorage.getItem('zenpos_remote_device_id');
+
+    const applyOrder = (newOrder: any) => {
+      if (!newOrder || cancelled) return;
+      setOrder(newOrder);
+      if ((newOrder.status === 'completed' || newOrder.status === 'cancelled' || newOrder.status === 'no_show') && onOrderComplete) {
+        setTimeout(() => onOrderComplete(), newOrder.status === 'completed' ? 5000 : 3000);
       }
-      setLoading(false);
     };
 
-    fetchOrder();
+    const fetchOrder = async (showError = false) => {
+      // Guests can only read their own order via a device-scoped secure function
+      const { data, error } = await (supabase as any).rpc('get_remote_order_for_device', {
+        p_order_id: orderId,
+        p_device_id: deviceId,
+      });
+
+      if (error && showError) {
+        toast({ title: 'Error fetching order', description: error.message, variant: 'destructive' });
+      } else if (data) {
+        applyOrder(data);
+      }
+      if (!cancelled) setLoading(false);
+    };
+
+    fetchOrder(true);
+
+    // Poll for updates (public realtime reads are intentionally restricted)
+    const interval = setInterval(() => fetchOrder(false), 5000);
 
     const channel = supabase
       .channel(`order_${orderId}`)
@@ -69,19 +83,15 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
         { event: '*', schema: 'public', table: 'remote_orders', filter: `id=eq.${orderId}` },
         (payload) => {
           if (payload.new && Object.keys(payload.new).length > 0) {
-            const newOrder = payload.new as any;
-            setOrder(newOrder);
-            // Fire onOrderComplete callback when order is done
-            if ((newOrder.status === 'completed' || newOrder.status === 'cancelled' || newOrder.status === 'no_show') && onOrderComplete) {
-              // Delay slightly so user sees final status before modal closes
-              setTimeout(() => onOrderComplete(), newOrder.status === 'completed' ? 5000 : 3000);
-            }
+            applyOrder(payload.new as any);
           }
         }
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [orderId, toast, onOrderComplete]);
