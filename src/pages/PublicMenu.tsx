@@ -510,7 +510,6 @@ const PublicMenu = () => {
         const deviceId = localStorage.getItem('zenpos_remote_device_id');
         if (!deviceId) return;
         (async () => {
-            const { data } = await (supabase as any)
             const { data } = await (supabase as any).rpc('get_active_remote_order_for_device', {
                 p_admin_id: adminId,
                 p_branch_id: branchId ?? null,
