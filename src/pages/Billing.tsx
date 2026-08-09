@@ -3195,7 +3195,7 @@ const Billing = () => {
 
       // Await database save FIRST
       try {
-        await saveBillToDatabase(billPayload, validCart, billNumber);
+        const savedBill: any = await saveBillToDatabase(billPayload, validCart, billNumber);
 
         // UI success cleanup
         clearCart();
