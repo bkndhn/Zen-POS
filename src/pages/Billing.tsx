@@ -3195,7 +3195,7 @@ const Billing = () => {
 
       // Await database save FIRST
       try {
-        await saveBillToDatabase(billPayload, validCart, billNumber);
+        const savedBill: any = await saveBillToDatabase(billPayload, validCart, billNumber);
 
         // UI success cleanup
         clearCart();
@@ -3315,7 +3315,7 @@ const Billing = () => {
                     admin_id: adminId,
                     branch_id: operatingBranchId || null,
                     customer_id: targetCustomerId,
-                    bill_id: billData.id,
+                    bill_id: savedBill?.id,
                     amount: khataAmount,
                     transaction_type: 'debit', // debit means customer owes us more money
                     payment_mode: 'Khata (Credit)',

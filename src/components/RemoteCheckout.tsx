@@ -161,24 +161,20 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         localStorage.setItem('zenpos_remote_device_id', deviceId);
       }
 
-      const { data: blocked } = await (supabase as any)
-        .from('blocked_devices')
-        .select('*')
-        .eq('device_id', deviceId)
-        .eq('admin_id', adminId)
-        .single();
-      
+      const { data: blocked } = await (supabase as any).rpc('is_device_blocked', {
+        p_admin_id: adminId,
+        p_device_id: deviceId,
+      });
+
       if (blocked) {
         throw new Error("Device is blocked from placing orders.");
       }
 
-      const { data: activeOrder } = await (supabase as any)
-        .from('remote_orders')
-        .select('*')
-        .eq('device_id', deviceId)
-        .eq('admin_id', adminId)
-        .not('status', 'in', '(completed,cancelled,no_show)')
-        .maybeSingle();
+      const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', {
+        p_admin_id: adminId,
+        p_branch_id: branchId ?? null,
+        p_device_id: deviceId,
+      });
 
       if (activeOrder) {
         throw new Error("You already have an active order.");
