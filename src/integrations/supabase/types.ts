@@ -843,6 +843,7 @@ export type Database = {
           created_at: string
           current_balance: number | null
           id: string
+          khata_balance: number | null
           last_visit: string | null
           name: string | null
           phone: string
@@ -856,6 +857,7 @@ export type Database = {
           created_at?: string
           current_balance?: number | null
           id?: string
+          khata_balance?: number | null
           last_visit?: string | null
           name?: string | null
           phone: string
@@ -869,6 +871,7 @@ export type Database = {
           created_at?: string
           current_balance?: number | null
           id?: string
+          khata_balance?: number | null
           last_visit?: string | null
           name?: string | null
           phone?: string
@@ -1710,6 +1713,67 @@ export type Database = {
             columns: ["tax_rate_id"]
             isOneToOne: false
             referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      khata_transactions: {
+        Row: {
+          admin_id: string | null
+          amount: number
+          bill_id: string | null
+          branch_id: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          id: string
+          note: string | null
+          type: string
+        }
+        Insert: {
+          admin_id?: string | null
+          amount: number
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          note?: string | null
+          type: string
+        }
+        Update: {
+          admin_id?: string | null
+          amount?: number
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          note?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "khata_transactions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "khata_transactions_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "khata_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -2932,6 +2996,7 @@ export type Database = {
           id: string
           instagram: string | null
           is_composition_scheme: boolean | null
+          khata_billing_enabled: boolean | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
           max_delivery_radius_km: number | null
@@ -3017,6 +3082,7 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_composition_scheme?: boolean | null
+          khata_billing_enabled?: boolean | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
           max_delivery_radius_km?: number | null
@@ -3102,6 +3168,7 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_composition_scheme?: boolean | null
+          khata_billing_enabled?: boolean | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
           max_delivery_radius_km?: number | null
@@ -4060,6 +4127,7 @@ export type Database = {
           id: string
           instagram: string | null
           is_composition_scheme: boolean | null
+          khata_billing_enabled: boolean | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
           max_delivery_radius_km: number | null
