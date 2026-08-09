@@ -64,6 +64,13 @@ Deno.serve(async (req) => {
           ...(phone ? { contact: phone.length === 10 ? `+91${phone}` : `+${phone}` } : {}),
         },
         notify: { sms: false, email: false },
+        notes: {
+          order_id: order.id,
+          order_number: String(order.order_number || ''),
+          admin_id: order.admin_id,
+          branch_id: order.branch_id || '',
+          source: 'whatsapp_qr',
+        },
       });
       shortUrl = res.short_url;
       providerLinkId = res.id;
@@ -92,6 +99,8 @@ Deno.serve(async (req) => {
       branch_id: order.branch_id,
       provider: creds.provider,
       purpose: 'order',
+      scope: 'tenant',
+      environment: creds.mode,
       reference_type: 'remote_order',
       reference_id: order.id,
       customer_name: order.customer_name,

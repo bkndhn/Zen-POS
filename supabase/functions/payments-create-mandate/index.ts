@@ -1,6 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { admin, getCreds, rzpFetch } from '../_shared/pg.ts';
+import { admin, getPlatformCreds, rzpFetch } from '../_shared/pg.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -39,9 +39,12 @@ Deno.serve(async (req) => {
     if (!profile) return json({ error: 'Profile not found' }, 403);
     const adminId: string = profile.admin_id || profile.user_id;
 
-    const creds = await getCreds(adminId, 'razorpay');
+    // Mandates always charge into the PLATFORM account (subscription revenue).
+    const creds = await getPlatformCreds('razorpay');
     if (creds.provider !== 'razorpay')
       return json({ error: 'UPI Autopay mandates require Razorpay.' }, 400);
+    const cadence: 'monthly' | 'annual' = body.cadence === 'annual' ? 'annual' : 'monthly';
+    const startAt: number | undefined = Number(body.start_at) || undefined;
 
     // Reuse an active mandate if one already exists
     const { data: existing } = await sb
@@ -58,8 +61,8 @@ Deno.serve(async (req) => {
     }
 
     const plan = await rzpFetch(creds, '/plans', 'POST', {
-      period: 'monthly',
-      interval: months,
+      period: cadence === 'annual' ? 'yearly' : 'monthly',
+      interval: cadence === 'annual' ? 1 : months,
       item: {
         name: `${profile.shop_name || profile.hotel_name || 'ZenPOS'} Subscription`,
         amount: Math.round(amount * 100),
@@ -71,6 +74,7 @@ Deno.serve(async (req) => {
       plan_id: plan.id,
       total_count: cycles,
       customer_notify: 1,
+      ...(startAt ? { start_at: startAt } : {}),
       notes: { admin_id: adminId },
     });
 
@@ -82,7 +86,9 @@ Deno.serve(async (req) => {
         provider_plan_id: plan.id,
         provider_subscription_id: subscription.id,
         amount,
-        interval_months: months,
+        interval_months: cadence === 'annual' ? 12 : months,
+        cadence,
+        environment: creds.mode,
         status: 'pending',
         short_url: subscription.short_url,
         next_charge_at: subscription.charge_at

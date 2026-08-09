@@ -20,6 +20,7 @@ import { SubscriptionPackPricing } from '@/components/SubscriptionPackPricing';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
+import { PlatformPaymentSettings } from '@/components/PlatformPaymentSettings';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Pencil, Sparkles, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1028,12 +1029,15 @@ const SuperAdminUsers: React.FC = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="hidden sm:grid sm:grid-cols-4 max-w-3xl bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
+          <TabsList className="hidden sm:grid sm:grid-cols-5 max-w-4xl bg-slate-100 dark:bg-slate-900 border rounded-xl p-1">
             <TabsTrigger value="users" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
               <UsersIcon className="w-3.5 h-3.5 mr-2" /> Users & Staff ({rows.length})
             </TabsTrigger>
             <TabsTrigger value="subscriptions" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
               <CreditCard className="w-3.5 h-3.5 mr-2" /> Subscriptions ({subPayments.length})
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
+              <CreditCard className="w-3.5 h-3.5 mr-2" /> Payments
             </TabsTrigger>
             <TabsTrigger value="backups" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
               <Database className="w-3.5 h-3.5 mr-2" /> Backups & Health
@@ -1269,6 +1273,10 @@ const SuperAdminUsers: React.FC = () => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-6 mt-6 focus-visible:outline-none">
+            <PlatformPaymentSettings />
           </TabsContent>
 
           <TabsContent value="backups" className="space-y-6 mt-6 focus-visible:outline-none">
