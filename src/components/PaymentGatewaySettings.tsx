@@ -102,7 +102,25 @@ export const PaymentGatewaySettings: React.FC = () => {
     toast({ title: 'Payment gateway saved' });
   };
 
-  if (!adminId) return null;
+  if (!adminId) {
+    return (
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CreditCard className="h-5 w-5 text-primary" />
+            Payment Gateway
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            You are signed in as a platform owner. Configure the platform gateway used to collect subscriptions from
+            clients in <span className="font-medium text-foreground">Super Admin Portal → Payments</span>. This card is
+            for a client's own gateway, used to collect money from their customers.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="rounded-2xl">
