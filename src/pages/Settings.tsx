@@ -33,6 +33,7 @@ import { PaymentGatewaySettings } from '@/components/PaymentGatewaySettings';
 import { CalciBillingSettings } from '@/components/CalciBillingSettings';
 import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
 import { QuickBillSettings } from '@/components/QuickBillSettings';
+import { KhataSettings } from '@/components/KhataSettings';
 
 interface AdditionalCharge {
   id: string;
@@ -413,6 +414,12 @@ const Settings = () => {
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Quick Bill Settings failed to load. Try refreshing.</div>}>
             <QuickBillSettings />
           </ErrorBoundary>
+
+          {/* Khata Settings */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Khata Settings failed to load. Try refreshing.</div>}>
+            <KhataSettings />
+          </ErrorBoundary>
+
               {/* Bill Numbering Settings */}
           <Card>
             <CardHeader className="p-4 sm:p-6">

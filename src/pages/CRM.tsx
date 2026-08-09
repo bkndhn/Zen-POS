@@ -69,7 +69,7 @@ const CRM: React.FC = () => {
   const [billSettings, setBillSettings] = useState<any>(null);
 
   // Customer Segmentation & Marketing Campaign states
-  const [segmentFilter, setSegmentFilter] = useState<'all' | 'vip' | 'regular' | 'at_risk' | 'dormant'>('all');
+  const [segmentFilter, setSegmentFilter] = useState<'all' | 'khata' | 'vip' | 'regular' | 'at_risk' | 'dormant'>('all');
   const [campaignOpen, setCampaignOpen] = useState(false);
   const [campaignType, setCampaignType] = useState<'promo' | 'birthday' | 'reengage' | 'voucher'>('promo');
   const [campaignTarget, setCampaignTarget] = useState<'all' | 'vip' | 'at_risk' | 'dormant'>('all');
@@ -321,8 +321,12 @@ const CRM: React.FC = () => {
 
   const filteredCustomers = customers.filter(customer => {
     if (segmentFilter !== 'all') {
-      const seg = getCustomerSegment(customer);
-      if (seg.key !== segmentFilter) return false;
+      if (segmentFilter === 'khata') {
+        if (Number(customer.current_balance) <= 0) return false;
+      } else {
+        const seg = getCustomerSegment(customer);
+        if (seg.key !== segmentFilter) return false;
+      }
     }
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
@@ -937,6 +941,7 @@ const CRM: React.FC = () => {
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
         {[
           { key: 'all', label: 'All Customers', count: customers.length },
+          { key: 'khata', label: 'Khata Due 💸', count: customers.filter(c => Number(c.current_balance) > 0).length },
           { key: 'vip', label: 'VIP 🌟', count: customers.filter(c => getCustomerSegment(c).key === 'vip').length },
           { key: 'regular', label: 'Regular ⚡', count: customers.filter(c => getCustomerSegment(c).key === 'regular').length },
           { key: 'at_risk', label: 'At-Risk ⚠️', count: customers.filter(c => getCustomerSegment(c).key === 'at_risk').length },
@@ -1001,13 +1006,15 @@ const CRM: React.FC = () => {
                       </p>
                     </div>
                   <div className="flex items-center gap-2">
-                    <div className="text-right mr-2">
-                      <p className="font-bold text-sm text-primary">₹{customer.total_spent.toFixed(0)}</p>
-                      <p className="text-[10px] text-muted-foreground">total spent</p>
-                      {customer.current_balance !== undefined && customer.current_balance !== 0 && (
-                        <p className={`text-[10px] font-bold ${customer.current_balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                          {customer.current_balance > 0 ? `Dues: ₹${customer.current_balance}` : `Advance: ₹${Math.abs(customer.current_balance)}`}
-                        </p>
+                    <div className="text-right mr-2 flex flex-col items-end gap-1">
+                      <div>
+                        <p className="font-bold text-sm text-primary">₹{customer.total_spent.toFixed(0)}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">LTV</p>
+                      </div>
+                      {Number(customer.current_balance) > 0 && (
+                        <div className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shadow-sm mt-0.5">
+                          DUE: ₹{Number(customer.current_balance).toFixed(0)}
+                        </div>
                       )}
                     </div>
                     <Button

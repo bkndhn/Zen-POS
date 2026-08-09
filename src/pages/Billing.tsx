@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight, Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Bell, Clipboard, Calculator, AlertCircle, Delete, Printer, Keyboard } from 'lucide-react';
@@ -37,6 +38,8 @@ import { cn } from '@/lib/utils';
 import VoiceBillingButton, { VoiceIntent } from '@/components/VoiceBillingButton';
 import { getStationMap } from '@/utils/stationPrinters';
 import { getKOTStatusBadgeInfo } from '@/utils/seatUtils';
+import { CustomItemDialog } from '@/components/CustomItemDialog';
+import { useWeighingScale } from '@/hooks/useWeighingScale';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -465,6 +468,11 @@ const Billing = () => {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [additionalCharges, setAdditionalCharges] = useState<any[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isCustomItemOpen, setIsCustomItemOpen] = useState(false);
+  
+  // Weighing Scale Integration
+  const { weight: scaleWeight, isConnected: isScaleConnected, isSupported: isScaleSupported, isBluetoothSupported, isUsbSupported, connectUSB, connectBluetooth, disconnect: disconnectScale } = useWeighingScale();
+
   const [displaySettings, setDisplaySettings] = useState({
     items_per_row: 3,
     category_order: [] as string[]
@@ -802,6 +810,7 @@ const Billing = () => {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [quickBillEnabled, setQuickBillEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
+  const [khataEnabled, setKhataEnabled] = useState(false);
   const [showOrderType, setShowOrderType] = useState(false);
   const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
   const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
@@ -1311,6 +1320,7 @@ const Billing = () => {
           upiName: parsed.upiName || ''
         });
         setWhatsappEnabled(parsed.whatsappEnabled || parsed.whatsappBillShareEnabled || false);
+        setKhataEnabled(parsed.khataEnabled || false);
         setQuickBillEnabled(parsed.quickBillEnabled || false);
         setWhatsappShareMode(parsed.whatsappShareMode === 'image' ? 'image' : 'text');
         setShowOrderType(parsed.showOrderType || false);
@@ -1411,10 +1421,12 @@ const Billing = () => {
           billBottomText: data.bill_bottom_text || '',
           billFontFamily: data.bill_font_family || '',
           billFontScale: data.bill_font_scale || 1,
-          quickBillEnabled: data.quick_bill_enabled || false
+          quickBillEnabled: data.quick_bill_enabled || false,
+          khataEnabled: data.khata_billing_enabled || false
         };
         setBillSettings(settings);
         setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
+        setKhataEnabled(data.khata_billing_enabled || false);
         setQuickBillEnabled(data.quick_bill_enabled || false);
         setWhatsappShareMode((data as any).whatsapp_share_mode === 'image' ? 'image' : 'text');
         setShowOrderType((data as any).show_order_type || false);
@@ -1760,8 +1772,20 @@ const Billing = () => {
     }
 
     const existing = cart.find(cartItem => cartItem.id === item.id);
-    const step = item.quantity_step || 1;
-    const baseValue = item.base_value || 1;
+    let step = item.quantity_step || 1;
+    let baseValue = item.base_value || 1;
+
+    // SCALE INJECTION LOGIC
+    if (isScaleConnected && scaleWeight > 0) {
+      if (item.unit === 'Kilogram (kg)') {
+        step = scaleWeight;
+        baseValue = scaleWeight;
+      } else if (item.unit === 'Gram (g)') {
+        step = scaleWeight * 1000;
+        baseValue = scaleWeight * 1000;
+      }
+    }
+
     const targetQty = existing ? existing.quantity + step : baseValue;
 
     if (item.stock_quantity !== null && item.stock_quantity !== undefined) {
@@ -1806,6 +1830,28 @@ const Billing = () => {
     setSearchQuery('');
   };
   // Quick Chip handler: parses chip text (e.g., "500 ml") and adds with converted quantity
+  const handleAddCustomItem = ({ name, price }: { name: string; price: number }) => {
+    const customItem = {
+      id: `custom-${Date.now()}`,
+      name: name,
+      price: price,
+      price_zomato: price,
+      price_swiggy: price,
+      base_value: 1,
+      unit: 'Piece (pc)',
+      category: 'Custom',
+      tax_rate: 0,
+      stock_quantity: null,
+      unlimited_stock: true,
+      minimum_stock_alert: 0,
+      branch_id: operatingBranchId || '',
+      user_id: profile?.user_id || '',
+      ingredients: [],
+      is_custom: true
+    } as any;
+    addToCart(customItem);
+  };
+
   const addToCartWithChip = (item: Item, chipText: string) => {
     const chipQty = parseQuickChipQuantity(chipText, item.unit);
     if (chipQty === null || chipQty <= 0) {
@@ -3224,6 +3270,8 @@ const Billing = () => {
               if (operatingBranchId) lookup = lookup.eq('branch_id', operatingBranchId);
               const { data: existingCustomer } = await lookup.maybeSingle();
 
+              let targetCustomerId = existingCustomer?.id;
+
               if (existingCustomer) {
                 const updatePayload: any = {
                   visit_count: existingCustomer.visit_count + 1,
@@ -3238,7 +3286,7 @@ const Billing = () => {
                   .update(updatePayload)
                   .eq('id', existingCustomer.id);
               } else {
-                await supabase
+                const { data: newCustomer } = await supabase
                   .from('customers')
                   .insert({
                     admin_id: adminId,
@@ -3248,7 +3296,39 @@ const Billing = () => {
                     visit_count: 1,
                     total_spent: totalAmount,
                     last_visit: new Date().toISOString()
+                  })
+                  .select('id')
+                  .single();
+                if (newCustomer) targetCustomerId = newCustomer.id;
+              }
+
+              // Khata (Credit) processing
+              const khataAmount = paymentData.paymentAmounts['Khata (Credit)'] || 0;
+              if (khataAmount > 0 && targetCustomerId) {
+                try {
+                  // 1. Log transaction
+                  const { data: freshCust } = await supabase.from('customers').select('current_balance').eq('id', targetCustomerId).single();
+                  const previousBalance = Number(freshCust?.current_balance || 0);
+                  const newBalance = previousBalance + Number(khataAmount);
+
+                  await supabase.from('customer_ledger').insert({
+                    admin_id: adminId,
+                    branch_id: operatingBranchId || null,
+                    customer_id: targetCustomerId,
+                    bill_id: billData.id,
+                    amount: khataAmount,
+                    transaction_type: 'debit', // debit means customer owes us more money
+                    payment_mode: 'Khata (Credit)',
+                    notes: `Credit taken for Bill #${billNumber}`,
+                    balance_after: newBalance,
+                    created_by: profile?.user_id
                   });
+                  
+                  // 2. Update customer balance
+                  await supabase.from('customers').update({ current_balance: newBalance }).eq('id', targetCustomerId);
+                } catch (khataErr) {
+                  console.error('[Khata] Failed to update khata balance', khataErr);
+                }
               }
             } catch (crmErr) {
               console.warn('[CRM] Failed to save/update customer:', crmErr);
@@ -3335,6 +3415,54 @@ const Billing = () => {
           </div>
 
           <PrinterStatusPanel inline className="shrink-0" />
+
+          {isScaleSupported && (
+            isScaleConnected ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={disconnectScale}
+                className="gap-2 shrink-0 rounded-xl transition-all font-semibold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                title="Disconnect Scale"
+              >
+                <Scale className="w-4 h-4 text-emerald-500" />
+                <span className="hidden sm:inline">{`${scaleWeight.toFixed(3)} kg`}</span>
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 shrink-0 rounded-xl transition-all font-semibold border-slate-200 text-slate-500 hover:bg-slate-50"
+                  >
+                    <Scale className="w-4 h-4" />
+                    <span className="hidden sm:inline">Scale</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                  {isUsbSupported && (
+                    <DropdownMenuItem onClick={connectUSB} className="gap-2 cursor-pointer py-2">
+                      <span className="text-lg">🔌</span>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">USB Scale</span>
+                        <span className="text-[10px] text-muted-foreground">OTG Cable / Desktop</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                  {isBluetoothSupported && (
+                    <DropdownMenuItem onClick={connectBluetooth} className="gap-2 cursor-pointer py-2">
+                      <span className="text-lg">📶</span>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm">Bluetooth Scale</span>
+                        <span className="text-[10px] text-muted-foreground">Wireless / Mobile</span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          )}
 
           {calciEnabled && (
             <div className="flex items-center p-0.5 bg-muted/30 rounded-xl border border-zinc-200 dark:border-zinc-800 shrink-0">
@@ -3581,15 +3709,20 @@ const Billing = () => {
           </div>
         </div>
       ) : (
-      <div className="mb-3 flex items-center relative">
-        <Search className="absolute left-3 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
-        <div className="absolute right-1 top-1/2 -translate-y-1/2">
-          <VoiceBillingButton
-            items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
-            onIntent={handleVoiceIntent}
-          />
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 w-4 h-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
+          <div className="absolute right-1 top-1/2 -translate-y-1/2">
+            <VoiceBillingButton
+              items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
+              onIntent={handleVoiceIntent}
+            />
+          </div>
         </div>
+        <Button variant="outline" size="icon" onClick={() => setIsCustomItemOpen(true)} className="shrink-0 border-dashed" title="Add Custom Item">
+          <Plus className="w-4 h-4" />
+        </Button>
       </div>
       )}
 
@@ -3942,6 +4075,7 @@ const Billing = () => {
       onCompletePayment={handleCompletePayment} 
       whatsappEnabled={whatsappEnabled} 
       whatsappShareMode={whatsappShareMode} 
+      khataEnabled={khataEnabled}
       gstEnabled={gstSettings.enabled} 
       taxRatesMap={gstSettings.taxRatesMap} 
       showOrderType={showOrderType} 
@@ -4099,6 +4233,12 @@ const Billing = () => {
         </div>
       </DialogContent>
     </Dialog>
+    
+    <CustomItemDialog 
+      open={isCustomItemOpen} 
+      onOpenChange={setIsCustomItemOpen} 
+      onAdd={handleAddCustomItem} 
+    />
   </div>;
 };
 export default Billing;
