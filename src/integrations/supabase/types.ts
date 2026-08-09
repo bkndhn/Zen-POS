@@ -1814,11 +1814,15 @@ export type Database = {
         Row: {
           admin_id: string
           amount: number
+          cadence: string
+          cancelled_at: string | null
           created_at: string
+          environment: string
           id: string
           interval_months: number
           last_charged_at: string | null
           next_charge_at: string | null
+          paused_at: string | null
           provider: string
           provider_customer_id: string | null
           provider_plan_id: string | null
@@ -1831,11 +1835,15 @@ export type Database = {
         Insert: {
           admin_id: string
           amount?: number
+          cadence?: string
+          cancelled_at?: string | null
           created_at?: string
+          environment?: string
           id?: string
           interval_months?: number
           last_charged_at?: string | null
           next_charge_at?: string | null
+          paused_at?: string | null
           provider: string
           provider_customer_id?: string | null
           provider_plan_id?: string | null
@@ -1848,11 +1856,15 @@ export type Database = {
         Update: {
           admin_id?: string
           amount?: number
+          cadence?: string
+          cancelled_at?: string | null
           created_at?: string
+          environment?: string
           id?: string
           interval_months?: number
           last_charged_at?: string | null
           next_charge_at?: string | null
+          paused_at?: string | null
           provider?: string
           provider_customer_id?: string | null
           provider_plan_id?: string | null
@@ -1861,6 +1873,51 @@ export type Database = {
           short_url?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_platform_credentials: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key_id: string | null
+          key_secret: string | null
+          merchant_id: string | null
+          mode: string
+          provider: string
+          salt_index: string | null
+          salt_key: string | null
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_id?: string | null
+          key_secret?: string | null
+          merchant_id?: string | null
+          mode?: string
+          provider: string
+          salt_index?: string | null
+          salt_key?: string | null
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_id?: string | null
+          key_secret?: string | null
+          merchant_id?: string | null
+          mode?: string
+          provider?: string
+          salt_index?: string | null
+          salt_key?: string | null
+          updated_at?: string
+          webhook_secret?: string | null
         }
         Relationships: []
       }
@@ -1900,9 +1957,12 @@ export type Database = {
           currency: string
           customer_name: string | null
           customer_phone: string | null
+          environment: string
           error_message: string | null
           id: string
+          invoice_no: string | null
           method: string | null
+          next_retry_at: string | null
           paid_at: string | null
           provider: string
           provider_link_id: string | null
@@ -1910,8 +1970,10 @@ export type Database = {
           provider_payment_id: string | null
           purpose: string
           raw_payload: Json | null
+          reconciled_at: string | null
           reference_id: string | null
           reference_type: string | null
+          scope: string
           short_url: string | null
           status: string
           updated_at: string
@@ -1925,9 +1987,12 @@ export type Database = {
           currency?: string
           customer_name?: string | null
           customer_phone?: string | null
+          environment?: string
           error_message?: string | null
           id?: string
+          invoice_no?: string | null
           method?: string | null
+          next_retry_at?: string | null
           paid_at?: string | null
           provider: string
           provider_link_id?: string | null
@@ -1935,8 +2000,10 @@ export type Database = {
           provider_payment_id?: string | null
           purpose?: string
           raw_payload?: Json | null
+          reconciled_at?: string | null
           reference_id?: string | null
           reference_type?: string | null
+          scope?: string
           short_url?: string | null
           status?: string
           updated_at?: string
@@ -1950,9 +2017,12 @@ export type Database = {
           currency?: string
           customer_name?: string | null
           customer_phone?: string | null
+          environment?: string
           error_message?: string | null
           id?: string
+          invoice_no?: string | null
           method?: string | null
+          next_retry_at?: string | null
           paid_at?: string | null
           provider?: string
           provider_link_id?: string | null
@@ -1960,12 +2030,65 @@ export type Database = {
           provider_payment_id?: string | null
           purpose?: string
           raw_payload?: Json | null
+          reconciled_at?: string | null
           reference_id?: string | null
           reference_type?: string | null
+          scope?: string
           short_url?: string | null
           status?: string
           updated_at?: string
           utr?: string | null
+        }
+        Relationships: []
+      }
+      payment_webhook_events: {
+        Row: {
+          admin_id: string | null
+          attempts: number
+          created_at: string
+          event_id: string
+          event_type: string | null
+          id: string
+          last_error: string | null
+          next_retry_at: string | null
+          payload: Json | null
+          processed_at: string | null
+          provider: string
+          scope: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id?: string | null
+          attempts?: number
+          created_at?: string
+          event_id: string
+          event_type?: string | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          payload?: Json | null
+          processed_at?: string | null
+          provider: string
+          scope?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string | null
+          attempts?: number
+          created_at?: string
+          event_id?: string
+          event_type?: string | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string | null
+          payload?: Json | null
+          processed_at?: string | null
+          provider?: string
+          scope?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
