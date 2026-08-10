@@ -4,13 +4,31 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
+import { printerManager } from '@/utils/printerManager';
 
 export const NativeAppController = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Turn Bluetooth on as soon as the app opens (native + PWA) and re-check on resume.
+  useEffect(() => {
+    let cancelled = false;
+    const ensure = () => {
+      if (cancelled) return;
+      printerManager.ensureBluetoothOn().catch(() => undefined);
+    };
+    ensure();
+    const onVisible = () => { if (document.visibilityState === 'visible') ensure(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
+
 
     // Handle Hardware Back Button natively
     const backButtonListener = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
