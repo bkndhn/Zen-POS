@@ -4,11 +4,16 @@ import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.activity.result.ActivityResult;
 import androidx.core.content.ContextCompat;
+
+import com.getcapacitor.annotation.ActivityCallback;
+
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.JSArray;
@@ -85,6 +90,67 @@ public class BluetoothPrinterPlugin extends Plugin {
             saveAddress(target.getAddress());
             Log.i(TAG, "Connected to " + target.getName() + " using SPP " + SPP_UUID);
         }
+    }
+
+    @PluginMethod
+    public void getBluetoothState(PluginCall call) {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        JSObject ret = new JSObject();
+        ret.put("supported", adapter != null);
+        ret.put("enabled", adapter != null && adapter.isEnabled());
+        ret.put("permission", hasBluetoothPermission());
+        call.resolve(ret);
+    }
+
+    /**
+     * Turns Bluetooth on when the app opens.
+     * Android <= 12: silent adapter.enable(). Android 13+: system enable prompt.
+     */
+    @PluginMethod
+    public void enableBluetooth(PluginCall call) {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null) {
+            call.reject("Bluetooth not supported on this device");
+            return;
+        }
+        if (adapter.isEnabled()) {
+            JSObject ret = new JSObject();
+            ret.put("enabled", true);
+            ret.put("prompted", false);
+            call.resolve(ret);
+            return;
+        }
+        if (!hasBluetoothPermission()) {
+            call.reject("BLUETOOTH_CONNECT permission is required");
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            boolean ok = false;
+            try { ok = adapter.enable(); } catch (Exception e) { Log.w(TAG, "adapter.enable failed", e); }
+            if (ok) {
+                JSObject ret = new JSObject();
+                ret.put("enabled", true);
+                ret.put("prompted", false);
+                call.resolve(ret);
+                return;
+            }
+        }
+        try {
+            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(call, intent, "bluetoothEnableResult");
+        } catch (Exception e) {
+            call.reject("Could not open the Bluetooth enable prompt: " + e.getMessage());
+        }
+    }
+
+    @ActivityCallback
+    private void bluetoothEnableResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        JSObject ret = new JSObject();
+        ret.put("enabled", adapter != null && adapter.isEnabled());
+        ret.put("prompted", true);
+        call.resolve(ret);
     }
 
     @PluginMethod
