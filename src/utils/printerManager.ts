@@ -38,6 +38,8 @@ export interface BluetoothPrinterPlugin {
   getPairedDevices(): Promise<{ devices: Array<{ name: string, address: string }> }>;
   connectSavedPrinter(options: { address?: string }): Promise<{ success: boolean; name?: string; address?: string; serviceUuid?: string }>;
   getConnectionStatus(): Promise<{ connected: boolean; name?: string; address?: string }>;
+  getBluetoothState(): Promise<{ supported: boolean; enabled: boolean; permission: boolean }>;
+  enableBluetooth(): Promise<{ enabled: boolean; prompted: boolean }>;
   disconnect(): Promise<void>;
 }
 
