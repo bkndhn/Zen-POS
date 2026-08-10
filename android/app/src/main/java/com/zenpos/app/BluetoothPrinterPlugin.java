@@ -4,11 +4,16 @@ import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.activity.result.ActivityResult;
 import androidx.core.content.ContextCompat;
+
+import com.getcapacitor.annotation.ActivityCallback;
+
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.JSArray;
