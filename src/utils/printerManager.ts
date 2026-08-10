@@ -186,6 +186,52 @@ class PrinterManager {
         }
     }
 
+    /**
+     * Turns Bluetooth on when the app opens.
+     * - Android (Capacitor): silently enables the adapter (or shows the system prompt on Android 13+).
+     * - PWA / browser: the Web Bluetooth spec has no API to switch the radio on, so we
+     *   verify availability and immediately re-attach to the saved printer instead.
+     */
+    public async ensureBluetoothOn(): Promise<{ enabled: boolean; prompted: boolean; reason?: string }> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const state = await BluetoothPrinter.getBluetoothState();
+                if (!state.supported) return { enabled: false, prompted: false, reason: 'Bluetooth not supported on this device' };
+                if (state.enabled) {
+                    this.requestImmediateReconnect().catch(() => undefined);
+                    return { enabled: true, prompted: false };
+                }
+                const result = await BluetoothPrinter.enableBluetooth();
+                if (result.enabled) {
+                    this.recordLog('connect', 'info', undefined, 'Bluetooth switched on automatically at app start');
+                    this.requestImmediateReconnect().catch(() => undefined);
+                }
+                return { enabled: !!result.enabled, prompted: !!result.prompted };
+            } catch (error: any) {
+                const reason = String(error?.message || error);
+                this.recordLog('connect', 'fail', undefined, `Auto Bluetooth enable failed: ${reason}`);
+                return { enabled: false, prompted: false, reason };
+            }
+        }
+
+        // Web / PWA
+        const nav = typeof navigator !== 'undefined' ? (navigator as any) : undefined;
+        if (!nav?.bluetooth) {
+            return { enabled: false, prompted: false, reason: 'Web Bluetooth is not supported in this browser' };
+        }
+        let available = true;
+        try {
+            if (typeof nav.bluetooth.getAvailability === 'function') {
+                available = await nav.bluetooth.getAvailability();
+            }
+        } catch { /* treat as available */ }
+        if (available) {
+            this.requestImmediateReconnect().catch(() => undefined);
+            return { enabled: true, prompted: false };
+        }
+        return { enabled: false, prompted: false, reason: 'Bluetooth is switched off — turn it on from your device settings' };
+    }
+
     private saveQueueToStorage(): void {
         try {
             localStorage.setItem('hotel_pos_print_queue', JSON.stringify(this.printQueue));
