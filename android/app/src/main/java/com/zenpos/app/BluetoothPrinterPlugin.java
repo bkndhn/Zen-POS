@@ -88,6 +88,67 @@ public class BluetoothPrinterPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getBluetoothState(PluginCall call) {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        JSObject ret = new JSObject();
+        ret.put("supported", adapter != null);
+        ret.put("enabled", adapter != null && adapter.isEnabled());
+        ret.put("permission", hasBluetoothPermission());
+        call.resolve(ret);
+    }
+
+    /**
+     * Turns Bluetooth on when the app opens.
+     * Android <= 12: silent adapter.enable(). Android 13+: system enable prompt.
+     */
+    @PluginMethod
+    public void enableBluetooth(PluginCall call) {
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null) {
+            call.reject("Bluetooth not supported on this device");
+            return;
+        }
+        if (adapter.isEnabled()) {
+            JSObject ret = new JSObject();
+            ret.put("enabled", true);
+            ret.put("prompted", false);
+            call.resolve(ret);
+            return;
+        }
+        if (!hasBluetoothPermission()) {
+            call.reject("BLUETOOTH_CONNECT permission is required");
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            boolean ok = false;
+            try { ok = adapter.enable(); } catch (Exception e) { Log.w(TAG, "adapter.enable failed", e); }
+            if (ok) {
+                JSObject ret = new JSObject();
+                ret.put("enabled", true);
+                ret.put("prompted", false);
+                call.resolve(ret);
+                return;
+            }
+        }
+        try {
+            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(call, intent, "bluetoothEnableResult");
+        } catch (Exception e) {
+            call.reject("Could not open the Bluetooth enable prompt: " + e.getMessage());
+        }
+    }
+
+    @ActivityCallback
+    private void bluetoothEnableResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        JSObject ret = new JSObject();
+        ret.put("enabled", adapter != null && adapter.isEnabled());
+        ret.put("prompted", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void connectSavedPrinter(PluginCall call) {
         final String address = call.getString("address", "");
         new Thread(() -> {
