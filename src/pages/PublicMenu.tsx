@@ -245,7 +245,7 @@ const ItemCustomizerDialog = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div className="bg-white dark:bg-gray-900 w-full sm:w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-full duration-300">
                 <div className="relative shrink-0 border-b dark:border-gray-800">
                     {item.image_url && (
@@ -309,7 +309,7 @@ const ItemCustomizerDialog = ({
                         <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Quantity</span>
                         <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 rounded-full p-1 border dark:border-gray-700">
                             <button onClick={() => setQuantity(q => Math.max(item.base_value || 1, q - (item.base_value || 1)))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
-                            <span className="font-semibold w-8 text-center">{quantity} {item.unit !== 'pcs' ? item.unit : ''}</span>
+                            <span className="font-semibold w-8 text-center text-sm">{quantity} {item.unit !== 'pcs' && item.unit !== 'pc' ? getShortUnit(item.unit) : ''}</span>
                             <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
                         </div>
                     </div>
@@ -1017,6 +1017,7 @@ const PublicMenu = () => {
     const showAddress = shopSettings?.menu_show_address !== false;
     const showPhone = shopSettings?.menu_show_phone !== false;
     const headerTitle = showShopName && shopSettings?.shop_name ? shopSettings.shop_name : 'Our Menu';
+    const hasStickyFooter = Boolean(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram);
 
     // Toggle category collapse
     const toggleCategory = useCallback((category: string) => {
@@ -1156,34 +1157,7 @@ const PublicMenu = () => {
             }, 750);
         }
 
-        // Trigger AI Dish Pairing recommendations
-        if (shopSettings?.menu_ai_features_enabled !== false) {
-            // Find complementary pairings from other categories
-            const currentItemCategory = customizedItem.item_id ? items.find(i => i.id === customizedItem.item_id)?.category : '';
-            const otherCategoryItems = items.filter(
-                i => i.is_active && 
-                     i.id !== customizedItem.item_id && 
-                     i.category !== currentItemCategory &&
-                     (i.category?.toLowerCase().includes('beverage') || 
-                      i.category?.toLowerCase().includes('drink') || 
-                      i.category?.toLowerCase().includes('side') || 
-                      i.category?.toLowerCase().includes('dessert') || 
-                      i.category?.toLowerCase().includes('snack') ||
-                      ['Beverages', 'Drinks', 'Sides', 'Snacks', 'Desserts'].includes(i.category || ''))
-            );
-
-            if (otherCategoryItems.length > 0) {
-                // Shuffle and pick up to 2 items
-                const shuffled = [...otherCategoryItems].sort(() => 0.5 - Math.random());
-                const suggestions = shuffled.slice(0, 2);
-                setLastPairedItem(items.find(it => it.id === customizedItem.item_id) || null);
-                setPairedSuggestions(suggestions);
-                // Delay slightly to allow the flying animation to finish before sliding up suggestions
-                setTimeout(() => {
-                    setShowPairingModal(true);
-                }, 850);
-            }
-        }
+        // (AI Dish Pairing recommendations removed as per user request to stop annoying popups)
     }, [items, shopSettings]);
 
     // Remove item from cart
@@ -1209,7 +1183,7 @@ const PublicMenu = () => {
                 if (c.id !== itemId) return c;
                 const step = c.base_value || 1;
                 const newQty = c.quantity + (delta * step);
-                return newQty <= 0 ? c : { ...c, quantity: newQty };
+                return { ...c, quantity: newQty };
             }).filter(c => c.quantity > 0);
         });
     }, []);
@@ -1878,13 +1852,24 @@ const PublicMenu = () => {
 
     return (
         <div
-            className="min-h-screen public-menu-container pb-24"
+            className="min-h-screen public-menu-container pb-24 relative overflow-x-hidden"
             style={{
                 fontFamily: shopSettings?.menu_font_family || 'Inter, sans-serif',
                 backgroundColor: shopSettings?.menu_background_color || '#fef7ed',
                 color: shopSettings?.menu_text_color || '#1c1917',
             }}
         >
+            {/* Ambient Background Orbs */}
+            <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+                <div 
+                    className="absolute -top-[10%] -right-[10%] w-[500px] h-[500px] rounded-full blur-[120px] opacity-20 animate-pulse" 
+                    style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c' }} 
+                />
+                <div 
+                    className="absolute top-[40%] -left-[10%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-15" 
+                    style={{ backgroundColor: shopSettings?.menu_secondary_color || '#f97316' }} 
+                />
+            </div>
             <style>{`
                 .public-menu-container .text-\\[10px\\] { font-size: 12.5px !important; }
                 .public-menu-container .text-\\[11px\\] { font-size: 13px !important; }
@@ -1955,8 +1940,8 @@ const PublicMenu = () => {
             {/* Header with Shop Name */}
             <header
                 className={cn(
-                    "sticky top-0 z-50 text-white shadow-xl transition-all duration-300",
-                    (scrolled || shopSettings?.menu_glassmorphism) ? "backdrop-blur-xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : ""
+                    "sticky top-0 z-50 text-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 border-b border-white/20 dark:border-white/5",
+                    (scrolled || shopSettings?.menu_glassmorphism) ? "backdrop-blur-2xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : "backdrop-blur-xl"
                 )}
                 style={{
                     background: shopSettings?.menu_primary_color
@@ -2338,8 +2323,8 @@ const PublicMenu = () => {
                                                 <div
                                                     key={item.id}
                                                     className={cn(
-                                                        "flex-shrink-0 w-[140px] snap-start bg-white rounded-2xl shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col",
-                                                        shopSettings?.menu_primary_color ? 'border-orange-100' : 'border-orange-50'
+                                                        "flex-shrink-0 w-[140px] snap-start bg-white/80 backdrop-blur-sm rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 overflow-hidden flex flex-col",
+                                                        shopSettings?.menu_primary_color ? 'border-orange-100/50' : 'border-orange-50/50'
                                                     )}
                                                 >
                                                     <div className="aspect-square bg-orange-50 relative overflow-hidden">
@@ -2419,7 +2404,7 @@ const PublicMenu = () => {
                                             const shadowClass = 
                                                 shadowStyle === 'none' ? 'shadow-none hover:shadow-none hover:translate-y-0 border-gray-100' :
                                                 shadowStyle === 'glow' ? 'menu-card-glow' :
-                                                'shadow-sm border hover:shadow-lg hover:-translate-y-0.5'; // default/subtle
+                                                'shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/50 hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98]'; // default/subtle
 
                                             return (
                                             <div
@@ -2798,11 +2783,11 @@ const PublicMenu = () => {
             {/* Floating Cart Bar (when ordering mode + items in cart) */}
             {
                 isOrderingMode && cartItemCount > 0 && !showCart && (
-                    <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[80px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none`}>
                         <button
                             onClick={() => setShowCart(true)}
-                            className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3.5 rounded-2xl shadow-xl text-white transition-transform active:scale-[0.98] floating-cart-bar-btn"
-                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                            className="pointer-events-auto w-full max-w-sm mx-auto flex items-center justify-between px-6 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-white transition-all active:scale-[0.96] floating-cart-bar-btn border border-white/20 backdrop-blur-xl"
+                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
                         >
                             <div className="flex items-center gap-3">
                                 <div className="relative">
@@ -2822,7 +2807,7 @@ const PublicMenu = () => {
             {/* My Orders Toggle Button (table mode, no cart) */}
             {
                 isTableMode && sessionOrders.length > 0 && cartItemCount === 0 && !showMyOrders && !isSessionComplete && !isAllServed && (
-                    <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <button
                             onClick={() => setShowMyOrders(true)}
                             className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3 rounded-2xl shadow-lg bg-blue-600 text-white"
@@ -2840,7 +2825,7 @@ const PublicMenu = () => {
             {/* All Orders Served — Re-order or Request Bill */}
             {
                 isTableMode && isAllServed && cartItemCount === 0 && (
-                    <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div
                             className="w-full max-w-2xl mx-auto rounded-2xl shadow-xl p-4 text-center border"
                             style={{
@@ -2888,7 +2873,7 @@ const PublicMenu = () => {
             {/* Session Complete — Start New Order */}
             {
                 isTableMode && isSessionComplete && cartItemCount === 0 && (
-                    <div className="fixed bottom-[76px] left-0 right-0 z-50 px-4">
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div className="w-full max-w-2xl mx-auto bg-green-50 border border-green-200 rounded-2xl shadow-lg p-4 text-center">
                             <p className="text-green-800 font-semibold text-sm mb-1">Bill generated!</p>
                             <p className="text-green-600 text-xs mb-3">You can still order more items if you wish.</p>
@@ -3238,7 +3223,8 @@ const PublicMenu = () => {
                         });
                     }}
                     className={cn(
-                        "fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 animate-bounce",
+                        `fixed right-4 z-40 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 animate-bounce`,
+                        cartItemCount > 0 || (isTableMode && sessionOrders.length > 0 && !showMyOrders) ? (hasStickyFooter ? 'bottom-[148px]' : 'bottom-[88px]') : (hasStickyFooter ? 'bottom-24' : 'bottom-4'),
                         shopSettings?.menu_glassmorphism ? "backdrop-blur-md bg-white/90 border border-white/40" : "bg-white border border-gray-200"
                     )}
                 >

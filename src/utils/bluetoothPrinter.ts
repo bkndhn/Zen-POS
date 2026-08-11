@@ -390,8 +390,20 @@ const formatLine = (left: string, right: string, width: number = 32): string => 
 export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array> => {
   const commands: Uint8Array[] = [];
 
+  // Handle Font Styles for ESC/POS
+  const isCondensed = data.fontFamily?.toLowerCase().includes('condensed') || data.fontFamily === 'Oswald' || data.fontFamily === 'Fjalla One';
+  const isDoubleWidth = data.fontScale && data.fontScale >= 1.25;
+  const isSmallFont = data.fontScale && data.fontScale <= 0.8;
+
   // COMPACT mode: 58mm = 32 chars, 80mm = 48 chars
-  const LINE_WIDTH = data.printerWidth === '80mm' ? 48 : 32;
+  let LINE_WIDTH = data.printerWidth === '80mm' ? 48 : 32;
+
+  if (isDoubleWidth) {
+    LINE_WIDTH = Math.floor(LINE_WIDTH / 2);
+  } else if (isCondensed || isSmallFont) {
+    LINE_WIDTH = data.printerWidth === '80mm' ? 64 : 42; // Font B allows more chars
+  }
+
   const IMAGE_WIDTH = data.printerWidth === '80mm' ? 576 : 384;
   const SEP = '-'.repeat(LINE_WIDTH);
   const SEP_DOUBLE = '='.repeat(LINE_WIDTH);
@@ -426,6 +438,13 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Initialize
   commands.push(INIT);
+
+  // Apply Font Styles
+  if (isDoubleWidth) {
+    commands.push(new Uint8Array([GS, 0x21, 0x11])); // Double width & height
+  } else if (isCondensed || isSmallFont) {
+    commands.push(new Uint8Array([ESC, 0x4D, 0x01])); // Font B
+  }
 
 
   // Logo (only when not paper-saving and a URL is provided). Failures are silent.
@@ -713,7 +732,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
   // Footer - minimal
   commands.push(ALIGN_CENTER);
-  const footerMsg = data.footerMessage || (data as any).billBottomText || getStoredFooterMessage(data.branchId);
+  let footerMsg = getStoredFooterMessage(data.branchId);
+  if (data.footerMessage !== undefined && data.footerMessage !== null) {
+      footerMsg = data.footerMessage;
+  } else if ((data as any).billBottomText !== undefined && (data as any).billBottomText !== null) {
+      footerMsg = (data as any).billBottomText;
+  }
   commands.push(textToBytes(footerMsg));
   commands.push(FEED_LINE);
 
