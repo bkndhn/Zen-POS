@@ -78,6 +78,24 @@ const Dashboard = () => {
     };
   }, []);
 
+  // Instant UI Sync across pages and tabs
+  useEffect(() => {
+    const handleInstantSync = () => {
+      fetchDashboardStats();
+    };
+    window.addEventListener('bills-updated', handleInstantSync);
+    
+    const bc = new BroadcastChannel('zenpos-events');
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'bills-updated') handleInstantSync();
+    };
+
+    return () => {
+      window.removeEventListener('bills-updated', handleInstantSync);
+      bc.close();
+    };
+  }, [fetchDashboardStats]);
+
   const fetchDashboardStats = useCallback(async () => {
     if (!adminId) return;
     try {

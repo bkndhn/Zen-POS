@@ -2514,6 +2514,9 @@ const Billing = () => {
     // === INSTANT 4-LAYER SYNC ===
     // Layer 3: Window custom events - same tab (0ms)
     window.dispatchEvent(new CustomEvent('bills-updated'));
+    const bc = new BroadcastChannel('zenpos-events');
+    bc.postMessage({ type: 'bills-updated' });
+    setTimeout(() => bc.close(), 100);
 
     // Layer 1: BroadcastChannel - same browser tabs (0ms) - INSTANT VOICE
     billsChannel?.postMessage({
@@ -3055,6 +3058,9 @@ const Billing = () => {
 
         // Trigger local custom event to update reports dashboard
         window.dispatchEvent(new CustomEvent('bills-updated'));
+        const bc = new BroadcastChannel('zenpos-events');
+        bc.postMessage({ type: 'bills-updated' });
+        setTimeout(() => bc.close(), 100);
 
         toast({
           title: isLocalOnlyMode && !isOffline ? "🔒 Bill Saved Locally" : "📴 Bill Saved Offline",

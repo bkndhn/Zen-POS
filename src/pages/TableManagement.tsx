@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { LayoutGrid, Plus, Edit, Trash2, Users, Utensils, Clock, CheckCircle2, Sparkles, ShoppingCart, Receipt, ChefHat, Timer } from 'lucide-react';
+import { LayoutGrid, Plus, Edit, Pencil, Save, Trash2, Users, Utensils, Clock, CheckCircle2, Sparkles, ShoppingCart, Receipt, ChefHat, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useBranch } from '@/contexts/BranchContext';
@@ -119,6 +119,7 @@ const TableManagement: React.FC = () => {
   // Table Pre-Booking / Reservation states
   const [reservations, setReservations] = useState<TableReservation[]>([]);
   const [reservationDialogOpen, setReservationDialogOpen] = useState(false);
+  const [editingResId, setEditingResId] = useState<string | null>(null);
   const [resTableNumber, setResTableNumber] = useState('');
   const [resCustomerName, setResCustomerName] = useState('');
   const [resCustomerPhone, setResCustomerPhone] = useState('');
@@ -126,6 +127,7 @@ const TableManagement: React.FC = () => {
   const [resDate, setResDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [resTime, setResTime] = useState('19:30');
   const [resNotes, setResNotes] = useState('');
+  const [resAdvance, setResAdvance] = useState('');
 
   const fetchReservations = useCallback(async () => {
     const list = await reservationManager.fetchReservations(adminId, operatingBranchId);
@@ -136,26 +138,72 @@ const TableManagement: React.FC = () => {
     fetchReservations();
   }, [fetchReservations]);
 
-  const handleCreateReservation = async () => {
+  const resetReservationForm = () => {
+    setEditingResId(null);
+    setResTableNumber('');
+    setResCustomerName('');
+    setResCustomerPhone('');
+    setResGuestCount('2');
+    setResDate(new Date().toISOString().split('T')[0]);
+    setResTime('19:30');
+    setResNotes('');
+    setResAdvance('');
+  };
+
+  const handleEditReservation = (r: TableReservation) => {
+    setEditingResId(r.id);
+    setResTableNumber(r.table_number);
+    setResCustomerName(r.customer_name);
+    setResCustomerPhone(r.customer_phone);
+    setResGuestCount(String(r.guest_count));
+    setResDate(r.reservation_date);
+    setResTime(r.reservation_time);
+    setResNotes(r.notes || '');
+    setResAdvance(r.advance_amount ? String(r.advance_amount) : '');
+  };
+
+  const handleDeleteReservation = async (id: string) => {
+    if (confirm('Are you sure you want to delete this reservation?')) {
+      const success = await reservationManager.deleteReservation(id);
+      if (success) {
+        toast({ title: "Deleted", description: "Reservation deleted successfully." });
+        fetchReservations();
+      } else {
+        toast({ title: "Error", description: "Could not delete reservation.", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleSaveReservation = async () => {
     if (!resTableNumber || !resCustomerName) {
       toast({ title: "Required Fields", description: "Please enter table number and customer name.", variant: "destructive" });
       return;
     }
-    await reservationManager.addReservation({
+    
+    const resData = {
       table_number: resTableNumber,
       customer_name: resCustomerName,
       customer_phone: resCustomerPhone,
       guest_count: parseInt(resGuestCount, 10) || 2,
       reservation_date: resDate,
       reservation_time: resTime,
-      notes: resNotes
-    }, adminId, operatingBranchId);
+      notes: resNotes,
+      advance_amount: parseFloat(resAdvance) || 0
+    };
 
-    toast({ title: "⭐ Reservation Created", description: `Table ${resTableNumber} booked for ${resCustomerName} at ${resTime}` });
-    setReservationDialogOpen(false);
-    setResCustomerName('');
-    setResCustomerPhone('');
-    setResNotes('');
+    if (editingResId) {
+      const ok = await reservationManager.updateReservation(editingResId, resData);
+      if (ok) {
+        toast({ title: "Updated", description: "Reservation updated successfully." });
+      } else {
+        toast({ title: "Error", description: "Failed to update reservation.", variant: "destructive" });
+      }
+    } else {
+      await reservationManager.addReservation(resData, adminId, operatingBranchId);
+      toast({ title: "⭐ Reservation Created", description: `Table ${resTableNumber} booked for ${resCustomerName} at ${resTime}` });
+    }
+    
+    resetReservationForm();
     fetchReservations();
   };
 
@@ -653,12 +701,16 @@ const TableManagement: React.FC = () => {
           </Card>
         ) : viewMode === 'map' ? (
           <div 
-            className="relative w-full h-[580px] border-2 border-border/80 rounded-2xl overflow-hidden shadow-xl bg-slate-50 dark:bg-zinc-950 p-4"
+            className="relative w-full h-[580px] border-2 border-border/40 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#0a0a0c] p-4"
             style={{ 
-              backgroundImage: 'linear-gradient(to right, rgb(128 128 128 / 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgb(128 128 128 / 0.08) 1px, transparent 1px)', 
-              backgroundSize: '20px 20px' 
+              backgroundImage: 'radial-gradient(circle, rgba(128,128,128,0.3) 1.5px, transparent 1.5px)', 
+              backgroundSize: '24px 24px',
+              boxShadow: 'inset 0 0 40px rgba(0,0,0,0.05)'
             }}
           >
+            {/* Fade mask for grid edges */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, transparent 30%, var(--background) 90%)', opacity: 0.8 }} />
+
             <div className="absolute top-2 left-2 bg-background/80 backdrop-blur border text-[11px] font-semibold px-2 py-1 rounded shadow-sm z-10 text-muted-foreground flex items-center gap-1">
               ✨ <span className="font-bold text-foreground">Tip:</span> Drag tables to arrange layout. Double click to edit details.
             </div>
@@ -673,6 +725,44 @@ const TableManagement: React.FC = () => {
                 const x = table.x_pos !== null && table.x_pos !== undefined ? table.x_pos : 50;
                 const y = table.y_pos !== null && table.y_pos !== undefined ? table.y_pos : 50;
                 const isCircle = table.shape === 'circle';
+                const isOccupiedState = dStatus === 'occupied' || dStatus === 'food_served';
+                
+                // Dynamic visual seats
+                const renderSeats = () => {
+                  const seats = [];
+                  const seatSize = 8;
+                  const offset = seatSize / 2 + 6; 
+                  
+                  if (isCircle) {
+                    const radius = width / 2;
+                    for (let i = 0; i < table.capacity; i++) {
+                      const angle = (i * (360 / table.capacity)) * (Math.PI / 180);
+                      const sx = radius + (radius + offset) * Math.cos(angle) - (seatSize / 2);
+                      const sy = radius + (radius + offset) * Math.sin(angle) - (seatSize / 2);
+                      seats.push(
+                        <div key={`seat-${i}`} className={`absolute rounded-full shadow-sm bg-muted border border-border/50`} style={{ width: seatSize, height: seatSize, left: sx, top: sy }} />
+                      );
+                    }
+                  } else {
+                    const perimeter = 2 * (width + height);
+                    const spacing = perimeter / table.capacity;
+                    for (let i = 0; i < table.capacity; i++) {
+                      let dist = i * spacing;
+                      let sx = 0, sy = 0;
+                      if (dist <= width) { sx = dist; sy = -offset; }
+                      else if (dist <= width + height) { sx = width + offset; sy = dist - width; }
+                      else if (dist <= 2 * width + height) { sx = width - (dist - (width + height)); sy = height + offset; }
+                      else { sx = -offset; sy = height - (dist - (2 * width + height)); }
+                      
+                      sx -= seatSize / 2;
+                      sy -= seatSize / 2;
+                      seats.push(
+                        <div key={`seat-${i}`} className={`absolute rounded-full shadow-sm bg-muted border border-border/50`} style={{ width: seatSize, height: seatSize, left: sx, top: sy }} />
+                      );
+                    }
+                  }
+                  return seats;
+                };
 
                 return (
                   <div
@@ -689,23 +779,40 @@ const TableManagement: React.FC = () => {
                     onPointerMove={(e) => handlePointerMove(e, table.id)}
                     onPointerUp={(e) => handlePointerUp(e, table)}
                     onDoubleClick={() => handleOpenDialog(table)}
-                    className={cn(
-                      "flex flex-col items-center justify-center border-2 shadow-md transition-shadow cursor-grab select-none p-2 text-center",
-                      isCircle ? "rounded-full" : "rounded-2xl",
-                      config.borderColor,
-                      draggingTableId === table.id ? "shadow-2xl cursor-grabbing scale-105 z-50 border-primary bg-primary/5" : "bg-card hover:shadow-lg",
-                      dStatus !== 'available' && "ring-2 " + config.ringColor
-                    )}
+                    className="z-10 group"
                   >
-                    <div className={cn(isCircle ? "hidden" : "absolute top-0 left-0 right-0 h-1.5 rounded-t-xl", config.color)} />
-                    <span className="font-black text-sm md:text-base">T{table.table_number}</span>
-                    {table.table_name && (
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[65px] font-medium leading-none mb-1">{table.table_name}</span>
+                    {/* Pulsing aura for active tables */}
+                    {isOccupiedState && (
+                      <div className={cn("absolute -inset-4 rounded-full opacity-40 blur-xl animate-[pulse_3s_ease-in-out_infinite] pointer-events-none", config.color)} />
                     )}
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-bold scale-90 mt-1">
-                      <Users className="w-2 h-2 mr-0.5" />
-                      {table.capacity}
-                    </Badge>
+                    
+                    {/* Visual seats */}
+                    {renderSeats()}
+                    
+                    {/* Main Table Node */}
+                    <div
+                      className={cn(
+                        "relative w-full h-full flex flex-col items-center justify-center border shadow-xl transition-all duration-300 cursor-grab select-none p-2 text-center bg-card/90 backdrop-blur-md",
+                        isCircle ? "rounded-full" : "rounded-3xl",
+                        config.borderColor,
+                        draggingTableId === table.id ? "scale-105 z-50 border-primary bg-primary/10 shadow-2xl cursor-grabbing" : "group-hover:-translate-y-1 group-hover:shadow-2xl",
+                        dStatus !== 'available' && "ring-4 ring-opacity-50 " + config.ringColor
+                      )}
+                    >
+                      <span className="font-black text-base md:text-xl tracking-tight">T{table.table_number}</span>
+                      {table.table_name && (
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[80%] font-medium leading-none mt-0.5">{table.table_name}</span>
+                      )}
+                      
+                      <Icon className={cn("w-4 h-4 mt-1.5 opacity-80 text-foreground")} />
+                      
+                      {/* Reserved Badge */}
+                      {reservationManager.getUpcomingForTable(table.table_number, reservations) && (
+                        <div className="absolute -top-2 -right-2 bg-yellow-500 text-yellow-950 p-1 rounded-full shadow-lg border border-yellow-300 animate-bounce">
+                          <Sparkles className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -913,16 +1020,15 @@ const TableManagement: React.FC = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="capacity">Seating Capacity</Label>
-                <Select value={capacity} onValueChange={setCapacity}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 4, 6, 8, 10, 12].map(num => (
-                      <SelectItem key={num} value={String(num)}>{num} Seats</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input 
+                  id="capacity" 
+                  type="number" 
+                  min="1" 
+                  max="200" 
+                  value={capacity} 
+                  onChange={(e) => setCapacity(e.target.value)}
+                  className="bg-background"
+                />
               </div>
 
               {/* Floor Plan Position / Size settings */}
@@ -993,16 +1099,23 @@ const TableManagement: React.FC = () => {
                 <div className="space-y-3 bg-muted/40 p-3 rounded-lg border">
                   <div className="space-y-2">
                     <Label htmlFor="seatCount" className="text-xs">Number of Seats</Label>
-                    <Select 
-                      value={seatCount} 
-                      onValueChange={(val) => {
+                    <Input
+                      id="seatCount"
+                      type="number"
+                      min="1"
+                      max="100"
+                      className="h-8 text-xs bg-background"
+                      value={seatCount}
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setSeatCount(val);
-                        const count = parseInt(val);
+                        const count = parseInt(val) || 0;
                         setSeatLabels(prev => {
                           const newLabels = [...prev];
                           if (newLabels.length < count) {
                             for (let i = newLabels.length; i < count; i++) {
-                              newLabels.push(String.fromCharCode(65 + i));
+                              // If over 26, it goes to weird ascii, but it's fine for simple labels
+                              newLabels.push(String.fromCharCode(65 + (i % 26)) + (i >= 26 ? Math.floor(i / 26) : ''));
                             }
                           } else if (newLabels.length > count) {
                             newLabels.splice(count);
@@ -1010,16 +1123,7 @@ const TableManagement: React.FC = () => {
                           return newLabels;
                         });
                       }}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[2, 3, 4, 5, 6, 8, 10, 12].map(num => (
-                          <SelectItem key={num} value={String(num)}>{num} Seats</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1293,22 +1397,46 @@ const TableManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-[11px] font-semibold">Notes / Requests</Label>
-                  <Input
-                    value={resNotes}
-                    onChange={(e) => setResNotes(e.target.value)}
-                    placeholder="e.g. Window seat, birthday celebration"
-                    className="mt-1 bg-background rounded-xl text-xs h-9"
-                  />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="flex-1">
+                    <Label className="text-[11px] font-semibold">Advance Amount (₹)</Label>
+                    <Input
+                      type="number"
+                      value={resAdvance}
+                      onChange={(e) => setResAdvance(e.target.value)}
+                      placeholder="Optional"
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-[11px] font-semibold">Notes / Requests</Label>
+                    <Input
+                      value={resNotes}
+                      onChange={(e) => setResNotes(e.target.value)}
+                      placeholder="e.g. Window seat"
+                      className="mt-1 bg-background rounded-xl text-xs h-9"
+                    />
+                  </div>
                 </div>
 
-                <Button
-                  onClick={handleCreateReservation}
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold h-9 rounded-xl text-xs shadow-sm"
-                >
-                  <Plus className="w-4 h-4 mr-1" /> Confirm Pre-Booking
-                </Button>
+                <div className="flex gap-2">
+                  {editingResId && (
+                    <Button
+                      variant="outline"
+                      onClick={resetReservationForm}
+                      className="flex-1 h-9 rounded-xl text-xs"
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleSaveReservation}
+                    className="flex-[2] bg-yellow-500 hover:bg-yellow-600 text-black font-bold h-9 rounded-xl text-xs shadow-sm"
+                  >
+                    {editingResId ? <Save className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                    {editingResId ? "Save Changes" : "Confirm Pre-Booking"}
+                  </Button>
+                </div>
               </div>
 
               {/* Today's Active Reservations List */}
@@ -1317,24 +1445,45 @@ const TableManagement: React.FC = () => {
                 {reservations.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2 text-center">No active pre-bookings found for today.</p>
                 ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {reservations.map(r => (
-                      <div key={r.id} className="p-3 bg-muted/40 border rounded-xl flex items-center justify-between text-xs">
-                        <div>
-                          <div className="flex items-center gap-2 font-bold">
-                            <Badge variant="outline" className="text-[10px] bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/40">
+                      <div key={r.id} className="p-3 bg-muted/40 border rounded-xl flex items-center justify-between text-xs gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 font-bold flex-wrap">
+                            <Badge variant="outline" className="text-[10px] bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/40 shrink-0">
                               Table {r.table_number}
                             </Badge>
-                            <span>{r.customer_name}</span>
-                            <span className="text-muted-foreground font-medium">({r.guest_count} guests)</span>
+                            <span className="truncate">{r.customer_name}</span>
+                            <span className="text-muted-foreground font-medium shrink-0">({r.guest_count} guests)</span>
+                            <Badge variant={r.status === 'seated' ? 'default' : 'secondary'} className="text-[9px] capitalize shrink-0 h-4 px-1">
+                              {r.status}
+                            </Badge>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            🕒 {r.reservation_time} • {r.customer_phone} {r.notes ? `• ${r.notes}` : ''}
+                          <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                            🕒 {r.reservation_date} at {r.reservation_time} • 📞 {r.customer_phone} 
+                            {r.advance_amount ? ` • 💰 ₹${r.advance_amount} Adv` : ''}
+                            {r.notes ? ` • 📝 ${r.notes}` : ''}
                           </p>
                         </div>
-                        <Badge variant={r.status === 'seated' ? 'default' : 'secondary'} className="text-[10px] capitalize">
-                          {r.status}
-                        </Badge>
+                        
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            onClick={() => handleEditReservation(r)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={() => handleDeleteReservation(r.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1343,7 +1492,10 @@ const TableManagement: React.FC = () => {
             </div>
 
             <DialogFooter className="p-4 border-t bg-muted/20 gap-2 shrink-0 bg-background z-10 flex-row justify-end">
-              <Button variant="outline" onClick={() => setReservationDialogOpen(false)} className="rounded-xl">Close</Button>
+              <Button variant="outline" onClick={() => {
+                setReservationDialogOpen(false);
+                resetReservationForm();
+              }} className="rounded-xl">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1353,3 +1505,4 @@ const TableManagement: React.FC = () => {
 };
 
 export default TableManagement;
+

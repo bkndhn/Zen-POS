@@ -585,8 +585,17 @@ const Reports: React.FC = () => {
 
     window.addEventListener('bills-updated', handleBillsUpdated);
 
+    // Also listen for cross-tab events
+    const bc = new BroadcastChannel('zenpos-events');
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'bills-updated') {
+        handleBillsUpdated();
+      }
+    };
+
     return () => {
       window.removeEventListener('bills-updated', handleBillsUpdated);
+      bc.close();
     };
   }, [fetchReportsCallback]);
 
@@ -1106,6 +1115,13 @@ const Reports: React.FC = () => {
 
       // Invalidate related caches and refresh
       invalidateRelatedData('bills');
+      
+      // Dispatch real-time events to update other pages and tabs instantly
+      window.dispatchEvent(new CustomEvent('bills-updated'));
+      const bc = new BroadcastChannel('zenpos-events');
+      bc.postMessage({ type: 'bills-updated' });
+      setTimeout(() => bc.close(), 100);
+
       fetchReports();
     } catch (error) {
       console.error('Error deleting bill:', error);
@@ -1208,8 +1224,15 @@ const Reports: React.FC = () => {
         description: "Bill restored successfully"
       });
 
-      // Invalidate related caches and refresh
+      // Invalidate caches and refresh
       invalidateRelatedData('bills');
+      
+      // Dispatch real-time events to update other pages and tabs instantly
+      window.dispatchEvent(new CustomEvent('bills-updated'));
+      const bc = new BroadcastChannel('zenpos-events');
+      bc.postMessage({ type: 'bills-updated' });
+      setTimeout(() => bc.close(), 100);
+
       fetchReports();
     } catch (error) {
       console.error('Error restoring bill:', error);
@@ -3072,71 +3095,20 @@ const Reports: React.FC = () => {
 
               {/* WhatsApp Share Section */}
               <div className="border-t pt-4 mt-4">
-                {!showWhatsappInput ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowWhatsappInput(true)}
-                    className="w-full gap-2 text-green-600 border-green-200 hover:bg-green-50"
-                  >
+                <Button
+                  variant="outline"
+                  onClick={() => handleWhatsAppShareBill(selectedBill, 'image')}
+                  disabled={sharingImage}
+                  className="w-full gap-2 text-green-600 border-green-200 hover:bg-green-50 h-10"
+                >
+                  {sharingImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
                     <WhatsAppIcon className="w-4 h-4" />
-                    Share via WhatsApp
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    {/* Image Bill - no phone needed */}
-                    <Button
-                      onClick={() => handleWhatsAppShareBill(selectedBill, 'image')}
-                      disabled={sharingImage}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white gap-1 h-9"
-                    >
-                      {sharingImage ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ImageIcon className="w-4 h-4" />
-                      )}
-                      Image Bill (opens share dialog)
-                    </Button>
-                    {/* Text Bill - needs phone */}
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          placeholder="WhatsApp Number"
-                          className="pl-9 h-9 border-green-200 focus-visible:ring-green-500"
-                          value={whatsappPhone}
-                          onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && whatsappPhone.length >= 10) {
-                              handleWhatsAppShareBill(selectedBill, 'text');
-                            }
-                          }}
-                        />
-                      </div>
-                      <Button
-                        onClick={() => handleWhatsAppShareBill(selectedBill, 'text')}
-                        disabled={!whatsappPhone.trim()}
-                        className="bg-green-600 hover:bg-green-700 text-white h-9 px-3"
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setShowWhatsappInput(false);
-                          setWhatsappPhone('');
-                        }}
-                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                  )}
+                  {sharingImage ? 'Generating Image...' : 'Share via WhatsApp'}
+                </Button>
               </div>
-
               {/* End of Buttons Container */}
             </div>
           </DialogContent>

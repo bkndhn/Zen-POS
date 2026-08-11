@@ -18,6 +18,7 @@ export interface TableReservation {
     created_at: string;
     admin_id?: string;
     branch_id?: string | null;
+    advance_amount?: number;
 }
 
 const RESERVATION_STORAGE_KEY = 'hotel_pos_table_reservations';
@@ -141,5 +142,51 @@ export const reservationManager = {
             r.reservation_date >= todayStr
         );
         return match || null;
+    },
+
+    async updateReservation(id: string, updates: Partial<TableReservation>): Promise<boolean> {
+        if (!navigator.onLine) {
+            console.warn('Cannot update reservation while offline');
+            return false;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('table_reservations')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) {
+                console.error('Failed to update reservation in cloud:', error);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('Error updating reservation:', e);
+            return false;
+        }
+    },
+
+    async deleteReservation(id: string): Promise<boolean> {
+        if (!navigator.onLine) {
+            console.warn('Cannot delete reservation while offline');
+            return false;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('table_reservations')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error('Failed to delete reservation in cloud:', error);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('Error deleting reservation:', e);
+            return false;
+        }
     }
 };

@@ -73,6 +73,16 @@ export const getTimeElapsed = (date: Date | string): string => {
   } else {
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
+    
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remHours = hours % 24;
+      let str = `${days}d`;
+      if (remHours > 0) str += ` ${remHours}hr`;
+      if (mins > 0) str += ` ${mins} min`;
+      return str;
+    }
+    
     return mins > 0 ? `${hours}hr ${mins} min` : `${hours}hr`;
   }
 };

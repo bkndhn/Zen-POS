@@ -128,7 +128,25 @@ const DashboardAnalytics = () => {
       supabase.channel('analytics-bills').on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, () => { fetchAnalyticsData(); fetchComparisonData(); fetchHourlyFootfall(); }).subscribe(),
       supabase.channel('analytics-expenses').on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => { fetchAnalyticsData(); fetchComparisonData(); fetchHourlyFootfall(); }).subscribe()
     ];
-    return () => { channels.forEach(c => supabase.removeChannel(c)); };
+    
+    // Local instant sync (across tabs and same page)
+    const handleInstantSync = () => {
+      fetchAnalyticsData();
+      fetchComparisonData();
+      fetchHourlyFootfall();
+    };
+    window.addEventListener('bills-updated', handleInstantSync);
+    
+    const bc = new BroadcastChannel('zenpos-events');
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'bills-updated') handleInstantSync();
+    };
+
+    return () => { 
+      channels.forEach(c => supabase.removeChannel(c)); 
+      window.removeEventListener('bills-updated', handleInstantSync);
+      bc.close();
+    };
   }, [period, compMode, currentFromDate, currentToDate, compareFromDate, compareToDate, branchFilterId, customStartDate, customEndDate]);
 
 

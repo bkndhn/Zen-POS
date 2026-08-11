@@ -216,7 +216,17 @@ export const getOccupancyTimerInfo = (createdAt?: string | null): OccupancyTimer
     const elapsedMinutes = Math.max(0, Math.floor((Date.now() - startTime) / 60000));
     const hours = Math.floor(elapsedMinutes / 60);
     const mins = elapsedMinutes % 60;
-    const formattedDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    
+    let formattedDuration = '';
+    if (hours >= 24) {
+        const days = Math.floor(hours / 24);
+        const remHours = hours % 24;
+        formattedDuration = `${days}d`;
+        if (remHours > 0) formattedDuration += ` ${remHours}h`;
+        if (mins > 0) formattedDuration += ` ${mins}m`;
+    } else {
+        formattedDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    }
 
     if (elapsedMinutes < 30) {
         return {

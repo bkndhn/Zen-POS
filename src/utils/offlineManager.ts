@@ -906,6 +906,9 @@ class OfflineManager {
             };
             await this.store(STORES.BILLS, localBillCached);
             window.dispatchEvent(new CustomEvent('bills-updated'));
+            const bc = new BroadcastChannel('zenpos-events');
+            bc.postMessage({ type: 'bills-updated' });
+            setTimeout(() => bc.close(), 100);
             return; // Exit early, no upload to Supabase!
         }
         // --- End Data Privacy Check ---
@@ -1082,6 +1085,9 @@ class OfflineManager {
 
         // Dispatch sync event
         window.dispatchEvent(new CustomEvent('bills-updated'));
+        const bc = new BroadcastChannel('zenpos-events');
+        bc.postMessage({ type: 'bills-updated' });
+        setTimeout(() => bc.close(), 100);
     }
 
     private async processQueueItem(item: SyncQueueItem): Promise<void> {

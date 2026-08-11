@@ -96,19 +96,44 @@ class DataCache {
     }
   }
 
-  invalidate(key: string): void {
+  private broadcast = new BroadcastChannel('zenpos-cache-sync');
+
+  constructor() {
+    this.broadcast.onmessage = (event) => {
+      if (event.data?.type === 'INVALIDATE') {
+        this.cache.delete(event.data.key);
+        localStorage.removeItem(`hotel_pos_cache_${event.data.key}`);
+        this.notifySubscribers(event.data.key);
+      }
+    };
+  }
+
+  invalidate(key: string, emitBroadcast = true): void {
     this.cache.delete(key);
+    localStorage.removeItem(`hotel_pos_cache_${key}`);
     this.notifySubscribers(key);
+    if (emitBroadcast) {
+      this.broadcast.postMessage({ type: 'INVALIDATE', key });
+    }
   }
 
   invalidatePattern(pattern: string): void {
+    // Check in-memory keys
     const keys = Array.from(this.cache.keys());
     keys.forEach(key => {
       if (key.includes(pattern)) {
-        this.cache.delete(key);
-        this.notifySubscribers(key);
+        this.invalidate(key, true);
       }
     });
+
+    // Also check localStorage for keys that might not be in memory
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('hotel_pos_cache_') && key.includes(pattern)) {
+        const actualKey = key.replace('hotel_pos_cache_', '');
+        this.invalidate(actualKey, true);
+      }
+    }
   }
 
   // Force refresh for specific keys
