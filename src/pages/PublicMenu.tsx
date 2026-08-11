@@ -3,6 +3,9 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power } from 'lucide-react';
@@ -396,6 +399,9 @@ const PublicMenu = () => {
     const [showPairingModal, setShowPairingModal] = useState(false);
     const [lastPairedItem, setLastPairedItem] = useState<MenuItem | null>(null);
     const [pairedSuggestions, setPairedSuggestions] = useState<MenuItem[]>([]);
+    
+    // Clear Cart Dialog state
+    const [clearCartOpen, setClearCartOpen] = useState(false);
 
     // Banner swipe state
     const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -1167,10 +1173,13 @@ const PublicMenu = () => {
 
     // Clear whole cart
     const clearCart = useCallback(() => {
-        if (window.confirm(t('menu.confirmClearCart') || "Are you sure you want to clear all items from your cart?")) {
-            setCart([]);
-        }
-    }, [t]);
+        setClearCartOpen(true);
+    }, []);
+
+    const confirmClearCart = useCallback(() => {
+        setCart([]);
+        setClearCartOpen(false);
+    }, []);
 
     // Update quantity
     const updateQuantity = useCallback((cartOrMenuItemId: string, delta: number) => {
@@ -3421,6 +3430,31 @@ const PublicMenu = () => {
                 item={customizerItem?.item || null}
                 onAddToCart={confirmAddToCart}
             />
+
+            {/* Clear Cart Alert Dialog */}
+            <AlertDialog open={clearCartOpen} onOpenChange={setClearCartOpen}>
+                <AlertDialogContent className="max-w-[90vw] sm:max-w-md rounded-[2rem] border-0 shadow-2xl p-6 md:p-8 bg-white dark:bg-zinc-900 z-[200]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+                            {t('menu.clearCartTitle') || "Clear Cart?"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-base text-gray-600 dark:text-gray-400 mt-2">
+                            {t('menu.confirmClearCart') || "Are you sure you want to clear all items from your cart? This action cannot be undone."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex flex-row gap-3 justify-end mt-6 sm:mt-8 sm:space-x-0">
+                        <AlertDialogCancel className="w-1/2 rounded-2xl h-14 text-base font-bold mt-0 border border-gray-200 dark:border-zinc-700 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 transition-all">
+                            {t('common.cancel') || "Cancel"}
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={confirmClearCart}
+                            className="w-1/2 rounded-2xl h-14 text-base font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20 transition-all"
+                        >
+                            {t('common.clear') || "Clear Cart"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
