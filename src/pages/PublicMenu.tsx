@@ -1173,20 +1173,37 @@ const PublicMenu = () => {
     }, [t]);
 
     // Update quantity
-    const updateQuantity = useCallback((itemId: string, delta: number) => {
+    const updateQuantity = useCallback((cartOrMenuItemId: string, delta: number) => {
         if (delta > 0 && storeStatus && storeStatus.status !== 'open') {
             toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
             return;
         }
         setCart(prev => {
-            return prev.map(c => {
-                if (c.id !== itemId) return c;
-                const step = c.base_value || 1;
-                const newQty = c.quantity + (delta * step);
-                return { ...c, quantity: newQty };
-            }).filter(c => c.quantity > 0);
+            // First check if it matches a specific cart item UUID exactly (called from Cart Modal)
+            const isExactCartItem = prev.some(c => c.id === cartOrMenuItemId);
+            
+            if (isExactCartItem) {
+                return prev.map(c => {
+                    if (c.id !== cartOrMenuItemId) return c;
+                    const step = c.base_value || 1;
+                    return { ...c, quantity: c.quantity + (delta * step) };
+                }).filter(c => c.quantity > 0);
+            } else {
+                // Otherwise, it was called from the Menu List with a Menu Item ID
+                const matchingItems = prev.filter(c => c.item_id === cartOrMenuItemId || c.id === cartOrMenuItemId);
+                if (matchingItems.length === 0) return prev;
+                
+                // Target the most recently added matching item for decrement/increment
+                const targetCartId = matchingItems[matchingItems.length - 1].id;
+                
+                return prev.map(c => {
+                    if (c.id !== targetCartId) return c;
+                    const step = c.base_value || 1;
+                    return { ...c, quantity: c.quantity + (delta * step) };
+                }).filter(c => c.quantity > 0);
+            }
         });
-    }, []);
+    }, [storeStatus]);
 
     // Get cart quantity for an item (matching based on item_id to support customized variations)
     const getCartQuantity = useCallback((itemId: string) => {
