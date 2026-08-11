@@ -3436,21 +3436,21 @@ const PublicMenu = () => {
                 <AlertDialogContent className="max-w-[90vw] sm:max-w-md rounded-[2rem] border-0 shadow-2xl p-6 md:p-8 bg-white dark:bg-zinc-900 z-[200]">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-                            {t('menu.clearCartTitle') || "Clear Cart?"}
+                            {t('menu.clearCartTitle', 'Clear Cart?')}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-base text-gray-600 dark:text-gray-400 mt-2">
-                            {t('menu.confirmClearCart') || "Are you sure you want to clear all items from your cart? This action cannot be undone."}
+                            {t('menu.confirmClearCart', 'Are you sure you want to clear all items from your cart? This action cannot be undone.')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-row gap-3 justify-end mt-6 sm:mt-8 sm:space-x-0">
                         <AlertDialogCancel className="w-1/2 rounded-2xl h-14 text-base font-bold mt-0 border border-gray-200 dark:border-zinc-700 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 transition-all">
-                            {t('common.cancel') || "Cancel"}
+                            {t('common.cancel', 'Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={confirmClearCart}
                             className="w-1/2 rounded-2xl h-14 text-base font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20 transition-all"
                         >
-                            {t('common.clear') || "Clear Cart"}
+                            {t('common.clear', 'Clear Cart')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
