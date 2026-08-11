@@ -1,76 +1,27 @@
-# Convince the Shop Owner — Sales Pitch (Pitch Page + Printable PDF)
+# "How to Convince a Shop Owner" — Detailed Report (Document Only, No Code)
 
-## Goal
-Give you a ready-to-use sales kit to convince a hotel / restaurant / tea-shop /
-retail shop owner to adopt Hotel Zen POS. Two deliverables from one set of
-content, fully bilingual (English + Tamil):
+A ready-to-use sales report delivered as a document in your downloads folder. No changes to the app.
 
-1. An interactive **pitch page** at a public route (`/pitch`) you open on your
-   phone during the meeting.
-2. A **printable PDF** (via `window.print()`) of the same content, plus a
-   **sales script + objection-handling cheat sheet**.
+## What gets produced
 
-Content balances all four persuasion pillars the user asked for equally:
-Save money / ROI, Easy + supportive, Trust / safety / status.
+A single bilingual (English + Tamil) PDF, print-ready A4, plus a plain-text/markdown version for copy-pasting into WhatsApp.
 
-## What we build
+## Contents
 
-### 1. Public pitch page — `src/pages/SellPitch.tsx` (new route `/pitch`)
-Mobile-first, matches existing brand tokens and logo. Layout:
-
-- **Hero** — headline + subline in EN/TA, app name, tagline, "Start a free demo" CTA.
-- **Language toggle** — English / Tamil tabs switching all copy (shared
-  translations file).
-- **"What you lose today" (Problem)** — pain points owners feel: billing
-  errors, stock theft/leakage, no P&L visibility, lost customer data, slow
-  manual KOT.
-- **"One app fixes it" (Solution + features)** — grouped feature grid tied to
-  each pain:
-  - Instant billing + 2-decimal money/unit accuracy
-  - KOT/BOT routing to kitchen, bar, dessert printers separately
-  - Stock/inventory with correct units (g, kg, ml, L) + reorder alerts
-  - Tables + seat-level ordering
-  - QR menu + QR feedback (CRM) — capture customers
-  - WhatsApp ordering + payment links
-  - Expenses, P&L, branch-wise analytics
-  - Offline-first (works without internet, auto-syncs)
-  - Multi-branch isolation
-- **ROI calculator block** — simple inputs (avg daily billing, estimated stock
-  leakage %) → monthly/yearly savings in INR.
-- **Pricing** — tier cards (Starter / Growth / Enterprise) + setup fee, in INR.
-- **Trust & safety** — data isolated per outlet, secure login, encrypted
-  backups, license protection, "your data stays yours".
-- **Objection-handling** — compact Q&A: "too costly", "no internet", "staff
-  can't learn", "why monthly", "is my data safe".
-- **Call to action** — demo / WhatsApp / phone, plus QR of the app.
-
-### 2. Printable PDF version
-Same content rendered in a **print-only layout** (CSS `@media print`) so the
-owner can keep a copy. Accessible via a "Print / Download PDF" button on the
-pitch page and reachable directly.
-
-### 3. Sales script + objection cheat sheet (bilingual)
-A short text block (also printable) — the actual spoken pitch in EN/TA and
-word-for-word answers to common objections.
-
-## Where content lives
-- `src/data/pitchContent.ts` — all copy (EN + TA) in one file.
-- Route added in the app's router. Pitch page is **excluded from the POS
-  sidebar** (like the existing `/display` customer view) so it stays a pure
-  sales surface.
-- A nav entry / link to `/pitch` so you can reach it quickly from settings.
+1. **Who the buyer is** — profiles for restaurant, bar, bakery, cafe, cloud kitchen, retail/grocery; what each one actually cares about.
+2. **Pain points → proof** — the 10 daily problems (manual bills, kitchen mix-ups, stock leakage, no daily P&L, staff theft, internet cuts, GST filing) each mapped to the exact feature that solves it.
+3. **The 5-minute demo script** — what to open, in what order, on the owner's own phone: add item → bill → KOT to kitchen printer → seat QR order → close-of-day report. Line-by-line what to say.
+4. **ROI calculator table** — pre-filled worked examples for a 20-seat restaurant, a bar, and a small grocery: hours saved, wastage cut, upsell lift, payback period in months against ₹699/mo.
+5. **Pricing & packaging sheet** — Starter ₹699 / Growth ₹1,499 / Enterprise ₹3,499, one-time setup ₹5,000–₹15,000, what is included in each, discount rules for 3/6/12-month packs.
+6. **Objection handling cheat sheet** — 15 real objections with short answers: "too costly", "my staff won't learn", "no internet in my shop", "Petpooja is bigger", "what if my data leaks", "I already use a billing machine", "I'll think about it".
+7. **Data safety one-pager** — plain-language explanation of per-shop isolation, encrypted backups, no data sharing; written so a non-technical owner understands it.
+8. **Competitor comparison table** — vs Petpooja, Posist, Gofrugal, Vyapar, plain paper/manual: where you win, where you lose, honest positioning.
+9. **Closing kit** — trial offer wording, follow-up WhatsApp messages (day 1, day 3, day 7), and a printable one-page leaflet for handing over at the shop.
+10. **Tamil version** of the pitch, objections, and leaflet, in natural spoken Tamil suited for shop owners.
 
 ## Technical notes
-- Reuse existing design tokens (`text-success`, `fadeInUp`, card styles) and
-  the existing `public/logo.png` — no new colors/fonts invented.
-- Numbers in the ROI calculator and pricing are the ones already used in the
-  app's pricing model (₹699/mo Starter etc.) — no invented figures.
-- Bilingual text: Tamil strings kept side by side with English in the same
-  data file; tab toggle switches language.
-- PDF uses `window.print()` per existing app convention (no jsPDF).
 
-## Deliverables
-- `/pitch` interactive page (EN/TA) — build + live preview verified.
-- Printable PDF via print button — QA'd by generating the print output and
-  checking layout.
-- Sales script + objections sheet (EN/TA).
+- Output written to `/mnt/documents` as `shop-owner-pitch.pdf` and `shop-owner-pitch.md`.
+- Tamil text rendered with a Unicode Tamil font so it prints correctly.
+- Every page visually checked before delivery.
+- No application source files are touched.
