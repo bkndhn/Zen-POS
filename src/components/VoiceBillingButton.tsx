@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Mic, MicOff, Loader2, Languages } from 'lucide-react';
+import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -11,11 +9,7 @@ import { toast } from '@/hooks/use-toast';
 type SpeechRecognitionEvent = any;
 type SpeechRecognition = any;
 
-const LANG_OPTIONS = [
-  { code: 'en-IN', label: 'English (India)' },
-  { code: 'ta-IN', label: 'தமிழ் (Tamil)' },
-  { code: 'hi-IN', label: 'हिन्दी (Hindi)' },
-] as const;
+
 
 export interface VoiceIntent {
   intent:
@@ -264,20 +258,8 @@ export const VoiceBillingButton: React.FC<Props> = ({ items, onIntent, disabled,
         {processing ? <Loader2 className="w-4 h-4 animate-spin" /> :
          listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" size="icon" variant="ghost" className="h-9 w-7" title="Voice language">
-            <Languages className="w-3.5 h-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {LANG_OPTIONS.map(l => (
-            <DropdownMenuItem key={l.code} onClick={() => setLang(l.code)}>
-              {lang === l.code ? '✓ ' : '  '}{l.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+
+
     </div>
   );
 };
