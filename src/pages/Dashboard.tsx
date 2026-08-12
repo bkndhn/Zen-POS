@@ -52,50 +52,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [liveOrderCount, setLiveOrderCount] = useState(0);
 
-  useEffect(() => {
-    if (adminId) fetchDashboardStats();
-  }, [adminId, branchFilterId]);
-
-  // Real-time subscription for live order count
-  useEffect(() => {
-    const billsChannel = supabase
-      .channel('dashboard-bills-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, () => {
-        fetchDashboardStats();
-      })
-      .subscribe();
-
-    const expensesChannel = supabase
-      .channel('dashboard-expenses-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
-        fetchDashboardStats();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(billsChannel);
-      supabase.removeChannel(expensesChannel);
-    };
-  }, []);
-
-  // Instant UI Sync across pages and tabs
-  useEffect(() => {
-    const handleInstantSync = () => {
-      fetchDashboardStats();
-    };
-    window.addEventListener('bills-updated', handleInstantSync);
-    
-    const bc = new BroadcastChannel('zenpos-events');
-    bc.onmessage = (event) => {
-      if (event.data?.type === 'bills-updated') handleInstantSync();
-    };
-
-    return () => {
-      window.removeEventListener('bills-updated', handleInstantSync);
-      bc.close();
-    };
-  }, [fetchDashboardStats]);
-
   const fetchDashboardStats = useCallback(async () => {
     if (!adminId) return;
     try {
@@ -196,6 +152,51 @@ const Dashboard = () => {
       setLoading(false);
     }
   }, [adminId, branchFilterId]);
+
+  useEffect(() => {
+    if (adminId) fetchDashboardStats();
+  }, [adminId, branchFilterId, fetchDashboardStats]);
+
+  // Real-time subscription for live order count
+  useEffect(() => {
+    const billsChannel = supabase
+      .channel('dashboard-bills-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+
+    const expensesChannel = supabase
+      .channel('dashboard-expenses-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(billsChannel);
+      supabase.removeChannel(expensesChannel);
+    };
+  }, [fetchDashboardStats]);
+
+  // Instant UI Sync across pages and tabs
+  useEffect(() => {
+    const handleInstantSync = () => {
+      fetchDashboardStats();
+    };
+    window.addEventListener('bills-updated', handleInstantSync);
+    
+    const bc = new BroadcastChannel('zenpos-events');
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'bills-updated') handleInstantSync();
+    };
+
+    return () => {
+      window.removeEventListener('bills-updated', handleInstantSync);
+      bc.close();
+    };
+  }, [fetchDashboardStats]);
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
