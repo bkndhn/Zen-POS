@@ -17,12 +17,31 @@ export const NativeAppController = () => {
       if (cancelled) return;
       printerManager.ensureBluetoothOn().catch(() => undefined);
     };
-    ensure();
+
+    // Small delay so Capacitor bridge is fully ready before calling plugin
+    const initTimer = setTimeout(ensure, 800);
+
+    // Web / PWA visibility change
     const onVisible = () => { if (document.visibilityState === 'visible') ensure(); };
     document.addEventListener('visibilitychange', onVisible);
+
+    // Capacitor-native: appStateChange fires reliably on Android when app comes to foreground
+    let appStateListener: any = null;
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) ensure();
+        }).then(listener => {
+          appStateListener = listener;
+        }).catch(() => undefined);
+      }).catch(() => undefined);
+    }
+
     return () => {
       cancelled = true;
+      clearTimeout(initTimer);
       document.removeEventListener('visibilitychange', onVisible);
+      if (appStateListener) appStateListener.remove().catch(() => undefined);
     };
   }, []);
 

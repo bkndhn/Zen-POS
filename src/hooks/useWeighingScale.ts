@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { Capacitor } from '@capacitor/core';
 
 const UART_SERVICE_UUIDS = [
   '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 / generic serial
@@ -10,9 +11,14 @@ const UART_SERVICE_UUIDS = [
 export const useWeighingScale = () => {
   const [weight, setWeight] = useState<number>(0);
   const [isConnected, setIsConnected] = useState(false);
-  const [isSupported] = useState('serial' in navigator || 'bluetooth' in navigator);
-  const [isBluetoothSupported] = useState('bluetooth' in navigator);
-  const [isUsbSupported] = useState('serial' in navigator);
+  // Show the scale button on:
+  // - Web/PWA: when Web Serial OR Web Bluetooth API is available
+  // - Android (Capacitor): always show so users can connect via Bluetooth
+  const [isSupported] = useState(
+    Capacitor.isNativePlatform() || 'serial' in navigator || 'bluetooth' in navigator
+  );
+  const [isBluetoothSupported] = useState(Capacitor.isNativePlatform() || 'bluetooth' in navigator);
+  const [isUsbSupported] = useState(!Capacitor.isNativePlatform() && 'serial' in navigator);
   
   // USB Refs
   const portRef = useRef<any>(null);
