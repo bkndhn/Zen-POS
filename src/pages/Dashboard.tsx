@@ -38,7 +38,7 @@ const Dashboard = () => {
   const { data: shopSettings } = useBranchSettings('shop_settings');
   const navigate = useNavigate();
 
-  const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery(() => fetchDashboardStats());
+  const { branchFilterId, activeBranch, isAllBranchesView } = useBranchScopedQuery();
   const [stats, setStats] = useState<DashboardStats>({
     todaySales: 0,
     todayExpenses: 0,
