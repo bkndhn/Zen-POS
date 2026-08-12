@@ -2023,19 +2023,21 @@ const PublicMenu = () => {
                                 </Badge>
                             )}
 
-                            <button
-                                onClick={toggleDarkMode}
-                                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
-                            >
-                                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                            </button>
+                            {!showSearch && (
+                                <button
+                                    onClick={toggleDarkMode}
+                                    className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
+                                >
+                                    {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                                </button>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-white hover:bg-white/20"
                                 onClick={() => setShowSearch(!showSearch)}
                             >
-                                <Search className="w-4 h-4" />
+                                {showSearch ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
                             </Button>
                             {!showSearch && (
                                 <button

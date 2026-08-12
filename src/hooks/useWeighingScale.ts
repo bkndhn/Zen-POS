@@ -18,7 +18,8 @@ export const useWeighingScale = () => {
     Capacitor.isNativePlatform() || 'serial' in navigator || 'bluetooth' in navigator
   );
   const [isBluetoothSupported] = useState(Capacitor.isNativePlatform() || 'bluetooth' in navigator);
-  const [isUsbSupported] = useState(!Capacitor.isNativePlatform() && 'serial' in navigator);
+  // Show USB option on both web (Web Serial API) and Android (OTG)
+  const [isUsbSupported] = useState(Capacitor.isNativePlatform() || 'serial' in navigator);
   
   // USB Refs
   const portRef = useRef<any>(null);
