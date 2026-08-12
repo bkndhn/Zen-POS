@@ -776,13 +776,27 @@ export const printReceipt = async (data: PrintData): Promise<boolean> => {
 };
 
 // Direct print function that always requests new device (for testing/fallback)
+// NOTE: This uses Web Bluetooth API — not available on Android WebView (Capacitor).
+// On Android, all printing goes through printerManager.print() which uses the native plugin.
 export const printReceiptDirect = async (data: PrintData): Promise<boolean> => {
   const nav = navigator as any;
+
+  // Android WebView doesn't support Web Bluetooth — route through native manager instead
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (Capacitor.isNativePlatform()) {
+      const { printerManager } = await import('./printerManager');
+      return printerManager.print(data);
+    }
+  } catch {
+    // Capacitor not available — continue with Web Bluetooth below
+  }
 
   if (!nav.bluetooth) {
     console.error('Bluetooth not supported');
     return false;
   }
+
 
   try {
     // Request device

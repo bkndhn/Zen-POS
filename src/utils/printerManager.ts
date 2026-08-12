@@ -449,6 +449,10 @@ class PrinterManager {
 
     // Find previously paired/permitted Web Bluetooth device
     private async findPermittedBluetoothDevice(): Promise<any> {
+        // Web Bluetooth API is NOT available in Android WebView (Capacitor)
+        // Native Bluetooth on Android is handled via the BluetoothPrinter plugin
+        if (Capacitor.isNativePlatform()) return null;
+
         const nav = navigator as any;
         if (nav.bluetooth && typeof nav.bluetooth.getDevices === 'function') {
             try {
@@ -477,7 +481,7 @@ class PrinterManager {
                 this.updateReconnectStatus(failure.reason, failure.detail);
             }
         } else {
-            this.updateReconnectStatus('browser-unsupported', 'This browser cannot restore authorized Bluetooth devices after reopen. Use the native Android bridge.');
+            this.updateReconnectStatus('browser-unsupported', 'Web Bluetooth not available. Use Chrome/Edge on desktop or the Android app for native printing.');
         }
         return null;
     }
@@ -565,8 +569,8 @@ class PrinterManager {
                 }
             }
 
-            // If we don't have a cached device, try to see if there is a previously paired one
-            if (!this.device && !forceNewDevice) {
+            // Web Bluetooth fallback — only on PWA/browser, NOT on Android native
+            if (!this.device && !forceNewDevice && !Capacitor.isNativePlatform()) {
                 this.device = await this.findPermittedBluetoothDevice();
                 if (this.device) {
                     this.deviceName = this.device.name || 'Bluetooth Printer';
@@ -793,7 +797,8 @@ class PrinterManager {
                 this.setAutoReconnectState('connected');
                 return true;
             }
-            if (!this.device) {
+            // Web Bluetooth fallback — only on PWA/browser, NOT on Android native
+            if (!connected && !Capacitor.isNativePlatform()) {
                 this.device = await this.findPermittedBluetoothDevice();
                 if (this.device) {
                     this.deviceName = this.device.name || 'Bluetooth Printer';
@@ -810,7 +815,7 @@ class PrinterManager {
             } else if (this.reconnectStatus.reason === 'none') {
                 this.updateReconnectStatus('device-not-found', 'No authorized saved printer was returned by this browser.');
             }
-        }
+            } // end Web Bluetooth fallback
         if (connected) {
             this.reconnectAttempts = 0;
             this.setAutoReconnectState('connected');
