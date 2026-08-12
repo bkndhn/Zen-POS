@@ -3661,6 +3661,54 @@ export type Database = {
           },
         ]
       }
+      table_reservations: {
+        Row: {
+          admin_id: string | null
+          advance_amount: number | null
+          branch_id: string | null
+          created_at: string | null
+          customer_name: string
+          customer_phone: string
+          guest_count: number | null
+          id: string
+          notes: string | null
+          reservation_date: string
+          reservation_time: string
+          status: string | null
+          table_number: string
+        }
+        Insert: {
+          admin_id?: string | null
+          advance_amount?: number | null
+          branch_id?: string | null
+          created_at?: string | null
+          customer_name: string
+          customer_phone: string
+          guest_count?: number | null
+          id?: string
+          notes?: string | null
+          reservation_date: string
+          reservation_time: string
+          status?: string | null
+          table_number: string
+        }
+        Update: {
+          admin_id?: string | null
+          advance_amount?: number | null
+          branch_id?: string | null
+          created_at?: string | null
+          customer_name?: string
+          customer_phone?: string
+          guest_count?: number | null
+          id?: string
+          notes?: string | null
+          reservation_date?: string
+          reservation_time?: string
+          status?: string | null
+          table_number?: string
+        }
+        Relationships: []
+      }
       table_service_requests: {
         Row: {
           admin_id: string
