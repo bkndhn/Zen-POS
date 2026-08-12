@@ -22,7 +22,15 @@ const config: CapacitorConfig = {
     Keyboard: {
       resize: "native",
       resizeOnFullScreen: true,
+    },
+    CapacitorHttp: {
+      enabled: false,
     }
+  },
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
   }
 };
 

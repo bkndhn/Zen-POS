@@ -2037,17 +2037,19 @@ const PublicMenu = () => {
                             >
                                 <Search className="w-4 h-4" />
                             </Button>
-                            <button
-                                onClick={() => {
-                                    const nextLang = i18n.language?.startsWith('ta') ? 'en' : 'ta';
-                                    i18n.changeLanguage(nextLang);
-                                    localStorage.setItem('i18nextLng', nextLang);
-                                }}
-                                className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
-                                title="Change Language"
-                            >
-                                <Languages className="w-4 h-4" />
-                            </button>
+                            {!showSearch && (
+                                <button
+                                    onClick={() => {
+                                        const nextLang = i18n.language?.startsWith('ta') ? 'en' : 'ta';
+                                        i18n.changeLanguage(nextLang);
+                                        localStorage.setItem('i18nextLng', nextLang);
+                                    }}
+                                    className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 flex items-center justify-center transition-all"
+                                    title="Change Language"
+                                >
+                                    <Languages className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
