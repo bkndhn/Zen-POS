@@ -43,7 +43,7 @@ export interface BluetoothPrinterPlugin {
   disconnect(): Promise<void>;
 }
 
-const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
+export const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
 
 // Connection states
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';

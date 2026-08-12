@@ -471,7 +471,7 @@ const Billing = () => {
   const [isCustomItemOpen, setIsCustomItemOpen] = useState(false);
   
   // Weighing Scale Integration
-  const { weight: scaleWeight, isConnected: isScaleConnected, isSupported: isScaleSupported, isBluetoothSupported, isUsbSupported, connectUSB, connectBluetooth, disconnect: disconnectScale } = useWeighingScale();
+  const { weight: scaleWeight, isConnected: isScaleConnected, isSupported: isScaleSupported, isBluetoothSupported, isUsbSupported, connectUSB, connectBluetooth, disconnect: disconnectScale, nativeDevices: scaleNativeDevices, showNativePicker: showScaleNativePicker, setShowNativePicker: setShowScaleNativePicker, connectNativeBluetooth } = useWeighingScale();
 
   const [displaySettings, setDisplaySettings] = useState({
     items_per_row: 3,
@@ -3435,38 +3435,66 @@ const Billing = () => {
                 <span className="hidden sm:inline">{`${scaleWeight.toFixed(3)} kg`}</span>
               </Button>
             ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 shrink-0 rounded-xl transition-all font-semibold border-slate-200 text-slate-500 hover:bg-slate-50"
-                  >
-                    <Scale className="w-4 h-4" />
-                    <span className="hidden sm:inline">Scale</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                  {isUsbSupported && (
-                    <DropdownMenuItem onClick={connectUSB} className="gap-2 cursor-pointer py-2">
-                      <span className="text-lg">🔌</span>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-sm">USB Scale</span>
-                        <span className="text-[10px] text-muted-foreground">OTG Cable / Desktop</span>
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 shrink-0 rounded-xl transition-all font-semibold border-slate-200 text-slate-500 hover:bg-slate-50"
+                    >
+                      <Scale className="w-4 h-4" />
+                      <span className="hidden sm:inline">Scale</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                    {isUsbSupported && (
+                      <DropdownMenuItem onClick={connectUSB} className="gap-2 cursor-pointer py-2">
+                        <span className="text-lg">🔌</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">USB Scale</span>
+                          <span className="text-[10px] text-muted-foreground">OTG Cable / Desktop</span>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                    {isBluetoothSupported && (
+                      <DropdownMenuItem onClick={connectBluetooth} className="gap-2 cursor-pointer py-2">
+                        <span className="text-lg">📶</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">Bluetooth Scale</span>
+                          <span className="text-[10px] text-muted-foreground">Wireless / Mobile</span>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Native Android Bluetooth Device Picker for Scale */}
+                {showScaleNativePicker && (
+                  <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowScaleNativePicker(false)}>
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                      <h3 className="font-bold text-base mb-1 flex items-center gap-2"><Scale className="w-4 h-4" /> Select Scale Device</h3>
+                      <p className="text-xs text-muted-foreground mb-3">Choose your Bluetooth weighing scale from paired devices</p>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {scaleNativeDevices.map(device => (
+                          <button
+                            key={device.address}
+                            onClick={() => connectNativeBluetooth(device.address, device.name)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left"
+                          >
+                            <span className="text-xl">📶</span>
+                            <div>
+                              <p className="font-semibold text-sm">{device.name || 'Unknown Device'}</p>
+                              <p className="text-[10px] text-muted-foreground">{device.address}</p>
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    </DropdownMenuItem>
-                  )}
-                  {isBluetoothSupported && (
-                    <DropdownMenuItem onClick={connectBluetooth} className="gap-2 cursor-pointer py-2">
-                      <span className="text-lg">📶</span>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-sm">Bluetooth Scale</span>
-                        <span className="text-[10px] text-muted-foreground">Wireless / Mobile</span>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      <button onClick={() => setShowScaleNativePicker(false)} className="mt-3 w-full py-2 rounded-xl text-sm text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )
           )}
 
