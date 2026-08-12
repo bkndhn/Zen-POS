@@ -11,7 +11,16 @@ A single detailed report answering: is this a real product or a dummy, what it i
 1. **Verdict** — real product vs dummy, with the evidence that decides it (multi-tenant RLS, offline sync engine, payment gateway edge functions, license enforcement, native printing).
 2. **Full module inventory** — every page and subsystem grouped by area: billing & KOT/BOT station routing, tables + seat-level ordering, KDS, service area, waiter companion, QR menu & feedback, CRM, stock/purchases/suppliers/transfers, expenses, reports & analytics, AI (menu import, insights, voice), printing (Bluetooth/USB/browser), offline-first sync + local mesh, licensing & subscription packs, Razorpay/PhonePe collection, super admin & RUM.
 3. **Technical maturity scorecard** — architecture, security (RLS isolation, SECURITY DEFINER RPCs, recent hardening), offline reliability, performance, mobile/native, code health. Scored 1–10 each with justification.
-4. **Build-cost valuation in INR** — bottom-up: engineering months by module, blended Indian dev rates, QA, design, infra; low/mid/high rebuild cost, and current asset value as a sellable product.
+4. **Build cost from scratch in INR (the core section)** — a full bottom-up costing, not a single number:
+   - Module-by-module effort table: every module from section 2 with person-days for backend, frontend, and QA, and its rupee cost.
+   - Rate card assumptions: senior/mid/junior dev, UI designer, QA, DevOps — monthly and per-day rates for India (freelance, small agency, and mid-tier agency columns).
+   - Team-and-timeline models: solo founder-dev, 3-person team, 5-person agency — each with calendar months, total person-months, and total cost.
+   - Non-engineering costs: UI/UX design, thermal-printer and Android device testing hardware, Play Store/Apple accounts, Supabase/Vercel/Cloudflare infra for year 1, payment gateway onboarding, legal/GST/T&C, and a 15–20% rework buffer.
+   - Three scenarios with totals: Lean (₹ low), Realistic (₹ mid), Agency-quoted (₹ high) — plus what each scenario cuts or adds.
+   - Cost of the hard parts called out separately: offline-first sync engine, ESC/POS printing across Bluetooth/USB/native Android, multi-tenant RLS security, payment gateway + webhooks/reconciliation, AI features.
+   - Ongoing run cost per month at 10 / 50 / 200 clients, and cost-per-client.
+   - Current asset value as a sellable product vs the rebuild cost, and why they differ.
+
 5. **WOW features** — the differentiators competitors don't have at this price: true offline billing that syncs like WhatsApp, per-category kitchen/bar/dessert printer routing, seat-level QR ordering, encrypted local backups, AI menu import from a photo, branch-isolated feedback QR + CRM, in-app subscription auto-collect.
 6. **Competitor grid** — Petpooja, Posist, Gofrugal, Vyapar, Zomato/Swiggy POS, plain billing machines: pricing, where ZenPOS wins, where it loses, honest gaps.
 7. **Gaps and risk list** — aggregator sync, GST e-invoice/IRN, iOS printing, self-serve signup + dunning, audit log, WhatsApp Business API; each with impact and rough effort.
