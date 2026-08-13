@@ -88,7 +88,7 @@ interface KitchenTableOrder {
 }
 
 const KitchenDisplay = () => {
-    const { profile , adminProfileId } = useAuth();
+    const { profile , adminProfileId, adminAuthUid } = useAuth();
     const adminId = adminProfileId;
     const { branchFilterId } = useBranchScopedQuery(() => { fetchBills(true); fetchTableOrders(); });
     const [bills, setBills] = useState<KitchenBill[]>([]);
