@@ -83,6 +83,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     inventory_unit: 'Piece (pc)',
     inventory_quantity: '1',
     is_saleable: true,
+    cooking_time_mins: '',
     stock_quantity: '',
     minimum_stock_alert: '',
     quick_chips: '',

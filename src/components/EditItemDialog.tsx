@@ -96,6 +96,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     inventory_unit: item.inventory_unit || item.unit || 'Piece (pc)',
     inventory_quantity: item.inventory_quantity?.toString() || '1',
     is_saleable: item.is_saleable !== false,
+    cooking_time_mins: (item as any).cooking_time_mins?.toString() || '',
     stock_quantity: item.stock_quantity?.toString() || '',
     minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
     quantity_step: item.quantity_step?.toString() || '1',
