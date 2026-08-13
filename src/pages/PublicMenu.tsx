@@ -2812,6 +2812,15 @@ const PublicMenu = () => {
 
                             {/* Cart summary + Place Order */}
                             <div className="p-4 border-t bg-white space-y-2">
+                                {cartEtaMinutes > 0 && (
+                                    <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
+                                        <span className="flex items-center gap-1.5 text-xs font-semibold">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            {t('menu.estimatedTime') || 'Estimated cooking time'}
+                                        </span>
+                                        <span className="text-sm font-bold tabular-nums">~{formatMins(cartEtaMinutes)}</span>
+                                    </div>
+                                )}
                                 <div className="space-y-1 text-xs text-gray-500">
                                     <div className="flex justify-between">
                                         <span>{t('menu.subtotal') || 'Subtotal'}:</span>
