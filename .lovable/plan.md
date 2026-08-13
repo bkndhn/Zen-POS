@@ -1,28 +1,60 @@
-# ZenPOS — Build Cost From Scratch (INR): Detailed Costing Report
+# Feature Roadmap: Next 4 Phases
 
-A document-only deliverable. No application code is touched.
+A phased build plan for the highest-revenue gaps. Each phase ships independently and keeps all existing functionality untouched. Every new table is admin/branch isolated with RLS + explicit grants, matching the current tenancy model.
 
-## Deliverables
+## Phase 1 — Recipe/BOM Costing + Order-Time Modifiers
 
-- `zenpos-build-cost.pdf` — print-ready A4 costing report, English, with a one-page Tamil summary at the end.
-- `zenpos-build-cost.csv` — the module-wise effort and cost table in editable form.
+Why first: it makes stock numbers finally true for food businesses and unlocks food-cost reporting, using inventory data you already store.
 
-## What the report contains
+- Recipe builder on each item: ingredient item, quantity, inventory unit, wastage %.
+- On bill save, deduct ingredient stock instead of (or alongside) the finished item.
+- Food-cost % and margin per item, shown in Items and in Analytics.
+- Modifiers/variants at order time: groups (e.g. Spice level, Add-ons), single/multi select, price deltas, mandatory flags.
+- Modifier text flows into cart, KOT/BOT ticket, bill print, KDS card.
+- Combos and time-based pricing (happy hour) as an optional toggle.
 
-1. **Headline answer** — what it costs to rebuild this app from scratch in India: Lean, Realistic, and Agency-quoted totals, with the timeline for each.
-2. **Rate card assumptions** — per-day and per-month INR rates for senior dev, mid dev, junior dev, UI/UX designer, QA, DevOps, across three sourcing options (freelancer, small studio, mid-tier agency). All later numbers trace back to this table.
-3. **Module-by-module effort table** — every real module in the app, each with backend days, frontend days, QA days, and rupee cost:
-   billing + KOT/BOT station routing, tables & seat-level ordering, table order billing, KDS, service area, waiter companion, QR menu, QR feedback + field builder, CRM, stock (management, adjustment, ledger, transfers, reports), purchases/returns/suppliers, expenses, reports & dashboard analytics, AI (menu import, insights, voice billing), printing stack (Bluetooth, USB, browser, native Android plugin), offline-first sync engine + local mesh, multi-branch + RLS multi-tenancy, auth/roles/permissions, licensing & subscription packs, Razorpay/PhonePe collection + webhooks/reconciliation, super admin + RUM, PWA/Capacitor packaging, landing page.
-4. **Cost of the hard parts, called out separately** — the five areas that consume a disproportionate share: offline-first sync, ESC/POS printing across three transports, multi-tenant security, payment gateway with idempotent webhooks, AI integrations. Explains why each is expensive.
-5. **Team and timeline models** — solo founder-dev, 3-person team, 5-person agency: person-months, calendar months, and total INR for each.
-6. **Non-engineering costs** — UI/UX design, thermal printers and Android test devices, Play Store/Apple developer accounts, year-1 Supabase/Vercel/Cloudflare, payment gateway onboarding, legal/T&C/GST, project management, and a rework buffer.
-7. **Three scenarios side by side** — Lean / Realistic / Agency: what each includes, what it cuts, total INR, and the risk of each.
-8. **Ongoing run cost** — monthly infra + support cost at 10, 50, and 200 clients, and the resulting cost per client per month.
-9. **Rebuild cost vs asset value** — what it costs to build versus what the finished product is worth to sell or license, and why the two numbers differ.
-10. **Tamil summary** — the totals and the key points in plain Tamil, one page.
+## Phase 2 — GST / Compliance Pack
 
-## Technical notes
+Why: this is the most common blocker for shops with GSTIN who compare against Petpooja/Vyapar.
 
-- Effort numbers are derived from an actual read of the codebase's modules, not generic estimates.
-- PDF built with ReportLab; Tamil page uses a Unicode Tamil font so glyphs shape correctly.
-- Every page is rendered to an image and visually checked before delivery.
+- B2B invoice mode: buyer name, GSTIN, place of supply, reverse charge, HSN/SAC per item.
+- Credit and debit notes linked to original bills, with their own numbering series.
+- Day-close / Z-report: expected vs declared cash, shift handover, variance log.
+- Immutable audit log for price edits, discounts, voids, deleted bills — exportable.
+- GSTR-1 / GSTR-3B summary export (CSV) and a Tally-compatible export.
+- E-invoice IRN/QR is prepared for but gated behind a provider credential setting (needs an IRP/GSP account before it can be live).
+
+## Phase 3 — Retail Pack (widens the buyer base beyond restaurants)
+
+- Barcode scan-to-cart in Billing (camera + USB/Bluetooth HID scanner), using the existing `barcode` column.
+- Barcode/price label printing to the connected thermal printer.
+- Batch and expiry alerts, near-expiry markdown suggestions (builds on `item_batches`).
+- Reorder point per item with auto purchase-order draft to the mapped supplier.
+- Supplier price history and landed cost on purchases.
+
+## Phase 4 — Loyalty, Khata Ledger & Payment Depth
+
+- Loyalty points/wallet with earn and redeem rules per branch; coupons and referral codes.
+- Full khata (credit) ledger: running balance per customer, aging buckets, WhatsApp reminders with a payment link (reuses the existing payment-link edge function).
+- Split bill by seat or by person, merge tables, partial payments, tips.
+- Refund/void workflow with approval PIN and full audit trail.
+
+## Deferred (planned, not in these phases)
+
+- Swiggy/Zomato/ONDC connectors — needs partner API credentials from each aggregator.
+- WhatsApp Business Cloud API — needs a Meta business account and template approval.
+- iOS printing path — needs an Apple developer account and a native build target.
+- Staff attendance, commission, and franchise master-menu push.
+
+## Technical Notes
+
+- New tables per phase: `item_recipes`, `modifier_groups`, `modifier_options`, `bill_item_modifiers` (P1); `b2b_invoice_details`, `credit_notes`, `day_close_sessions`, `audit_log` (P2); `reorder_rules`, `purchase_orders` (P3); `loyalty_accounts`, `loyalty_transactions`, `khata_ledger`, `coupons` (P4).
+- All follow the existing pattern: create table, GRANT to `authenticated`/`service_role`, enable RLS, owner/branch-scoped policies via the existing helper functions.
+- Stock deduction for recipes goes inside the existing `secure_create_bill` RPC so offline sync and retries stay idempotent.
+- Money and quantity output continues through `src/utils/formatters.ts` for 2-decimal precision, and quantities respect `inventory_unit` for kg/L vs g/ml.
+- Printing changes route through the existing `kotGenerator` and `bluetoothPrinter` modules so station routing and paper-save mode keep working.
+- Offline: new writes register with `src/utils/syncEngine.ts` so they queue and sync like bills do.
+
+## Suggested Order
+
+Phase 1 first (biggest daily-use impact), then Phase 2 (unblocks GST-registered buyers), then Phase 3 (new market segment), then Phase 4 (retention and upsell). I will build one phase at a time and stop for your review after each.
