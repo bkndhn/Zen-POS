@@ -1255,27 +1255,22 @@ const PublicMenu = () => {
             const totalAmount = cartTotal;
             const orderNumber = sessionOrders.length + 1;
 
-            const { data, error: insertError } = await supabase
-                .from('table_orders')
-                .insert({
-                    admin_id: adminId,
-                    branch_id: branchId,
-                    table_number: tableNo,
-                    session_id: sessionId,
-                    seat_id: seatId || null,
-                    seat_label: seatId || null,
-                    order_scope: seatId ? 'seat' : 'table',
-
-                    order_number: orderNumber,
-                    items: orderItems,
-                    total_amount: totalAmount,
-                    customer_note: orderNote || null,
-                    status: 'pending'
-                })
-                .select()
-                .single();
+            const { data: rpcData, error: insertError } = await (supabase as any).rpc('public_place_table_order', {
+                p_admin_id: adminId,
+                p_branch_id: branchId || null,
+                p_table_number: tableNo,
+                p_session_id: sessionId,
+                p_seat_id: seatId || null,
+                p_order_scope: seatId ? 'seat' : 'table',
+                p_order_number: orderNumber,
+                p_items: orderItems,
+                p_total_amount: totalAmount,
+                p_customer_note: orderNote || null,
+            });
 
             if (insertError) throw insertError;
+            const data = (rpcData || {}) as { id: string; created_at: string };
+
 
             // Auto update table status to occupied
             let tableUpdateQ = supabase
@@ -1361,15 +1356,11 @@ const PublicMenu = () => {
             // Step 1: If we have a stored session, check if it still has active orders
             const storedSid = localStorage.getItem(sessionStorageKey);
             if (storedSid) {
-                let existingOrdersQ = supabase
-                    .from('table_orders')
-                    .select('id, order_number, items, total_amount, status, customer_note, created_at, is_billed')
-                    .eq('admin_id', adminId)
-                    .eq('session_id', storedSid);
-                
-                if (branchId) existingOrdersQ = existingOrdersQ.eq('branch_id', branchId);
-                
-                const { data: existingOrders } = await existingOrdersQ.order('order_number');
+                const { data: existingOrders } = await (supabase as any).rpc('get_public_session_orders', {
+                    p_admin_id: adminId,
+                    p_branch_id: branchId || null,
+                    p_session_id: storedSid,
+                });
 
                 if (existingOrders && existingOrders.length > 0) {
                     // Check if ANY order is still active (not terminal)
@@ -1389,51 +1380,28 @@ const PublicMenu = () => {
                 }
             }
 
-            // Step 2: No stored session or old one expired. Check DB for ANY active order on this table.
-            let tableActiveOrdersQ = supabase
-                .from('table_orders')
-                .select('session_id, id, order_number, items, total_amount, status, customer_note, created_at, is_billed')
-                .eq('admin_id', adminId)
-                .eq('table_number', tableNo)
-                .in('status', ['pending', 'preparing', 'ready'])
-                .eq('is_billed', false);
+            // Step 2: No stored session or old one expired. Adopt any active session on this table/seat.
+            const { data: adopted } = await (supabase as any).rpc('adopt_public_table_session', {
+                p_admin_id: adminId,
+                p_branch_id: branchId || null,
+                p_table_number: tableNo,
+                p_seat_id: seatId || null,
+            });
 
-            if (seatId) {
-                tableActiveOrdersQ = tableActiveOrdersQ.eq('seat_id', seatId);
-            } else {
-                tableActiveOrdersQ = tableActiveOrdersQ.is('seat_id', null);
-            }
-            
-            if (branchId) tableActiveOrdersQ = tableActiveOrdersQ.eq('branch_id', branchId);
-            
-            const { data: tableActiveOrders } = await tableActiveOrdersQ
-                .order('created_at', { ascending: false })
-                .limit(20);
-
-            if (tableActiveOrders && tableActiveOrders.length > 0) {
-                // Adopt the session of the most recent active order
-                const adoptSid = (tableActiveOrders[0] as any).session_id;
+            const adoptSid = (adopted as any)?.session_id;
+            if (adoptSid) {
                 localStorage.setItem(sessionStorageKey, adoptSid);
                 setSessionId(adoptSid);
 
-                // Fetch all orders for that session
-                let allSessionOrdersQ = supabase
-                    .from('table_orders')
-                    .select('id, order_number, items, total_amount, status, customer_note, created_at')
-                    .eq('admin_id', adminId)
-                    .eq('session_id', adoptSid);
-                
-                if (branchId) allSessionOrdersQ = allSessionOrdersQ.eq('branch_id', branchId);
-                
-                const { data: allSessionOrders } = await allSessionOrdersQ.order('order_number');
-
-                if (allSessionOrders) {
-                    setSessionOrders(allSessionOrders as TableOrder[]);
+                const allSessionOrders = ((adopted as any)?.orders || []) as TableOrder[];
+                if (allSessionOrders.length > 0) {
+                    setSessionOrders(allSessionOrders);
                     setShowMyOrders(true);
                 }
                 setSessionReady(true);
                 return;
             }
+
 
             // Step 3: No active orders at all → generate new session
             const newSid = crypto.randomUUID();
