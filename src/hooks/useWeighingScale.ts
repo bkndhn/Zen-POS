@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { Capacitor } from '@capacitor/core';
-import { BluetoothPrinter } from '@/utils/printerManager';
+import { BluetoothPrinter, isAndroidNative } from '@/utils/printerManager';
 
 const UART_SERVICE_UUIDS = [
   '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 / generic serial
@@ -16,7 +16,7 @@ export const useWeighingScale = () => {
   // Show the scale button on:
   // - Web/PWA: when Web Serial OR Web Bluetooth API is available
   // - Android (Capacitor): always show — uses native BT bridge
-  const isNative = Capacitor.isNativePlatform();
+  const isNative = isAndroidNative();
   const [isSupported] = useState(
     isNative || 'serial' in navigator || 'bluetooth' in navigator
   );
@@ -69,7 +69,7 @@ export const useWeighingScale = () => {
   // ─── USB CONNECT ─────────────────────────────────────────────────────────────
   const connectUSB = useCallback(async () => {
     // Android WebView does NOT support Web Serial API
-    if (Capacitor.isNativePlatform()) {
+    if (isAndroidNative()) {
       toast({
         title: 'USB Scale — Android',
         description: 'USB OTG serial is not available inside the Android app. Please connect your scale via Bluetooth instead.',
@@ -140,6 +140,7 @@ export const useWeighingScale = () => {
 
   // ─── NATIVE ANDROID: connect to a specific paired device ─────────────────────
   const connectNativeBluetooth = useCallback(async (address: string, name: string) => {
+    if (!isAndroidNative()) return;
     setShowNativePicker(false);
     try {
       // Save the address so the native bridge can use it
@@ -186,7 +187,7 @@ export const useWeighingScale = () => {
   // ─── BLUETOOTH CONNECT ───────────────────────────────────────────────────────
   const connectBluetooth = useCallback(async () => {
     // Android Capacitor: use native Bluetooth bridge (Web Bluetooth not available in WebView)
-    if (Capacitor.isNativePlatform()) {
+    if (isAndroidNative()) {
       try {
         const { devices } = await BluetoothPrinter.getPairedDevices();
         if (!devices || devices.length === 0) {

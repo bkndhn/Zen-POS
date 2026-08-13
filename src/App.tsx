@@ -16,6 +16,8 @@ import { Layout } from "@/components/Layout";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { getStoredBillFont, getSelectedBillFont, loadGoogleFont } from "@/utils/billFontUtils";
 import { safeLocalStorage } from '@/utils/storageUtils';
+import { usePWAInstall } from './hooks/usePWAInstall';
+import { usePushNotifications } from './hooks/usePushNotifications';
 
 const ThemeLoader = () => {
   const { operatingBranchId } = useBranch();
@@ -253,6 +255,11 @@ const AutoBackupRunner = () => {
   useAutoBackup();
   return null;
 };
+
+const PushNotificationRunner = () => {
+  usePushNotifications();
+  return null;
+};
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -381,6 +388,7 @@ const App = () => {
                   <RoutePerfWarmer />
                   <GlobalSettingsSync />
                   <AutoBackupRunner />
+                  <PushNotificationRunner />
                   <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
 
                   <Routes>

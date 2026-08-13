@@ -25,12 +25,20 @@ const config: CapacitorConfig = {
     },
     CapacitorHttp: {
       enabled: false,
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
     }
   },
   android: {
     allowMixedContent: true,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+  },
+  ios: {
+    contentInset: 'always',
+    preferredContentMode: 'mobile',
+    scrollEnabled: true,
   }
 };
 

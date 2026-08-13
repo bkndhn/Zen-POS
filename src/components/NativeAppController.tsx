@@ -72,9 +72,12 @@ export const NativeAppController = () => {
         const isDarkMode = savedDarkMode === 'true' || (savedDarkMode === null && prefersDark);
         
         await StatusBar.setStyle({ style: isDarkMode ? Style.Dark : Style.Light });
-        const color = isDarkMode ? '#09090b' : '#ffffff';
-        await StatusBar.setBackgroundColor({ color });
-        await StatusBar.setOverlaysWebView({ overlay: false });
+        // setBackgroundColor and setOverlaysWebView are Android-only APIs
+        if (Capacitor.getPlatform() === 'android') {
+          const color = isDarkMode ? '#09090b' : '#ffffff';
+          await StatusBar.setBackgroundColor({ color });
+          await StatusBar.setOverlaysWebView({ overlay: false });
+        }
       } catch (e) {
         // Status bar plugin might not be available or supported
       }

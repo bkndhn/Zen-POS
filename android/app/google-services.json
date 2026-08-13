@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "650662888105",
+    "firebase_url": "https://tamilnews-63848.firebaseio.com",
+    "project_id": "tamilnews-63848",
+    "storage_bucket": "tamilnews-63848.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650662888105:android:e4108f9b56b0f7532d1fb8",
+        "android_client_info": {
+          "package_name": "com.my.tamilnews"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7iBPg-_1zF3kevK-KboP1vof6rGDrClA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650662888105:android:d776be58679407cc2d1fb8",
+        "android_client_info": {
+          "package_name": "com.zenpos.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7iBPg-_1zF3kevK-KboP1vof6rGDrClA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

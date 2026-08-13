@@ -45,6 +45,13 @@ export interface BluetoothPrinterPlugin {
 
 export const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
 
+/**
+ * Helper: BluetoothPrinter native plugin only exists on Android.
+ * On iOS, calling it would throw "Unimplemented" since there's no Swift plugin.
+ * Use this guard before any BluetoothPrinter.* call.
+ */
+export const isAndroidNative = (): boolean => Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+
 // Connection states
 export type PrinterConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type PrinterType = 'bluetooth' | 'usb' | 'none';

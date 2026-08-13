@@ -1,5 +1,6 @@
 import { getAppBaseUrl } from '@/utils/urlUtils';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile, UserStatus, UserRole } from '@/types/user';
@@ -867,6 +868,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     devLog('Signing out...');
 
     setLoading(true);
+
+    try {
+      if (user?.id && Capacitor.isNativePlatform()) {
+        await supabase
+          .from('user_devices')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('platform', Capacitor.getPlatform());
+      }
+    } catch (e) {
+      console.error('Failed to clear device tokens:', e);
+    }
 
     // SECURITY: Clear all cached profile data from localStorage on signOut
     safeLocalStorage.getAllKeys().forEach(key => {
