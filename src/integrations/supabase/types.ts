@@ -4023,6 +4023,15 @@ export type Database = {
         Args: { p_target_user_id: string }
         Returns: undefined
       }
+      adopt_public_table_session: {
+        Args: {
+          p_admin_id: string
+          p_branch_id: string
+          p_seat_id: string
+          p_table_number: string
+        }
+        Returns: Json
+      }
       apply_stock_adjustment: {
         Args: {
           p_branch_id: string
@@ -4308,6 +4317,19 @@ export type Database = {
           title: string
         }[]
       }
+      get_public_session_orders: {
+        Args: { p_admin_id: string; p_branch_id: string; p_session_id: string }
+        Returns: {
+          created_at: string
+          customer_note: string
+          id: string
+          is_billed: boolean
+          items: Json
+          order_number: number
+          status: string
+          total_amount: number
+        }[]
+      }
       get_public_shop_settings: { Args: { p_user_id: string }; Returns: Json }
       get_public_shop_settings_by_profile: {
         Args: { p_profile_id: string }
@@ -4373,6 +4395,21 @@ export type Database = {
           allowed: boolean
           reason: string
         }[]
+      }
+      public_place_table_order: {
+        Args: {
+          p_admin_id: string
+          p_branch_id: string
+          p_customer_note: string
+          p_items: Json
+          p_order_number: number
+          p_order_scope: string
+          p_seat_id: string
+          p_session_id: string
+          p_table_number: string
+          p_total_amount: number
+        }
+        Returns: Json
       }
       public_update_table_status: {
         Args: { p_admin_id: string; p_status: string; p_table_no: string }
