@@ -333,6 +333,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         inventory_unit: formData.inventory_unit,
         inventory_quantity: parseFloat(formData.inventory_quantity) || 1,
         is_saleable: formData.is_saleable,
+        cooking_time_mins: formData.cooking_time_mins ? Math.max(0, Math.round(parseFloat(formData.cooking_time_mins))) : null,
         
         // Legacy fallback
         unit: formData.selling_unit,
@@ -850,6 +851,23 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                 onCheckedChange={(checked) => setFormData({ ...formData, is_saleable: checked })}
               />
               <Label htmlFor="is_saleable">Item is saleable (customers can buy it)</Label>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit_cooking_time_mins">Cooking / prep time (minutes)</Label>
+              <Input
+                id="edit_cooking_time_mins"
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                placeholder="e.g. 12 — leave blank to use the shop default"
+                value={formData.cooking_time_mins}
+                onChange={(e) => setFormData({ ...formData, cooking_time_mins: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Shown to customers on the QR menu and used to set the order ETA on the kitchen screen.
+              </p>
             </div>
 
             <div className="flex justify-end space-x-2">
