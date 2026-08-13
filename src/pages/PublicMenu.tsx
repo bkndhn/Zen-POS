@@ -1255,27 +1255,22 @@ const PublicMenu = () => {
             const totalAmount = cartTotal;
             const orderNumber = sessionOrders.length + 1;
 
-            const { data, error: insertError } = await supabase
-                .from('table_orders')
-                .insert({
-                    admin_id: adminId,
-                    branch_id: branchId,
-                    table_number: tableNo,
-                    session_id: sessionId,
-                    seat_id: seatId || null,
-                    seat_label: seatId || null,
-                    order_scope: seatId ? 'seat' : 'table',
-
-                    order_number: orderNumber,
-                    items: orderItems,
-                    total_amount: totalAmount,
-                    customer_note: orderNote || null,
-                    status: 'pending'
-                })
-                .select()
-                .single();
+            const { data: rpcData, error: insertError } = await (supabase as any).rpc('public_place_table_order', {
+                p_admin_id: adminId,
+                p_branch_id: branchId || null,
+                p_table_number: tableNo,
+                p_session_id: sessionId,
+                p_seat_id: seatId || null,
+                p_order_scope: seatId ? 'seat' : 'table',
+                p_order_number: orderNumber,
+                p_items: orderItems,
+                p_total_amount: totalAmount,
+                p_customer_note: orderNote || null,
+            });
 
             if (insertError) throw insertError;
+            const data = (rpcData || {}) as { id: string; created_at: string };
+
 
             // Auto update table status to occupied
             let tableUpdateQ = supabase
