@@ -468,6 +468,8 @@ export type Database = {
           discount: number | null
           doctor_name: string | null
           due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
           id: string
           is_deleted: boolean | null
           is_edited: boolean | null
@@ -505,6 +507,8 @@ export type Database = {
           discount?: number | null
           doctor_name?: string | null
           due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
@@ -542,6 +546,8 @@ export type Database = {
           discount?: number | null
           doctor_name?: string | null
           due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
@@ -1549,6 +1555,7 @@ export type Database = {
           branch_id: string | null
           brand_id: string | null
           category: string | null
+          cooking_time_mins: number | null
           created_at: string
           department_id: string | null
           description: string | null
@@ -1593,6 +1600,7 @@ export type Database = {
           branch_id?: string | null
           brand_id?: string | null
           category?: string | null
+          cooking_time_mins?: number | null
           created_at?: string
           department_id?: string | null
           description?: string | null
@@ -1637,6 +1645,7 @@ export type Database = {
           branch_id?: string | null
           brand_id?: string | null
           category?: string | null
+          cooking_time_mins?: number | null
           created_at?: string
           department_id?: string | null
           description?: string | null
@@ -2982,6 +2991,7 @@ export type Database = {
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
+          default_cooking_time_mins: number
           default_order_type: string | null
           default_payment_gateway: string | null
           delivery_fee_base: number | null
@@ -2997,6 +3007,8 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           khata_billing_enabled: boolean | null
+          kitchen_busy_buffer_mins: number
+          kitchen_busy_until: string | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
           max_delivery_radius_km: number | null
@@ -3068,6 +3080,7 @@ export type Database = {
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
+          default_cooking_time_mins?: number
           default_order_type?: string | null
           default_payment_gateway?: string | null
           delivery_fee_base?: number | null
@@ -3083,6 +3096,8 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           khata_billing_enabled?: boolean | null
+          kitchen_busy_buffer_mins?: number
+          kitchen_busy_until?: string | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
           max_delivery_radius_km?: number | null
@@ -3154,6 +3169,7 @@ export type Database = {
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
+          default_cooking_time_mins?: number
           default_order_type?: string | null
           default_payment_gateway?: string | null
           delivery_fee_base?: number | null
@@ -3169,6 +3185,8 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           khata_billing_enabled?: boolean | null
+          kitchen_busy_buffer_mins?: number
+          kitchen_busy_until?: string | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
           max_delivery_radius_km?: number | null
@@ -3586,11 +3604,14 @@ export type Database = {
           branch_id: string | null
           created_at: string | null
           customer_note: string | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
           id: string
           is_billed: boolean | null
           items: Json
           order_number: number
           order_scope: string
+          prep_started_at: string | null
           seat_id: string | null
           seat_label: string | null
           session_id: string
@@ -3605,11 +3626,14 @@ export type Database = {
           branch_id?: string | null
           created_at?: string | null
           customer_note?: string | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
           id?: string
           is_billed?: boolean | null
           items?: Json
           order_number?: number
           order_scope?: string
+          prep_started_at?: string | null
           seat_id?: string | null
           seat_label?: string | null
           session_id: string
@@ -3624,11 +3648,14 @@ export type Database = {
           branch_id?: string | null
           created_at?: string | null
           customer_note?: string | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
           id?: string
           is_billed?: boolean | null
           items?: Json
           order_number?: number
           order_scope?: string
+          prep_started_at?: string | null
           seat_id?: string | null
           seat_label?: string | null
           session_id?: string
@@ -4174,6 +4201,7 @@ export type Database = {
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
+          default_cooking_time_mins: number
           default_order_type: string | null
           default_payment_gateway: string | null
           delivery_fee_base: number | null
@@ -4189,6 +4217,8 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           khata_billing_enabled: boolean | null
+          kitchen_busy_buffer_mins: number
+          kitchen_busy_until: string | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
           max_delivery_radius_km: number | null
@@ -4289,6 +4319,7 @@ export type Database = {
           base_value: number
           branch_id: string
           category: string
+          cooking_time_mins: number
           id: string
           image_url: string
           is_active: boolean
@@ -4301,6 +4332,10 @@ export type Database = {
           unit: string
           video_url: string
         }[]
+      }
+      get_public_prep_config: {
+        Args: { p_admin_id: string; p_branch_id?: string }
+        Returns: Json
       }
       get_public_promo_banners: {
         Args: { p_admin_id: string; p_branch_id?: string }
@@ -4322,10 +4357,13 @@ export type Database = {
         Returns: {
           created_at: string
           customer_note: string
+          eta_minutes: number
+          eta_updated_at: string
           id: string
           is_billed: boolean
           items: Json
           order_number: number
+          prep_started_at: string
           status: string
           total_amount: number
         }[]
