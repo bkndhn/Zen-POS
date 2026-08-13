@@ -9,6 +9,7 @@ import { Check, X, Undo2, ChefHat, Clock, Wifi, WifiOff, Bell, Droplets, Receipt
 import { toast } from '@/hooks/use-toast';
 import { formatDateTimeAMPM, getTimeElapsed, isWithinUndoWindow, formatQuantityWithUnit } from '@/utils/timeUtils';
 import { cn } from '@/lib/utils';
+import { PrepTimerChip } from '@/components/service/PrepTime';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import TableSeatGroups from '@/components/TableSeatGroups';
@@ -73,6 +74,7 @@ interface ServiceTableOrder {
     status: 'pending' | 'preparing' | 'ready' | 'served' | 'cancelled';
     customer_note?: string;
     created_at: string;
+    eta_minutes?: number | null;
 }
 
 // Service request from customers
@@ -939,6 +941,9 @@ const ServiceArea = () => {
                                     <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
                                         {getTimeElapsed(order.created_at)}
                                     </span>
+                                    {order.status !== 'ready' && (
+                                        <PrepTimerChip startedAt={order.created_at} etaMinutes={order.eta_minutes} />
+                                    )}
                                 </div>
                                 <Badge className={cn(
                                     "text-white text-[10px]",
