@@ -10,6 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CookingTimeBadge, PrepProgressBar } from '@/components/service/PrepTime';
+import {
+    DEFAULT_PREP_CONFIG,
+    estimateOrderMinutes,
+    formatMins,
+    normalizePrepConfig,
+    type PrepConfig,
+} from '@/utils/prepTime';
 import { getShortUnit } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
@@ -39,6 +47,7 @@ interface MenuItem {
     addons?: any[];
     special_instructions?: string;
     notes?: string;
+    cooking_time_mins?: number | null;
 }
 
 interface PromoBanner {
@@ -129,6 +138,8 @@ interface TableOrder {
     status: 'pending' | 'preparing' | 'ready' | 'served' | 'cancelled';
     customer_note?: string;
     created_at: string;
+    eta_minutes?: number | null;
+    eta_updated_at?: string | null;
 }
 
 
@@ -555,6 +566,29 @@ const PublicMenu = () => {
 
     // Orders for this session
     const [sessionOrders, setSessionOrders] = useState<TableOrder[]>([]);
+
+    // Kitchen cooking-time configuration (per shop + branch), used for live ETAs
+    const [prepConfig, setPrepConfig] = useState<PrepConfig>(DEFAULT_PREP_CONFIG);
+
+    useEffect(() => {
+        if (!adminId) return;
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const { data } = await (supabase as any).rpc('get_public_prep_config', {
+                    p_admin_id: adminId,
+                    p_branch_id: branchId ?? null,
+                });
+                if (!cancelled) setPrepConfig(normalizePrepConfig(data));
+            } catch {
+                /* fall back to defaults — never block the menu */
+            }
+        };
+        load();
+        // Refresh periodically so busy-hour buffers reach guests without a reload
+        const id = window.setInterval(load, 60000);
+        return () => { cancelled = true; window.clearInterval(id); };
+    }, [adminId, branchId]);
     const orderChannelRef = useRef<any>(null);
 
     // ========== HELP / SERVICE REQUEST STATE ==========
@@ -1442,6 +1476,14 @@ const PublicMenu = () => {
                     });
                 }
             })
+            .on('broadcast', { event: 'order-eta-update' }, (payload: any) => {
+                const { order_id, eta_minutes } = payload.payload || {};
+                if (order_id && Number(eta_minutes) > 0) {
+                    setSessionOrders(prev => prev.map(o =>
+                        o.id === order_id ? { ...o, eta_minutes: Number(eta_minutes) } : o
+                    ));
+                }
+            })
             .subscribe();
 
         // Also subscribe to postgres_changes as fallback
@@ -1458,7 +1500,9 @@ const PublicMenu = () => {
                     const updated = payload.new;
                     if (updated) {
                         setSessionOrders(prev => prev.map(o =>
-                            o.id === updated.id ? { ...o, status: updated.status } : o
+                            o.id === updated.id
+                                ? { ...o, status: updated.status, eta_minutes: updated.eta_minutes ?? o.eta_minutes }
+                                : o
                         ));
                     }
                 }
@@ -1504,6 +1548,12 @@ const PublicMenu = () => {
             default: return 'bg-gray-100 text-gray-500';
         }
     };
+
+    /** Promised cooking time for the current cart, shown before the order is placed. */
+    const cartEtaMinutes = useMemo(
+        () => (cart.length === 0 ? 0 : estimateOrderMinutes(cart as any, prepConfig)),
+        [cart, prepConfig]
+    );
 
     const sessionTotal = useMemo(() => sessionOrders.reduce((sum, o) => sum + o.total_amount, 0), [sessionOrders]);
 
@@ -2342,6 +2392,11 @@ const PublicMenu = () => {
                                                     </div>
                                                     <div className="p-2 text-center flex flex-col flex-1 justify-between">
                                                         <h3 className="font-semibold text-gray-800 text-xs leading-tight line-clamp-2">{item.name}</h3>
+                                                        {item.cooking_time_mins ? (
+                                                            <div className="mt-1 flex justify-center">
+                                                                <CookingTimeBadge minutes={item.cooking_time_mins} compact />
+                                                            </div>
+                                                        ) : null}
                                                         <div className="mt-1">
                                                             <span className="text-sm font-extrabold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                 ₹{item.price}
@@ -2434,6 +2489,7 @@ const PublicMenu = () => {
                                                                             👨‍🍳 Chef Special
                                                                         </span>
                                                                     )}
+                                                                    <CookingTimeBadge minutes={item.cooking_time_mins} compact />
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2 flex-shrink-0">
@@ -2511,6 +2567,11 @@ const PublicMenu = () => {
                                                             )}>
                                                                 {item.name}
                                                             </h3>
+                                                            {item.cooking_time_mins ? (
+                                                                <div className="mt-1 flex justify-center">
+                                                                    <CookingTimeBadge minutes={item.cooking_time_mins} compact />
+                                                                </div>
+                                                            ) : null}
                                                             <div className="mt-1.5 flex items-center justify-center gap-2">
                                                                 <span
                                                                     className={cn(
@@ -2607,6 +2668,23 @@ const PublicMenu = () => {
                                         ))}
                                         {order.customer_note && (
                                             <p className="text-xs text-gray-400 mt-1 italic">Note: {order.customer_note}</p>
+                                        )}
+                                        {!['served', 'cancelled'].includes(order.status) && (
+                                            <PrepProgressBar
+                                                className="mt-2.5"
+                                                startedAt={order.created_at}
+                                                etaMinutes={
+                                                    Number(order.eta_minutes) > 0
+                                                        ? Number(order.eta_minutes)
+                                                        : estimateOrderMinutes(
+                                                            (order.items || []).map((it: any) => ({
+                                                                cooking_time_mins: items.find(m => m.id === it.item_id)?.cooking_time_mins,
+                                                            })),
+                                                            prepConfig
+                                                        )
+                                                }
+                                                title={order.status === 'ready' ? 'Ready now' : undefined}
+                                            />
                                         )}
                                         <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
                                             <span className="text-xs text-gray-400">
