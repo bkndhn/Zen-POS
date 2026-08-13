@@ -1551,8 +1551,17 @@ const PublicMenu = () => {
 
     /** Promised cooking time for the current cart, shown before the order is placed. */
     const cartEtaMinutes = useMemo(
-        () => (cart.length === 0 ? 0 : estimateOrderMinutes(cart as any, prepConfig)),
-        [cart, prepConfig]
+        () => (cart.length === 0
+            ? 0
+            : estimateOrderMinutes(
+                cart.map((c: any) => ({
+                    cooking_time_mins:
+                        c.cooking_time_mins ??
+                        items.find(m => m.id === c.id || String(c.id).startsWith(m.id))?.cooking_time_mins,
+                })),
+                prepConfig
+            )),
+        [cart, items, prepConfig]
     );
 
     const sessionTotal = useMemo(() => sessionOrders.reduce((sum, o) => sum + o.total_amount, 0), [sessionOrders]);
