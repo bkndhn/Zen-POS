@@ -19,6 +19,17 @@ import TableSeatGroups from '@/components/TableSeatGroups';
 import { getOrderTargetLabel, getSeatText, shouldApplyStatusUpdate, mergeOrdersConflictSafe } from '@/utils/seatUtils';
 import { printTableOrderKOT, printSeatGroupKOT } from '@/utils/kotGenerator';
 import { triggerNewOrderPushNotification } from '@/utils/pwaPushNotifications';
+import { OrderEtaControl } from '@/components/service/OrderEtaControl';
+import { KitchenBusyMode } from '@/components/service/KitchenBusyMode';
+import { PrepTimerChip, CookingTimeBadge } from '@/components/service/PrepTime';
+import {
+    DEFAULT_PREP_CONFIG,
+    estimateOrderMinutes,
+    formatMins,
+    getPrepProgress,
+    normalizePrepConfig,
+    type PrepConfig,
+} from '@/utils/prepTime';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -32,6 +43,7 @@ interface KitchenBillItem {
         name: string;
         unit?: string;
         base_value?: number;
+        cooking_time_mins?: number | null;
     } | null;
 }
 
@@ -44,6 +56,7 @@ interface KitchenBill {
     bill_items: KitchenBillItem[];
     table_no?: string;
     order_type?: string;
+    eta_minutes?: number | null;
 }
 
 // Type for table QR orders
@@ -69,6 +82,9 @@ interface KitchenTableOrder {
     status: 'pending' | 'preparing' | 'ready' | 'served' | 'cancelled';
     customer_note?: string;
     created_at: string;
+    eta_minutes?: number | null;
+    eta_updated_at?: string | null;
+    prep_started_at?: string | null;
 }
 
 const KitchenDisplay = () => {
@@ -87,6 +103,25 @@ const KitchenDisplay = () => {
     const syncChannelRef = useRef<any>(null);
     const tableOrderChannelRef = useRef<any>(null);
     const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Cooking-time / ETA config for this shop + branch
+    const [prepConfig, setPrepConfig] = useState<PrepConfig>(DEFAULT_PREP_CONFIG);
+    const alertedOverdueRef = useRef<Set<string>>(new Set());
+
+    const fetchPrepConfig = useCallback(async () => {
+        if (!adminId) return;
+        try {
+            const { data } = await (supabase as any).rpc('get_public_prep_config', {
+                p_admin_id: adminId,
+                p_branch_id: branchFilterId || null,
+            });
+            setPrepConfig(normalizePrepConfig(data));
+        } catch {
+            /* keep defaults — never block the kitchen screen */
+        }
+    }, [adminId, branchFilterId]);
+
+    useEffect(() => { fetchPrepConfig(); }, [fetchPrepConfig]);
 
     // Table orders state
     const [tableOrders, setTableOrders] = useState<KitchenTableOrder[]>([]);
@@ -229,9 +264,9 @@ const KitchenDisplay = () => {
             let query: any = (supabase as any)
                 .from('bills')
                 .select(`
-                    id, bill_no, created_at, kitchen_status, service_status, table_no, order_type,
+                    id, bill_no, created_at, kitchen_status, service_status, table_no, order_type, eta_minutes,
                     bill_items (
-                        id, quantity, items (id, name, unit, base_value)
+                        id, quantity, items (id, name, unit, base_value, cooking_time_mins)
                     )
                 `)
                 .eq('admin_id', adminId)
@@ -637,6 +672,105 @@ const KitchenDisplay = () => {
         return Math.floor((currentTime.getTime() - new Date(createdAt).getTime()) / 60000);
     }, [currentTime]);
 
+    /** ETA for a QR table order: stored promise, else derived from the shop config. */
+    const getTableOrderEta = useCallback((order: KitchenTableOrder) => {
+        if (Number(order.eta_minutes) > 0) return Math.round(Number(order.eta_minutes));
+        return estimateOrderMinutes([], prepConfig);
+    }, [prepConfig]);
+
+    /** ETA for a POS bill: slowest item's cooking time + busy buffer, unless overridden. */
+    const getBillEta = useCallback((bill: KitchenBill) => {
+        if (Number(bill.eta_minutes) > 0) return Math.round(Number(bill.eta_minutes));
+        return estimateOrderMinutes(
+            (bill.bill_items || []).map(bi => ({ cooking_time_mins: bi.items?.cooking_time_mins })),
+            prepConfig
+        );
+    }, [prepConfig]);
+
+    /** Push the ETA out from the kitchen (busy hours / extra prep needed). */
+    const updateTableOrderEta = useCallback(async (order: KitchenTableOrder, nextEta: number) => {
+        setTableOrders(prev => prev.map(o => (o.id === order.id ? { ...o, eta_minutes: nextEta } : o)));
+        alertedOverdueRef.current.delete(order.id);
+        try {
+            const { error } = await (supabase as any)
+                .from('table_orders')
+                .update({ eta_minutes: nextEta, eta_updated_at: new Date().toISOString() })
+                .eq('id', order.id);
+            if (error) throw error;
+
+            // Tell the customer's live tracker immediately
+            if (order.session_id) {
+                const ch = supabase.channel(`table-order-status-${order.session_id}`);
+                await ch.send({
+                    type: 'broadcast',
+                    event: 'order-eta-update',
+                    payload: { order_id: order.id, eta_minutes: nextEta, timestamp: Date.now() },
+                });
+                supabase.removeChannel(ch);
+            }
+            tableOrderChannelRef.current?.send({
+                type: 'broadcast',
+                event: 'table-order-eta-update',
+                payload: { order_id: order.id, eta_minutes: nextEta, timestamp: Date.now() },
+            });
+
+            toast({ title: '⏱️ Time updated', description: `Order #${order.order_number} now ${formatMins(nextEta)}` });
+        } catch (e) {
+            console.warn('[Kitchen] ETA update failed', e);
+            fetchTableOrders();
+            toast({ title: 'Could not update time', description: 'Please try again', variant: 'destructive' });
+        }
+    }, [fetchTableOrders]);
+
+    const updateBillEta = useCallback(async (bill: KitchenBill, nextEta: number) => {
+        setBills(prev => prev.map(b => (b.id === bill.id ? { ...b, eta_minutes: nextEta } : b)));
+        alertedOverdueRef.current.delete(bill.id);
+        try {
+            const { error } = await (supabase as any)
+                .from('bills')
+                .update({ eta_minutes: nextEta, eta_updated_at: new Date().toISOString() })
+                .eq('id', bill.id);
+            if (error) throw error;
+            toast({ title: '⏱️ Time updated', description: `Bill #${bill.bill_no} now ${formatMins(nextEta)}` });
+        } catch (e) {
+            console.warn('[Kitchen] Bill ETA update failed', e);
+            fetchBills(true);
+            toast({ title: 'Could not update time', description: 'Please try again', variant: 'destructive' });
+        }
+    }, [fetchBills]);
+
+    // Notify (once per order) when an order crosses its promised time
+    useEffect(() => {
+        const overdue: string[] = [];
+
+        bills.forEach(b => {
+            if (b.kitchen_status === 'ready') return;
+            const p = getPrepProgress(b.created_at, getBillEta(b), currentTime.getTime());
+            if (p.phase === 'overdue' && !alertedOverdueRef.current.has(b.id)) {
+                alertedOverdueRef.current.add(b.id);
+                overdue.push(`#${b.bill_no}`);
+            }
+        });
+
+        tableOrders.forEach(o => {
+            if (o.status === 'ready' || o.status === 'served') return;
+            const p = getPrepProgress(o.created_at, getTableOrderEta(o), currentTime.getTime());
+            if (p.phase === 'overdue' && !alertedOverdueRef.current.has(o.id)) {
+                alertedOverdueRef.current.add(o.id);
+                overdue.push(`${getOrderTargetLabel(o)} #${o.order_number}`);
+            }
+        });
+
+        if (overdue.length) {
+            toast({
+                title: '⏰ Order running late',
+                description: `${overdue.slice(0, 3).join(', ')}${overdue.length > 3 ? ` +${overdue.length - 3} more` : ''} crossed the promised time.`,
+                variant: 'destructive',
+            });
+            if (voiceEnabled) announce(`Attention. ${overdue.length} order${overdue.length > 1 ? 's are' : ' is'} running late`, 'order-late');
+        }
+    }, [currentTime, bills, tableOrders, getBillEta, getTableOrderEta, voiceEnabled]);
+
     // Urgency styling maps
     const urgencyBorderClass: Record<string, string> = {
         green: 'border-green-400 shadow-green-500/10',
@@ -848,6 +982,12 @@ const KitchenDisplay = () => {
                             </Button>
                         )}
 
+                        <KitchenBusyMode
+                            userId={adminAuthUid || profile?.user_id || null}
+                            branchId={branchFilterId || null}
+                            onChanged={fetchPrepConfig}
+                        />
+
                         <Button
                             variant="outline"
                             size="icon"
@@ -983,6 +1123,8 @@ const KitchenDisplay = () => {
                                 actionColor="bg-orange-500 hover:bg-orange-600"
                                 currentTime={currentTime}
                                 highlightedCategory={categoryFilter}
+                                etaMinutes={getBillEta(bill)}
+                                onChangeEta={(next) => updateBillEta(bill, next)}
                             />
                         ))}
 
@@ -1009,6 +1151,14 @@ const KitchenDisplay = () => {
                                             <Clock className="w-3 h-3 mr-1" />
                                             {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
                                         </Badge>
+                                    </div>
+
+                                    <div className="mb-2">
+                                        <OrderEtaControl
+                                            startedAt={order.created_at}
+                                            etaMinutes={getTableOrderEta(order)}
+                                            onChangeEta={(next) => updateTableOrderEta(order, next)}
+                                        />
                                     </div>
                                     <div className="space-y-1.5 mb-3">
                                         {(order.items || []).map((item, idx) => {
@@ -1084,6 +1234,8 @@ const KitchenDisplay = () => {
                                 actionColor="bg-green-500 hover:bg-green-600"
                                 currentTime={currentTime}
                                 highlightedCategory={categoryFilter}
+                                etaMinutes={getBillEta(bill)}
+                                onChangeEta={(next) => updateBillEta(bill, next)}
                             />
                         ))}
 
@@ -1110,6 +1262,14 @@ const KitchenDisplay = () => {
                                             <Clock className="w-3 h-3 mr-1" />
                                             {elapsedMin < 60 ? `${elapsedMin}m` : `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m`}
                                         </Badge>
+                                    </div>
+
+                                    <div className="mb-2">
+                                        <OrderEtaControl
+                                            startedAt={order.created_at}
+                                            etaMinutes={getTableOrderEta(order)}
+                                            onChangeEta={(next) => updateTableOrderEta(order, next)}
+                                        />
                                     </div>
                                     <div className="space-y-1.5 mb-3">
                                         {(order.items || []).map((item, idx) => {
@@ -1335,6 +1495,8 @@ interface KitchenOrderCardProps {
     actionColor: string;
     currentTime: Date;
     highlightedCategory: string;
+    etaMinutes: number;
+    onChangeEta: (next: number) => void | Promise<void>;
 }
 
 const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
@@ -1345,6 +1507,8 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     actionColor,
     currentTime,
     highlightedCategory,
+    etaMinutes,
+    onChangeEta,
 }) => {
     // Compute elapsed time and urgency
     const elapsedMin = Math.floor((currentTime.getTime() - new Date(bill.created_at).getTime()) / 60000);
@@ -1382,6 +1546,14 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                 )}
             </div>
 
+            <div className="mb-3">
+                <OrderEtaControl
+                    startedAt={bill.created_at}
+                    etaMinutes={etaMinutes}
+                    onChangeEta={onChangeEta}
+                />
+            </div>
+
             {/* Items List */}
             <div className="space-y-2 mb-3">
                 {(bill.bill_items || []).map((item) => {
@@ -1399,12 +1571,15 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                         <span className={cn('font-medium flex-1', isHighlighted && 'text-primary font-bold')}>
                             {itemName}
                         </span>
-                        <Badge
-                            variant="secondary"
-                            className="font-bold text-base min-w-[60px] justify-center ml-2"
-                        >
-                            {formatQuantityWithUnit(item.quantity, item.items?.unit)}
-                        </Badge>
+                        <div className="ml-2 flex items-center gap-1.5">
+                            <CookingTimeBadge minutes={item.items?.cooking_time_mins} compact />
+                            <Badge
+                                variant="secondary"
+                                className="font-bold text-base min-w-[60px] justify-center"
+                            >
+                                {formatQuantityWithUnit(item.quantity, item.items?.unit)}
+                            </Badge>
+                        </div>
                     </div>
                     );
                 })}
