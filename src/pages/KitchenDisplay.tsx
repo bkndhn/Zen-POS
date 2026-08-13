@@ -767,7 +767,7 @@ const KitchenDisplay = () => {
                 description: `${overdue.slice(0, 3).join(', ')}${overdue.length > 3 ? ` +${overdue.length - 3} more` : ''} crossed the promised time.`,
                 variant: 'destructive',
             });
-            if (voiceEnabled) announce(`Attention. ${overdue.length} order${overdue.length > 1 ? 's are' : ' is'} running late`, 'order-late');
+            if (voiceEnabled) announce(`Attention. ${overdue.length} order${overdue.length > 1 ? 's are' : ' is'} running late`, 'new-order');
         }
     }, [currentTime, bills, tableOrders, getBillEta, getTableOrderEta, voiceEnabled]);
 
