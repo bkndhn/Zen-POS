@@ -105,22 +105,22 @@ serve(async (req) => {
       details = "Google Drive credentials or folder ID missing in settings. ";
     }
 
-    // 5. Native Backup Fallback: Store in Supabase Storage Bucket 'database-backups'
+    // 5. Native Backup Fallback: Store in Supabase Storage Bucket 'pos_backups'
     try {
       // Ensure bucket exists (or create it)
-      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('database-backups');
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('pos_backups');
       if (bucketError || !bucketData) {
-        await supabase.storage.createBucket('database-backups', { public: false });
+        await supabase.storage.createBucket('pos_backups', { public: false });
       }
 
       const { error: uploadErr } = await supabase.storage
-        .from('database-backups')
+        .from('pos_backups')
         .upload(fileName, backupBytes, { contentType: 'application/json', upsert: true });
 
       if (uploadErr) {
-        details += `Supabase storage fallback failed: ${uploadErr.message}.`;
+        details += `Supabase storage backup failed: ${uploadErr.message}.`;
       } else {
-        details += `Saved backup to local Supabase Storage bucket 'database-backups'.`;
+        details += `Saved backup to local Supabase Storage bucket 'pos_backups'.`;
         status = 'success'; // Treat as success if at least local backup worked
       }
     } catch (fallbackErr: any) {

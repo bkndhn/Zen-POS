@@ -2,3 +2,9 @@ project_id = "ivleyttlqlqawghvfyjz"
 
 [functions.voice-parse]
 verify_jwt = true
+
+[functions.auto-backup]
+verify_jwt = false
+
+[functions.auto-backup.schedule]
+cron = "30 2,8,17 * * *" # Runs at 08:00, 14:00, 23:00 IST (UTC+5:30)

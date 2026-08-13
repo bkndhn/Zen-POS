@@ -113,7 +113,7 @@ function restoreLocalStorage(map: Record<string, string> | undefined): number {
 }
 
 // ---------- Public API ----------
-async function buildBackup(): Promise<ZenPOSBackupData> {
+export async function buildBackup(): Promise<ZenPOSBackupData> {
     const [bills, pendingBills, items, categories] = await Promise.all([
         offlineManager.getCachedBills(),
         offlineManager.getPendingBills(),

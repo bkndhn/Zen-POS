@@ -245,9 +245,14 @@ const AiInsights = lazy(() => import("./pages/AiInsights"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
-const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
+import { TermsAndConditions } from "./pages/TermsAndConditions";
 import { GlobalSettingsSync } from '@/components/GlobalSettingsSync';
+import { useAutoBackup } from '@/hooks/useAutoBackup';
 
+const AutoBackupRunner = () => {
+  useAutoBackup();
+  return null;
+};
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -375,7 +380,9 @@ const App = () => {
                   <ThemeLoader />
                   <RoutePerfWarmer />
                   <GlobalSettingsSync />
+                  <AutoBackupRunner />
                   <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+
                   <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Layout><ProtectedRoute requiredPermission="billing"><Billing /></ProtectedRoute></Layout>} />

@@ -310,9 +310,7 @@ const SuperAdminUsers: React.FC = () => {
   const [loadingBackup, setLoadingBackup] = useState(false);
   const [triggeringBackup, setTriggeringBackup] = useState(false);
   const [restoringBackup, setRestoringBackup] = useState(false);
-  const [gdriveFolderId, setGdriveFolderId] = useState('');
-  const [gdriveCredentials, setGdriveCredentials] = useState('');
-  const [isBackupEnabled, setIsBackupEnabled] = useState(true);
+  const [isBackupEnabled, setIsBackupEnabled] = useState(false);
   const [retentionDays, setRetentionDays] = useState(10);
 
   // Support details state
@@ -647,23 +645,32 @@ const SuperAdminUsers: React.FC = () => {
 
       if (settings) {
         setBackupSettings(settings);
-        setGdriveFolderId(settings.gdrive_folder_id || '');
-        setGdriveCredentials(settings.gdrive_credentials ? JSON.stringify(settings.gdrive_credentials, null, 2) : '');
-        setIsBackupEnabled(settings.is_enabled);
+        setIsBackupEnabled(settings.is_enabled || false);
         setRetentionDays(settings.retention_days || 10);
       }
       
-      const { data: logs, error: logsErr } = await supabase
-        .from('backup_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
+      const { data: logs, error: logsErr } = await supabase.storage.from('pos_backups').list();
+      
       if (logsErr) throw logsErr;
-      if (logs) setBackupLogs(logs);
+      
+      if (logs) {
+        // Map storage files to match the expected log format in UI
+        const mappedLogs = logs
+          .filter(f => f.name !== '.emptyFolderPlaceholder')
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .map(f => ({
+            id: f.id || f.name,
+            created_at: f.created_at,
+            status: 'success',
+            file_name: f.name,
+            file_size: f.metadata?.size || 0,
+            details: 'Cloud Auto-Backup via App'
+          }));
+        setBackupLogs(mappedLogs as any[]);
+      }
     } catch (e: any) {
-      console.error("Failed to load backup data:", e);
-      toast({ title: "Failed to load backup logs", description: e.message, variant: "destructive" });
+      console.error("Backup data fetch error", e);
+      toast({ title: "Failed to load backups", description: e.message, variant: "destructive" });
     } finally {
       setLoadingBackup(false);
     }
@@ -671,19 +678,8 @@ const SuperAdminUsers: React.FC = () => {
 
   const saveBackupSettings = async () => {
     try {
-      let parsedCreds = null;
-      if (gdriveCredentials.trim()) {
-        try {
-          parsedCreds = JSON.parse(gdriveCredentials);
-        } catch (e) {
-          return toast({ title: "Invalid Credentials JSON", description: "Please enter valid Google Service Account JSON.", variant: "destructive" });
-        }
-      }
-      
       const { error } = await supabase.from('backup_settings').upsert({
         id: backupSettings?.id || undefined,
-        gdrive_folder_id: gdriveFolderId || null,
-        gdrive_credentials: parsedCreds,
         is_enabled: isBackupEnabled,
         retention_days: retentionDays,
         updated_at: new Date().toISOString()
@@ -701,20 +697,53 @@ const SuperAdminUsers: React.FC = () => {
   const triggerBackupNow = async () => {
     setTriggeringBackup(true);
     try {
-      const { data, error } = await supabase.functions.invoke('auto-backup', {
-        method: 'POST'
-      });
+      toast({ title: "Starting Backup", description: "Generating cloud backup..." });
       
-      if (error) throw error;
+      const { buildBackup } = await import('@/utils/backupUtils');
+      const backupData = await buildBackup();
+      const backupJson = JSON.stringify(backupData, null, 2);
       
-      toast({ title: "Backup Process Finished", description: data?.details || "Database backup ran successfully." });
+      const now = new Date();
+      const filename = `backup_manual_${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}-${now.getMinutes().toString().padStart(2, '0')}.json`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('pos_backups')
+        .upload(filename, backupJson, {
+          contentType: 'application/json',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      toast({ title: "Backup Successful", description: `Cloud backup ${filename} created successfully.` });
       fetchBackupData();
     } catch (e: any) {
       console.error("Backup trigger failed", e);
-      toast({ title: "Backup Execution Failed", description: e.message || "Ensure your Edge Function is deployed.", variant: "destructive" });
+      toast({ title: "Backup Execution Failed", description: e.message || "Failed to generate manual backup.", variant: "destructive" });
       fetchBackupData();
     } finally {
       setTriggeringBackup(false);
+    }
+  };
+
+  const downloadCloudBackup = async (fileName: string) => {
+    try {
+      toast({ title: "Downloading...", description: `Fetching ${fileName} from cloud storage.` });
+      const { data, error } = await supabase.storage.from('pos_backups').download(fileName);
+      if (error) throw error;
+      
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({ title: "Success", description: "Backup file downloaded." });
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e.message, variant: "destructive" });
     }
   };
 
@@ -1286,36 +1315,19 @@ const SuperAdminUsers: React.FC = () => {
                 <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                      <Settings className="w-4 h-4 text-primary" /> Google Drive Settings
+                      <Settings className="w-4 h-4 text-primary" /> Cloud Storage Settings
                     </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Configure auto backup credentials and GDrive folders.</CardDescription>
+                    <CardDescription className="text-xs text-muted-foreground">Configure automatic database backups to Supabase Cloud Storage.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 dark:bg-slate-950">
                       <div className="flex flex-col gap-0.5">
                         <Label className="text-xs font-bold">Enable Auto Backup</Label>
-                        <span className="text-[10px] text-muted-foreground">Upload backups to Google Drive.</span>
+                        <span className="text-[10px] text-muted-foreground">Upload backups to Cloud Storage automatically.</span>
                       </div>
                       <Switch checked={isBackupEnabled} onCheckedChange={setIsBackupEnabled} />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold">Google Drive Folder ID</Label>
-                      <Input placeholder="Enter GDrive Folder ID..." value={gdriveFolderId} onChange={e => setGdriveFolderId(e.target.value)} className="h-9 text-xs bg-white dark:bg-slate-800 font-mono" />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <Label className="text-xs font-bold">Service Account JSON Credentials</Label>
-                        <Badge variant="outline" className="text-[9px] py-0 px-1 font-mono text-muted-foreground">OAuth2 JSON</Badge>
-                      </div>
-                      <textarea
-                        placeholder='Paste Google Service Account credentials JSON here...'
-                        value={gdriveCredentials}
-                        onChange={e => setGdriveCredentials(e.target.value)}
-                        className="w-full h-36 p-2 border rounded-lg text-[10px] font-mono bg-white dark:bg-slate-850 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary border-slate-200 dark:border-slate-800"
-                      />
-                    </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
@@ -1388,11 +1400,13 @@ const SuperAdminUsers: React.FC = () => {
                           <TableHead className="font-bold text-xs">File Name</TableHead>
                           <TableHead className="font-bold text-xs">File Size</TableHead>
                           <TableHead className="font-bold text-xs">Activity Details</TableHead>
+                          <TableHead className="font-bold text-xs text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {loadingBackup && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading logs...</TableCell></TableRow>}
-                        {!loadingBackup && backupLogs.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No backup activities recorded yet.</TableCell></TableRow>}
+                        {loadingBackup && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading logs...</TableCell></TableRow>}
+                        {!loadingBackup && backupLogs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No backup activities recorded yet.</TableCell></TableRow>}
+
                         {backupLogs.map(log => (
                           <TableRow key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 text-xs">
                             <TableCell className="font-mono text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString()}</TableCell>
@@ -1414,8 +1428,14 @@ const SuperAdminUsers: React.FC = () => {
                             <TableCell className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed max-w-[200px]" title={log.details}>
                               {log.details || '—'}
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" onClick={() => downloadCloudBackup(log.file_name)} title="Download Backup">
+                                <Download className="w-4 h-4 text-primary" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
+
                       </TableBody>
                     </Table>
                   </CardContent>
