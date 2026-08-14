@@ -26,6 +26,7 @@ import { BranchManagement } from '@/components/BranchManagement';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StorageUsageSettings } from '@/components/StorageUsageSettings';
 import { DevicePrefixSettings } from '@/components/DevicePrefixSettings';
 import { LocalBackupSettings } from '@/components/LocalBackupSettings';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
@@ -752,6 +753,7 @@ const Settings = () => {
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Remote Ordering Settings failed to load. Try refreshing.</div>}>
             <RemoteOrderSettings />
           </ErrorBoundary>
+              {profile?.role === 'admin' && <StorageUsageSettings />}
             </TabsContent>
 
             {profile?.role === 'admin' && (
