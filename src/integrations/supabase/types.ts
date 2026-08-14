@@ -74,6 +74,96 @@ export type Database = {
           },
         ]
       }
+      admin_cleanup_logs: {
+        Row: {
+          admin_id: string
+          before_date: string
+          created_at: string
+          deleted_counts: Json
+          id: string
+          performed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          before_date: string
+          created_at?: string
+          deleted_counts?: Json
+          id?: string
+          performed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          before_date?: string
+          created_at?: string
+          deleted_counts?: Json
+          id?: string
+          performed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_storage_quotas: {
+        Row: {
+          admin_id: string
+          cleanup_permission: boolean
+          created_at: string
+          db_quota_mb: number | null
+          file_quota_mb: number | null
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          cleanup_permission?: boolean
+          created_at?: string
+          db_quota_mb?: number | null
+          file_quota_mb?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          cleanup_permission?: boolean
+          created_at?: string
+          db_quota_mb?: number | null
+          file_quota_mb?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admin_storage_usage: {
+        Row: {
+          admin_id: string
+          breakdown: Json
+          computed_at: string
+          created_at: string
+          db_bytes: number
+          file_bytes: number
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          breakdown?: Json
+          computed_at?: string
+          created_at?: string
+          db_bytes?: number
+          file_bytes?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          breakdown?: Json
+          computed_at?: string
+          created_at?: string
+          db_bytes?: number
+          file_bytes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       aggregator_integrations: {
         Row: {
           admin_id: string
@@ -4077,6 +4167,10 @@ export type Database = {
         Args: { p_target_user_id: string }
         Returns: undefined
       }
+      admin_purge_old_data: {
+        Args: { p_before_date: string; p_confirm: string }
+        Returns: Json
+      }
       adopt_public_table_session: {
         Args: {
           p_admin_id: string
@@ -4094,6 +4188,11 @@ export type Database = {
           p_notes: string
           p_reason: string
         }
+        Returns: Json
+      }
+      calc_admin_storage_usage: { Args: { p_admin_id: string }; Returns: Json }
+      check_admin_storage_allowance: {
+        Args: { p_admin_id: string }
         Returns: Json
       }
       check_service_request_rate_limit: {
