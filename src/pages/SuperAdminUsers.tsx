@@ -20,9 +20,10 @@ import { SubscriptionPackPricing } from '@/components/SubscriptionPackPricing';
 import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
+import { SuperAdminStorageQuota } from '@/components/SuperAdminStorageQuota';
 import { PlatformPaymentSettings } from '@/components/PlatformPaymentSettings';
 import { AddUserDialog } from '@/components/AddUserDialog';
-import { Pencil, Sparkles, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
+import { Pencil, Sparkles, HardDrive, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function getRelativeSubscriptionText(endDateStr?: string | null): { text: string; isExpired: boolean; badgeColor: string; stage: 'active' | 'expiring' | 'expired' } {
@@ -201,6 +202,7 @@ const SuperAdminUsers: React.FC = () => {
   const [pwdTarget, setPwdTarget] = useState<{ id: string; label: string } | null>(null);
   const [contactTarget, setContactTarget] = useState<Row | null>(null);
   const [aiLimitTarget, setAiLimitTarget] = useState<Row | null>(null);
+  const [storageTarget, setStorageTarget] = useState<Row | null>(null);
   const [clientLimitsTarget, setClientLimitsTarget] = useState<Row | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
@@ -1273,6 +1275,15 @@ const SuperAdminUsers: React.FC = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={() => setStorageTarget(r)}
+                                  className="h-8 text-xs px-2 border-slate-200 dark:border-slate-800 rounded-xl"
+                                  title="Cloud storage limits (database & files)"
+                                >
+                                  <HardDrive className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => {
                                     setSelectedAdmin(r);
                                     setPermsDialogOpen(true);
@@ -2109,6 +2120,14 @@ const SuperAdminUsers: React.FC = () => {
           adminId={aiLimitTarget.profile_id}
           adminName={aiLimitTarget.hotel_name || aiLimitTarget.name || aiLimitTarget.email || 'admin'}
           onClose={() => setAiLimitTarget(null)}
+        />
+      )}
+
+      {storageTarget && (
+        <SuperAdminStorageQuota
+          adminId={storageTarget.profile_id}
+          adminName={storageTarget.hotel_name || storageTarget.name || storageTarget.email || 'admin'}
+          onClose={() => setStorageTarget(null)}
         />
       )}
 
