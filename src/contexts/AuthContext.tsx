@@ -262,7 +262,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profileData = {
           user_id: user.id,
           name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-          role: (user.user_metadata?.role === 'admin' ? 'admin' : 'user') as UserRole,
+          // Security: clients may never self-assign an elevated role.
+          // Admin profiles are created server-side by the signup trigger only.
+          role: 'user' as UserRole,
           hotel_name: user.user_metadata?.hotel_name || null,
           status: 'active' as UserStatus,
           admin_id: user.user_metadata?.admin_id || null
