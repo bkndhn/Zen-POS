@@ -104,6 +104,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_storage_alerts: {
+        Row: {
+          acknowledged: boolean
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          percent: number
+          threshold: number
+          updated_at: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          percent?: number
+          threshold: number
+          updated_at?: string
+        }
+        Update: {
+          acknowledged?: boolean
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          percent?: number
+          threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_storage_quotas: {
         Row: {
           admin_id: string
