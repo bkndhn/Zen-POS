@@ -4346,6 +4346,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_backup_cron_status: { Args: never; Returns: Json }
       get_branch_scoped_shop_settings: {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {
