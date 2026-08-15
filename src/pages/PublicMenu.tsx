@@ -922,11 +922,14 @@ const PublicMenu = () => {
     const minSwipeDistance = 50;
     const handleTouchStart = (e: React.TouchEvent) => {
         setTouchEnd(null);
-        setTouchStart(e.targetTouches[0].clientX);
+        const t = e.targetTouches?.[0];
+        if (t) setTouchStart(t.clientX);
     };
     const handleTouchMove = (e: React.TouchEvent) => {
-        setTouchEnd(e.targetTouches[0].clientX);
+        const t = e.targetTouches?.[0];
+        if (t) setTouchEnd(t.clientX);
     };
+
     const handleTouchEnd = () => {
         if (!touchStart || !touchEnd) return;
         const distance = touchStart - touchEnd;

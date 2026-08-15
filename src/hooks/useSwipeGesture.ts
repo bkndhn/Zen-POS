@@ -18,7 +18,8 @@ export const useSwipeGesture = ({
   const isEdgeSwipe = useRef(false);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    const touch = e.touches[0];
+    const touch = e.touches?.[0];
+    if (!touch) return;
     touchStartX.current = touch.clientX;
     touchStartY.current = touch.clientY;
     
@@ -29,9 +30,11 @@ export const useSwipeGesture = ({
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     if (touchStartX.current === null || touchStartY.current === null) return;
     
-    const touch = e.changedTouches[0];
+    const touch = e.changedTouches?.[0];
+    if (!touch) { touchStartX.current = null; touchStartY.current = null; return; }
     const deltaX = touch.clientX - touchStartX.current;
     const deltaY = touch.clientY - touchStartY.current;
+
 
     // Check if horizontal swipe is dominant
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
