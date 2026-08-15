@@ -2668,8 +2668,9 @@ const Reports: React.FC = () => {
                     </div>
 
                     {/* Staff Table */}
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="border rounded-lg overflow-x-auto -mx-1 px-1">
+                      <table className="w-full min-w-[640px] text-sm">
+
                         <thead>
                           <tr className="bg-muted/50 border-b">
                             <th className="text-left px-3 py-2 text-xs font-medium">#</th>
@@ -2750,7 +2751,7 @@ const Reports: React.FC = () => {
                 return (
                   <div className="space-y-3">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="bg-muted/50 rounded-lg p-3 text-center">
                         <p className="text-2xl font-bold text-primary">{tableData.length}</p>
                         <p className="text-[10px] text-muted-foreground">Tables Used</p>
@@ -2770,8 +2771,9 @@ const Reports: React.FC = () => {
                     </div>
 
                     {/* Table Grid */}
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
+                    <div className="border rounded-lg overflow-x-auto -mx-1 px-1">
+                      <table className="w-full min-w-[640px] text-sm">
+
                         <thead>
                           <tr className="bg-muted/50 border-b">
                             <th className="text-left px-3 py-2 text-xs font-medium">Table</th>
