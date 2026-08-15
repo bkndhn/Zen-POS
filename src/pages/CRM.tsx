@@ -100,6 +100,7 @@ const CRM: React.FC = () => {
         payment_mode: paymentMode,
         notes: paymentNotes || 'Payment Collected',
         admin_id: adminId,
+        branch_id: operatingBranchId || branchFilterId || undefined,
         balance_after: Number((((historyCustomer.current_balance || 0) - amount)).toFixed(2)),
         created_by: profile?.user_id || adminId
       });
@@ -156,7 +157,7 @@ const CRM: React.FC = () => {
         try {
           const { data } = await (supabase as any)
             .from('shop_settings')
-            .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url, bill_font_family, bill_font_scale, bill_bottom_text')
+            .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url, bill_font_family, bill_font_scale, bill_bottom_text, google_review_url')
             .eq('admin_id', adminId)
             .maybeSingle();
           if (data) {
@@ -170,7 +171,8 @@ const CRM: React.FC = () => {
               printerWidth: data.printer_width || '58mm',
               billFontFamily: data.bill_font_family || '',
               billFontScale: data.bill_font_scale || 1,
-              billBottomText: data.bill_bottom_text || ''
+              billBottomText: data.bill_bottom_text || '',
+              googleReviewUrl: data.google_review_url || ''
             });
           }
         } catch (err) {
@@ -180,6 +182,30 @@ const CRM: React.FC = () => {
     };
     fetchBillSettings();
   }, [adminId, branchFilterId]);
+
+  const [feedbackStats, setFeedbackStats] = useState({ average: 0, count: 0 });
+  useEffect(() => {
+    const fetchFeedbackStats = async () => {
+      if (!adminId) return;
+      try {
+        let query = supabase.from('feedback_submissions').select('overall_rating').eq('admin_id', adminId).not('overall_rating', 'is', null);
+        if (operatingBranchId) {
+          query = query.eq('branch_id', operatingBranchId);
+        } else if (branchFilterId) {
+          query = query.eq('branch_id', branchFilterId);
+        }
+        const { data, error } = await query;
+        if (data && !error) {
+          const count = data.length;
+          const avg = count > 0 ? (data.reduce((acc, curr) => acc + (curr.overall_rating || 0), 0) / count) : 0;
+          setFeedbackStats({ average: Number(avg.toFixed(1)), count });
+        }
+      } catch (e) {
+        console.error('Failed to fetch feedback stats:', e);
+      }
+    };
+    fetchFeedbackStats();
+  }, [adminId, operatingBranchId, branchFilterId]);
 
   const fetchCustomers = async () => {
     if (!adminId) return;
@@ -921,15 +947,15 @@ const CRM: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Online Reviews & Brand Reputation</span>
             </div>
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-bold flex items-center gap-1">Google: ⭐ 4.8 / 5.0 <span className="text-muted-foreground font-normal">(142 reviews)</span></span>
+              <span className="font-bold flex items-center gap-1">Internal Feedback: ⭐ {feedbackStats.average.toFixed(1)} / 5.0 <span className="text-muted-foreground font-normal">({feedbackStats.count} reviews)</span></span>
               <span className="hidden sm:inline text-muted-foreground">•</span>
-              <span className="font-bold hidden sm:flex items-center gap-1">Yelp: ⭐ 4.6 / 5.0</span>
+              <span className="font-bold hidden sm:flex items-center gap-1 text-muted-foreground font-normal">Real branch data</span>
             </div>
           </div>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => window.open('https://business.google.com/', '_blank')}
+            onClick={() => window.open(billSettings?.googleReviewUrl || 'https://business.google.com/', '_blank')}
             className="text-xs rounded-xl h-8 bg-card border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
           >
             Manage Google Profile
