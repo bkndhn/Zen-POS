@@ -92,6 +92,7 @@ interface Row {
   force_logout_reason: string | null;
   max_branches?: number;
   max_sub_users?: number;
+  public_ordering_enabled?: boolean;
 }
 
 interface ClientLimitsModalProps {
