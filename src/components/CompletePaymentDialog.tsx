@@ -65,14 +65,14 @@ interface CompletePaymentDialogProps {
     discount: number;
     discountType: 'flat' | 'percentage';
     additionalCharges: { name: string; amount: number; enabled: boolean }[];
-    finalItems?: CartItem[];
+    finalItems?: any[];
     customerMobile?: string;
     customerName?: string;
     sendWhatsApp?: boolean;
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
     printAction?: 'print' | 'no-print';
-  }) => void;
+  }) => void | Promise<void> | Promise<any>;
   whatsappEnabled?: boolean;
   whatsappShareMode?: 'text' | 'image';
   khataEnabled?: boolean;
