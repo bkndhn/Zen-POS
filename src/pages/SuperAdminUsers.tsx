@@ -92,6 +92,7 @@ interface Row {
   force_logout_reason: string | null;
   max_branches?: number;
   max_sub_users?: number;
+  public_ordering_enabled?: boolean;
 }
 
 interface ClientLimitsModalProps {
@@ -848,7 +849,7 @@ const SuperAdminUsers: React.FC = () => {
         // Enriched with client_permissions & subscription fields from profiles table
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, client_permissions, subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason, max_branches, max_sub_users');
+          .select('id, client_permissions, subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason, max_branches, max_sub_users, public_ordering_enabled');
 
         if (profilesError) throw profilesError;
 
@@ -870,6 +871,7 @@ const SuperAdminUsers: React.FC = () => {
 
             max_branches: prof.max_branches ?? 1,
             max_sub_users: prof.max_sub_users ?? 5,
+            public_ordering_enabled: prof.public_ordering_enabled !== false,
           };
         });
 
@@ -973,6 +975,33 @@ const SuperAdminUsers: React.FC = () => {
         description: err.message || "Failed to update database record",
         variant: "destructive"
       });
+    }
+  };
+
+  // Super Admin only: master switch for customer ordering from the public QR portal.
+  // When disabled the client cannot re-enable it; the portal becomes view-only (menu still visible).
+  const handleTogglePublicOrdering = async (adminProfileId: string, enabled: boolean) => {
+    const admin = rows.find(r => r.profile_id === adminProfileId);
+    if (!admin) return;
+    try {
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({ public_ordering_enabled: enabled })
+        .eq('id', adminProfileId);
+      if (error) throw error;
+
+      setRows(prev => prev.map(r => r.profile_id === adminProfileId ? { ...r, public_ordering_enabled: enabled } : r));
+      setSelectedAdmin(prev => prev && prev.profile_id === adminProfileId ? { ...prev, public_ordering_enabled: enabled } : prev);
+
+      toast({
+        title: enabled ? 'Public ordering enabled' : 'Public ordering disabled',
+        description: enabled
+          ? `${admin.hotel_name || admin.name} customers can place orders from the QR portal.`
+          : `${admin.hotel_name || admin.name} portal is now view-only for all branches.`,
+      });
+    } catch (err: any) {
+      console.error('Failed to update public ordering flag:', err);
+      toast({ title: 'Update failed', description: err.message || 'Could not update setting', variant: 'destructive' });
     }
   };
 
@@ -2070,6 +2099,27 @@ const SuperAdminUsers: React.FC = () => {
                 onCheckedChange={(checked) => {
                   if (selectedAdmin) {
                     handleTogglePermission(selectedAdmin.profile_id, 'allow_online_orders', checked);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-emerald-50/50 dark:bg-emerald-900/20 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center dark:bg-emerald-900/60">
+                  <span className="text-sm">🛒</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Public Portal Ordering</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">public_ordering_enabled</span>
+                  <span className="text-[10px] text-muted-foreground">Off = menu view-only. Client cannot override.</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.public_ordering_enabled !== false}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) {
+                    handleTogglePublicOrdering(selectedAdmin.profile_id, checked);
                   }
                 }}
               />

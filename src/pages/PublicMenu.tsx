@@ -512,11 +512,13 @@ const PublicMenu = () => {
 
     // ========== REMOTE ORDERING STATE ==========
     // isTableMode declared at ~line 224, cart at ~line 304 — both initialized before these hooks (no TDZ)
-    const isRemoteMode = !isTableMode && !!(rawShopSettings as any)?.remote_ordering_enabled && !(rawShopSettings as any)?.remote_ordering_paused;
+    // Super Admin master switch: when disabled, the portal is view-only for this client (all branches).
+    const publicOrderingAllowed = (rawShopSettings as any)?.public_ordering_enabled !== false;
+    const isRemoteMode = !isTableMode && publicOrderingAllowed && !!(rawShopSettings as any)?.remote_ordering_enabled && !(rawShopSettings as any)?.remote_ordering_paused;
     // Store must be open (manual override, daily hours, breaks, holidays) to accept orders.
     // When closed the menu stays fully browsable but every add/qty control is hidden.
     const ordersOpen = !storeStatus || storeStatus.status === 'open';
-    const isOrderingMode = (isTableMode || isRemoteMode) && ordersOpen;
+    const isOrderingMode = publicOrderingAllowed && (isTableMode || isRemoteMode) && ordersOpen;
     const [showRemoteCheckout, setShowRemoteCheckout] = useState(false);
     const [activeRemoteOrderId, setActiveRemoteOrderId] = useState<string | null>(null);
     const [showRemoteTracker, setShowRemoteTracker] = useState(false);
@@ -2128,6 +2130,14 @@ const PublicMenu = () => {
                 )}>
                     {storeStatus.status === 'break' ? <Clock className="w-4 h-4 animate-pulse" /> : <Power className="w-4 h-4" />}
                     {storeStatus.message}
+                </div>
+            )}
+
+            {/* View-only notice when ordering is switched off centrally */}
+            {!publicOrderingAllowed && (
+                <div className="w-full px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold shadow-sm bg-slate-700 text-white">
+                    <Power className="w-4 h-4" />
+                    Menu view only — online ordering is currently unavailable
                 </div>
             )}
 

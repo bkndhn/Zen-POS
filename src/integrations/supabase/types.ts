@@ -2362,6 +2362,7 @@ export type Database = {
           mobile_number: string | null
           multi_branch_enabled: boolean | null
           name: string
+          public_ordering_enabled: boolean
           role: Database["public"]["Enums"]["app_role"]
           shop_name: string | null
           status: string | null
@@ -2391,6 +2392,7 @@ export type Database = {
           mobile_number?: string | null
           multi_branch_enabled?: boolean | null
           name: string
+          public_ordering_enabled?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           shop_name?: string | null
           status?: string | null
@@ -2420,6 +2422,7 @@ export type Database = {
           mobile_number?: string | null
           multi_branch_enabled?: boolean | null
           name?: string
+          public_ordering_enabled?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           shop_name?: string | null
           status?: string | null
@@ -4588,6 +4591,10 @@ export type Database = {
       is_admin_or_super: { Args: never; Returns: boolean }
       is_device_blocked: {
         Args: { p_admin_id: string; p_device_id: string }
+        Returns: boolean
+      }
+      is_public_ordering_enabled: {
+        Args: { p_admin_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: never; Returns: boolean }
