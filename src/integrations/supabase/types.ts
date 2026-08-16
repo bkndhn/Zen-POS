@@ -4226,6 +4226,7 @@ export type Database = {
         }
         Returns: Json
       }
+      calc_admin_branch_storage: { Args: { p_admin_id: string }; Returns: Json }
       calc_admin_storage_usage: { Args: { p_admin_id: string }; Returns: Json }
       check_admin_storage_allowance: {
         Args: { p_admin_id: string }
