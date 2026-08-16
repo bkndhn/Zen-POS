@@ -16,7 +16,7 @@ import { Layout } from "@/components/Layout";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { getStoredBillFont, getSelectedBillFont, loadGoogleFont } from "@/utils/billFontUtils";
 import { safeLocalStorage } from '@/utils/storageUtils';
-import { usePWAInstall } from './hooks/usePWAInstall';
+
 import { usePushNotifications } from './hooks/usePushNotifications';
 
 const ThemeLoader = () => {
