@@ -2551,6 +2551,36 @@ export type Database = {
         }
         Relationships: []
       }
+      public_rate_limits: {
+        Row: {
+          admin_id: string | null
+          bucket_key: string
+          created_at: string
+          hits: number
+          id: string
+          scope: string
+          window_start: string
+        }
+        Insert: {
+          admin_id?: string | null
+          bucket_key: string
+          created_at?: string
+          hits?: number
+          id?: string
+          scope: string
+          window_start: string
+        }
+        Update: {
+          admin_id?: string | null
+          bucket_key?: string
+          created_at?: string
+          hits?: number
+          id?: string
+          scope?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       purchase_distributions: {
         Row: {
           admin_id: string
@@ -4620,6 +4650,16 @@ export type Database = {
         }
         Returns: Json
       }
+      public_rate_limit_hit: {
+        Args: {
+          p_admin_id?: string
+          p_key: string
+          p_max: number
+          p_scope: string
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       public_update_table_status: {
         Args: { p_admin_id: string; p_status: string; p_table_no: string }
         Returns: undefined
@@ -4632,6 +4672,10 @@ export type Database = {
           p_phone: string
         }
         Returns: undefined
+      }
+      raise_admin_storage_alerts: {
+        Args: { p_admin_id: string }
+        Returns: number
       }
       resolve_branch_menu: {
         Args: { p_branch_code: string; p_shop_slug: string }
@@ -4701,6 +4745,7 @@ export type Database = {
         Args: { p_target_admin_id: string }
         Returns: undefined
       }
+      sweep_admin_storage_alerts: { Args: never; Returns: number }
       user_has_branch_access: {
         Args: { p_branch_id: string }
         Returns: boolean
