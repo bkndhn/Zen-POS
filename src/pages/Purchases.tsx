@@ -49,7 +49,7 @@ const Purchases: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'purchases' | 'outstanding'>('purchases');
+  const [activeTab, setActiveTab] = useState<'purchases' | 'outstanding' | 'ledger'>('purchases');
 
   // Form states
   const [supplierId, setSupplierId] = useState<string>('');
