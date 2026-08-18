@@ -176,6 +176,89 @@ const Purchases: React.FC = () => {
     }
   }, [activeTab, purchases, suppliers]);
 
+  // ---------- Credit / Debit ledger ----------
+  const [ledgerRows, setLedgerRows] = useState<any[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+
+  const loadLedger = async () => {
+    if (!adminId) return;
+    setLedgerLoading(true);
+    try {
+      const [purRes, payRes] = await Promise.all([
+        supabase.from('purchases').select('id, purchase_no, purchase_date, total_amount, supplier_id, suppliers(name)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(300),
+        (supabase as any).from('purchase_payments').select('id, amount, payment_date, payment_mode, reference_no, purchase_id').eq('admin_id', adminId).order('payment_date', { ascending: false }).limit(300),
+      ]);
+
+      const purList: any[] = purRes.data || [];
+      const purMap: Record<string, any> = {};
+      purList.forEach(p => { purMap[p.id] = p; });
+
+      const rows: any[] = [
+        ...purList.map(p => ({
+          id: `pur-${p.id}`,
+          date: p.purchase_date,
+          type: 'credit' as const,
+          party: p.suppliers?.name || 'Walk-in Supplier',
+          ref: p.purchase_no,
+          mode: '—',
+          amount: Number(p.total_amount || 0),
+        })),
+        ...((payRes.data || []) as any[]).map(pay => ({
+          id: `pay-${pay.id}`,
+          date: pay.payment_date,
+          type: 'debit' as const,
+          party: purMap[pay.purchase_id]?.suppliers?.name || 'Supplier',
+          ref: pay.reference_no || purMap[pay.purchase_id]?.purchase_no || '—',
+          mode: pay.payment_mode || 'cash',
+          amount: Number(pay.amount || 0),
+        })),
+      ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+      setLedgerRows(rows);
+    } catch (e) {
+      console.error('Ledger load failed', e);
+      toast({ title: 'Could not load purchase ledger', variant: 'destructive' });
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
+  useEffect(() => { loadLedger(); }, [adminId, purchases.length]);
+
+  const kpis = useMemo(() => {
+    const monthKey = format(new Date(), 'yyyy-MM');
+    let monthPurchases = 0, monthPaid = 0, totalCredit = 0, totalDebit = 0;
+    ledgerRows.forEach(r => {
+      const inMonth = (r.date || '').startsWith(monthKey);
+      if (r.type === 'credit') {
+        totalCredit += r.amount;
+        if (inMonth) monthPurchases += r.amount;
+      } else {
+        totalDebit += r.amount;
+        if (inMonth) monthPaid += r.amount;
+      }
+    });
+    return {
+      monthPurchases,
+      monthPaid,
+      outstanding: Math.max(0, totalCredit - totalDebit),
+      billCount: ledgerRows.filter(r => r.type === 'credit').length,
+    };
+  }, [ledgerRows]);
+
+  const exportLedgerCsv = () => {
+    const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Amount'];
+    const lines = ledgerRows.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
+    const csv = [header, ...lines].map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `purchase-ledger-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
   const resetForm = () => {
     setSupplierId(''); setInvoiceNo(''); setNotes('');
     setPurchaseDate(format(new Date(), 'yyyy-MM-dd'));
