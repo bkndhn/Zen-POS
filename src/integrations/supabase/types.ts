@@ -2834,6 +2834,7 @@ export type Database = {
           admin_id: string
           created_at: string
           created_by: string | null
+          grn_no: string | null
           id: string
           invoice_no: string | null
           notes: string | null
@@ -2848,6 +2849,7 @@ export type Database = {
           admin_id: string
           created_at?: string
           created_by?: string | null
+          grn_no?: string | null
           id?: string
           invoice_no?: string | null
           notes?: string | null
@@ -2862,6 +2864,7 @@ export type Database = {
           admin_id?: string
           created_at?: string
           created_by?: string | null
+          grn_no?: string | null
           id?: string
           invoice_no?: string | null
           notes?: string | null
