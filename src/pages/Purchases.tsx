@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info, FileText, Send } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info, FileText, Send, TrendingUp, Wallet, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { offlineManager } from '@/utils/offlineManager';
@@ -175,6 +175,89 @@ const Purchases: React.FC = () => {
       calculateSupplierBalances();
     }
   }, [activeTab, purchases, suppliers]);
+
+  // ---------- Credit / Debit ledger ----------
+  const [ledgerRows, setLedgerRows] = useState<any[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+
+  const loadLedger = async () => {
+    if (!adminId) return;
+    setLedgerLoading(true);
+    try {
+      const [purRes, payRes] = await Promise.all([
+        supabase.from('purchases').select('id, purchase_no, purchase_date, total_amount, supplier_id, suppliers(name)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(300),
+        (supabase as any).from('purchase_payments').select('id, amount, payment_date, payment_mode, reference_no, purchase_id').eq('admin_id', adminId).order('payment_date', { ascending: false }).limit(300),
+      ]);
+
+      const purList: any[] = purRes.data || [];
+      const purMap: Record<string, any> = {};
+      purList.forEach(p => { purMap[p.id] = p; });
+
+      const rows: any[] = [
+        ...purList.map(p => ({
+          id: `pur-${p.id}`,
+          date: p.purchase_date,
+          type: 'credit' as const,
+          party: p.suppliers?.name || 'Walk-in Supplier',
+          ref: p.purchase_no,
+          mode: '—',
+          amount: Number(p.total_amount || 0),
+        })),
+        ...((payRes.data || []) as any[]).map(pay => ({
+          id: `pay-${pay.id}`,
+          date: pay.payment_date,
+          type: 'debit' as const,
+          party: purMap[pay.purchase_id]?.suppliers?.name || 'Supplier',
+          ref: pay.reference_no || purMap[pay.purchase_id]?.purchase_no || '—',
+          mode: pay.payment_mode || 'cash',
+          amount: Number(pay.amount || 0),
+        })),
+      ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+      setLedgerRows(rows);
+    } catch (e) {
+      console.error('Ledger load failed', e);
+      toast({ title: 'Could not load purchase ledger', variant: 'destructive' });
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
+  useEffect(() => { loadLedger(); }, [adminId, purchases.length]);
+
+  const kpis = useMemo(() => {
+    const monthKey = format(new Date(), 'yyyy-MM');
+    let monthPurchases = 0, monthPaid = 0, totalCredit = 0, totalDebit = 0;
+    ledgerRows.forEach(r => {
+      const inMonth = (r.date || '').startsWith(monthKey);
+      if (r.type === 'credit') {
+        totalCredit += r.amount;
+        if (inMonth) monthPurchases += r.amount;
+      } else {
+        totalDebit += r.amount;
+        if (inMonth) monthPaid += r.amount;
+      }
+    });
+    return {
+      monthPurchases,
+      monthPaid,
+      outstanding: Math.max(0, totalCredit - totalDebit),
+      billCount: ledgerRows.filter(r => r.type === 'credit').length,
+    };
+  }, [ledgerRows]);
+
+  const exportLedgerCsv = () => {
+    const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Amount'];
+    const lines = ledgerRows.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
+    const csv = [header, ...lines].map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `purchase-ledger-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   const resetForm = () => {
     setSupplierId(''); setInvoiceNo(''); setNotes('');
@@ -607,11 +690,35 @@ Please confirm receipt of this order.`;
           <Button onClick={openNew} className="h-9 font-semibold shadow-sm"><Plus className="w-4 h-4 mr-1.5" /> New Purchase</Button>
         </div>
 
+        {/* KPI summary */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: 'Purchases this month', value: kpis.monthPurchases, icon: ShoppingBag, tone: 'text-primary' },
+            { label: 'Paid this month', value: kpis.monthPaid, icon: Wallet, tone: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'Total outstanding', value: kpis.outstanding, icon: TrendingUp, tone: 'text-rose-500' },
+            { label: 'Purchase bills', value: kpis.billCount, icon: FileText, tone: 'text-slate-600 dark:text-slate-300', plain: true },
+          ].map(k => (
+            <Card key={k.label} className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                  <k.icon className={`w-3.5 h-3.5 ${k.tone}`} />
+                  <span className="truncate">{k.label}</span>
+                </div>
+                <p className={`mt-1.5 text-lg font-black ${k.tone}`}>
+                  {ledgerLoading ? <span className="inline-block h-5 w-20 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" /> : (k as any).plain ? k.value : `₹${Number(k.value).toFixed(2)}`}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)} className="w-full">
-          <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 w-full sm:w-auto max-w-[400px]">
+          <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 w-full sm:w-auto flex-wrap h-auto">
             <TabsTrigger value="purchases" className="text-xs font-semibold py-1.5 px-3">Recent Purchases</TabsTrigger>
             <TabsTrigger value="outstanding" className="text-xs font-semibold py-1.5 px-3">Suppliers & Outstanding</TabsTrigger>
+            <TabsTrigger value="ledger" className="text-xs font-semibold py-1.5 px-3">Credit / Debit Ledger</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="purchases" className="mt-4">
             <Card className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950 overflow-hidden">
@@ -713,7 +820,54 @@ Please confirm receipt of this order.`;
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="ledger" className="mt-4">
+            <Card className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950 overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/10 py-3 px-5 flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Purchase Credit / Debit Ledger</CardTitle>
+                <Button size="sm" variant="outline" onClick={exportLedgerCsv} disabled={ledgerRows.length === 0} className="h-8 text-xs font-semibold gap-1.5">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800/80">
+                {ledgerLoading && (
+                  <div className="flex justify-center items-center py-12 text-slate-500">
+                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading ledger…</span>
+                  </div>
+                )}
+                {!ledgerLoading && ledgerRows.length === 0 && (
+                  <p className="text-slate-400 text-center py-12 text-sm">No purchase or payment entries yet</p>
+                )}
+                {!ledgerLoading && ledgerRows.map(r => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 py-3 px-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {r.type === 'credit'
+                        ? <ArrowDownCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                        : <ArrowUpCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{r.party}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span>{r.date}</span>
+                          <span>•</span>
+                          <span className="truncate">{r.ref}</span>
+                          {r.type === 'debit' && <><span>•</span><span className="uppercase">{r.mode}</span></>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`text-sm font-black ${r.type === 'credit' ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {r.type === 'credit' ? '+' : '−'}₹{r.amount.toFixed(2)}
+                      </p>
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{r.type === 'credit' ? 'Credit (Payable)' : 'Debit (Paid)'}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
       </div>
 
       {/* New Purchase Dialog */}
