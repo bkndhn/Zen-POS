@@ -690,11 +690,35 @@ Please confirm receipt of this order.`;
           <Button onClick={openNew} className="h-9 font-semibold shadow-sm"><Plus className="w-4 h-4 mr-1.5" /> New Purchase</Button>
         </div>
 
+        {/* KPI summary */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: 'Purchases this month', value: kpis.monthPurchases, icon: ShoppingBag, tone: 'text-primary' },
+            { label: 'Paid this month', value: kpis.monthPaid, icon: Wallet, tone: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'Total outstanding', value: kpis.outstanding, icon: TrendingUp, tone: 'text-rose-500' },
+            { label: 'Purchase bills', value: kpis.billCount, icon: FileText, tone: 'text-slate-600 dark:text-slate-300', plain: true },
+          ].map(k => (
+            <Card key={k.label} className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                  <k.icon className={`w-3.5 h-3.5 ${k.tone}`} />
+                  <span className="truncate">{k.label}</span>
+                </div>
+                <p className={`mt-1.5 text-lg font-black ${k.tone}`}>
+                  {ledgerLoading ? <span className="inline-block h-5 w-20 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" /> : (k as any).plain ? k.value : `₹${Number(k.value).toFixed(2)}`}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)} className="w-full">
-          <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 w-full sm:w-auto max-w-[400px]">
+          <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700/50 w-full sm:w-auto flex-wrap h-auto">
             <TabsTrigger value="purchases" className="text-xs font-semibold py-1.5 px-3">Recent Purchases</TabsTrigger>
             <TabsTrigger value="outstanding" className="text-xs font-semibold py-1.5 px-3">Suppliers & Outstanding</TabsTrigger>
+            <TabsTrigger value="ledger" className="text-xs font-semibold py-1.5 px-3">Credit / Debit Ledger</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="purchases" className="mt-4">
             <Card className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950 overflow-hidden">
