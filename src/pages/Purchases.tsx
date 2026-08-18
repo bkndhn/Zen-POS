@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info, FileText, Send } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calendar, Loader2, Info, FileText, Send, TrendingUp, Wallet, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { offlineManager } from '@/utils/offlineManager';
