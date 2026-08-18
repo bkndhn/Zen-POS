@@ -820,7 +820,54 @@ Please confirm receipt of this order.`;
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="ledger" className="mt-4">
+            <Card className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950 overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/10 py-3 px-5 flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Purchase Credit / Debit Ledger</CardTitle>
+                <Button size="sm" variant="outline" onClick={exportLedgerCsv} disabled={ledgerRows.length === 0} className="h-8 text-xs font-semibold gap-1.5">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800/80">
+                {ledgerLoading && (
+                  <div className="flex justify-center items-center py-12 text-slate-500">
+                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading ledger…</span>
+                  </div>
+                )}
+                {!ledgerLoading && ledgerRows.length === 0 && (
+                  <p className="text-slate-400 text-center py-12 text-sm">No purchase or payment entries yet</p>
+                )}
+                {!ledgerLoading && ledgerRows.map(r => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 py-3 px-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {r.type === 'credit'
+                        ? <ArrowDownCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                        : <ArrowUpCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{r.party}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span>{r.date}</span>
+                          <span>•</span>
+                          <span className="truncate">{r.ref}</span>
+                          {r.type === 'debit' && <><span>•</span><span className="uppercase">{r.mode}</span></>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`text-sm font-black ${r.type === 'credit' ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {r.type === 'credit' ? '+' : '−'}₹{r.amount.toFixed(2)}
+                      </p>
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{r.type === 'credit' ? 'Credit (Payable)' : 'Debit (Paid)'}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
       </div>
 
       {/* New Purchase Dialog */}
