@@ -356,6 +356,17 @@ const Purchases: React.FC = () => {
 
       if (error) throw error;
 
+      // Persist GRN number for traceability (column added via migration)
+      if (purchaseData && (purchaseData as any).id && grnNo.trim()) {
+        const { error: grnErr } = await (supabase as any)
+          .from('purchases')
+          .update({ grn_no: grnNo.trim() })
+          .eq('id', (purchaseData as any).id);
+        if (grnErr) console.warn('Failed to save GRN no:', grnErr);
+      }
+
+
+
       // Record initial payment if specified
       if (purchaseData && (purchaseData as any).id && paidAmount > 0) {
         const { error: payError } = await (supabase as any).from("purchase_payments").insert({
