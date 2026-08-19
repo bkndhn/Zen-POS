@@ -261,7 +261,7 @@ const Purchases: React.FC = () => {
 
 
   const resetForm = () => {
-    setSupplierId(''); setInvoiceNo(''); setNotes('');
+    setSupplierId(''); setInvoiceNo(''); setGrnNo(''); setNotes('');
     setPurchaseDate(format(new Date(), 'yyyy-MM-dd'));
     setPaidAmount(0); setInitialPaymentMode('cash');
     setLines([blankLine()]);
