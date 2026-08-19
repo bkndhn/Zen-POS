@@ -880,7 +880,7 @@ Please confirm receipt of this order.`;
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid sm:grid-cols-3 gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-sm">
+          <div className="grid sm:grid-cols-4 gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-sm">
             <div>
               <Label className="text-xs font-semibold">Supplier</Label>
               <Select value={supplierId} onValueChange={setSupplierId}>
@@ -895,10 +895,15 @@ Please confirm receipt of this order.`;
               <Input value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} placeholder="e.g. INV-123" className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
             </div>
             <div>
+              <Label className="text-xs font-semibold">GRN No</Label>
+              <Input value={grnNo} onChange={e => setGrnNo(e.target.value)} placeholder="e.g. GRN-045" className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
+            </div>
+            <div>
               <Label className="text-xs font-semibold">Date</Label>
               <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
             </div>
           </div>
+
 
           <div className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
