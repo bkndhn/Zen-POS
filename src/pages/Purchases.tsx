@@ -54,6 +54,7 @@ const Purchases: React.FC = () => {
   // Form states
   const [supplierId, setSupplierId] = useState<string>('');
   const [invoiceNo, setInvoiceNo] = useState('');
+  const [grnNo, setGrnNo] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<Line[]>([]);
@@ -246,9 +247,42 @@ const Purchases: React.FC = () => {
     };
   }, [ledgerRows]);
 
+  // ---------- Ledger filters / search / pagination ----------
+  const [ledgerFrom, setLedgerFrom] = useState('');
+  const [ledgerTo, setLedgerTo] = useState('');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerType, setLedgerType] = useState<'all' | 'credit' | 'debit'>('all');
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PAGE_SIZE = 25;
+
+  const filteredLedger = useMemo(() => {
+    const q = ledgerSearch.trim().toLowerCase();
+    return ledgerRows.filter(r => {
+      if (ledgerFrom && (r.date || '') < ledgerFrom) return false;
+      if (ledgerTo && (r.date || '') > ledgerTo) return false;
+      if (ledgerType !== 'all' && r.type !== ledgerType) return false;
+      if (q && !`${r.party} ${r.ref}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [ledgerRows, ledgerFrom, ledgerTo, ledgerSearch, ledgerType]);
+
+  useEffect(() => { setLedgerPage(1); }, [ledgerFrom, ledgerTo, ledgerSearch, ledgerType]);
+
+  const ledgerTotalPages = Math.max(1, Math.ceil(filteredLedger.length / LEDGER_PAGE_SIZE));
+  const pagedLedger = useMemo(
+    () => filteredLedger.slice((ledgerPage - 1) * LEDGER_PAGE_SIZE, ledgerPage * LEDGER_PAGE_SIZE),
+    [filteredLedger, ledgerPage]
+  );
+
+  const filteredTotals = useMemo(() => {
+    let credit = 0, debit = 0;
+    filteredLedger.forEach(r => { r.type === 'credit' ? (credit += r.amount) : (debit += r.amount); });
+    return { credit, debit, net: credit - debit };
+  }, [filteredLedger]);
+
   const exportLedgerCsv = () => {
     const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Amount'];
-    const lines = ledgerRows.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
+    const lines = filteredLedger.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
     const csv = [header, ...lines].map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
@@ -258,9 +292,36 @@ const Purchases: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const esc = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const exportLedgerPdf = () => {
+    if (!filteredLedger.length) return;
+    const rangeLabel = `${ledgerFrom || 'Start'} → ${ledgerTo || 'Today'}`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Purchase Ledger</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:14px;color:#000}
+h1{font-size:17px;margin-bottom:4px}p{margin-bottom:8px;font-size:11px}
+table{width:100%;border-collapse:collapse}th{background:#2980b9;color:#fff;padding:5px;text-align:left;font-size:10px}
+td{padding:4px 5px;border-bottom:1px solid #ddd;font-size:10px}.r{text-align:right}.b{font-weight:bold;background:#ecf0f1}</style></head><body>
+<h1>Purchase Credit / Debit Ledger</h1>
+<p>Period: ${esc(rangeLabel)} | Entries: ${filteredLedger.length} | Generated: ${new Date().toLocaleString()}</p>
+<table><tr><th>#</th><th>Date</th><th>Type</th><th>Party</th><th>Reference</th><th>Mode</th><th class="r">Amount</th></tr>
+${filteredLedger.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.date)}</td><td>${r.type === 'credit' ? 'Credit (Purchase)' : 'Debit (Payment)'}</td><td>${esc(r.party)}</td><td>${esc(r.ref)}</td><td>${esc(r.mode)}</td><td class="r">${r.amount.toFixed(2)}</td></tr>`).join('')}
+<tr class="b"><td></td><td>TOTAL CREDIT</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.credit.toFixed(2)}</td></tr>
+<tr class="b"><td></td><td>TOTAL DEBIT</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.debit.toFixed(2)}</td></tr>
+<tr class="b"><td></td><td>OUTSTANDING</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.net.toFixed(2)}</td></tr>
+</table></body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { toast({ title: 'Please allow popups to export PDF', variant: 'destructive' }); return; }
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => setTimeout(() => { w.focus(); w.print(); }, 300);
+    setTimeout(() => { if (w && !w.closed) { w.focus(); w.print(); } }, 1000);
+  };
+
+
 
   const resetForm = () => {
-    setSupplierId(''); setInvoiceNo(''); setNotes('');
+    setSupplierId(''); setInvoiceNo(''); setGrnNo(''); setNotes('');
     setPurchaseDate(format(new Date(), 'yyyy-MM-dd'));
     setPaidAmount(0); setInitialPaymentMode('cash');
     setLines([blankLine()]);
@@ -354,6 +415,17 @@ const Purchases: React.FC = () => {
       const { data: purchaseData, error } = await supabase.rpc('create_purchase_transaction', payloadData);
 
       if (error) throw error;
+
+      // Persist GRN number for traceability (column added via migration)
+      if (purchaseData && (purchaseData as any).id && grnNo.trim()) {
+        const { error: grnErr } = await (supabase as any)
+          .from('purchases')
+          .update({ grn_no: grnNo.trim() })
+          .eq('id', (purchaseData as any).id);
+        if (grnErr) console.warn('Failed to save GRN no:', grnErr);
+      }
+
+
 
       // Record initial payment if specified
       if (purchaseData && (purchaseData as any).id && paidAmount > 0) {
@@ -823,11 +895,37 @@ Please confirm receipt of this order.`;
 
           <TabsContent value="ledger" className="mt-4">
             <Card className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950 overflow-hidden">
-              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/10 py-3 px-5 flex-row items-center justify-between gap-2">
-                <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Purchase Credit / Debit Ledger</CardTitle>
-                <Button size="sm" variant="outline" onClick={exportLedgerCsv} disabled={ledgerRows.length === 0} className="h-8 text-xs font-semibold gap-1.5">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /> Export CSV
-                </Button>
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/10 py-3 px-5 space-y-3">
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Purchase Credit / Debit Ledger</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={exportLedgerCsv} disabled={filteredLedger.length === 0} className="h-8 text-xs font-semibold gap-1.5">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /> CSV
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={exportLedgerPdf} disabled={filteredLedger.length === 0} className="h-8 text-xs font-semibold gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-rose-500" /> PDF
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <Input type="date" value={ledgerFrom} onChange={e => setLedgerFrom(e.target.value)} className="h-8 text-xs bg-white dark:bg-slate-900" />
+                  <Input type="date" value={ledgerTo} onChange={e => setLedgerTo(e.target.value)} className="h-8 text-xs bg-white dark:bg-slate-900" />
+                  <Input value={ledgerSearch} onChange={e => setLedgerSearch(e.target.value)} placeholder="Search party / reference" className="h-8 text-xs bg-white dark:bg-slate-900" />
+                  <Select value={ledgerType} onValueChange={(v: any) => setLedgerType(v)}>
+                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All entries</SelectItem>
+                      <SelectItem value="credit">Credit (Purchases)</SelectItem>
+                      <SelectItem value="debit">Debit (Payments)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold">
+                  <span className="text-rose-500">Credit ₹{filteredTotals.credit.toFixed(2)}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">Debit ₹{filteredTotals.debit.toFixed(2)}</span>
+                  <span className="text-slate-600 dark:text-slate-300">Outstanding ₹{filteredTotals.net.toFixed(2)}</span>
+                  <span className="text-muted-foreground">{filteredLedger.length} entries</span>
+                </div>
               </CardHeader>
               <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800/80">
                 {ledgerLoading && (
@@ -836,10 +934,10 @@ Please confirm receipt of this order.`;
                     <span>Loading ledger…</span>
                   </div>
                 )}
-                {!ledgerLoading && ledgerRows.length === 0 && (
-                  <p className="text-slate-400 text-center py-12 text-sm">No purchase or payment entries yet</p>
+                {!ledgerLoading && filteredLedger.length === 0 && (
+                  <p className="text-slate-400 text-center py-12 text-sm">No matching purchase or payment entries</p>
                 )}
-                {!ledgerLoading && ledgerRows.map(r => (
+                {!ledgerLoading && pagedLedger.map(r => (
                   <div key={r.id} className="flex items-center justify-between gap-3 py-3 px-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       {r.type === 'credit'
@@ -863,7 +961,15 @@ Please confirm receipt of this order.`;
                     </div>
                   </div>
                 ))}
+                {!ledgerLoading && filteredLedger.length > LEDGER_PAGE_SIZE && (
+                  <div className="flex items-center justify-between gap-2 px-5 py-3">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" disabled={ledgerPage <= 1} onClick={() => setLedgerPage(p => Math.max(1, p - 1))}>Previous</Button>
+                    <span className="text-xs text-muted-foreground font-semibold">Page {ledgerPage} of {ledgerTotalPages}</span>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" disabled={ledgerPage >= ledgerTotalPages} onClick={() => setLedgerPage(p => Math.min(ledgerTotalPages, p + 1))}>Next</Button>
+                  </div>
+                )}
               </CardContent>
+
             </Card>
           </TabsContent>
         </Tabs>
@@ -880,7 +986,7 @@ Please confirm receipt of this order.`;
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid sm:grid-cols-3 gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-sm">
+          <div className="grid sm:grid-cols-4 gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-sm">
             <div>
               <Label className="text-xs font-semibold">Supplier</Label>
               <Select value={supplierId} onValueChange={setSupplierId}>
@@ -895,10 +1001,15 @@ Please confirm receipt of this order.`;
               <Input value={invoiceNo} onChange={e => setInvoiceNo(e.target.value)} placeholder="e.g. INV-123" className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
             </div>
             <div>
+              <Label className="text-xs font-semibold">GRN No</Label>
+              <Input value={grnNo} onChange={e => setGrnNo(e.target.value)} placeholder="e.g. GRN-045" className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
+            </div>
+            <div>
               <Label className="text-xs font-semibold">Date</Label>
               <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="h-9 mt-1 text-xs bg-white dark:bg-slate-800" />
             </div>
           </div>
+
 
           <div className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
