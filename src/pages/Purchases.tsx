@@ -895,11 +895,37 @@ Please confirm receipt of this order.`;
 
           <TabsContent value="ledger" className="mt-4">
             <Card className="border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-950 overflow-hidden">
-              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/10 py-3 px-5 flex-row items-center justify-between gap-2">
-                <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Purchase Credit / Debit Ledger</CardTitle>
-                <Button size="sm" variant="outline" onClick={exportLedgerCsv} disabled={ledgerRows.length === 0} className="h-8 text-xs font-semibold gap-1.5">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /> Export CSV
-                </Button>
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/10 py-3 px-5 space-y-3">
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Purchase Credit / Debit Ledger</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={exportLedgerCsv} disabled={filteredLedger.length === 0} className="h-8 text-xs font-semibold gap-1.5">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /> CSV
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={exportLedgerPdf} disabled={filteredLedger.length === 0} className="h-8 text-xs font-semibold gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-rose-500" /> PDF
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <Input type="date" value={ledgerFrom} onChange={e => setLedgerFrom(e.target.value)} className="h-8 text-xs bg-white dark:bg-slate-900" />
+                  <Input type="date" value={ledgerTo} onChange={e => setLedgerTo(e.target.value)} className="h-8 text-xs bg-white dark:bg-slate-900" />
+                  <Input value={ledgerSearch} onChange={e => setLedgerSearch(e.target.value)} placeholder="Search party / reference" className="h-8 text-xs bg-white dark:bg-slate-900" />
+                  <Select value={ledgerType} onValueChange={(v: any) => setLedgerType(v)}>
+                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All entries</SelectItem>
+                      <SelectItem value="credit">Credit (Purchases)</SelectItem>
+                      <SelectItem value="debit">Debit (Payments)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold">
+                  <span className="text-rose-500">Credit ₹{filteredTotals.credit.toFixed(2)}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">Debit ₹{filteredTotals.debit.toFixed(2)}</span>
+                  <span className="text-slate-600 dark:text-slate-300">Outstanding ₹{filteredTotals.net.toFixed(2)}</span>
+                  <span className="text-muted-foreground">{filteredLedger.length} entries</span>
+                </div>
               </CardHeader>
               <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800/80">
                 {ledgerLoading && (
@@ -908,10 +934,10 @@ Please confirm receipt of this order.`;
                     <span>Loading ledger…</span>
                   </div>
                 )}
-                {!ledgerLoading && ledgerRows.length === 0 && (
-                  <p className="text-slate-400 text-center py-12 text-sm">No purchase or payment entries yet</p>
+                {!ledgerLoading && filteredLedger.length === 0 && (
+                  <p className="text-slate-400 text-center py-12 text-sm">No matching purchase or payment entries</p>
                 )}
-                {!ledgerLoading && ledgerRows.map(r => (
+                {!ledgerLoading && pagedLedger.map(r => (
                   <div key={r.id} className="flex items-center justify-between gap-3 py-3 px-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       {r.type === 'credit'
@@ -935,7 +961,15 @@ Please confirm receipt of this order.`;
                     </div>
                   </div>
                 ))}
+                {!ledgerLoading && filteredLedger.length > LEDGER_PAGE_SIZE && (
+                  <div className="flex items-center justify-between gap-2 px-5 py-3">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" disabled={ledgerPage <= 1} onClick={() => setLedgerPage(p => Math.max(1, p - 1))}>Previous</Button>
+                    <span className="text-xs text-muted-foreground font-semibold">Page {ledgerPage} of {ledgerTotalPages}</span>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" disabled={ledgerPage >= ledgerTotalPages} onClick={() => setLedgerPage(p => Math.min(ledgerTotalPages, p + 1))}>Next</Button>
+                  </div>
+                )}
               </CardContent>
+
             </Card>
           </TabsContent>
         </Tabs>
