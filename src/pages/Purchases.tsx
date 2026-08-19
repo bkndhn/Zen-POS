@@ -54,6 +54,7 @@ const Purchases: React.FC = () => {
   // Form states
   const [supplierId, setSupplierId] = useState<string>('');
   const [invoiceNo, setInvoiceNo] = useState('');
+  const [grnNo, setGrnNo] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<Line[]>([]);
