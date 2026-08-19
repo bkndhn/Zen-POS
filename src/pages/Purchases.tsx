@@ -247,9 +247,42 @@ const Purchases: React.FC = () => {
     };
   }, [ledgerRows]);
 
+  // ---------- Ledger filters / search / pagination ----------
+  const [ledgerFrom, setLedgerFrom] = useState('');
+  const [ledgerTo, setLedgerTo] = useState('');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerType, setLedgerType] = useState<'all' | 'credit' | 'debit'>('all');
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PAGE_SIZE = 25;
+
+  const filteredLedger = useMemo(() => {
+    const q = ledgerSearch.trim().toLowerCase();
+    return ledgerRows.filter(r => {
+      if (ledgerFrom && (r.date || '') < ledgerFrom) return false;
+      if (ledgerTo && (r.date || '') > ledgerTo) return false;
+      if (ledgerType !== 'all' && r.type !== ledgerType) return false;
+      if (q && !`${r.party} ${r.ref}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [ledgerRows, ledgerFrom, ledgerTo, ledgerSearch, ledgerType]);
+
+  useEffect(() => { setLedgerPage(1); }, [ledgerFrom, ledgerTo, ledgerSearch, ledgerType]);
+
+  const ledgerTotalPages = Math.max(1, Math.ceil(filteredLedger.length / LEDGER_PAGE_SIZE));
+  const pagedLedger = useMemo(
+    () => filteredLedger.slice((ledgerPage - 1) * LEDGER_PAGE_SIZE, ledgerPage * LEDGER_PAGE_SIZE),
+    [filteredLedger, ledgerPage]
+  );
+
+  const filteredTotals = useMemo(() => {
+    let credit = 0, debit = 0;
+    filteredLedger.forEach(r => { r.type === 'credit' ? (credit += r.amount) : (debit += r.amount); });
+    return { credit, debit, net: credit - debit };
+  }, [filteredLedger]);
+
   const exportLedgerCsv = () => {
     const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Amount'];
-    const lines = ledgerRows.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
+    const lines = filteredLedger.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
     const csv = [header, ...lines].map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
@@ -258,6 +291,33 @@ const Purchases: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const esc = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const exportLedgerPdf = () => {
+    if (!filteredLedger.length) return;
+    const rangeLabel = `${ledgerFrom || 'Start'} → ${ledgerTo || 'Today'}`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Purchase Ledger</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:14px;color:#000}
+h1{font-size:17px;margin-bottom:4px}p{margin-bottom:8px;font-size:11px}
+table{width:100%;border-collapse:collapse}th{background:#2980b9;color:#fff;padding:5px;text-align:left;font-size:10px}
+td{padding:4px 5px;border-bottom:1px solid #ddd;font-size:10px}.r{text-align:right}.b{font-weight:bold;background:#ecf0f1}</style></head><body>
+<h1>Purchase Credit / Debit Ledger</h1>
+<p>Period: ${esc(rangeLabel)} | Entries: ${filteredLedger.length} | Generated: ${new Date().toLocaleString()}</p>
+<table><tr><th>#</th><th>Date</th><th>Type</th><th>Party</th><th>Reference</th><th>Mode</th><th class="r">Amount</th></tr>
+${filteredLedger.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.date)}</td><td>${r.type === 'credit' ? 'Credit (Purchase)' : 'Debit (Payment)'}</td><td>${esc(r.party)}</td><td>${esc(r.ref)}</td><td>${esc(r.mode)}</td><td class="r">${r.amount.toFixed(2)}</td></tr>`).join('')}
+<tr class="b"><td></td><td>TOTAL CREDIT</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.credit.toFixed(2)}</td></tr>
+<tr class="b"><td></td><td>TOTAL DEBIT</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.debit.toFixed(2)}</td></tr>
+<tr class="b"><td></td><td>OUTSTANDING</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.net.toFixed(2)}</td></tr>
+</table></body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { toast({ title: 'Please allow popups to export PDF', variant: 'destructive' }); return; }
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => setTimeout(() => { w.focus(); w.print(); }, 300);
+    setTimeout(() => { if (w && !w.closed) { w.focus(); w.print(); } }, 1000);
+  };
+
 
 
   const resetForm = () => {
