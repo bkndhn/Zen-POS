@@ -1497,6 +1497,42 @@ Please confirm receipt of this order.`;
         </DialogContent>
       </Dialog>
 
+      {/* Void GRN Confirmation */}
+      <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-950 rounded-xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-rose-600 flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4" /> Void {selectedPurchase?.purchase_no}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground text-xs">
+              This rolls back all stock added by this GRN, records reversal entries in the stock ledger, and marks the purchase and its ledger entries as <b>VOIDED</b> for audit. This cannot be undone.
+            </p>
+            <div>
+              <Label className="text-xs font-semibold">Reason (optional)</Label>
+              <Input value={voidReason} onChange={e => setVoidReason(e.target.value)} placeholder="e.g. Wrong supplier / duplicate entry" className="h-9 mt-1 text-xs" />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold">Type VOID to confirm</Label>
+              <Input value={voidConfirmText} onChange={e => setVoidConfirmText(e.target.value)} placeholder="VOID" className="h-9 mt-1 text-xs" />
+            </div>
+          </div>
+          <DialogFooter className="mt-4 flex gap-2">
+            <Button variant="outline" className="h-9" onClick={() => setVoidOpen(false)}>Cancel</Button>
+            <Button
+              className="h-9 bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+              disabled={voiding || voidConfirmText.trim().toUpperCase() !== 'VOID'}
+              onClick={handleVoidPurchase}
+            >
+              {voiding ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Voiding…</> : 'Void GRN'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
       {/* Record Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent className="max-w-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xl">
