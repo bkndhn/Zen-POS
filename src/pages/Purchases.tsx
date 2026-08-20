@@ -1478,8 +1478,19 @@ Please confirm receipt of this order.`;
                   <Button variant="outline" className="h-9 font-semibold text-emerald-600 border-emerald-200 hover:bg-emerald-50 flex-1 sm:flex-none" onClick={() => sendWhatsApp(selectedPurchase)}>
                     <Send className="w-4 h-4 mr-1.5" /> WhatsApp
                   </Button>
+                  <Button variant="outline" className="h-9 font-semibold flex-1 sm:flex-none" onClick={() => exportGrnPdf(selectedPurchase)}>
+                    <FileText className="w-4 h-4 mr-1.5" /> GRN Receipt
+                  </Button>
                 </div>
-                <Button variant="outline" className="h-9 font-semibold w-full sm:w-auto" onClick={() => setDetailsOpen(false)}>Close</Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  {selectedPurchase.status !== 'void' && (
+                    <Button variant="outline" className="h-9 font-semibold text-rose-600 border-rose-200 hover:bg-rose-50 flex-1 sm:flex-none" onClick={() => { setVoidConfirmText(''); setVoidReason(''); setVoidOpen(true); }}>
+                      <Trash2 className="w-4 h-4 mr-1.5" /> Void GRN
+                    </Button>
+                  )}
+                  <Button variant="outline" className="h-9 font-semibold flex-1 sm:flex-none" onClick={() => setDetailsOpen(false)}>Close</Button>
+                </div>
+
               </DialogFooter>
             </>
           )}
