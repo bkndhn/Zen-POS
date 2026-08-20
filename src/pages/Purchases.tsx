@@ -898,8 +898,11 @@ Please confirm receipt of this order.`;
                   >
                     <div className="min-w-0 flex-1">
                       <div className="font-bold text-sm text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors flex items-center gap-1.5">
-                        <span>{p.purchase_no}</span>
+                        <span className={(p as any).status === 'void' ? 'line-through opacity-60' : ''}>{p.purchase_no}</span>
+                        {(p as any).grn_no && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-muted-foreground font-normal">GRN: {(p as any).grn_no}</span>}
                         {p.invoice_no && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-muted-foreground font-normal">Inv: {p.invoice_no}</span>}
+                        {(p as any).status === 'void' && <span className="text-[9px] font-black uppercase tracking-wider text-rose-600 bg-rose-100 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">Voided</span>}
+
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                         <span className="font-medium text-slate-600 dark:text-slate-400">{p.suppliers?.name || 'Walk-in Supplier'}</span>
