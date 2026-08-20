@@ -1002,7 +1002,27 @@ Please confirm receipt of this order.`;
                       <SelectItem value="debit">Debit (Payments)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={ledgerMode} onValueChange={setLedgerMode}>
+                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900"><SelectValue placeholder="Payment mode" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All payment modes</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="upi">UPI</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="bank">Bank transfer</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={ledgerSupplier} onValueChange={setLedgerSupplier}>
+                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900"><SelectValue placeholder="Supplier" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All suppliers</SelectItem>
+                      <SelectItem value="walkin">Walk-in Supplier</SelectItem>
+                      {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
+
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold">
                   <span className="text-rose-500">Credit ₹{filteredTotals.credit.toFixed(2)}</span>
                   <span className="text-emerald-600 dark:text-emerald-400">Debit ₹{filteredTotals.debit.toFixed(2)}</span>
