@@ -236,7 +236,7 @@ const Purchases: React.FC = () => {
   const kpis = useMemo(() => {
     const monthKey = format(new Date(), 'yyyy-MM');
     let monthPurchases = 0, monthPaid = 0, totalCredit = 0, totalDebit = 0;
-    ledgerRows.forEach(r => {
+    ledgerRows.filter(r => !r.voided).forEach(r => {
       const inMonth = (r.date || '').startsWith(monthKey);
       if (r.type === 'credit') {
         totalCredit += r.amount;
@@ -250,7 +250,7 @@ const Purchases: React.FC = () => {
       monthPurchases,
       monthPaid,
       outstanding: Math.max(0, totalCredit - totalDebit),
-      billCount: ledgerRows.filter(r => r.type === 'credit').length,
+      billCount: ledgerRows.filter(r => r.type === 'credit' && !r.voided).length,
     };
   }, [ledgerRows]);
 
@@ -259,6 +259,8 @@ const Purchases: React.FC = () => {
   const [ledgerTo, setLedgerTo] = useState('');
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [ledgerType, setLedgerType] = useState<'all' | 'credit' | 'debit'>('all');
+  const [ledgerMode, setLedgerMode] = useState<string>('all');
+  const [ledgerSupplier, setLedgerSupplier] = useState<string>('all');
   const [ledgerPage, setLedgerPage] = useState(1);
   const LEDGER_PAGE_SIZE = 25;
 
@@ -268,12 +270,14 @@ const Purchases: React.FC = () => {
       if (ledgerFrom && (r.date || '') < ledgerFrom) return false;
       if (ledgerTo && (r.date || '') > ledgerTo) return false;
       if (ledgerType !== 'all' && r.type !== ledgerType) return false;
+      if (ledgerMode !== 'all' && String(r.mode).toLowerCase() !== ledgerMode) return false;
+      if (ledgerSupplier !== 'all' && r.supplier_id !== ledgerSupplier) return false;
       if (q && !`${r.party} ${r.ref}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [ledgerRows, ledgerFrom, ledgerTo, ledgerSearch, ledgerType]);
+  }, [ledgerRows, ledgerFrom, ledgerTo, ledgerSearch, ledgerType, ledgerMode, ledgerSupplier]);
 
-  useEffect(() => { setLedgerPage(1); }, [ledgerFrom, ledgerTo, ledgerSearch, ledgerType]);
+  useEffect(() => { setLedgerPage(1); }, [ledgerFrom, ledgerTo, ledgerSearch, ledgerType, ledgerMode, ledgerSupplier]);
 
   const ledgerTotalPages = Math.max(1, Math.ceil(filteredLedger.length / LEDGER_PAGE_SIZE));
   const pagedLedger = useMemo(
@@ -283,9 +287,10 @@ const Purchases: React.FC = () => {
 
   const filteredTotals = useMemo(() => {
     let credit = 0, debit = 0;
-    filteredLedger.forEach(r => { r.type === 'credit' ? (credit += r.amount) : (debit += r.amount); });
+    filteredLedger.filter(r => !r.voided).forEach(r => { r.type === 'credit' ? (credit += r.amount) : (debit += r.amount); });
     return { credit, debit, net: credit - debit };
   }, [filteredLedger]);
+
 
   const exportLedgerCsv = () => {
     const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Amount'];
