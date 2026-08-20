@@ -1047,7 +1047,10 @@ Please confirm receipt of this order.`;
                         ? <ArrowDownCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                         : <ArrowUpCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
                       <div className="min-w-0">
-                        <div className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{r.party}</div>
+                        <div className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
+                          <span className={r.voided ? 'line-through opacity-60' : ''}>{r.party}</span>
+                          {r.voided && <span className="text-[9px] font-black uppercase tracking-wider text-rose-600 bg-rose-100 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">Voided</span>}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
                           <span>{r.date}</span>
                           <span>•</span>
@@ -1055,6 +1058,7 @@ Please confirm receipt of this order.`;
                           {r.type === 'debit' && <><span>•</span><span className="uppercase">{r.mode}</span></>}
                         </div>
                       </div>
+
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className={`text-sm font-black ${r.type === 'credit' ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
