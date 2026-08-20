@@ -186,7 +186,7 @@ const Purchases: React.FC = () => {
     setLedgerLoading(true);
     try {
       const [purRes, payRes] = await Promise.all([
-        supabase.from('purchases').select('id, purchase_no, purchase_date, total_amount, supplier_id, suppliers(name)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(300),
+        (supabase as any).from('purchases').select('id, purchase_no, grn_no, invoice_no, status, purchase_date, total_amount, supplier_id, suppliers(name)').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(300),
         (supabase as any).from('purchase_payments').select('id, amount, payment_date, payment_mode, reference_no, purchase_id').eq('admin_id', adminId).order('payment_date', { ascending: false }).limit(300),
       ]);
 
@@ -197,23 +197,30 @@ const Purchases: React.FC = () => {
       const rows: any[] = [
         ...purList.map(p => ({
           id: `pur-${p.id}`,
+          purchase_id: p.id,
           date: p.purchase_date,
           type: 'credit' as const,
           party: p.suppliers?.name || 'Walk-in Supplier',
-          ref: p.purchase_no,
+          supplier_id: p.supplier_id || 'walkin',
+          ref: [p.purchase_no, p.grn_no ? `GRN ${p.grn_no}` : null, p.invoice_no ? `Inv ${p.invoice_no}` : null].filter(Boolean).join(' · '),
           mode: '—',
+          voided: (p.status || 'active') === 'void',
           amount: Number(p.total_amount || 0),
         })),
         ...((payRes.data || []) as any[]).map(pay => ({
           id: `pay-${pay.id}`,
+          purchase_id: pay.purchase_id,
           date: pay.payment_date,
           type: 'debit' as const,
           party: purMap[pay.purchase_id]?.suppliers?.name || 'Supplier',
+          supplier_id: purMap[pay.purchase_id]?.supplier_id || 'walkin',
           ref: pay.reference_no || purMap[pay.purchase_id]?.purchase_no || '—',
           mode: pay.payment_mode || 'cash',
+          voided: (purMap[pay.purchase_id]?.status || 'active') === 'void',
           amount: Number(pay.amount || 0),
         })),
       ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
 
       setLedgerRows(rows);
     } catch (e) {
