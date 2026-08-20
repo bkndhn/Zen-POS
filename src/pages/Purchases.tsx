@@ -293,8 +293,8 @@ const Purchases: React.FC = () => {
 
 
   const exportLedgerCsv = () => {
-    const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Amount'];
-    const lines = filteredLedger.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.amount.toFixed(2)]);
+    const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Status', 'Amount'];
+    const lines = filteredLedger.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.voided ? 'VOIDED' : 'Active', r.amount.toFixed(2)]);
     const csv = [header, ...lines].map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
@@ -306,22 +306,7 @@ const Purchases: React.FC = () => {
 
   const esc = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const exportLedgerPdf = () => {
-    if (!filteredLedger.length) return;
-    const rangeLabel = `${ledgerFrom || 'Start'} → ${ledgerTo || 'Today'}`;
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Purchase Ledger</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:14px;color:#000}
-h1{font-size:17px;margin-bottom:4px}p{margin-bottom:8px;font-size:11px}
-table{width:100%;border-collapse:collapse}th{background:#2980b9;color:#fff;padding:5px;text-align:left;font-size:10px}
-td{padding:4px 5px;border-bottom:1px solid #ddd;font-size:10px}.r{text-align:right}.b{font-weight:bold;background:#ecf0f1}</style></head><body>
-<h1>Purchase Credit / Debit Ledger</h1>
-<p>Period: ${esc(rangeLabel)} | Entries: ${filteredLedger.length} | Generated: ${new Date().toLocaleString()}</p>
-<table><tr><th>#</th><th>Date</th><th>Type</th><th>Party</th><th>Reference</th><th>Mode</th><th class="r">Amount</th></tr>
-${filteredLedger.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.date)}</td><td>${r.type === 'credit' ? 'Credit (Purchase)' : 'Debit (Payment)'}</td><td>${esc(r.party)}</td><td>${esc(r.ref)}</td><td>${esc(r.mode)}</td><td class="r">${r.amount.toFixed(2)}</td></tr>`).join('')}
-<tr class="b"><td></td><td>TOTAL CREDIT</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.credit.toFixed(2)}</td></tr>
-<tr class="b"><td></td><td>TOTAL DEBIT</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.debit.toFixed(2)}</td></tr>
-<tr class="b"><td></td><td>OUTSTANDING</td><td></td><td></td><td></td><td></td><td class="r">${filteredTotals.net.toFixed(2)}</td></tr>
-</table></body></html>`;
+  const printHtml = (html: string) => {
     const w = window.open('', '_blank');
     if (!w) { toast({ title: 'Please allow popups to export PDF', variant: 'destructive' }); return; }
     w.document.write(html);
@@ -329,6 +314,92 @@ ${filteredLedger.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.date)}</td><td>
     w.onload = () => setTimeout(() => { w.focus(); w.print(); }, 300);
     setTimeout(() => { if (w && !w.closed) { w.focus(); w.print(); } }, 1000);
   };
+
+  const PRINT_CSS = `*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;padding:14px;color:#000}
+h1{font-size:17px;margin-bottom:4px}h2{font-size:13px;margin:12px 0 5px}p{margin-bottom:6px;font-size:11px}
+table{width:100%;border-collapse:collapse;margin-bottom:8px}th{background:#2980b9;color:#fff;padding:5px;text-align:left;font-size:10px}
+td{padding:4px 5px;border-bottom:1px solid #ddd;font-size:10px}.r{text-align:right}.b{font-weight:bold;background:#ecf0f1}
+.void{color:#c0392b;font-weight:bold}`;
+
+  const exportLedgerPdf = () => {
+    if (!filteredLedger.length) return;
+    const rangeLabel = `${ledgerFrom || 'Start'} → ${ledgerTo || 'Today'}`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Purchase Ledger</title>
+<style>${PRINT_CSS}</style></head><body>
+<h1>Purchase Credit / Debit Ledger</h1>
+<p>Period: ${esc(rangeLabel)} | Entries: ${filteredLedger.length} | Generated: ${new Date().toLocaleString()}</p>
+<table><tr><th>#</th><th>Date</th><th>Type</th><th>Party</th><th>Reference</th><th>Mode</th><th>Status</th><th class="r">Amount</th></tr>
+${filteredLedger.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.date)}</td><td>${r.type === 'credit' ? 'Credit (Purchase)' : 'Debit (Payment)'}</td><td>${esc(r.party)}</td><td>${esc(r.ref)}</td><td>${esc(r.mode)}</td><td class="${r.voided ? 'void' : ''}">${r.voided ? 'VOIDED' : 'Active'}</td><td class="r">${r.amount.toFixed(2)}</td></tr>`).join('')}
+<tr class="b"><td></td><td>TOTAL CREDIT</td><td colspan="5"></td><td class="r">${filteredTotals.credit.toFixed(2)}</td></tr>
+<tr class="b"><td></td><td>TOTAL DEBIT</td><td colspan="5"></td><td class="r">${filteredTotals.debit.toFixed(2)}</td></tr>
+<tr class="b"><td></td><td>OUTSTANDING</td><td colspan="5"></td><td class="r">${filteredTotals.net.toFixed(2)}</td></tr>
+</table><p>Voided entries are shown for audit but excluded from totals.</p></body></html>`;
+    printHtml(html);
+  };
+
+  // ---------- Single GRN / bill receipt PDF ----------
+  const exportGrnPdf = (purchase: any) => {
+    if (!purchase) return;
+    const lineRows: any[] = purchase.purchase_items || [];
+    const paid = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const balance = Number(purchase.total_amount || 0) - paid;
+    const modes = Array.from(new Set(payments.map((p: any) => String(p.payment_mode || '').toUpperCase()))).join(', ') || '—';
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(purchase.purchase_no)}</title>
+<style>${PRINT_CSS}</style></head><body>
+<h1>Purchase / GRN Receipt ${purchase.status === 'void' ? '<span class="void">(VOIDED)</span>' : ''}</h1>
+<p><b>${esc(purchase.purchase_no)}</b> | GRN: ${esc(purchase.grn_no || '—')} | Invoice: ${esc(purchase.invoice_no || '—')} | Date: ${esc(purchase.purchase_date)}</p>
+<p>Supplier: <b>${esc(purchase.suppliers?.name || 'Walk-in Supplier')}</b>${purchase.suppliers?.phone ? ` | ${esc(purchase.suppliers.phone)}` : ''}${purchase.suppliers?.gstin ? ` | GSTIN: ${esc(purchase.suppliers.gstin)}` : ''}</p>
+${purchase.suppliers?.address ? `<p>Address: ${esc(purchase.suppliers.address)}</p>` : ''}
+<p>Payment mode(s): <b>${esc(modes)}</b> | Ledger ref: ${esc(purchase.purchase_no)}</p>
+<h2>Line items</h2>
+<table><tr><th>#</th><th>Item</th><th>Unit</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Total</th></tr>
+${lineRows.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.item_name)}</td><td>${esc(l.unit || '—')}</td><td class="r">${Number(l.quantity || 0).toFixed(2)}</td><td class="r">${Number(l.rate || 0).toFixed(2)}</td><td class="r">${Number(l.total || 0).toFixed(2)}</td></tr>`).join('')}
+<tr class="b"><td colspan="5">GRAND TOTAL</td><td class="r">₹${Number(purchase.total_amount || 0).toFixed(2)}</td></tr>
+</table>
+<h2>Payments</h2>
+<table><tr><th>Date</th><th>Mode</th><th>Reference</th><th class="r">Amount</th></tr>
+${payments.length ? payments.map((p: any) => `<tr><td>${esc(p.payment_date)}</td><td>${esc(String(p.payment_mode || '').toUpperCase())}</td><td>${esc(p.reference_no || '—')}</td><td class="r">${Number(p.amount || 0).toFixed(2)}</td></tr>`).join('') : '<tr><td colspan="4">No payments recorded</td></tr>'}
+<tr class="b"><td colspan="3">TOTAL PAID</td><td class="r">₹${paid.toFixed(2)}</td></tr>
+<tr class="b"><td colspan="3">BALANCE DUE</td><td class="r">₹${balance.toFixed(2)}</td></tr>
+</table>
+<p>Generated: ${new Date().toLocaleString()}</p>
+</body></html>`;
+    printHtml(html);
+  };
+
+  // ---------- Void GRN ----------
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [voidConfirmText, setVoidConfirmText] = useState('');
+  const [voidReason, setVoidReason] = useState('');
+  const [voiding, setVoiding] = useState(false);
+
+  const handleVoidPurchase = async () => {
+    if (!selectedPurchase) return;
+    if (voidConfirmText.trim().toUpperCase() !== 'VOID') {
+      return toast({ title: 'Type VOID to confirm', variant: 'destructive' });
+    }
+    setVoiding(true);
+    try {
+      const { error } = await (supabase as any).rpc('void_purchase_transaction', {
+        p_purchase_id: selectedPurchase.id,
+        p_reason: voidReason || null,
+      });
+      if (error) throw error;
+      toast({ title: 'GRN voided', description: 'Stock rolled back and ledger marked for audit' });
+      setVoidOpen(false);
+      setVoidConfirmText('');
+      setVoidReason('');
+      setDetailsOpen(false);
+      await load();
+      await loadLedger();
+      window.dispatchEvent(new CustomEvent('items-updated'));
+    } catch (e: any) {
+      toast({ title: 'Void failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setVoiding(false);
+    }
+  };
+
 
 
 
