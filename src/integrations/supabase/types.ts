@@ -4753,6 +4753,10 @@ export type Database = {
         Args: { p_branch_id: string }
         Returns: boolean
       }
+      void_purchase_transaction: {
+        Args: { p_purchase_id: string; p_reason?: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "super_admin"
