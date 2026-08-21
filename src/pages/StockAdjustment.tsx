@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { supabase } from '@/integrations/supabase/client';
+import { offlineManager } from '@/utils/offlineManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Sliders, Plus, Minus, Search, History } from 'lucide-react';
 import { formatStoredQuantity, getShortUnit, trim2 } from '@/utils/timeUtils';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface ItemRow {
   id: string;
@@ -69,7 +71,21 @@ const StockAdjustment: React.FC = () => {
   const fetchAll = async () => {
     if (!adminId) return;
     setLoading(true);
+    const cacheKey = `stock_adj_${adminId}_${branchFilterId || 'all'}`;
+
     try {
+      // Cache-first: try to load from IndexedDB immediately
+      try {
+        const cachedItems = await offlineManager.getCachedQueryResult('items', `stock_adj_items_${branchFilterId || 'all'}`);
+        const cachedHist = await offlineManager.getCachedQueryResult('stock_adjustments', cacheKey);
+        if (cachedItems?.data) setItems(cachedItems.data as ItemRow[]);
+        if (cachedHist?.data) setHistory(cachedHist.data as AdjustmentRow[]);
+        if (!navigator.onLine) {
+          setLoading(false);
+          return; // offline — use cached data
+        }
+      } catch (e) { /* ignore cache read errors */ }
+
       let itemsQ: any = supabase.from('items')
         .select('id, name, category, branch_id, stock_quantity, unit, inventory_unit, selling_unit, unlimited_stock')
         .eq('admin_id', adminId)
@@ -87,6 +103,10 @@ const StockAdjustment: React.FC = () => {
 
       setItems((itemsData || []) as ItemRow[]);
       setHistory((histData || []) as AdjustmentRow[]);
+
+      // Cache results for offline use
+      offlineManager.cacheQueryResult('items', `stock_adj_items_${branchFilterId || 'all'}`, itemsData || []).catch(() => {});
+      offlineManager.cacheQueryResult('stock_adjustments', cacheKey, histData || []).catch(() => {});
     } catch (e) {
       console.error(e);
     } finally {

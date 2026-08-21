@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ServiceHeader, ServiceLoading, LivePill, SectionHeading, EmptyState } from '@/components/service/ServiceUI';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { offlineManager } from '@/utils/offlineManager';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -201,9 +202,23 @@ const ServiceArea = () => {
             setBills(activeResult.data || []);
             setRecentBills(recentResult.data || []);
             setIsConnected(true);
+
+            // Cache active bills for offline fallback
+            offlineManager.cacheQueryResult('service_area', `bills_${adminId}`, activeResult.data || []).catch(() => {});
         } catch (error) {
             console.warn('Error fetching service bills:', error);
             setIsConnected(false);
+
+            // Offline fallback: try cached data
+            if (!navigator.onLine) {
+                try {
+                    const cached = await offlineManager.getCachedQueryResult('service_area', `bills_${adminId}`);
+                    if (cached?.data) {
+                        setBills(cached.data as ServiceBill[]);
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
             // Don't show toast on every silent refresh failure
             if (!silent) {
                 toast({

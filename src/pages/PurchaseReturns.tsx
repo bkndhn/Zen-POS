@@ -15,6 +15,7 @@ import { Undo2, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { formatStoredQuantity, getShortUnit } from '@/utils/timeUtils';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface Line { item_id: string; branch_id: string; item_name: string; unit: string; quantity: number; rate: number; }
 
@@ -40,14 +41,43 @@ const PurchaseReturns: React.FC = () => {
   const load = async () => {
     if (!adminId) return;
     setLoading(true);
-    const [sup, pur, it, ret] = await Promise.all([
-      (supabase as any).from('suppliers').select('id,name').eq('admin_id', adminId).order('name'),
-      (supabase as any).from('purchases').select('id,purchase_no,purchase_date,supplier_id').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(200),
-      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,inventory_unit,purchase_rate').eq('admin_id', adminId).eq('is_active', true).order('name'),
-      (supabase as any).from('purchase_returns').select('id,return_no,return_date,supplier_id,total_amount,reason,suppliers(name),purchase_return_items(item_name,quantity,branch_id)').eq('admin_id', adminId).order('created_at', { ascending: false }).limit(100)
-    ]);
-    setSuppliers(sup.data || []); setPurchases(pur.data || []); setItems(it.data || []); setReturns(ret.data || []);
-    setLoading(false);
+    const cacheKey = `purchase_returns_${adminId}`;
+
+    try {
+      const cached = await offlineManager.getCachedQueryResult('purchase_returns', cacheKey);
+      if (cached?.data && (!navigator.onLine || cached.data.length > 0)) {
+        const cachedData = cached.data[0] as any;
+        if (cachedData?.suppliers) setSuppliers(cachedData.suppliers);
+        if (cachedData?.purchases) setPurchases(cachedData.purchases);
+        if (cachedData?.items) setItems(cachedData.items);
+        if (cachedData?.returns) setReturns(cachedData.returns);
+        if (!navigator.onLine) {
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) { /* ignore cache errors */ }
+
+    try {
+      const [sup, pur, it, ret] = await Promise.all([
+        (supabase as any).from('suppliers').select('id,name').eq('admin_id', adminId).order('name'),
+        (supabase as any).from('purchases').select('id,purchase_no,purchase_date,supplier_id').eq('admin_id', adminId).order('purchase_date', { ascending: false }).limit(200),
+        (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,inventory_unit,purchase_rate').eq('admin_id', adminId).eq('is_active', true).order('name'),
+        (supabase as any).from('purchase_returns').select('id,return_no,return_date,supplier_id,total_amount,reason,suppliers(name),purchase_return_items(item_name,quantity,branch_id)').eq('admin_id', adminId).order('created_at', { ascending: false }).limit(100)
+      ]);
+      setSuppliers(sup.data || []); setPurchases(pur.data || []); setItems(it.data || []); setReturns(ret.data || []);
+      
+      offlineManager.cacheQueryResult('purchase_returns', cacheKey, [{ 
+        suppliers: sup.data || [], 
+        purchases: pur.data || [], 
+        items: it.data || [], 
+        returns: ret.data || [] 
+      }]).catch(() => {});
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, [adminId]);
 

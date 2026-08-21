@@ -12,6 +12,7 @@
  */
 
 import { offlineManager } from './offlineManager';
+import { supabase } from '@/integrations/supabase/client';
 
 export type RecordSyncState = 'pending' | 'syncing' | 'synced' | 'failed';
 
@@ -82,6 +83,90 @@ class SyncEngine {
     this.scheduleProbe(0);
     this.refreshCounts();
     this.requestSync('startup');
+
+    // Warm all critical caches in the background after a short delay
+    if (navigator.onLine) {
+      setTimeout(() => idle(() => this.warmCriticalCaches(), 5000), 3000);
+    }
+  }
+
+  /**
+   * Pre-fetches and caches data for ALL screens so they load offline.
+   * Runs silently via requestIdleCallback — zero performance impact.
+   * Only warms data that isn't already cached or is older than 1 hour.
+   */
+  private async warmCriticalCaches(): Promise<void> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Resolve admin ID from cached profile
+      const cachedProfileStr = localStorage.getItem(`profile_${session.user.id}`);
+      if (!cachedProfileStr) return;
+      let adminId: string | null = null;
+      try {
+        const prof = JSON.parse(cachedProfileStr);
+        adminId = prof.role === 'admin' ? prof.id : (prof.admin_id || null);
+      } catch { return; }
+      if (!adminId) return;
+
+      const ONE_HOUR = 60 * 60 * 1000;
+
+      // Helper: only warm if cache is missing or stale
+      const warmIfNeeded = async (table: string, key: string, fetcher: () => Promise<any>) => {
+        try {
+          const existing = await offlineManager.getCachedQueryResult(table, key);
+          if (existing?.data && (Date.now() - existing.updatedAt) < ONE_HOUR) return; // fresh enough
+          const data = await fetcher();
+          if (data) await offlineManager.cacheQueryResult(table, key, data);
+        } catch (e) {
+          console.warn(`[CacheWarmer] Failed to warm ${table}/${key}:`, e);
+        }
+      };
+
+      // Warm critical tables sequentially to avoid overwhelming the connection
+      await warmIfNeeded('suppliers', 'list', async () => {
+        const { data } = await supabase.from('suppliers').select('*').eq('admin_id', adminId!);
+        return data;
+      });
+
+      await warmIfNeeded('stock_adjustments', 'list', async () => {
+        const { data } = await (supabase as any).from('stock_adjustments')
+          .select('id, item_id, branch_id, change_qty, reason, notes, created_at, created_by')
+          .eq('admin_id', adminId!).order('created_at', { ascending: false }).limit(50);
+        return data;
+      });
+
+      await warmIfNeeded('stock_ledger', 'list', async () => {
+        const { data } = await (supabase as any).from('stock_ledger')
+          .select('*').eq('admin_id', adminId!).order('created_at', { ascending: false }).limit(200);
+        return data;
+      });
+
+      await warmIfNeeded('stock_transfers', 'list', async () => {
+        const { data } = await (supabase as any).from('stock_transfers')
+          .select('id,transfer_no,transfer_date,from_branch_id,to_branch_id,notes,created_at,stock_transfer_items(item_name,quantity)')
+          .eq('admin_id', adminId!).order('created_at', { ascending: false }).limit(50);
+        return data;
+      });
+
+      await warmIfNeeded('purchase_returns', 'list', async () => {
+        const { data } = await (supabase as any).from('purchase_returns')
+          .select('*, suppliers(name), purchase_return_items(item_name, quantity, branch_id)')
+          .eq('admin_id', adminId!).order('created_at', { ascending: false }).limit(50);
+        return data;
+      });
+
+      await warmIfNeeded('profiles', 'team_list', async () => {
+        const { data } = await supabase.from('profiles').select('*')
+          .or(`id.eq.${adminId},admin_id.eq.${adminId}`).order('created_at', { ascending: false });
+        return data;
+      });
+
+      console.log('[CacheWarmer] Critical caches warmed successfully.');
+    } catch (e) {
+      console.warn('[CacheWarmer] Cache warming failed (non-blocking):', e);
+    }
   }
 
   stop(): void {

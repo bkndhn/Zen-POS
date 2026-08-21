@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { offlineManager } from '@/utils/offlineManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -192,6 +193,30 @@ const Users: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
+      // Offline fallback: try to load cached user data
+      if (!navigator.onLine) {
+        try {
+          const cached = await offlineManager.getCachedQueryResult('profiles', 'team_list');
+          if (cached?.data) {
+            const allUsers = cached.data as ExtendedUserProfile[];
+            if (isSuperAdmin) {
+              const admins = allUsers.filter(u => u.role === 'admin');
+              setUsers(admins);
+              setFilteredUsers(admins);
+            } else if (isAdmin) {
+              const relevantUsers = allUsers.filter(u =>
+                u.role !== 'super_admin' &&
+                (u.user_id === profile?.user_id || u.admin_id === profile?.id)
+              );
+              setUsers(relevantUsers);
+              setFilteredUsers(relevantUsers);
+            }
+          }
+        } catch (e) { /* ignore cache errors */ }
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -220,6 +245,9 @@ const Users: React.FC = () => {
         shop_name: (user as any).shop_name ?? null,
         address: (user as any).address ?? null,
       })) as ExtendedUserProfile[];
+
+      // Cache all users for offline access
+      offlineManager.cacheQueryResult('profiles', 'team_list', allUsers).catch(() => {});
 
       if (isSuperAdmin) {
         // Super Admin: Show only admins with their sub-users nested

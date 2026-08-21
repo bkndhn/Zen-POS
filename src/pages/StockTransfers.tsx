@@ -15,6 +15,7 @@ import { ArrowRightLeft, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { formatStoredQuantity, getShortUnit } from '@/utils/timeUtils';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface ItemRow { id: string; name: string; branch_id: string; stock_quantity: number | null; unit: string | null; inventory_unit?: string | null; }
 interface Line { from_item_id: string; to_item_id: string; item_name: string; quantity: number; }
@@ -38,13 +39,35 @@ const StockTransfers: React.FC = () => {
   const load = async () => {
     if (!adminId) return;
     setLoading(true);
-    const [it, tr] = await Promise.all([
-      (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,inventory_unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
-      (supabase as any).from('stock_transfers').select('id,transfer_no,transfer_date,from_branch_id,to_branch_id,notes,created_at,stock_transfer_items(item_name,quantity)').eq('admin_id', adminId).order('created_at', { ascending: false }).limit(100)
-    ]);
-    setItems(it.data || []);
-    setTransfers(tr.data || []);
-    setLoading(false);
+    const cacheKey = `stock_transfers_${adminId}`;
+    
+    try {
+      const cached = await offlineManager.getCachedQueryResult('stock_transfers', cacheKey);
+      if (cached?.data && (!navigator.onLine || cached.data.length > 0)) {
+        const cachedData = cached.data[0] as any;
+        if (cachedData?.items) setItems(cachedData.items);
+        if (cachedData?.transfers) setTransfers(cachedData.transfers);
+        if (!navigator.onLine) {
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) { /* ignore cache errors */ }
+
+    try {
+      const [it, tr] = await Promise.all([
+        (supabase as any).from('items').select('id,name,branch_id,stock_quantity,unit,inventory_unit').eq('admin_id', adminId).eq('is_active', true).order('name'),
+        (supabase as any).from('stock_transfers').select('id,transfer_no,transfer_date,from_branch_id,to_branch_id,notes,created_at,stock_transfer_items(item_name,quantity)').eq('admin_id', adminId).order('created_at', { ascending: false }).limit(100)
+      ]);
+      setItems(it.data || []);
+      setTransfers(tr.data || []);
+      
+      offlineManager.cacheQueryResult('stock_transfers', cacheKey, [{ items: it.data || [], transfers: tr.data || [] }]).catch(() => {});
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, [adminId]);
 

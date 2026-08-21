@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useOfflineQuery } from '@/hooks/useOffline';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
+import { offlineManager } from '@/utils/offlineManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -161,6 +163,16 @@ const Settings = () => {
       return;
     }
     try {
+      // Offline fallback
+      if (!navigator.onLine) {
+        try {
+          const cached = await offlineManager.getCachedQueryResult('additional_charges', `settings_${adminId}`);
+          if (cached?.data) setAdditionalCharges(cached.data as any[]);
+        } catch (e) { /* ignore */ }
+        setLoading(false);
+        return;
+      }
+
       // Fetch charges scoped to admin + branch, with legacy fallback
       let query = (supabase as any)
         .from('additional_charges')
@@ -175,6 +187,9 @@ const Settings = () => {
 
       if (error) throw error;
       setAdditionalCharges(data || []);
+
+      // Cache for offline
+      offlineManager.cacheQueryResult('additional_charges', `settings_${adminId}`, data || []).catch(() => {});
     } catch (error) {
       console.error('Error fetching additional charges:', error);
       toast({

@@ -8,6 +8,7 @@ import { Sidebar } from './Sidebar';
 
 import { SyncStatusBar } from './SyncStatusBar';
 import { OfflineLicenseBanner } from './OfflineLicenseBanner';
+import OfflineStatusBanner from './OfflineStatusBanner';
 
 import { PullToRefresh } from './PullToRefresh';
 import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData, type LicenseStatus } from '@/utils/offlineLicenseManager';
@@ -225,6 +226,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <div className="flex flex-col flex-1 w-full min-w-0">
         <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+
+        {/* Offline network status — shows when device is offline or has pending syncs */}
+        <OfflineStatusBanner />
 
         {/* Offline SaaS License & Sync — silent when online */}
         <OfflineLicenseBanner />

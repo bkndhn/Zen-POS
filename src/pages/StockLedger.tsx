@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { History, Download } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { formatStoredQuantity } from '@/utils/timeUtils';
+import { offlineManager } from '@/utils/offlineManager';
 
 interface ItemRow { id: string; name: string; branch_id: string; unit: string | null; inventory_unit?: string | null; }
 
@@ -50,14 +51,37 @@ const StockLedger: React.FC = () => {
   const load = async () => {
     if (!adminId) return;
     setLoading(true);
-    const [ledger, it, prof] = await Promise.all([
-      (supabase as any).from('stock_ledger').select('*').eq('admin_id', adminId)
-        .gte('created_at', from).lte('created_at', `${to}T23:59:59`).order('created_at', { ascending: false }).limit(1000),
-      (supabase as any).from('items').select('id,name,branch_id,unit,inventory_unit').eq('admin_id', adminId),
-      (supabase as any).from('profiles').select('user_id,name').or(`id.eq.${adminId},admin_id.eq.${adminId}`)
-    ]);
-    setRows(ledger.data || []); setItems(it.data || []); setUsers(prof.data || []);
-    setLoading(false);
+    const cacheKey = `stock_ledger_${adminId}_${from}_${to}`;
+
+    try {
+      const cached = await offlineManager.getCachedQueryResult('stock_ledger', cacheKey);
+      if (cached?.data && (!navigator.onLine || cached.data.length > 0)) {
+        const cachedData = cached.data[0] as any;
+        if (cachedData?.rows) setRows(cachedData.rows);
+        if (cachedData?.items) setItems(cachedData.items);
+        if (cachedData?.users) setUsers(cachedData.users);
+        if (!navigator.onLine) {
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) { /* ignore cache errors */ }
+
+    try {
+      const [ledger, it, prof] = await Promise.all([
+        (supabase as any).from('stock_ledger').select('*').eq('admin_id', adminId)
+          .gte('created_at', from).lte('created_at', `${to}T23:59:59`).order('created_at', { ascending: false }).limit(1000),
+        (supabase as any).from('items').select('id,name,branch_id,unit,inventory_unit').eq('admin_id', adminId),
+        (supabase as any).from('profiles').select('user_id,name').or(`id.eq.${adminId},admin_id.eq.${adminId}`)
+      ]);
+      setRows(ledger.data || []); setItems(it.data || []); setUsers(prof.data || []);
+      
+      offlineManager.cacheQueryResult('stock_ledger', cacheKey, [{ rows: ledger.data || [], items: it.data || [], users: prof.data || [] }]).catch(() => {});
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, [adminId, from, to]);
 
