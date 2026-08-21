@@ -109,17 +109,22 @@ export const usePushNotifications = () => {
       }
     };
 
-    init();
+    init().catch((e) => console.warn('Push init failed:', e));
 
     return () => {
       cleanup = true;
-      // Clean up listeners when component unmounts (only on native)
-      if (Capacitor.isNativePlatform()) {
-        import('@capacitor/push-notifications').then(({ PushNotifications }) => {
-          PushNotifications.removeAllListeners();
-        }).catch(() => {});
+      // Clean up listeners when component unmounts (only on native).
+      // Every promise here must be caught — an uncaught "plugin is not
+      // implemented" rejection surfaces as an unhandled rejection in Sentry.
+      if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('PushNotifications')) {
+        import('@capacitor/push-notifications')
+          .then(({ PushNotifications }) =>
+            Promise.resolve(PushNotifications.removeAllListeners()).catch(() => {})
+          )
+          .catch(() => {});
       }
     };
+
   }, [user]);
 };
 
