@@ -15,7 +15,8 @@
     "safe-push": "npm run typecheck && npm run build && git push origin main",
     "lint": "eslint .",
     "preview": "vite preview",
-    "eas-build-post-install": "npm run build && npx cap sync && node scripts/fix-gradlew.cjs"
+    "eas-build-post-install": "npm run build && npx cap sync && node scripts/fix-gradlew.cjs",
+    "postinstall": "node scripts/patch-deps.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

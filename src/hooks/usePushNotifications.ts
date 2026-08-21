@@ -10,6 +10,13 @@ export const usePushNotifications = () => {
   useEffect(() => {
     // Only run on native Android/iOS — skip entirely on web browsers
     if (!user || !Capacitor.isNativePlatform()) return;
+    // Skip when the native plugin was not compiled into this build (e.g. APK
+    // built without the FCM plugin) — otherwise every call rejects with
+    // `"PushNotifications" plugin is not implemented on android`.
+    if (!Capacitor.isPluginAvailable('PushNotifications')) {
+      console.warn('PushNotifications plugin not available on this build — skipping.');
+      return;
+    }
 
     let cleanup = false;
 
@@ -17,6 +24,7 @@ export const usePushNotifications = () => {
       try {
         // Dynamic import so the module is never loaded on web
         const { PushNotifications } = await import('@capacitor/push-notifications');
+
 
         const permStatus = await PushNotifications.checkPermissions();
 
@@ -101,17 +109,22 @@ export const usePushNotifications = () => {
       }
     };
 
-    init();
+    init().catch((e) => console.warn('Push init failed:', e));
 
     return () => {
       cleanup = true;
-      // Clean up listeners when component unmounts (only on native)
-      if (Capacitor.isNativePlatform()) {
-        import('@capacitor/push-notifications').then(({ PushNotifications }) => {
-          PushNotifications.removeAllListeners();
-        }).catch(() => {});
+      // Clean up listeners when component unmounts (only on native).
+      // Every promise here must be caught — an uncaught "plugin is not
+      // implemented" rejection surfaces as an unhandled rejection in Sentry.
+      if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('PushNotifications')) {
+        import('@capacitor/push-notifications')
+          .then(({ PushNotifications }) =>
+            Promise.resolve(PushNotifications.removeAllListeners()).catch(() => {})
+          )
+          .catch(() => {});
       }
     };
+
   }, [user]);
 };
 

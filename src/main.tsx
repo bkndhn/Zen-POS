@@ -14,10 +14,19 @@ Sentry.init({
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
   ],
+  // Noise from third-party/injected scripts and unsupported native plugins —
+  // not actionable application errors.
+  ignoreErrors: [
+    /has no method 'updateFrom'/i,
+    /plugin is not implemented on (android|ios)/i,
+    /ResizeObserver loop/i,
+  ],
+  denyUrls: [/\/sentry\/scripts\//i, /extensions\//i, /^chrome-extension:\/\//i],
   tracesSampleRate: 1.0, 
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
 });
+
 
 installPerfProfiler();
 startRum();
