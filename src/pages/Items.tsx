@@ -723,19 +723,14 @@ const Items: React.FC = () => {
             <Button
               variant={item.is_active ? "outline" : "default"}
               size="sm"
-              className={`h-6 px-2 text-[10px] ${item.is_active ? 'hover:bg-red-50 hover:text-red-600 hover:border-red-200' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+              className={`h-6 w-6 p-0 flex items-center justify-center ${item.is_active ? 'hover:bg-red-50 hover:text-red-600 hover:border-red-200' : 'bg-green-600 hover:bg-green-700 text-white'}`}
               onClick={(e) => confirmToggle(item, e)}
+              title={item.is_active ? 'Hide' : 'Show'}
             >
               {item.is_active ? (
-                <>
-                  <EyeOff className="w-3 h-3 mr-1" />
-                  Hide
-                </>
+                <EyeOff className="w-3.5 h-3.5" />
               ) : (
-                <>
-                  <Eye className="w-3 h-3 mr-1" />
-                  Show
-                </>
+                <Eye className="w-3.5 h-3.5" />
               )}
             </Button>
           </div>
