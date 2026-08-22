@@ -1,13 +1,13 @@
 /**
- * SQLiteBackend — Native SQLite storage for Capacitor Android/iOS
+ * SQLiteBackend — SQLite storage for all platforms
  * 
- * Uses @capacitor-community/sqlite for native performance:
- * - 4-10x faster bulk inserts than IndexedDB
- * - Data stored in app sandbox (never purged by OS)
- * - Proper SQL indexes, JOINs, and ACID transactions
- * - WAL mode for concurrent read/write
+ * Strategy:
+ * 1. On native (Android/iOS) with plugin compiled: Uses native SQLite bridge
+ * 2. On native WITHOUT plugin compiled: Uses jeep-sqlite (WASM in WebView) — NO REBUILD NEEDED
+ * 3. On web/PWA: Uses jeep-sqlite (WASM + IndexedDB persistence)
  * 
- * On web/PWA, falls back to jeep-sqlite (sql.js + IndexedDB bridge).
+ * This means SQLite works everywhere — even in a Capacitor app that
+ * hasn't been rebuilt with the native plugin yet.
  */
 
 import { Capacitor } from '@capacitor/core';
@@ -22,6 +22,7 @@ export class SQLiteBackend implements StorageBackend {
   private sqlite: SQLiteConnection;
   private db: SQLiteDBConnection | null = null;
   private ready = false;
+  private useWebMode = false;
 
   constructor() {
     this.sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -30,19 +31,12 @@ export class SQLiteBackend implements StorageBackend {
   async initialize(): Promise<void> {
     if (this.ready) return;
 
+    // Determine if we need web mode (jeep-sqlite WASM)
+    const needsWebMode = await this.shouldUseWebMode();
+
     try {
-      // Web platform: initialize jeep-sqlite web component
-      if (Capacitor.getPlatform() === 'web') {
-        const { defineCustomElements } = await import('jeep-sqlite/loader');
-        defineCustomElements(window);
-
-        if (!document.querySelector('jeep-sqlite')) {
-          const jeepEl = document.createElement('jeep-sqlite');
-          document.body.appendChild(jeepEl);
-          await customElements.whenDefined('jeep-sqlite');
-        }
-
-        await this.sqlite.initWebStore();
+      if (needsWebMode) {
+        await this.initWebMode();
       }
 
       // Register schema migrations
@@ -59,11 +53,58 @@ export class SQLiteBackend implements StorageBackend {
 
       await this.db.open();
       this.ready = true;
-      console.log('[SQLiteBackend] Initialized successfully');
+      this.useWebMode = needsWebMode;
+      console.log(`[SQLiteBackend] Initialized successfully (mode: ${needsWebMode ? 'WASM/jeep-sqlite' : 'native'})`);
     } catch (err) {
       console.error('[SQLiteBackend] Initialization failed:', err);
       throw err;
     }
+  }
+
+  /**
+   * Detect whether to use jeep-sqlite web mode.
+   * Returns true for:
+   * - Web/PWA platform (always)
+   * - Native platform where the native plugin isn't compiled into the APK
+   */
+  private async shouldUseWebMode(): Promise<boolean> {
+    const platform = Capacitor.getPlatform();
+
+    // Web/PWA: always use web mode
+    if (platform === 'web') return true;
+
+    // Native platform: check if the native plugin is actually available
+    try {
+      // Try a lightweight native call to see if the bridge responds
+      await CapacitorSQLite.isSecretStored();
+      return false; // Native plugin works — use native mode
+    } catch (e: any) {
+      const msg = String(e?.message || e || '');
+      // Plugin not installed / bridge not available
+      if (msg.includes('not implemented') || msg.includes('not available') || msg.includes('is not defined')) {
+        console.log('[SQLiteBackend] Native plugin not compiled — falling back to WASM mode');
+        return true;
+      }
+      // Other errors (like "no secret stored") mean the plugin IS available
+      return false;
+    }
+  }
+
+  /**
+   * Initialize jeep-sqlite web component for WASM-based SQLite.
+   * Works in any WebView — no native code needed.
+   */
+  private async initWebMode(): Promise<void> {
+    const { defineCustomElements } = await import('jeep-sqlite/loader');
+    defineCustomElements(window);
+
+    if (!document.querySelector('jeep-sqlite')) {
+      const jeepEl = document.createElement('jeep-sqlite');
+      document.body.appendChild(jeepEl);
+      await customElements.whenDefined('jeep-sqlite');
+    }
+
+    await this.sqlite.initWebStore();
   }
 
   async close(): Promise<void> {
@@ -301,9 +342,9 @@ export class SQLiteBackend implements StorageBackend {
 
   // ─── Private Helpers ────────────────────────────────────────
 
-  /** Save to IndexedDB web store on web platform (required by jeep-sqlite) */
+  /** Save to IndexedDB web store when in WASM mode (required by jeep-sqlite) */
   private async saveToStoreIfWeb(): Promise<void> {
-    if (Capacitor.getPlatform() === 'web') {
+    if (this.useWebMode) {
       try {
         await this.sqlite.saveToStore(SQLITE_DB_NAME);
       } catch (e) {

@@ -7,6 +7,8 @@ import { startRum } from './utils/rum'
 import { initStoragePersistence } from './utils/nativeStorage'
 import { installPerfProfiler } from './utils/perfProfiler'
 import { syncEngine } from './utils/syncEngine'
+import { offlineManager } from './utils/offlineManager'
+import { initStorage } from './utils/storage'
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || "",
@@ -31,6 +33,18 @@ Sentry.init({
 installPerfProfiler();
 startRum();
 initStoragePersistence().catch(() => {});
+
+// Initialize SQLite backend (native or WASM) and wire into offlineManager
+// This runs in the background — offlineManager falls back to IndexedDB until ready
+initStorage()
+  .then((backend) => {
+    offlineManager.setBackend(backend);
+    console.log('[Boot] Storage backend wired into offlineManager');
+  })
+  .catch((err) => {
+    console.warn('[Boot] SQLite init failed — offlineManager continues with IndexedDB:', err);
+  });
+
 syncEngine.start();
 
 createRoot(document.getElementById("root")!).render(<App />);
