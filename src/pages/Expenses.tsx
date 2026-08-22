@@ -102,7 +102,7 @@ const Expenses: React.FC = () => {
 
       if (!error && data) {
         setExpenses(data);
-        await offlineManager.cacheQueryResult(cacheKey, data);
+        await offlineManager.cacheQueryResult('expenses', cacheKey, data);
       }
     } catch (error) {
       console.warn('Error fetching expenses (offline fallback active):', error);
