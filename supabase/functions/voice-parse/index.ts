@@ -72,6 +72,14 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Auth Guard: Require Authorization header to prevent abuse (AI API costs)
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   let body: ParseRequest;
   try {
     body = await req.json();

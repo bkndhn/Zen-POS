@@ -54,7 +54,7 @@ export const usePushNotifications = () => {
 
         // On successful registration, save the token to Supabase
         await PushNotifications.addListener('registration', async (token) => {
-          console.log('Push registration success, token: ' + token.value);
+          console.log('Push registration success');
           if (cleanup) return;
           if (user?.id) {
             try {
