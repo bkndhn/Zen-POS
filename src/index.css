@@ -13,6 +13,31 @@ html, body {
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+  /* Native smooth scrolling with momentum */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+}
+
+/* Native-feel page transition animation */
+@keyframes page-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-transition-enter {
+  animation: page-slide-in 0.2s ease-out both;
+}
+
+/* Native-feel button press effect — scale down on tap like real native buttons */
+button:active, [role="button"]:active {
+  transform: scale(0.97);
+  transition: transform 0.05s ease-out;
+}
+
+/* Smooth momentum scrolling for all scrollable containers */
+[class*="overflow-y-auto"], [class*="overflow-auto"], [class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 input, textarea, [contenteditable] {

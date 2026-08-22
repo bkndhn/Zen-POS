@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useBranch } from '@/contexts/BranchContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock } from 'lucide-react';
+import { Lock, Fingerprint } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { isBiometricAvailable, authenticateWithBiometric } from '@/utils/biometricAuth';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000; // 1 minute lockout after max attempts
@@ -27,6 +28,35 @@ export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children
   const [pinInput, setPinInput] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState(0);
+  const [hasBiometric, setHasBiometric] = useState(false);
+
+  // Check biometric availability and auto-prompt on mount
+  useEffect(() => {
+    if (!savedPin) return;
+    let cancelled = false;
+    isBiometricAvailable().then(available => {
+      if (cancelled) return;
+      setHasBiometric(available);
+      if (available) {
+        // Auto-prompt biometric on lock screen open
+        authenticateWithBiometric().then(result => {
+          if (!cancelled && result.authenticated) {
+            setIsLocked(false);
+          }
+        });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [savedPin]);
+
+  const handleBiometricUnlock = async () => {
+    const result = await authenticateWithBiometric();
+    if (result.authenticated) {
+      setIsLocked(false);
+    } else {
+      toast({ title: 'Biometric failed', description: result.error || 'Try again or use PIN', variant: 'destructive' });
+    }
+  };
 
   if (!isLocked) {
     return <>{children}</>;
@@ -98,6 +128,17 @@ export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children
             {isLockedOut ? 'Locked' : 'Unlock'}
           </Button>
         </form>
+
+        {/* Biometric unlock button — shown only on native devices with fingerprint/face */}
+        {hasBiometric && (
+          <button
+            onClick={handleBiometricUnlock}
+            className="mt-4 flex items-center justify-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mx-auto"
+          >
+            <Fingerprint className="w-5 h-5" />
+            <span>Unlock with Fingerprint</span>
+          </button>
+        )}
       </div>
     </div>
   );

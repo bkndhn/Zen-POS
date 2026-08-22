@@ -9,6 +9,7 @@ import { Sidebar } from './Sidebar';
 import { SyncStatusBar } from './SyncStatusBar';
 import { OfflineLicenseBanner } from './OfflineLicenseBanner';
 import OfflineStatusBanner from './OfflineStatusBanner';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 
 import { PullToRefresh } from './PullToRefresh';
 import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData, type LicenseStatus } from '@/utils/offlineLicenseManager';
@@ -71,6 +72,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { toast } = useToast();
   const location = useLocation();
   const [licenseState, setLicenseState] = useState<LicenseStatus | null>(null);
+
+  // Native-feel: swipe from left edge to go back
+  useSwipeBack();
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     return localStorage.getItem('hotel_pos_sidebar_collapsed') === 'true';
@@ -315,7 +319,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               style={{ paddingBottom: 'max(80px, calc(70px + env(safe-area-inset-bottom, 0px)))' }}
             >
               <PullToRefresh>
-                {children}
+                <div key={location.pathname} className="page-transition-enter">
+                  {children}
+                </div>
               </PullToRefresh>
             </main>
 
