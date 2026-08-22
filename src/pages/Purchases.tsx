@@ -719,7 +719,7 @@ ${payments.length ? payments.map((p: any) => `<tr><td>${esc(p.payment_date)}</td
     const itemsHtml = purchase.purchase_items?.map((item: any, i: number) => `
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">${i + 1}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.item_name} ${item.unit ? `(${item.unit})` : ''}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${esc(item.item_name)} ${item.unit ? `(${esc(item.unit)})` : ''}</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity}</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">₹${Number(item.rate).toFixed(2)}</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">₹${Number(item.total).toFixed(2)}</td>
@@ -747,22 +747,22 @@ ${payments.length ? payments.map((p: any) => `<tr><td>${esc(p.payment_date)}</td
         <body>
           <div class="header">
             <h1 class="title">PURCHASE ORDER</h1>
-            <div class="shop-name">${shopName}</div>
+            <div class="shop-name">${esc(shopName)}</div>
           </div>
           
           <div class="details">
             <div class="box">
               <h3>Supplier Details</h3>
-              <strong>${supplierName}</strong><br>
-              ${supplierPhone ? `Phone: ${supplierPhone}<br>` : ''}
-              ${purchase.suppliers?.address ? `Address: ${purchase.suppliers.address}<br>` : ''}
-              ${purchase.suppliers?.gstin ? `GSTIN: ${purchase.suppliers.gstin}` : ''}
+              <strong>${esc(supplierName)}</strong><br>
+              ${supplierPhone ? `Phone: ${esc(supplierPhone)}<br>` : ''}
+              ${purchase.suppliers?.address ? `Address: ${esc(purchase.suppliers.address)}<br>` : ''}
+              ${purchase.suppliers?.gstin ? `GSTIN: ${esc(purchase.suppliers.gstin)}` : ''}
             </div>
             <div class="box">
               <h3>Order Details</h3>
-              <strong>PO No:</strong> ${purchase.purchase_no}<br>
-              ${purchase.invoice_no ? `<strong>Invoice No:</strong> ${purchase.invoice_no}<br>` : ''}
-              <strong>Date:</strong> ${purchase.purchase_date}
+              <strong>PO No:</strong> ${esc(purchase.purchase_no)}<br>
+              ${purchase.invoice_no ? `<strong>Invoice No:</strong> ${esc(purchase.invoice_no)}<br>` : ''}
+              <strong>Date:</strong> ${esc(purchase.purchase_date)}
             </div>
           </div>
 
@@ -785,7 +785,7 @@ ${payments.length ? payments.map((p: any) => `<tr><td>${esc(p.payment_date)}</td
             Total Amount: ₹${Number(purchase.total_amount || 0).toFixed(2)}
           </div>
           
-          ${purchase.notes ? `<div class="notes"><strong>Notes:</strong><br>${purchase.notes}</div>` : ''}
+          ${purchase.notes ? `<div class="notes"><strong>Notes:</strong><br>${esc(purchase.notes)}</div>` : ''}
         </body>
       </html>
     `;

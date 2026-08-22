@@ -166,6 +166,7 @@ export const PaymentGatewaySettings: React.FC = () => {
             <div className="space-y-1.5">
               <Label>Key Secret</Label>
               <Input type="password" value={form.key_secret} onChange={(e) => set('key_secret', e.target.value)} placeholder="••••••••" />
+              <p className="text-[10px] text-muted-foreground">This secret is stored securely and only accessible by admins.</p>
             </div>
             <div className="space-y-1.5">
               <Label>Webhook Secret</Label>

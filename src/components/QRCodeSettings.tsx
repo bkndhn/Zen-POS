@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
+import { escapeHtml } from '@/utils/sanitization';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1063,8 +1064,8 @@ const QRCodeSettings = () => {
       </head>
       <body>
         <div class="card">
-          <h1>${shopName}</h1>
-          <h2>${tableLabel}</h2>
+          <h1>${escapeHtml(shopName)}</h1>
+          <h2>${escapeHtml(tableLabel)}</h2>
           <img src="${generateQRCodeUrl(currentQrUrl, 200)}" alt="QR Code" />
           <p class="instructions">Scan with your phone camera<br/>to view our menu</p>
         </div>

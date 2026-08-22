@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { loadRazorpayScript } from '@/utils/paymentIntegration';
+import { escapeHtml } from '@/utils/sanitization';
 import {
   Shield, Loader2, PauseCircle, PlayCircle, XCircle, Receipt, Printer, RefreshCw, CalendarClock,
 } from 'lucide-react';
@@ -90,7 +92,7 @@ export const SubscriptionBilling: React.FC<Props> = ({ adminId, monthlyAmount, s
   const printReceipt = (t: any) => {
     const w = window.open('', '_blank', 'width=420,height=640');
     if (!w) return;
-    w.document.write(`<!doctype html><html><head><title>${t.invoice_no || 'Receipt'}</title>
+    w.document.write(`<!doctype html><html><head><title>${escapeHtml(t.invoice_no) || 'Receipt'}</title>
       <style>body{font-family:ui-sans-serif,system-ui,sans-serif;padding:24px;color:#111}
       h1{font-size:18px;margin:0 0 4px}small{color:#666}
       table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}
@@ -99,13 +101,13 @@ export const SubscriptionBilling: React.FC<Props> = ({ adminId, monthlyAmount, s
       .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:11px}
       </style></head><body>
       <h1>Subscription Receipt</h1>
-      <small>${shopName || ''}</small><br/><span class="tag">${(t.status || '').toUpperCase()}${t.environment === 'test' ? ' • TEST' : ''}</span>
+      <small>${escapeHtml(shopName || '')}</small><br/><span class="tag">${escapeHtml((t.status || '').toUpperCase())}${t.environment === 'test' ? ' • TEST' : ''}</span>
       <table>
-        <tr><td>Invoice No</td><td>${t.invoice_no || '—'}</td></tr>
-        <tr><td>Date</td><td>${dt(t.paid_at || t.created_at)}</td></tr>
-        <tr><td>Gateway</td><td>${t.provider || '—'}</td></tr>
-        <tr><td>Method</td><td>${t.method || '—'}</td></tr>
-        <tr><td>Reference</td><td>${t.utr || t.provider_payment_id || t.id}</td></tr>
+        <tr><td>Invoice No</td><td>${escapeHtml(t.invoice_no) || '—'}</td></tr>
+        <tr><td>Date</td><td>${escapeHtml(dt(t.paid_at || t.created_at))}</td></tr>
+        <tr><td>Gateway</td><td>${escapeHtml(t.provider) || '—'}</td></tr>
+        <tr><td>Method</td><td>${escapeHtml(t.method) || '—'}</td></tr>
+        <tr><td>Reference</td><td>${escapeHtml(t.utr || t.provider_payment_id || t.id)}</td></tr>
       </table>
       <div class="total"><span>Total Paid</span><span>${money(t.amount)}</span></div>
       </body></html>`);

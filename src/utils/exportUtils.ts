@@ -253,7 +253,7 @@ export const exportAllReportsToPDF = (data: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reports - ${data.dateRange}</title>
+  <title>Reports - ${escapeHtml(data.dateRange)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; font-size: 11px; padding: 10px; background: white; color: black; }
@@ -267,8 +267,8 @@ export const exportAllReportsToPDF = (data: {
   </style>
 </head>
 <body>
-  <h1>Business Reports${data.branchName ? ` — ${data.branchName}` : ''}</h1>
-  <p>Branch: ${data.branchName || 'All Branches'} | Period: ${data.dateRange} | Generated: ${new Date().toLocaleDateString()}</p>
+  <h1>Business Reports${data.branchName ? ` — ${escapeHtml(data.branchName)}` : ''}</h1>
+  <p>Branch: ${escapeHtml(data.branchName) || 'All Branches'} | Period: ${escapeHtml(data.dateRange)} | Generated: ${new Date().toLocaleDateString()}</p>
 
 ${data.items.length > 0 ? `
   <h2>Items Sales Report</h2>
@@ -283,7 +283,7 @@ ${data.bills.length > 0 ? `
   <h2>Bills Report</h2>
   <table>
     <tr><th>#</th><th>Bill No</th><th>Date</th><th class="r">Amount</th><th>Payment</th></tr>
-    ${data.bills.map((bill, i) => `<tr><td>${i + 1}</td><td>${bill.bill_no}</td><td>${bill.date}</td><td class="r">${bill.total_amount.toFixed(0)}</td><td>${bill.payment_mode}</td></tr>`).join('')}
+    ${data.bills.map((bill, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(bill.bill_no)}</td><td>${escapeHtml(bill.date)}</td><td class="r">${bill.total_amount.toFixed(0)}</td><td>${escapeHtml(bill.payment_mode)}</td></tr>`).join('')}
     <tr class="b"><td></td><td>TOTAL</td><td></td><td class="r">${billsTotal.toFixed(0)}</td><td></td></tr>
   </table>
 ` : ''}
@@ -349,7 +349,7 @@ export const exportToPDF = (expenses: ExpenseForPDF[], title: string = 'Expenses
   const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>${title}</title>
+<html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; font-size: 11px; padding: 10px; background: white; color: black; }
@@ -361,7 +361,7 @@ export const exportToPDF = (expenses: ExpenseForPDF[], title: string = 'Expenses
   .r { text-align: right; }
   .b { font-weight: bold; background: #ecf0f1; }
 </style></head><body>
-  <h1>${title}</h1>
+  <h1>${escapeHtml(title)}</h1>
   <p>Generated: ${new Date().toLocaleDateString()} | Total: ${total.toFixed(2)}</p>
   <h2>Expenses</h2>
   <table>

@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 // xlsx removed for security; using CSV export instead
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
+import { escapeHtml } from '@/utils/sanitization';
 import { useBranch } from '@/contexts/BranchContext';
 import { getShortUnit } from '@/utils/timeUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -803,7 +804,7 @@ const CRM: React.FC = () => {
           </style>
         </head>
         <body>
-          <h1>${profile?.hotel_name || 'Hotel'} - Customer Report</h1>
+          <h1>${escapeHtml(profile?.hotel_name) || 'Hotel'} - Customer Report</h1>
           <div class="summary">
             <p><strong>Total Customers:</strong> ${customers.length}</p>
             <p><strong>Total Revenue:</strong> ₹${customers.reduce((sum, c) => sum + c.total_spent, 0).toFixed(2)}</p>
@@ -822,8 +823,8 @@ const CRM: React.FC = () => {
             <tbody>
               ${customers.map(c => `
                 <tr>
-                  <td>${c.phone}</td>
-                  <td>${c.name || '-'}</td>
+                  <td>${escapeHtml(c.phone)}</td>
+                  <td>${escapeHtml(c.name) || '-'}</td>
                   <td>${c.visit_count}</td>
                   <td>₹${c.total_spent.toFixed(2)}</td>
                   <td>${c.last_visit ? format(new Date(c.last_visit), 'dd/MM/yyyy') : 'N/A'}</td>
