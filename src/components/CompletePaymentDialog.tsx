@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { hapticSuccess, hapticWarning } from '@/utils/haptics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -391,6 +392,9 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
         return;
       }
     }
+
+    // Haptic feedback — satisfying confirmation bump
+    hapticSuccess();
 
     onCompletePayment({
       paymentMethod: primaryPaymentMethod,

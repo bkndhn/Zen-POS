@@ -40,9 +40,16 @@ const labelMap: Record<string, string> = {
 
 const MAX_BOTTOM_VISIBLE = 5;
 
-// Lightweight haptic tap on Android WebView / iOS Safari where supported.
-const haptic = () => {
-  try { (navigator as any).vibrate?.(8); } catch { /* noop */ }
+// Lightweight haptic tap — uses native Capacitor Haptics for premium feel, falls back to Web Vibration API.
+const haptic = async () => {
+  try {
+    if ((window as any).Capacitor?.isNativePlatform()) {
+      const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
+      await Haptics.impact({ style: ImpactStyle.Light });
+    } else {
+      (navigator as any).vibrate?.(8);
+    }
+  } catch { /* noop */ }
 };
 
 // Route chunk + data prefetch live in a single shared module (see routePrefetch.ts).
