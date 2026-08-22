@@ -102,7 +102,7 @@ function checkIndexedDBExists(name: string): Promise<boolean> {
         }).catch(() => resolve(false));
       } else {
         // Fallback: try opening and check if it has object stores
-        const request = indexedDB.open(name);
+        const request = (indexedDB as IDBFactory).open(name);
         request.onsuccess = () => {
           const db = request.result;
           const hasStores = db.objectStoreNames.length > 0;

@@ -83,9 +83,10 @@ const Expenses: React.FC = () => {
 
       // 1. FAST PATH: Load from IndexedDB cache instantly
       const cacheKey = `expenses_${adminId}_${branchFilterId || 'all'}`;
-      const cached = await offlineManager.getCachedQueryResult(cacheKey);
-      if (cached && cached.length > 0) {
-        setExpenses(cached);
+      const cached = await offlineManager.getCachedQueryResult('expenses', cacheKey);
+      const cachedRows: Expense[] = Array.isArray(cached?.data) ? (cached!.data as Expense[]) : [];
+      if (cachedRows.length > 0) {
+        setExpenses(cachedRows);
         loadedFromCache = true;
         setLoading(false);
       }
@@ -101,7 +102,7 @@ const Expenses: React.FC = () => {
 
       if (!error && data) {
         setExpenses(data);
-        await offlineManager.cacheQueryResult(cacheKey, data);
+        await offlineManager.cacheQueryResult('expenses', cacheKey, data);
       }
     } catch (error) {
       console.warn('Error fetching expenses (offline fallback active):', error);

@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Sliders, Plus, Minus, Search, History } from 'lucide-react';
 import { formatStoredQuantity, getShortUnit, trim2 } from '@/utils/timeUtils';
-import { offlineManager } from '@/utils/offlineManager';
 
 interface ItemRow {
   id: string;
