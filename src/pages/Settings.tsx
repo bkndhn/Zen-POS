@@ -723,16 +723,21 @@ const Settings = () => {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={4}
-                    placeholder="4-digit PIN" 
-                    defaultValue={localStorage.getItem(branchKey('hotel_pos_reports_pin')) || ''}
+                    placeholder={localStorage.getItem(branchKey('hotel_pos_reports_pin')) ? '••••' : '4-digit PIN'}
                     onChange={(e) => {
                       // Only allow digits
                       e.target.value = e.target.value.replace(/[^0-9]/g, '');
                     }}
-                    onBlur={(e) => {
+                    onBlur={async (e) => {
                       const pin = e.target.value.replace(/[^0-9]/g, '');
                       if (pin && pin.length === 4) {
-                        localStorage.setItem(branchKey('hotel_pos_reports_pin'), pin);
+                        // Hash PIN with SHA-256 before storing
+                        const encoder = new TextEncoder();
+                        const data = encoder.encode(`zenpos_pin_${pin}`);
+                        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                        const hashArray = Array.from(new Uint8Array(hashBuffer));
+                        const hashedPin = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                        localStorage.setItem(branchKey('hotel_pos_reports_pin'), hashedPin);
                         toast({ title: "PIN Set", description: "Reports and Dashboard are now protected." });
                       } else if (!pin) {
                         localStorage.removeItem(branchKey('hotel_pos_reports_pin'));

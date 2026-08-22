@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     url: 'https://zen-pos.vercel.app',
-    cleartext: true
+    cleartext: false
   },
   plugins: {
     SplashScreen: {
@@ -31,7 +31,7 @@ const config: CapacitorConfig = {
     }
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
   },

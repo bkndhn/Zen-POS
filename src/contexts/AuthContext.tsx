@@ -451,6 +451,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Inactivity auto-logout for shared POS terminals (30 min)
+  useEffect(() => {
+    if (!user || !profile) return;
+
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let inactivityTimer: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        // Only auto-logout sub-users (not admin) on shared terminals
+        if (profile.role !== 'admin') {
+          devLog('[Security] Inactivity timeout — signing out sub-user');
+          signOut();
+        }
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach(evt => window.addEventListener(evt, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      events.forEach(evt => window.removeEventListener(evt, resetTimer));
+    };
+  }, [user, profile]);
+
   // Real-time subscription to detect pause and force logout
   useEffect(() => {
     if (!user || !profile) return;

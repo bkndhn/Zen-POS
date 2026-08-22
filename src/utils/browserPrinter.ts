@@ -178,21 +178,21 @@ export const printBrowserReceipt = async (data: PrintData) => {
 </head>
 <body>
   <div class="center">
-    ${(data as any).logoUrl && !paperSaving ? `<img src="${(data as any).logoUrl}" alt="logo" style="max-height:55px;max-width:110px;object-fit:contain;margin-bottom:4px;" />` : ''}
-    <div class="shop-name">${(data.shopName || data.hotelName || 'HOTEL').toUpperCase()}</div>
-    ${data.address && !paperSaving ? `<div>${data.address}</div>` : ''}
-    ${data.contactNumber && !paperSaving ? `<div>Ph: ${data.contactNumber}${data.gstin ? ` | GSTIN: ${data.gstin}` : ''}</div>` : (!paperSaving && data.gstin ? `<div>GSTIN: ${data.gstin}</div>` : '')}
+    ${(data as any).logoUrl && !paperSaving ? `<img src="${escapeHtml((data as any).logoUrl)}" alt="logo" style="max-height:55px;max-width:110px;object-fit:contain;margin-bottom:4px;" />` : ''}
+    <div class="shop-name">${escapeHtml((data.shopName || data.hotelName || 'HOTEL').toUpperCase())}</div>
+    ${data.address && !paperSaving ? `<div>${escapeHtml(data.address)}</div>` : ''}
+    ${data.contactNumber && !paperSaving ? `<div>Ph: ${escapeHtml(data.contactNumber)}${data.gstin ? ` | GSTIN: ${escapeHtml(data.gstin)}` : ''}</div>` : (!paperSaving && data.gstin ? `<div>GSTIN: ${escapeHtml(data.gstin)}</div>` : '')}
   </div>
   
   <hr>
   
   <table>
     ${isBillNumberHidden() 
-      ? `<tr><td><b>Date:</b></td><td style="text-align:right">${data.date} ${data.time}</td></tr>` 
-      : `<tr><td>#${data.billNo}</td><td style="text-align:right">${data.date} ${data.time}</td></tr>`}
+      ? `<tr><td><b>Date:</b></td><td style="text-align:right">${escapeHtml(data.date)} ${escapeHtml(data.time)}</td></tr>` 
+      : `<tr><td>#${escapeHtml(data.billNo)}</td><td style="text-align:right">${escapeHtml(data.date)} ${escapeHtml(data.time)}</td></tr>`}
     ${(data as any).orderType ? `<tr><td><b>Type:</b></td><td style="text-align:right"><b>${(data as any).orderType === 'parcel' ? 'PARCEL' : 'DINE IN'}</b></td></tr>` : ''}
-    ${data.customerMobile && !paperSaving ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${data.customerMobile}</td></tr>` : ''}
-    ${data.customerGstin && !paperSaving ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${data.customerGstin}</td></tr>` : ''}
+    ${data.customerMobile && !paperSaving ? `<tr><td><b>Cust Mob:</b></td><td style="text-align:right">${escapeHtml(data.customerMobile)}</td></tr>` : ''}
+    ${data.customerGstin && !paperSaving ? `<tr><td><b>Cust GSTIN:</b></td><td style="text-align:right;font-family:monospace;">${escapeHtml(data.customerGstin)}</td></tr>` : ''}
   </table>
   
   <hr>
@@ -209,13 +209,13 @@ export const printBrowserReceipt = async (data: PrintData) => {
   
   <table>
     <tr><td><b>Subtotal:</b></td><td style="text-align:right"><b>₹${data.subtotal.toFixed(2)}</b></td></tr>
-    ${data.additionalCharges?.map(c => `<tr><td>${c.name}:</td><td style="text-align:right">₹${c.amount.toFixed(2)}</td></tr>`).join('') || ''}
+    ${data.additionalCharges?.map(c => `<tr><td>${escapeHtml(c.name)}:</td><td style="text-align:right">₹${c.amount.toFixed(2)}</td></tr>`).join('') || ''}
     ${data.discount && data.discount > 0 ? `<tr><td>Discount:</td><td style="text-align:right">-₹${data.discount.toFixed(2)}</td></tr>` : ''}
     <tr class="total" style="font-size: ${width === '80mm' ? '22px' : '16px'}; font-weight: bold;"><td><b>TOTAL:</b></td><td style="text-align:right"><b>₹${data.total.toFixed(2)}</b></td></tr>
   </table>
   
   <table style="margin-top: ${paperSaving ? '4px' : '8px'}">
-    <tr><td>Paid via:</td><td style="text-align:right">${data.paymentMethod.toUpperCase()}</td></tr>
+    <tr><td>Paid via:</td><td style="text-align:right">${escapeHtml(data.paymentMethod.toUpperCase())}</td></tr>
   </table>
  
   ${gstHtml}
@@ -224,9 +224,9 @@ export const printBrowserReceipt = async (data: PrintData) => {
     ${qrCodeDataUrl ? `<div style="margin-top: 10px; margin-bottom: 5px;"><img src="${qrCodeDataUrl}" alt="QR Code" style="display:block;margin:0 auto;max-width:140px;" /></div>` : ''}
     <div style="font-weight: 700; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(customFooterMsg)}</div>
     ${(data.facebook || data.instagram || data.whatsapp) && !paperSaving ? '<hr>' : ''}
-    ${data.facebook && !paperSaving ? `<div>FB: ${data.facebook}</div>` : ''}
-    ${data.instagram && !paperSaving ? `<div>IG: ${data.instagram}</div>` : ''}
-    ${data.whatsapp && !paperSaving ? `<div>WA: ${data.whatsapp}</div>` : ''}
+    ${data.facebook && !paperSaving ? `<div>FB: ${escapeHtml(data.facebook)}</div>` : ''}
+    ${data.instagram && !paperSaving ? `<div>IG: ${escapeHtml(data.instagram)}</div>` : ''}
+    ${data.whatsapp && !paperSaving ? `<div>WA: ${escapeHtml(data.whatsapp)}</div>` : ''}
   </div>
 
   <script>

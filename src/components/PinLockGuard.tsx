@@ -8,6 +8,15 @@ import { toast } from '@/hooks/use-toast';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000; // 1 minute lockout after max attempts
 
+// SHA-256 hash for PIN storage — prevents plaintext exposure in localStorage
+const hashPin = async (pin: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`zenpos_pin_${pin}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { operatingBranchId } = useBranch();
   const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
@@ -25,7 +34,7 @@ export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isLockedOut = Date.now() < lockedUntil;
 
-  const handleUnlock = (e: React.FormEvent) => {
+  const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (isLockedOut) {
@@ -34,7 +43,14 @@ export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    if (pinInput === savedPin) {
+    // Compare using SHA-256 hash to prevent plaintext PIN exposure
+    const inputHash = await hashPin(pinInput);
+    if (inputHash === savedPin || pinInput === savedPin) {
+      // Accept both hashed and legacy plaintext PINs for backward compat
+      // If it was plaintext, upgrade to hashed storage
+      if (pinInput === savedPin && savedPin.length <= 10) {
+        localStorage.setItem(branchKey('hotel_pos_reports_pin'), inputHash);
+      }
       setIsLocked(false);
       setAttempts(0);
     } else {
