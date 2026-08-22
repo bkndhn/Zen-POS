@@ -77,32 +77,41 @@ const Expenses: React.FC = () => {
 
   const fetchExpenses = async () => {
     if (!adminId) return;
+    let loadedFromCache = false;
     try {
-      // Bypass cache when branch filter changes — cache key includes branch
-      const cacheKey = `${CACHE_KEYS.EXPENSES}_${adminId}_${branchFilterId || 'all'}_list`;
-      const data = await cachedFetch(
-        cacheKey,
-        async () => {
-          let query: any = supabase
-            .from('expenses')
-            .select('*')
-            .eq('admin_id', adminId)
-            .order('date', { ascending: false });
-          if (branchFilterId) query = query.eq('branch_id', branchFilterId);
-          const { data, error } = await query;
+      const { offlineManager } = await import('@/utils/offlineManager');
 
-          if (error) throw error;
-          return data || [];
-        }
-      );
-      setExpenses(data);
+      // 1. FAST PATH: Load from IndexedDB cache instantly
+      const cacheKey = `expenses_${adminId}_${branchFilterId || 'all'}`;
+      const cached = await offlineManager.getCachedQueryResult(cacheKey);
+      if (cached && cached.length > 0) {
+        setExpenses(cached);
+        loadedFromCache = true;
+        setLoading(false);
+      }
+
+      // 2. SYNC PATH: Fetch latest from network
+      let query: any = supabase
+        .from('expenses')
+        .select('*')
+        .eq('admin_id', adminId)
+        .order('date', { ascending: false });
+      if (branchFilterId) query = query.eq('branch_id', branchFilterId);
+      const { data, error } = await query;
+
+      if (!error && data) {
+        setExpenses(data);
+        await offlineManager.cacheQueryResult(cacheKey, data);
+      }
     } catch (error) {
-      console.error('Error fetching expenses:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch expenses",
-        variant: "destructive",
-      });
+      console.warn('Error fetching expenses (offline fallback active):', error);
+      if (!loadedFromCache) {
+        toast({
+          title: "Offline Mode",
+          description: "Showing cached expenses data",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

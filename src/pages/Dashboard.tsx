@@ -58,27 +58,34 @@ const Dashboard = () => {
       const today = format(new Date(), 'yyyy-MM-dd');
 
       const { offlineManager } = await import('@/utils/offlineManager');
+      const dashCacheKey = `dashboard_stats_${adminId}_${branchFilterId || 'all'}_${today}`;
 
       // Fetch today's bills with items
-      let billsQuery: any = supabase
-        .from('bills')
-        .select(`
-          *,
-          bill_items (
-            quantity,
-            price,
-            total,
-            item_name_override,
-            items ( name, category, unit )
-          )
-        `)
-        .eq('admin_id', adminId)
-        .eq('date', today)
-        .or('is_deleted.is.null,is_deleted.eq.false');
-      if (branchFilterId) billsQuery = billsQuery.eq('branch_id', branchFilterId);
-      const { data: billsData } = await billsQuery;
+      let billsData: any[] = [];
+      try {
+        let billsQuery: any = supabase
+          .from('bills')
+          .select(`
+            *,
+            bill_items (
+              quantity,
+              price,
+              total,
+              item_name_override,
+              items ( name, category, unit )
+            )
+          `)
+          .eq('admin_id', adminId)
+          .eq('date', today)
+          .or('is_deleted.is.null,is_deleted.eq.false');
+        if (branchFilterId) billsQuery = billsQuery.eq('branch_id', branchFilterId);
+        const { data } = await billsQuery;
+        billsData = data || [];
+      } catch {
+        // Network failed — continue with empty (offline bills merged below)
+      }
 
-      const allBills = await offlineManager.mergeOfflineBills(billsData || [], adminId, branchFilterId);
+      const allBills = await offlineManager.mergeOfflineBills(billsData, adminId, branchFilterId);
       const todayBills = allBills.filter((b: any) => {
         const bDate = b.date || (b.created_at ? format(new Date(b.created_at), 'yyyy-MM-dd') : '');
         return bDate === today && !b.is_deleted;
@@ -88,24 +95,39 @@ const Dashboard = () => {
       const todayBillCount = todayBills.length;
       setLiveOrderCount(todayBillCount);
 
-      // Fetch today's expenses
-      let expensesQuery: any = supabase
-        .from('expenses')
-        .select('amount')
-        .eq('admin_id', adminId)
-        .eq('date', today);
-      if (branchFilterId) expensesQuery = expensesQuery.eq('branch_id', branchFilterId);
-      const { data: expensesData } = await expensesQuery;
-      const todayExpenses = expensesData?.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0) || 0;
+      // Fetch today's expenses — with offline fallback
+      let todayExpenses = 0;
+      try {
+        let expensesQuery: any = supabase
+          .from('expenses')
+          .select('amount')
+          .eq('admin_id', adminId)
+          .eq('date', today);
+        if (branchFilterId) expensesQuery = expensesQuery.eq('branch_id', branchFilterId);
+        const { data: expensesData } = await expensesQuery;
+        todayExpenses = expensesData?.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0) || 0;
+        // Cache today's expense total for offline
+        await offlineManager.cacheQueryResult(`dashboard_expenses_${adminId}_${branchFilterId || 'all'}_${today}`, [{ total: todayExpenses }]);
+      } catch {
+        // Offline: try cached expense total
+        const cachedExp = await offlineManager.getCachedQueryResult(`dashboard_expenses_${adminId}_${branchFilterId || 'all'}_${today}`);
+        todayExpenses = cachedExp?.[0]?.total || 0;
+      }
 
-      // Active items count
-      const { data: itemsData } = await supabase
-        .from('items')
-        .select('id')
-        .eq('admin_id', adminId)
-        .eq('is_active', true);
-
-      const totalItems = itemsData?.length || 0;
+      // Active items count — with offline fallback
+      let totalItems = 0;
+      try {
+        const { data: itemsData } = await supabase
+          .from('items')
+          .select('id')
+          .eq('admin_id', adminId)
+          .eq('is_active', true);
+        totalItems = itemsData?.length || 0;
+        await offlineManager.cacheQueryResult(`dashboard_items_count_${adminId}`, [{ count: totalItems }]);
+      } catch {
+        const cachedItems = await offlineManager.getCachedQueryResult(`dashboard_items_count_${adminId}`);
+        totalItems = cachedItems?.[0]?.count || 0;
+      }
 
       // Process top items from bill_items
       const itemSalesMap = new Map<string, { name: string; quantity: number; revenue: number; unit: string }>();
