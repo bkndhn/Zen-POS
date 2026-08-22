@@ -107,11 +107,11 @@ const Dashboard = () => {
         const { data: expensesData } = await expensesQuery;
         todayExpenses = expensesData?.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0) || 0;
         // Cache today's expense total for offline
-        await offlineManager.cacheQueryResult(`dashboard_expenses_${adminId}_${branchFilterId || 'all'}_${today}`, [{ total: todayExpenses }]);
+        await offlineManager.cacheQueryResult('dashboard', `dashboard_expenses_${adminId}_${branchFilterId || 'all'}_${today}`, [{ total: todayExpenses }]);
       } catch {
         // Offline: try cached expense total
-        const cachedExp = await offlineManager.getCachedQueryResult(`dashboard_expenses_${adminId}_${branchFilterId || 'all'}_${today}`);
-        todayExpenses = cachedExp?.[0]?.total || 0;
+        const cachedExp = await offlineManager.getCachedQueryResult('dashboard', `dashboard_expenses_${adminId}_${branchFilterId || 'all'}_${today}`);
+        todayExpenses = cachedExp?.data?.[0]?.total || 0;
       }
 
       // Active items count — with offline fallback
@@ -123,10 +123,10 @@ const Dashboard = () => {
           .eq('admin_id', adminId)
           .eq('is_active', true);
         totalItems = itemsData?.length || 0;
-        await offlineManager.cacheQueryResult(`dashboard_items_count_${adminId}`, [{ count: totalItems }]);
+        await offlineManager.cacheQueryResult('dashboard', `dashboard_items_count_${adminId}`, [{ count: totalItems }]);
       } catch {
-        const cachedItems = await offlineManager.getCachedQueryResult(`dashboard_items_count_${adminId}`);
-        totalItems = cachedItems?.[0]?.count || 0;
+        const cachedItems = await offlineManager.getCachedQueryResult('dashboard', `dashboard_items_count_${adminId}`);
+        totalItems = cachedItems?.data?.[0]?.count || 0;
       }
 
       // Process top items from bill_items
