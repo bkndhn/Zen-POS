@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
 
 import { initStoragePersistence, secondaryVault } from './nativeStorage';
+import type { StorageBackend } from './storage/StorageBackend';
 
 // Database configuration
 const DB_NAME = 'HotelPOS_OfflineDB';
@@ -89,10 +90,26 @@ class OfflineManager {
     private listeners: Set<(isOnline: boolean) => void> = new Set();
     private pendingBillListeners: Set<(count: number) => void> = new Set();
 
+    /**
+     * Optional StorageBackend delegate.
+     * When set (on native Capacitor), storage operations use SQLite.
+     * When null (on web), the existing IndexedDB code path is used.
+     */
+    private backend: StorageBackend | null = null;
+
     constructor() {
         this.initializeDB();
         this.setupNetworkListeners();
         this.setupAuthListeners();
+    }
+
+    /**
+     * Set the storage backend (called from initStorage after platform detection).
+     * On native: SQLiteBackend. On web: null (keeps using IndexedDB directly).
+     */
+    setBackend(backend: StorageBackend): void {
+        this.backend = backend;
+        console.log(`[OfflineManager] Storage backend set: ${backend.constructor.name}`);
     }
 
     private async initializeDB(): Promise<void> {
@@ -372,6 +389,11 @@ class OfflineManager {
 
     // Generic store operations
     async store<T>(storeName: string, data: T): Promise<void> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.put(storeName, data);
+        }
+
         if (!this.db) await this.initializeDB();
 
         return new Promise((resolve, reject) => {
@@ -385,6 +407,11 @@ class OfflineManager {
     }
 
     async storeMany<T>(storeName: string, items: T[]): Promise<void> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.putMany(storeName, items);
+        }
+
         if (!this.db) await this.initializeDB();
 
         return new Promise((resolve, reject) => {
@@ -399,6 +426,11 @@ class OfflineManager {
     }
 
     async get<T>(storeName: string, key: string): Promise<T | null> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.get(storeName, key);
+        }
+
         if (!this.db) await this.initializeDB();
 
         return new Promise((resolve, reject) => {
@@ -412,6 +444,11 @@ class OfflineManager {
     }
 
     async getAll<T>(storeName: string): Promise<T[]> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.getAll(storeName);
+        }
+
         if (!this.db) await this.initializeDB();
 
         return new Promise((resolve, reject) => {
@@ -425,6 +462,11 @@ class OfflineManager {
     }
 
     async delete(storeName: string, key: string): Promise<void> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.remove(storeName, key);
+        }
+
         if (!this.db) await this.initializeDB();
 
         return new Promise((resolve, reject) => {
@@ -438,6 +480,11 @@ class OfflineManager {
     }
 
     async clear(storeName: string): Promise<void> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.clearTable(storeName);
+        }
+
         if (!this.db) await this.initializeDB();
 
         return new Promise((resolve, reject) => {
@@ -1467,6 +1514,11 @@ class OfflineManager {
     // ──────────── Universal Offline Cache ────────────
 
     async cacheQueryResult(table: string, key: string, data: any): Promise<void> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.cacheQuery(table, key, data);
+        }
+
         if (!this.db) return;
         try {
             const tx = this.db.transaction([STORES.OFFLINE_CACHE], 'readwrite');
@@ -1479,6 +1531,11 @@ class OfflineManager {
     }
 
     async getCachedQueryResult(table: string, key: string): Promise<{ data: any; updatedAt: number } | null> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.getCachedQuery(table, key);
+        }
+
         if (!this.db) return null;
         return new Promise((resolve) => {
             try {
@@ -1502,6 +1559,11 @@ class OfflineManager {
     }
 
     async clearCacheForTable(table: string): Promise<void> {
+        // Delegate to SQLite backend if available
+        if (this.backend?.isReady()) {
+            return this.backend.clearCacheForTable(table);
+        }
+
         if (!this.db) return;
         try {
             const tx = this.db.transaction([STORES.OFFLINE_CACHE], 'readwrite');
