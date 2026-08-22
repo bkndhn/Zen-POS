@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useOfflineQuery } from '@/hooks/useOffline';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
