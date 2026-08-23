@@ -4505,6 +4505,13 @@ export type Database = {
           name: string
         }[]
       }
+      get_public_legal_content: {
+        Args: never
+        Returns: {
+          terms_and_conditions: string
+          updated_at: string
+        }[]
+      }
       get_public_menu_categories: {
         Args: { p_admin_id: string; p_branch_id?: string }
         Returns: {
