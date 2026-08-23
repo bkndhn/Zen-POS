@@ -824,8 +824,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       import.meta.env.DEV && console.log('Sign in error:', error.message);
+      // Audit: failed login attempt (no session, logged best-effort as anonymous)
+      auditFireAndForget({
+        eventType: 'auth',
+        action: 'login_failed',
+        severity: 'warning',
+        details: { email_domain: email.split('@')[1] || 'unknown', reason: error.message },
+      });
       return { error };
     }
+
 
     // Check if user/admin is paused using the database function
     if (data?.user) {
