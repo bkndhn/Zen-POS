@@ -79,15 +79,13 @@ export const ContactSupportDialog: React.FC<ContactSupportDialogProps> = ({ open
               showCustom: !!address,
             });
           } else {
-            // Admin / Super Admin view Super Admin app_settings
+            // Admin / Super Admin view platform support info (safe RPC)
             setIsAdminSupport(false);
-            const { data, error } = await supabase
-              .from('app_settings')
-              .select('*')
-              .eq('id', true)
-              .maybeSingle();
+            const { data: rows, error } = await (supabase as any)
+              .rpc('get_app_support_info');
 
             if (error) throw error;
+            const data = Array.isArray(rows) ? rows[0] : rows;
             if (data) {
               setCoords({
                 phone: data.support_phone || undefined,
