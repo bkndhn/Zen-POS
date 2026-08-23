@@ -928,6 +928,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setLoading(true);
 
+    // Audit before the token is dropped (RLS needs the session)
+    await logSecurityEvent({ eventType: 'auth', action: 'logout', severity: 'info' });
+    clearSessionSecurityState();
+
+
+
     try {
       if (user?.id && Capacitor.isNativePlatform()) {
         await supabase
