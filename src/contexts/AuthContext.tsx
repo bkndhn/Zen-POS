@@ -908,8 +908,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     devLog('Sign in result: Success');
+
+    // Session hardening + audit trail
+    markSessionStart();
+    storeSecurityEpoch(await fetchSecurityEpoch());
+    await logSecurityEvent({
+      eventType: 'auth',
+      action: 'login_success',
+      severity: 'info',
+      details: { platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web' },
+    });
+
     return { error: null };
   };
+
 
   const signOut = async () => {
     devLog('Signing out...');
