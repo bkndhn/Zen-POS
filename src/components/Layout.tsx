@@ -316,7 +316,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <>
             <main
               className="flex-1 relative w-full overflow-hidden"
-              style={{ paddingBottom: 'max(80px, calc(70px + env(safe-area-inset-bottom, 0px)))' }}
+              style={{ paddingBottom: 'max(68px, calc(58px + env(safe-area-inset-bottom, 0px)))' }}
             >
               <PullToRefresh>
                 <div key={location.pathname} className="page-transition-enter">

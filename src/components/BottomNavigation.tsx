@@ -182,10 +182,10 @@ export const BottomNavigation: React.FC = () => {
         <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-black/5 to-transparent dark:from-black/30 pointer-events-none" />
         <div className="absolute inset-0 bg-card/90 dark:bg-card/80 backdrop-blur-xl border-t border-border/70 shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_-8px_28px_-6px_rgba(0,0,0,0.55)]" />
         <div
-          className="relative flex justify-around items-center px-1 sm:px-2"
+          className="relative flex justify-around items-center px-0.5 sm:px-2"
           style={{
-            paddingTop: '4px',
-            paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
+            paddingTop: '3px',
+            paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))',
           }}
         >
           {superAdminNavItems.map(item => {
@@ -267,7 +267,7 @@ export const BottomNavigation: React.FC = () => {
         </div>
         <span
           className={cn(
-            'text-[10.5px] sm:text-[11.5px] mt-1 font-medium tracking-tight transition-all duration-300 truncate max-w-full',
+            'text-[10px] xs:text-[10.5px] sm:text-[11.5px] mt-0.5 font-medium tracking-tight transition-all duration-300 truncate max-w-full text-center leading-tight',
             isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
           )}
         >
@@ -286,10 +286,10 @@ export const BottomNavigation: React.FC = () => {
         aria-hidden
       />
       <div
-        className="relative flex justify-around items-center px-1 sm:px-2"
+        className="relative flex justify-around items-center px-0.5 sm:px-2"
         style={{
-          paddingTop: '4px',
-          paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
+          paddingTop: '3px',
+          paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))',
         }}
       >
         {primary.map(renderTab)}

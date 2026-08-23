@@ -30,14 +30,16 @@ export const BranchSwitcher: React.FC = () => {
       value={value}
       onValueChange={(v) => setActiveBranchId(v === '__all__' ? null : v)}
     >
-      <SelectTrigger className="h-9 w-[110px] sm:w-[170px] text-xs">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <SelectTrigger className="h-8 sm:h-9 w-[100px] sm:w-[160px] text-[11px] sm:text-xs px-2 rounded-xl">
+        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
           {isAllBranchesView ? (
             <Layers className="w-3.5 h-3.5 shrink-0 text-primary" />
           ) : (
             <Building2 className="w-3.5 h-3.5 shrink-0 text-primary" />
           )}
-          <SelectValue placeholder="Branch" />
+          <span className="truncate">
+            {isAllBranchesView ? 'All Branches' : activeBranch?.name || 'Branch'}
+          </span>
         </div>
       </SelectTrigger>
       <SelectContent>
@@ -49,10 +51,11 @@ export const BranchSwitcher: React.FC = () => {
           </SelectItem>
         )}
         {branches.map((b) => (
-          <SelectItem key={b.id} value={b.id}>
+          <SelectItem key={b.id} value={b.id} textValue={b.name}>
             <span className="flex items-center gap-2">
               <Building2 className="w-3.5 h-3.5" />
-              {b.name}{b.is_main && <span className="text-[10px] text-muted-foreground">(Main)</span>}
+              <span>{b.name}</span>
+              {b.is_main && <span className="text-[10px] text-muted-foreground ml-1">(Main)</span>}
             </span>
           </SelectItem>
         ))}

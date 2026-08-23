@@ -261,7 +261,7 @@ const Dashboard = () => {
   const currentHour = new Date().getHours();
 
   return (
-    <div className="p-3 sm:p-4 space-y-4">
+    <div className="p-3 sm:p-4 pb-8 sm:pb-8 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
