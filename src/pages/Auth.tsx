@@ -1,5 +1,6 @@
 import { getAppBaseUrl } from '@/utils/urlUtils';
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | und
 
 const Auth = () => {
   const { user, profile, signIn, signOut, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,7 +45,7 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-pink-600 dark:text-pink-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-300 font-medium">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-300 font-medium">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -62,13 +64,13 @@ const Auth = () => {
             <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
               <Clock className="w-8 h-8 text-orange-500" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Account Paused</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Your account has been paused by an administrator.</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{t('auth.accountPaused')}</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">{t('auth.accountPausedDescription')}</p>
             <button
               onClick={signOut}
               className="w-full py-3 px-4 border border-gray-300 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
             >
-              Sign Out
+              {t('auth.signOut')}
             </button>
           </div>
         </div>
@@ -85,13 +87,13 @@ const Auth = () => {
             <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
               <span className="text-red-600 text-2xl">⚠️</span>
             </div>
-            <h2 className="text-2xl font-bold text-red-600 mb-2">Account Deactivated</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Your account has been deactivated. Please contact support.</p>
+            <h2 className="text-2xl font-bold text-red-600 mb-2">{t('auth.accountDeactivated')}</h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">{t('auth.accountDeactivatedDescription')}</p>
             <button
               onClick={signOut}
               className="w-full py-3 px-4 border border-gray-300 dark:border-zinc-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
             >
-              Sign Out
+              {t('auth.signOut')}
             </button>
           </div>
         </div>
@@ -104,7 +106,7 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-zinc-950 dark:to-zinc-900">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-pink-600 dark:text-pink-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-300 font-medium">Setting up your account...</p>
+          <p className="text-gray-600 dark:text-gray-300 font-medium">{t('auth.settingUpAccount')}</p>
         </div>
       </div>
     );
@@ -118,7 +120,7 @@ const Auth = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      toast({ title: t('auth.verifyCaptcha'), description: t('auth.verifyCaptchaDescription'), variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -133,8 +135,8 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "Password Reset Email Sent",
-        description: "Check your email for a password reset link.",
+        title: t('auth.passwordResetSent'),
+        description: t('auth.passwordResetSentDescription'),
       });
       setIsForgotPassword(false);
     } catch (error: any) {
@@ -156,8 +158,8 @@ const Auth = () => {
     if (!checkRateLimit('login_attempt', 5, 60000)) {
       logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
       toast({
-        title: "Too Many Attempts",
-        description: "Please wait 1 minute before trying again.",
+        title: t('auth.tooManyAttempts'),
+        description: t('auth.tooManyAttemptsDescription'),
         variant: "destructive",
       });
       return;
@@ -165,15 +167,15 @@ const Auth = () => {
 
     if (!isValidEmail(formData.email)) {
       toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
+        title: t('auth.invalidEmail'),
+        description: t('auth.invalidEmailDescription'),
         variant: "destructive",
       });
       return;
     }
 
     if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      toast({ title: "Verify you're human", description: "Please complete the captcha.", variant: "destructive" });
+      toast({ title: t('auth.verifyCaptcha'), description: t('auth.verifyCaptchaDescription'), variant: "destructive" });
       return;
     }
 
@@ -222,25 +224,25 @@ const Auth = () => {
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center mb-1">
-            {isForgotPassword ? 'Reset Password' : 'Welcome Back'}
+            {isForgotPassword ? t('auth.resetPassword') : t('auth.welcomeBack')}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-8">
             {isForgotPassword
-              ? 'Enter your email to receive a reset link'
-              : 'Sign in to access your POS system'
+              ? t('auth.resetPasswordDescription')
+              : t('auth.signInDescription')
             }
           </p>
 
           <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 required
-                placeholder="Enter your email"
+                placeholder={t('auth.enterEmail')}
                 className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
               />
             </div>
@@ -248,13 +250,13 @@ const Auth = () => {
             {!isForgotPassword && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.password')}</Label>
                   <button
                     type="button"
                     onClick={() => setIsForgotPassword(true)}
                     className="text-xs font-semibold text-pink-600 hover:text-pink-700 dark:text-pink-400 hover:underline transition-colors"
                   >
-                    Forgot password?
+                    {t('auth.forgotPassword')}
                   </button>
                 </div>
                 <div className="relative">
@@ -264,7 +266,7 @@ const Auth = () => {
                     value={formData.password}
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                     required
-                    placeholder="Enter your password"
+                    placeholder={t('auth.enterPassword')}
                     className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all pr-12"
                   />
                   <button
@@ -288,7 +290,7 @@ const Auth = () => {
                   className="h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 dark:border-zinc-800 dark:bg-zinc-950"
                 />
                 <label htmlFor="rememberMe" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                  Remember my email
+                  {t('auth.rememberEmail')}
                 </label>
               </div>
             )}
@@ -312,9 +314,9 @@ const Auth = () => {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : isForgotPassword ? (
-                'Send Reset Link'
+                t('auth.sendResetLink')
               ) : (
-                'Sign In'
+                t('auth.signIn')
               )}
             </button>
 
@@ -324,7 +326,7 @@ const Auth = () => {
                 onClick={() => setIsForgotPassword(false)}
                 className="w-full text-center text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors pt-2"
               >
-                Back to Sign In
+                {t('auth.backToSignIn')}
               </button>
             )}
           </form>

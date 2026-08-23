@@ -7,11 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Languages } from 'lucide-react';
+import { Languages, Check } from 'lucide-react';
 
+// To add a new language, add a new entry here.
+// The flag emoji and nativeName will be displayed in the dropdown.
 const languages = [
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' }
+  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', flag: '🇮🇳' }
 ];
 
 export const LanguageSwitcher: React.FC = () => {
@@ -27,22 +29,28 @@ export const LanguageSwitcher: React.FC = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 shrink-0">
+        <Button variant="ghost" size="sm" className="gap-1.5 shrink-0" title="Change language">
+          <span className="text-base leading-none">{currentLanguage.flag}</span>
           <Languages className="h-4 w-4" />
-          <span className="hidden sm:inline">{currentLanguage.nativeName}</span>
+          <span className="hidden sm:inline text-xs">{currentLanguage.nativeName}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {languages.map((lang) => (
-          <DropdownMenuItem
-            key={lang.code}
-            onClick={() => changeLanguage(lang.code)}
-            className={i18n.language?.startsWith(lang.code) ? 'bg-accent' : ''}
-          >
-            <span className="mr-2">{lang.nativeName}</span>
-            <span className="text-muted-foreground text-sm">({lang.name})</span>
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="min-w-[160px]">
+        {languages.map((lang) => {
+          const isActive = i18n.language?.startsWith(lang.code);
+          return (
+            <DropdownMenuItem
+              key={lang.code}
+              onClick={() => changeLanguage(lang.code)}
+              className={`flex items-center gap-2 ${isActive ? 'bg-accent font-medium' : ''}`}
+            >
+              <span className="text-base">{lang.flag}</span>
+              <span className="flex-1">{lang.nativeName}</span>
+              <span className="text-muted-foreground text-xs">({lang.name})</span>
+              {isActive && <Check className="w-4 h-4 text-primary ml-1" />}
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
