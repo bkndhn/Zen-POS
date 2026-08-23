@@ -2,6 +2,7 @@ import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } fro
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,6 +125,7 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
 
   const getCategoryCount = (categoryName: string) => categoryCounts[categoryName] || 0;
 
+  const { t } = useTranslation();
   return (
     <div className="mb-3 w-full overflow-hidden">
       <div className="flex gap-2 pb-2 overflow-x-auto scrollbar-hide" style={{ maxWidth: '100%' }}>
@@ -136,7 +138,7 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
             : 'hover:bg-muted'
             }`}
         >
-          All ({totalActiveItems})
+          {t('common.all')} ({totalActiveItems})
         </Button>
         {sortedCategories.map((category) => (
           <Button
@@ -445,6 +447,7 @@ const Billing = () => {
   const {
     profile
   } = useAuth();
+  const { t } = useTranslation();
   const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
   const { branchFilterId, isAllBranchesView, operatingBranchId, activeBranch } = useBranchScopedQuery(() => {
     fetchItems();
@@ -3746,7 +3749,7 @@ const Billing = () => {
       <div className="mb-3 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 w-4 h-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search items or use voice…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
+          <Input placeholder={t('billing.searchItems')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24" />
           <div className="absolute right-1 top-1/2 -translate-y-1/2">
             <VoiceBillingButton
               items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
@@ -3754,7 +3757,7 @@ const Billing = () => {
             />
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={() => setIsCustomItemOpen(true)} className="shrink-0 border-dashed" title="Add Custom Item">
+        <Button variant="outline" size="icon" onClick={() => setIsCustomItemOpen(true)} className="shrink-0 border-dashed" title={t('billing.addCustomItem')}>
           <Plus className="w-4 h-4" />
         </Button>
       </div>

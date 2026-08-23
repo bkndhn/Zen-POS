@@ -1,6 +1,7 @@
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,6 +136,7 @@ const StaffRow: React.FC<{
 
 const Reports: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
+  const { t } = useTranslation();
   const adminId = adminProfileId;
   const { branchFilterId, activeBranch, isAllBranchesView, branches } = useBranchScopedQuery(() => fetchReports());
 
@@ -1630,8 +1632,8 @@ const Reports: React.FC = () => {
             <BarChart3 className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight">Reports</h1>
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Business insights and analytics</p>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight">{t('nav.reports')}</h1>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.title')}</p>
           </div>
         </div>
         <div className="flex flex-row gap-2">
@@ -1651,7 +1653,7 @@ const Reports: React.FC = () => {
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search bills, items, payment methods..."
+          placeholder={t('reports.searchBills')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9 h-9 text-sm"
@@ -1669,20 +1671,20 @@ const Reports: React.FC = () => {
         <CardContent className="p-0">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div>
-              <Label className="text-xs">Period</Label>
+              <Label className="text-xs">{t('common.filter')}</Label>
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="hourly">Last X Hours</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="yesterday">Yesterday</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="today">{t('common.today')}</SelectItem>
+                  <SelectItem value="yesterday">{t('common.yesterday')}</SelectItem>
+                  <SelectItem value="week">{t('common.thisWeek')}</SelectItem>
+                  <SelectItem value="month">{t('common.thisMonth')}</SelectItem>
                   <SelectItem value="year">This Year</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
+                  <SelectItem value="all">{t('common.all')}</SelectItem>
+                  <SelectItem value="custom">{t('common.custom')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1708,7 +1710,7 @@ const Reports: React.FC = () => {
             {dateRange === 'custom' && (
               <>
                 <div>
-                  <Label className="text-xs">Start Date</Label>
+                  <Label className="text-xs">{t('common.from')}</Label>
                   <Input
                     type="date"
                     value={customStartDate}
@@ -1718,7 +1720,7 @@ const Reports: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">End Date</Label>
+                  <Label className="text-xs">{t('common.to')}</Label>
                   <Input
                     type="date"
                     value={customEndDate}
@@ -1739,7 +1741,7 @@ const Reports: React.FC = () => {
           {/* Total Revenue Card */}
           <div className="bg-card rounded-2xl p-4 shadow-lg dark:shadow-none border border-border">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Revenue</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.revenue')}</p>
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
               </div>
@@ -1763,7 +1765,7 @@ const Reports: React.FC = () => {
           {/* Total Expenses Card */}
           <div className="bg-card rounded-2xl p-4 shadow-lg dark:shadow-none border border-border">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Expenses</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('expenses.totalExpenses')}</p>
               <div className="w-8 h-8 rounded-lg bg-rose-500/10 dark:bg-rose-500/20 flex items-center justify-center">
                 <TrendingDown className="w-4 h-4 text-rose-500" />
               </div>
@@ -1775,7 +1777,7 @@ const Reports: React.FC = () => {
           {/* Net Profit Card */}
           <div className="bg-card rounded-2xl p-4 shadow-lg dark:shadow-none border border-border">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Net Profit</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.profit')}</p>
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${profit >= 0 ? 'bg-blue-500/10 dark:bg-blue-500/20' : 'bg-rose-500/10 dark:bg-rose-500/20'}`}>
                 <DollarSign className={`w-4 h-4 ${profit >= 0 ? 'text-blue-500' : 'text-rose-500'}`} />
               </div>
@@ -1787,7 +1789,7 @@ const Reports: React.FC = () => {
           {/* Total Bills Card */}
           <div className="bg-card rounded-2xl p-4 shadow-lg dark:shadow-none border border-border">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Bills</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t('reports.totalBills')}</p>
               <div className="w-8 h-8 rounded-lg bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center">
                 <Receipt className="w-4 h-4 text-violet-500" />
               </div>
@@ -1874,14 +1876,14 @@ const Reports: React.FC = () => {
                     >📦 Parcel</Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs">Filter:</Label>
+                    <Label className="text-xs">{t('common.filter')}:</Label>
                     <Select value={billFilter} onValueChange={setBillFilter}>
                       <SelectTrigger className="w-28 h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="processed">Processed</SelectItem>
-                        <SelectItem value="deleted">Deleted</SelectItem>
+                        <SelectItem value="processed">{t('reports.processed')}</SelectItem>
+                        <SelectItem value="deleted">{t('reports.cancelled')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1890,7 +1892,7 @@ const Reports: React.FC = () => {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8 text-xs">Loading...</div>
+                <div className="text-center py-8 text-xs">{t('common.loading')}</div>
               ) : (
                 <div className="space-y-3">
                   {bills

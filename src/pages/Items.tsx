@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +59,7 @@ interface Item {
 
 const Items: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
+  const { t } = useTranslation();
   const adminId = adminProfileId;
   const { branchFilterId, isAllBranchesView, operatingBranchId, activeBranch } = useBranchScopedQuery(() => {
     if (adminId) {
@@ -1005,10 +1007,10 @@ const Items: React.FC = () => {
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight">
-              Items{activeBranch ? ` — ${activeBranch.name}` : ''}
+              {t('nav.items')}{activeBranch ? ` — ${activeBranch.name}` : ''}
             </h1>
             <p className="text-muted-foreground text-[10px] sm:text-xs">
-              {isAllBranchesView ? 'Combined view (read-only)' : 'Manage menu items for this branch'}
+              {isAllBranchesView ? 'Combined view (read-only)' : t('items.manageItems')}
             </p>
           </div>
         </div>
@@ -1026,7 +1028,7 @@ const Items: React.FC = () => {
           <div className="relative">
             <button onClick={() => setShowSortMenu(!showSortMenu)} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${sortBy !== 'default' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
               <ArrowUpDown className="w-3.5 h-3.5" />
-              {sortBy === 'default' ? 'Sort' : sortBy === 'name' ? 'A-Z' : sortBy === 'price_asc' ? 'Price ↑' : sortBy === 'price_desc' ? 'Price ↓' : sortBy === 'stock_low' ? 'Low Stock' : sortBy === 'newest' ? 'Newest' : 'Bestseller'}
+              {sortBy === 'default' ? t('common.sort') : sortBy === 'name' ? 'A-Z' : sortBy === 'price_asc' ? 'Price ↑' : sortBy === 'price_desc' ? 'Price ↓' : sortBy === 'stock_low' ? t('items.lowStock') : sortBy === 'newest' ? t('items.sortNewest') : t('items.sortBestseller')}
             </button>
             {showSortMenu && (
               <div className="absolute top-full mt-1 right-0 bg-background border rounded-lg shadow-xl p-1 z-30 min-w-[140px]">
@@ -1041,7 +1043,7 @@ const Items: React.FC = () => {
           {/* Export Button */}
           <button onClick={exportMenu} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Export menu as CSV">
             <Download className="w-3.5 h-3.5" />
-            Export
+            {t('common.export')}
           </button>
           {profile?.role === 'admin' && !isAllBranchesView && adminId && (
             <>
@@ -1063,7 +1065,7 @@ const Items: React.FC = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search items..."
+              placeholder={t('items.searchItems')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 h-10 text-sm rounded-xl border-border/50 bg-background/80"
@@ -1076,7 +1078,7 @@ const Items: React.FC = () => {
               size="sm"
               className="h-9 text-sm rounded-lg px-4 flex-shrink-0"
             >
-              All ({items.length})
+              {t('common.all')} ({items.length})
             </Button>
             {categories.map(category => (
               <Button
@@ -1095,19 +1097,19 @@ const Items: React.FC = () => {
               onClick={() => setStockFilter('all')}
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${stockFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
             >
-              All Stock
+              {t('common.allStock')}
             </button>
             <button
               onClick={() => setStockFilter('unlimited')}
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1 ${stockFilter === 'unlimited' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'}`}
             >
-              <span className="text-xs">∞</span> Unlimited ({items.filter(i => i.unlimited_stock).length})
+              <span className="text-xs">∞</span> {t('common.unlimited')} ({items.filter(i => i.unlimited_stock).length})
             </button>
             <button
               onClick={() => setStockFilter('limited')}
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${stockFilter === 'limited' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'}`}
             >
-              Limited ({items.filter(i => !i.unlimited_stock).length})
+              {t('common.limited')} ({items.filter(i => !i.unlimited_stock).length})
             </button>
           </div>
           {/* Veg / Non-Veg filter */}
@@ -1116,19 +1118,19 @@ const Items: React.FC = () => {
               onClick={() => setVegFilter('all')}
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${vegFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
             >
-              All Type
+              {t('common.allType')}
             </button>
             <button
               onClick={() => setVegFilter('veg')}
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1 ${vegFilter === 'veg' ? 'bg-green-600 text-white' : 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30'}`}
             >
-              <span className="w-2 h-2 rounded-sm border border-green-600 bg-green-500 inline-block" /> Veg ({items.filter(i => i.is_veg !== false).length})
+              <span className="w-2 h-2 rounded-sm border border-green-600 bg-green-500 inline-block" /> {t('common.veg')} ({items.filter(i => i.is_veg !== false).length})
             </button>
             <button
               onClick={() => setVegFilter('nonveg')}
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1 ${vegFilter === 'nonveg' ? 'bg-red-600 text-white' : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'}`}
             >
-              <span className="w-2 h-2 rounded-sm border border-red-600 bg-red-500 inline-block" /> Non-Veg ({items.filter(i => i.is_veg === false).length})
+              <span className="w-2 h-2 rounded-sm border border-red-600 bg-red-500 inline-block" /> {t('common.nonVeg')} ({items.filter(i => i.is_veg === false).length})
             </button>
           </div>
         </CardContent>
@@ -1139,8 +1141,8 @@ const Items: React.FC = () => {
         <div className="sticky top-0 z-20 mb-4 bg-primary/10 backdrop-blur-md border border-primary/20 rounded-xl p-3 flex flex-wrap items-center gap-2 shadow-lg">
           <div className="flex items-center gap-2 mr-auto">
             <CheckSquare className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">{selectedItems.size} selected</span>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearSelection}>Clear</Button>
+            <span className="text-sm font-semibold">{selectedItems.size} {t('common.selected')}</span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearSelection}>{t('common.clear')}</Button>
           </div>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => handleBulkToggleActive(true)}>
             <Eye className="w-3.5 h-3.5" /> Activate

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ interface HourlyData {
 
 const Dashboard = () => {
   const { profile, adminProfileId } = useAuth();
+  const { t } = useTranslation();
   const adminId = adminProfileId;
   const { data: shopSettings } = useBranchSettings('shop_settings');
   const navigate = useNavigate();
@@ -263,19 +265,19 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">{t('nav.dashboard')}</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
             {isAllBranchesView
               ? 'All Branches — combined view'
               : activeBranch
                 ? `Branch: ${activeBranch.name}`
-                : "Today's performance at a glance"}
+                : t('dashboard.title')}
           </p>
         </div>
         {/* Live indicator */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-full border border-emerald-200 dark:border-emerald-800">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Live</span>
+          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{t('dashboard.liveUpdates')}</span>
         </div>
       </div>
 
@@ -284,27 +286,27 @@ const Dashboard = () => {
         {/* Today's Revenue */}
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100">Revenue</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100">{t('dashboard.revenue')}</p>
             <DollarSign className="w-4 h-4 text-emerald-200" />
           </div>
           <p className="text-2xl font-black">{formatCurrency(stats.todaySales)}</p>
-          <p className="text-[10px] text-emerald-100 mt-1">{stats.todayBills} bills today</p>
+          <p className="text-[10px] text-emerald-100 mt-1">{stats.todayBills} {t('dashboard.billsToday').toLowerCase()}</p>
         </div>
 
         {/* Today's Expenses */}
         <div className="bg-card rounded-2xl p-4 border shadow-sm">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Expenses</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('nav.expenses')}</p>
             <Receipt className="w-4 h-4 text-rose-500" />
           </div>
           <p className="text-xl font-bold text-rose-500">{formatCurrency(stats.todayExpenses)}</p>
-          <p className="text-[10px] text-muted-foreground mt-1">Operating costs</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{t('dashboard.operatingCosts')}</p>
         </div>
 
         {/* Net Profit */}
         <div className="bg-card rounded-2xl p-4 border shadow-sm">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Net Profit</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.profit')}</p>
             {stats.todayProfit >= 0 ? <TrendingUp className="w-4 h-4 text-blue-500" /> : <TrendingDown className="w-4 h-4 text-rose-500" />}
           </div>
           <p className={`text-xl font-bold ${stats.todayProfit >= 0 ? 'text-blue-500' : 'text-rose-500'}`}>{formatCurrency(stats.todayProfit)}</p>
@@ -316,17 +318,17 @@ const Dashboard = () => {
         {/* Avg Bill Value */}
         <div className="bg-card rounded-2xl p-4 border shadow-sm">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Avg Bill</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.avgBill')}</p>
             <Users className="w-4 h-4 text-violet-500" />
           </div>
           <p className="text-xl font-bold text-foreground">{formatCurrency(stats.avgBillValue)}</p>
-          <p className="text-[10px] text-muted-foreground mt-1">Per customer</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{t('dashboard.perCustomer')}</p>
         </div>
 
         {/* Live Order Count */}
         <div className="bg-card rounded-2xl p-4 border shadow-sm">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Orders</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.itemsSold')}</p>
             <Package className="w-4 h-4 text-amber-500" />
           </div>
           <p className="text-xl font-bold text-foreground">{liveOrderCount}</p>
@@ -340,15 +342,15 @@ const Dashboard = () => {
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Flame className="w-4 h-4 text-orange-500" /> Top 5 Items Today</span>
+              <span className="flex items-center gap-1.5"><Flame className="w-4 h-4 text-orange-500" /> {t('dashboard.topSellingItems')}</span>
               <button onClick={() => navigate('/reports')} className="text-xs text-primary hover:underline flex items-center gap-0.5">
-                View All <ArrowRight className="w-3 h-3" />
+                {t('common.view')} {t('common.all')} <ArrowRight className="w-3 h-3" />
               </button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {topItems.length === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">No sales yet today</p>
+              <p className="text-center text-muted-foreground py-6 text-sm">{t('dashboard.noSalesYet')}</p>
             ) : (
               <div className="space-y-2.5">
                 {topItems.map((item, idx) => {
@@ -384,7 +386,7 @@ const Dashboard = () => {
         <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-500" /> Hourly Sales</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-500" /> {t('dashboard.salesTrend')}</span>
               {peakHour && (
                 <Badge className="bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 text-[10px] border-0">
                   Peak: {peakHour.hour > 12 ? peakHour.hour - 12 : peakHour.hour || 12}{peakHour.hour >= 12 ? 'PM' : 'AM'} — ₹{peakHour.revenue.toFixed(0)}
@@ -394,7 +396,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             {stats.todayBills === 0 ? (
-              <p className="text-center text-muted-foreground py-6 text-sm">No sales yet today</p>
+              <p className="text-center text-muted-foreground py-6 text-sm">{t('dashboard.noSalesYet')}</p>
             ) : (
               <div className="space-y-2">
                 {/* Chart */}
@@ -434,10 +436,10 @@ const Dashboard = () => {
       {/* Quick Navigation */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'New Bill', icon: '🧾', path: '/billing', color: 'from-emerald-500/10 to-emerald-500/5 border-emerald-200 dark:border-emerald-800' },
-          { label: 'Menu Items', icon: '📋', path: '/items', color: 'from-blue-500/10 to-blue-500/5 border-blue-200 dark:border-blue-800' },
-          { label: 'Reports', icon: '📊', path: '/reports', color: 'from-violet-500/10 to-violet-500/5 border-violet-200 dark:border-violet-800' },
-          { label: 'Expenses', icon: '💰', path: '/expenses', color: 'from-amber-500/10 to-amber-500/5 border-amber-200 dark:border-amber-800' },
+          { label: t('billing.newBill'), icon: '🧾', path: '/billing', color: 'from-emerald-500/10 to-emerald-500/5 border-emerald-200 dark:border-emerald-800' },
+          { label: t('nav.items'), icon: '📋', path: '/items', color: 'from-blue-500/10 to-blue-500/5 border-blue-200 dark:border-blue-800' },
+          { label: t('nav.reports'), icon: '📊', path: '/reports', color: 'from-violet-500/10 to-violet-500/5 border-violet-200 dark:border-violet-800' },
+          { label: t('nav.expenses'), icon: '💰', path: '/expenses', color: 'from-amber-500/10 to-amber-500/5 border-amber-200 dark:border-amber-800' },
         ].map(item => (
           <button
             key={item.path}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ interface Expense {
 
 const Expenses: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
+  const { t } = useTranslation();
   const adminId = adminProfileId;
   const { branchFilterId, readOnly: branchReadOnly, isAllBranchesView } = useBranchScopedQuery(() => fetchExpenses());
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -310,10 +312,10 @@ const Expenses: React.FC = () => {
 
       {/* Inline totals */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <StatTile icon={IndianRupee} tone="rose" label="Total spend" value={money(totalExpenses)} />
-        <StatTile icon={Receipt} tone="sky" label="Entries" value={filteredExpenses.length} />
-        <StatTile icon={TrendingUp} tone="amber" label="Average" value={money(avgExpense)} />
-        <StatTile icon={Layers} tone="purple" label="Top category" value={<span className="truncate text-sm">{topCategory}</span>} />
+        <StatTile icon={IndianRupee} tone="rose" label={t('expenses.totalExpenses')} value={money(totalExpenses)} />
+        <StatTile icon={Receipt} tone="sky" label={t('nav.expenses')} value={filteredExpenses.length} />
+        <StatTile icon={TrendingUp} tone="amber" label={t('dashboard.avgBill')} value={money(avgExpense)} />
+        <StatTile icon={Layers} tone="purple" label={t('common.category')} value={<span className="truncate text-sm">{topCategory}</span>} />
       </div>
 
       {/* Filters */}
@@ -321,7 +323,7 @@ const Expenses: React.FC = () => {
         <CardContent className="p-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="lg:col-span-2">
-              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Search</Label>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('common.search')}</Label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -340,23 +342,23 @@ const Expenses: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="yesterday">Yesterday</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
+                  <SelectItem value="today">{t('common.today')}</SelectItem>
+                  <SelectItem value="yesterday">{t('common.yesterday')}</SelectItem>
+                  <SelectItem value="week">{t('common.thisWeek')}</SelectItem>
+                  <SelectItem value="month">{t('common.thisMonth')}</SelectItem>
+                  <SelectItem value="all">{t('common.all')}</SelectItem>
+                  <SelectItem value="custom">{t('common.custom')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {dateFilter === 'custom' && (
               <>
                 <div>
-                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('common.from')}</Label>
                   <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 text-xs" />
                 </div>
                 <div>
-                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('common.to')}</Label>
                   <Input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 text-xs" />
                 </div>
               </>
@@ -367,13 +369,13 @@ const Expenses: React.FC = () => {
 
       <Tabs defaultValue="list" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-grid">
-          <TabsTrigger value="list" className="text-xs">Expenses</TabsTrigger>
+          <TabsTrigger value="list" className="text-xs">{t('nav.expenses')}</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="mt-3 space-y-3">
           <SectionHeading
-            title="All expenses"
+            title={t('expenses.totalExpenses')}
             tone="rose"
             icon={Receipt}
             count={filteredExpenses.length}
@@ -388,7 +390,7 @@ const Expenses: React.FC = () => {
             <EmptyState
               icon={Receipt}
               tone="rose"
-              title="No expenses found"
+              title={t('expenses.noExpenses')}
               description={
                 searchTerm || dateFilter !== 'all'
                   ? 'No expenses match your search criteria.'
