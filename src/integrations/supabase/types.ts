@@ -4383,6 +4383,19 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_app_support_info: {
+        Args: never
+        Returns: {
+          show_support_custom: boolean
+          show_support_email: boolean
+          show_support_phone: boolean
+          show_support_whatsapp: boolean
+          support_custom_details: string
+          support_email: string
+          support_phone: string
+          support_whatsapp: string
+        }[]
+      }
       get_backup_cron_status: { Args: never; Returns: Json }
       get_branch_scoped_shop_settings: {
         Args: { p_branch_id: string; p_user_id: string }
@@ -4495,6 +4508,15 @@ export type Database = {
       get_next_remote_order_number: {
         Args: { p_admin_id: string; p_branch_id: string }
         Returns: string
+      }
+      get_platform_payment_settings: {
+        Args: never
+        Returns: {
+          default_amount: number
+          payment_instructions: string
+          upi_id: string
+          upi_qr_image_url: string
+        }[]
       }
       get_public_feedback_form: { Args: { p_slug: string }; Returns: Json }
       get_public_item_categories: {

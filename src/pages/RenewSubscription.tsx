@@ -185,11 +185,10 @@ const RenewSubscription: React.FC = () => {
         const licStatus = synced ?? checkOfflineLicenseStatus();
         setLicense(licStatus);
 
-        // 2) Payment settings
-        const { data: settings } = await (supabase as any)
-          .from('payment_settings')
-          .select('*')
-          .maybeSingle();
+        // 2) Payment settings (safe read — only non-sensitive platform fields)
+        const { data: settingsRows } = await (supabase as any)
+          .rpc('get_platform_payment_settings');
+        const settings = Array.isArray(settingsRows) ? settingsRows[0] : settingsRows;
         if (settings) setPaymentSettings(settings);
 
         // 3) Payment history
