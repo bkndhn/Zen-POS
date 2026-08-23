@@ -17,5 +17,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+    // PKCE avoids exposing tokens in URL fragments (safer on shared POS terminals)
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'zenpos-web',
+    },
+  },
 });

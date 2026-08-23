@@ -2364,6 +2364,7 @@ export type Database = {
           name: string
           public_ordering_enabled: boolean
           role: Database["public"]["Enums"]["app_role"]
+          security_epoch: number
           shop_name: string | null
           status: string | null
           subscription_amount: number | null
@@ -2394,6 +2395,7 @@ export type Database = {
           name: string
           public_ordering_enabled?: boolean
           role?: Database["public"]["Enums"]["app_role"]
+          security_epoch?: number
           shop_name?: string | null
           status?: string | null
           subscription_amount?: number | null
@@ -2424,6 +2426,7 @@ export type Database = {
           name?: string
           public_ordering_enabled?: boolean
           role?: Database["public"]["Enums"]["app_role"]
+          security_epoch?: number
           shop_name?: string | null
           status?: string | null
           subscription_amount?: number | null
@@ -3134,6 +3137,51 @@ export type Database = {
           user_agent?: string | null
           user_id?: string | null
           value_ms?: number | null
+        }
+        Relationships: []
+      }
+      security_audit_log: {
+        Row: {
+          action: string
+          actor_profile_id: string | null
+          actor_role: string | null
+          actor_user_id: string | null
+          admin_id: string | null
+          created_at: string
+          details: Json
+          event_type: string
+          id: string
+          severity: string
+          target_record_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          action: string
+          actor_profile_id?: string | null
+          actor_role?: string | null
+          actor_user_id?: string | null
+          admin_id?: string | null
+          created_at?: string
+          details?: Json
+          event_type: string
+          id?: string
+          severity?: string
+          target_record_id?: string | null
+          target_table?: string | null
+        }
+        Update: {
+          action?: string
+          actor_profile_id?: string | null
+          actor_role?: string | null
+          actor_user_id?: string | null
+          admin_id?: string | null
+          created_at?: string
+          details?: Json
+          event_type?: string
+          id?: string
+          severity?: string
+          target_record_id?: string | null
+          target_table?: string | null
         }
         Relationships: []
       }
@@ -4505,6 +4553,7 @@ export type Database = {
       }
       get_my_profile_id: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
+      get_my_security_epoch: { Args: never; Returns: number }
       get_next_remote_order_number: {
         Args: { p_admin_id: string; p_branch_id: string }
         Returns: string
@@ -4666,6 +4715,17 @@ export type Database = {
           allowed: boolean
           reason: string
         }[]
+      }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_event_type: string
+          p_severity?: string
+          p_target_record_id?: string
+          p_target_table?: string
+        }
+        Returns: string
       }
       public_place_table_order: {
         Args: {

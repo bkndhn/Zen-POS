@@ -7,6 +7,17 @@ import { Profile, UserStatus, UserRole } from '@/types/user';
 import { seedAdminDefaults } from '@/utils/seedAdminDefaults';
 import { syncSubscriptionLicense, cacheVerifiedLicense, clearAllLicenseData, isForceLogoutCached } from '@/utils/offlineLicenseManager';
 import { startLicenseScheduler, verifyLicenseForLogin, clearLoginBlock } from '@/utils/licenseScheduler';
+import { logSecurityEvent, auditFireAndForget, fetchSecurityEpoch } from '@/utils/auditLog';
+import {
+  markSessionStart,
+  clearSessionSecurityState,
+  isSessionExpiredByAge,
+  storeSecurityEpoch,
+  hasSecurityEpochChanged,
+  revokeSession,
+  EPOCH_CHECK_INTERVAL_MS,
+} from '@/utils/sessionSecurity';
+
 
 // Simple obfuscation for cached profile data (defense-in-depth against casual tampering)
 const encodeProfileCache = (profile: Profile): string => {
@@ -479,6 +490,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user, profile]);
 
+  // SECURITY: session watchdog — absolute max session age + automatic revocation
+  // whenever the server-side security epoch changes (role/status/tenant change).
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    const check = async () => {
+      if (cancelled || document.visibilityState === 'hidden') return;
+
+      if (isSessionExpiredByAge()) {
+        await revokeSession('absolute_session_lifetime_exceeded');
+        return;
+      }
+
+      if (await hasSecurityEpochChanged()) {
+        await revokeSession('role_or_permission_change');
+      }
+    };
+
+    void check();
+    const interval = setInterval(check, EPOCH_CHECK_INTERVAL_MS);
+    document.addEventListener('visibilitychange', check);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [user]);
+
+
+
   // Real-time subscription to detect pause and force logout
   useEffect(() => {
     if (!user || !profile) return;
@@ -813,8 +857,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       import.meta.env.DEV && console.log('Sign in error:', error.message);
+      // Audit: failed login attempt (no session, logged best-effort as anonymous)
+      auditFireAndForget({
+        eventType: 'auth',
+        action: 'login_failed',
+        severity: 'warning',
+        details: { email_domain: email.split('@')[1] || 'unknown', reason: error.message },
+      });
       return { error };
     }
+
 
     // Check if user/admin is paused using the database function
     if (data?.user) {
@@ -889,13 +941,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     devLog('Sign in result: Success');
+
+    // Session hardening + audit trail
+    markSessionStart();
+    storeSecurityEpoch(await fetchSecurityEpoch());
+    await logSecurityEvent({
+      eventType: 'auth',
+      action: 'login_success',
+      severity: 'info',
+      details: { platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web' },
+    });
+
     return { error: null };
   };
+
 
   const signOut = async () => {
     devLog('Signing out...');
 
     setLoading(true);
+
+    // Audit before the token is dropped (RLS needs the session)
+    await logSecurityEvent({ eventType: 'auth', action: 'logout', severity: 'info' });
+    clearSessionSecurityState();
+
+
 
     try {
       if (user?.id && Capacitor.isNativePlatform()) {
