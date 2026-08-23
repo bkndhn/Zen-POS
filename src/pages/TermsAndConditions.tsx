@@ -15,13 +15,10 @@ export const TermsAndConditions: React.FC = () => {
     async function loadTerms() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('app_settings')
-          .select('terms_and_conditions, updated_at')
-          .eq('id', true)
-          .maybeSingle();
+        const { data: rows, error } = await (supabase as any).rpc('get_public_legal_content');
 
         if (error) throw error;
+        const data = Array.isArray(rows) ? rows[0] : rows;
         if (data) {
           setTermsContent(data.terms_and_conditions || 'No Terms and Conditions published yet.');
           setUpdatedAt(data.updated_at ? new Date(data.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
