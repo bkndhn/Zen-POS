@@ -490,6 +490,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user, profile]);
 
+  // SECURITY: session watchdog — absolute max session age + automatic revocation
+  // whenever the server-side security epoch changes (role/status/tenant change).
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    const check = async () => {
+      if (cancelled || document.visibilityState === 'hidden') return;
+
+      if (isSessionExpiredByAge()) {
+        await revokeSession('absolute_session_lifetime_exceeded');
+        return;
+      }
+
+      if (await hasSecurityEpochChanged()) {
+        await revokeSession('role_or_permission_change');
+      }
+    };
+
+    void check();
+    const interval = setInterval(check, EPOCH_CHECK_INTERVAL_MS);
+    document.addEventListener('visibilitychange', check);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [user]);
+
+
+
   // Real-time subscription to detect pause and force logout
   useEffect(() => {
     if (!user || !profile) return;
