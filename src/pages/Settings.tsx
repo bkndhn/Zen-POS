@@ -382,6 +382,7 @@ const Settings = () => {
                             onClick={() => deleteCharge(charge.id)}
                             className="text-red-600 hover:text-red-700 h-7 w-7 p-0"
                             disabled={isAllBranchesView}
+                            title="Delete charge"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>

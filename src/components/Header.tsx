@@ -129,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, sidebarCollapse
             {!isSuperAdmin && (
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+                  <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" title="Open navigation menu">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>

@@ -293,6 +293,7 @@ export const CalciQuickKeysSettings = () => {
                     onClick={() => handleMoveUp(index)} 
                     disabled={index === 0}
                     className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30"
+                    title="Move up"
                   >
                     <ArrowUp className="w-4 h-4" />
                   </Button>
@@ -302,6 +303,7 @@ export const CalciQuickKeysSettings = () => {
                     onClick={() => handleMoveDown(index)} 
                     disabled={index === orderedItemIds.length - 1}
                     className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30"
+                    title="Move down"
                   >
                     <ArrowDown className="w-4 h-4" />
                   </Button>
@@ -310,6 +312,7 @@ export const CalciQuickKeysSettings = () => {
                     size="sm" 
                     onClick={() => handleRemove(index)} 
                     className="h-7 w-7 p-0 text-rose-500 ml-2"
+                    title="Remove quick key"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

@@ -393,7 +393,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} title="Edit item">
         <Edit className="w-4 h-4" />
       </Button>
 

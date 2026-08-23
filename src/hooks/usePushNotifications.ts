@@ -96,7 +96,16 @@ export const usePushNotifications = () => {
           console.log('Push action performed: ' + JSON.stringify(notification));
           const url = notification.notification.data?.url;
           if (url) {
-            window.location.href = url;
+            // Use SPA-safe navigation for internal routes to avoid full page reload
+            if (url.startsWith('/') || url.startsWith(window.location.origin)) {
+              const path = url.startsWith('/') ? url : new URL(url).pathname;
+              window.dispatchEvent(new CustomEvent('push-navigate', { detail: { path } }));
+              // Fallback: use history API if no router listener picks it up
+              window.history.pushState({}, '', path);
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            } else {
+              window.location.href = url;
+            }
           }
         });
 

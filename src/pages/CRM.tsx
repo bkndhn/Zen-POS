@@ -1071,6 +1071,7 @@ const CRM: React.FC = () => {
                       className="h-7 w-7 p-0"
                       onClick={(e) => { e.stopPropagation(); handleEditClick(customer); }}
                       disabled={isAllBranchesView}
+                      title="Edit customer"
                     >
                       <Edit className="w-3 h-3" />
                     </Button>
@@ -1080,6 +1081,7 @@ const CRM: React.FC = () => {
                       className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                       onClick={(e) => { e.stopPropagation(); handleDeleteClick(customer); }}
                       disabled={isAllBranchesView}
+                      title="Delete customer"
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>

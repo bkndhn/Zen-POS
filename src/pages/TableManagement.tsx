@@ -970,6 +970,7 @@ const TableManagement: React.FC = () => {
                         size="sm"
                         className="h-7 w-7 p-0"
                         onClick={() => handleOpenDialog(table)}
+                        title="Edit table"
                       >
                         <Edit className="w-3 h-3" />
                       </Button>
@@ -981,6 +982,7 @@ const TableManagement: React.FC = () => {
                           setTableToDelete(table.id);
                           setDeleteDialogOpen(true);
                         }}
+                        title="Delete table"
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>

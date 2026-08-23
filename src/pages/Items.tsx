@@ -78,6 +78,7 @@ const Items: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'default' | 'name' | 'price_asc' | 'price_desc' | 'stock_low' | 'newest' | 'bestseller'>('default');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [vegFilter, setVegFilter] = useState<'all' | 'veg' | 'nonveg'>('all');
 
   // Inline price editing
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -351,6 +352,13 @@ const Items: React.FC = () => {
       filtered = filtered.filter(item => !item.unlimited_stock);
     }
 
+    // Veg / Non-Veg filter
+    if (vegFilter === 'veg') {
+      filtered = filtered.filter(item => item.is_veg !== false);
+    } else if (vegFilter === 'nonveg') {
+      filtered = filtered.filter(item => item.is_veg === false);
+    }
+
     // Sort
     if (sortBy !== 'default') {
       filtered = [...filtered].sort((a, b) => {
@@ -375,7 +383,7 @@ const Items: React.FC = () => {
     }
     
     return filtered;
-  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId, stockFilter, sortBy, topSellerIds]);
+  }, [items, searchTerm, selectedCategory, isAllBranchesView, operatingBranchId, stockFilter, vegFilter, sortBy, topSellerIds]);
 
   const handleItemAdded = () => {
     fetchItems();
@@ -899,7 +907,7 @@ const Items: React.FC = () => {
           {selectedItems.has(item.id) ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
         </button>
       )}
-      <span className={`w-2.5 h-2.5 rounded-sm border-2 flex-shrink-0 ${item.is_veg !== false ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} />
+      <span className={`w-2.5 h-2.5 rounded-sm border-2 flex-shrink-0 ${item.is_veg !== false ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} title={item.is_veg !== false ? 'Vegetarian' : 'Non-Vegetarian'} />
       {item.image_url && (
         <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" loading="lazy" onError={(e) => handleImageError(e, item.image_url)} />
       )}
@@ -973,7 +981,7 @@ const Items: React.FC = () => {
       {/* Action buttons */}
       {profile?.role === 'admin' && (
         <div className="flex gap-0.5 flex-shrink-0">
-          <Button variant={item.is_active ? 'outline' : 'default'} size="sm" className="h-7 px-1.5 text-[10px]" onClick={(e) => confirmToggle(item, e)}>
+          <Button variant={item.is_active ? 'outline' : 'default'} size="sm" className="h-7 px-1.5 text-[10px]" onClick={(e) => confirmToggle(item, e)} title={item.is_active ? 'Hide item from menu' : 'Show item on menu'}>
             {item.is_active ? <><EyeOff className="w-3 h-3" /></> : <><Eye className="w-3 h-3" /></>}
           </Button>
           {!isAllBranchesView && (
@@ -1100,6 +1108,27 @@ const Items: React.FC = () => {
               className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${stockFilter === 'limited' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'}`}
             >
               Limited ({items.filter(i => !i.unlimited_stock).length})
+            </button>
+          </div>
+          {/* Veg / Non-Veg filter */}
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setVegFilter('all')}
+              className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors ${vegFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              All Type
+            </button>
+            <button
+              onClick={() => setVegFilter('veg')}
+              className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1 ${vegFilter === 'veg' ? 'bg-green-600 text-white' : 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30'}`}
+            >
+              <span className="w-2 h-2 rounded-sm border border-green-600 bg-green-500 inline-block" /> Veg ({items.filter(i => i.is_veg !== false).length})
+            </button>
+            <button
+              onClick={() => setVegFilter('nonveg')}
+              className={`px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors flex items-center gap-1 ${vegFilter === 'nonveg' ? 'bg-red-600 text-white' : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'}`}
+            >
+              <span className="w-2 h-2 rounded-sm border border-red-600 bg-red-500 inline-block" /> Non-Veg ({items.filter(i => i.is_veg === false).length})
             </button>
           </div>
         </CardContent>
