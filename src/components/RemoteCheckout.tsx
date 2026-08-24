@@ -287,7 +287,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
       }
 
       toast({ title: "Order Placed successfully!" });
-      onOrderPlaced(insertedOrder.id);
+      onOrderPlaced(insertedOrderId);
       
       if (payMethod === 'upi' && shopSettings.upi_id) {
         const upiUrl = `upi://pay?pa=${shopSettings.upi_id}&pn=${encodeURIComponent(shopSettings.upi_name || 'Store')}&am=${grandTotal.toFixed(2)}&tn=Order+${orderNumber}`;

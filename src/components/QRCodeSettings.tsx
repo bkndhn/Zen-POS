@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
+import { StoreOperatingHours } from '@/components/StoreOperatingHours';
 import { OperatingHours, defaultOperatingHours } from '@/types/operatingHours';
 import { Geolocation } from '@capacitor/geolocation';
 import QRCode from 'qrcode';
@@ -741,7 +742,7 @@ const QRCodeSettings = () => {
             }, 'image/png');
         } catch (err) {
             console.error('QR download error:', err);
-            window.open(generateQRCodeUrl(currentQrUrl, 500), '_blank');
+            window.open(qrCodeDataUrl || currentQrUrl, '_blank');
             toast({
                 title: "Manual Download",
                 description: "Right-click the image and save it",
@@ -1088,7 +1089,7 @@ const QRCodeSettings = () => {
         <div class="card">
           <h1>${escapeHtml(shopName)}</h1>
           <h2>${escapeHtml(tableLabel)}</h2>
-          <img src="${generateQRCodeUrl(currentQrUrl, 200)}" alt="QR Code" />
+          <img src="${qrCodeDataUrl || ''}" alt="QR Code" />
           <p class="instructions">Scan with your phone camera<br/>to view our menu</p>
         </div>
         <script>
