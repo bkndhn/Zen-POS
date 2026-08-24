@@ -23,6 +23,7 @@ export class SQLiteBackend implements StorageBackend {
   private db: SQLiteDBConnection | null = null;
   private ready = false;
   private useWebMode = false;
+  private persistTimer: number | null = null;
 
   constructor() {
     this.sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -54,6 +55,16 @@ export class SQLiteBackend implements StorageBackend {
       await this.db.open();
       this.ready = true;
       this.useWebMode = needsWebMode;
+
+      if (needsWebMode && typeof window !== 'undefined') {
+        // Durability net: flush before unload / tab hide
+        const flushNow = () => { void this.flush(); };
+        window.addEventListener('pagehide', flushNow);
+        window.addEventListener('beforeunload', flushNow);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'hidden') flushNow();
+        });
+      }
       console.log(`[SQLiteBackend] Initialized successfully (mode: ${needsWebMode ? 'WASM/jeep-sqlite' : 'native'})`);
     } catch (err) {
       console.error('[SQLiteBackend] Initialization failed:', err);
@@ -109,7 +120,7 @@ export class SQLiteBackend implements StorageBackend {
 
   async close(): Promise<void> {
     if (this.db) {
-      await this.saveToStoreIfWeb();
+      await this.flush();
       await this.sqlite.closeConnection(SQLITE_DB_NAME, false);
       this.db = null;
       this.ready = false;
@@ -142,6 +153,7 @@ export class SQLiteBackend implements StorageBackend {
 
     const sql = `INSERT OR REPLACE INTO ${table} (${colNames.join(', ')}) VALUES (${placeholders});`;
     await this.db.run(sql, values);
+    this.schedulePersist();
   }
 
   async putMany<T>(storeName: string, items: T[]): Promise<void> {
@@ -220,6 +232,7 @@ export class SQLiteBackend implements StorageBackend {
     const pk = getPrimaryKey(storeName);
 
     await this.db.run(`DELETE FROM ${table} WHERE ${pk} = ?;`, [key]);
+    this.schedulePersist();
   }
 
   async clearTable(storeName: string): Promise<void> {
@@ -240,6 +253,7 @@ export class SQLiteBackend implements StorageBackend {
       `INSERT OR REPLACE INTO offlineCache (cache_key, tbl, key, updated_at, data) VALUES (?, ?, ?, ?, ?);`,
       [cacheKey, table, key, Date.now(), JSON.stringify(data)]
     );
+    this.schedulePersist();
   }
 
   async getCachedQuery(table: string, key: string): Promise<CachedQueryResult | null> {
@@ -267,6 +281,7 @@ export class SQLiteBackend implements StorageBackend {
   async clearCacheForTable(table: string): Promise<void> {
     if (!this.db) return;
     await this.db.run(`DELETE FROM offlineCache WHERE tbl = ?;`, [table]);
+    this.schedulePersist();
   }
 
   // ─── Write Queue ────────────────────────────────────────────
@@ -284,6 +299,7 @@ export class SQLiteBackend implements StorageBackend {
         JSON.stringify(entry.data),
       ]
     );
+    await this.saveToStoreIfWeb();
   }
 
   async getWriteQueue(): Promise<WriteQueueEntry[]> {
@@ -312,6 +328,7 @@ export class SQLiteBackend implements StorageBackend {
   async removeFromWriteQueue(id: string): Promise<void> {
     if (!this.db) return;
     await this.db.run(`DELETE FROM writeQueue WHERE id = ?;`, [id]);
+    this.schedulePersist();
   }
 
   async updateWriteQueueItem(id: string, updates: Partial<WriteQueueEntry>): Promise<void> {
@@ -330,6 +347,7 @@ export class SQLiteBackend implements StorageBackend {
       `UPDATE writeQueue SET ${setClauses.join(', ')} WHERE id = ?;`,
       values
     );
+    this.schedulePersist();
   }
 
   async getWriteQueueCount(): Promise<number> {
@@ -341,6 +359,29 @@ export class SQLiteBackend implements StorageBackend {
   }
 
   // ─── Private Helpers ────────────────────────────────────────
+
+  /**
+   * Debounced persistence for single-record writes in WASM mode.
+   * Coalesces bursts of writes into one saveToStore call (~150ms) so that
+   * a single offline bill is durably written without stalling every write.
+   */
+  private schedulePersist(): void {
+    if (!this.useWebMode) return;
+    if (this.persistTimer !== null) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      void this.saveToStoreIfWeb();
+    }, 150) as unknown as number;
+  }
+
+  /** Flush any pending debounced persist immediately */
+  async flush(): Promise<void> {
+    if (this.persistTimer !== null) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    await this.saveToStoreIfWeb();
+  }
 
   /** Save to IndexedDB web store when in WASM mode (required by jeep-sqlite) */
   private async saveToStoreIfWeb(): Promise<void> {
