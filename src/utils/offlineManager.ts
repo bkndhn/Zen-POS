@@ -346,18 +346,27 @@ class OfflineManager {
     }
 
     async clearCache(): Promise<void> {
-        return new Promise((resolve, reject) => {
+        const wipeStores = [STORES.ITEMS, STORES.BILLS, STORES.CATEGORIES, STORES.SYNC_QUEUE, STORES.SETTINGS, STORES.PENDING_BILLS];
+
+        // Wipe the active storage backend (SQLite/WASM) first — live data lives there.
+        if (this.backend?.isReady()) {
+            for (const store of wipeStores) {
+                try {
+                    await this.backend.clearTable(store);
+                } catch (e) {
+                    console.warn(`[OfflineManager] Failed clearing backend table ${store}:`, e);
+                }
+            }
+        }
+
+        // Also wipe the legacy IndexedDB stores so nothing lingers from before migration.
+        await new Promise<void>((resolve, reject) => {
             if (!this.db) { resolve(); return; }
-            const tx = this.db.transaction([STORES.ITEMS, STORES.BILLS, STORES.CATEGORIES, STORES.SYNC_QUEUE, STORES.SETTINGS, STORES.PENDING_BILLS], 'readwrite');
+            const tx = this.db.transaction(wipeStores, 'readwrite');
             tx.oncomplete = () => { console.log('Offline cache cleared successfully'); resolve(); };
             tx.onerror = () => { console.error('Error clearing offline cache'); reject(tx.error); };
-            
-            tx.objectStore(STORES.ITEMS).clear();
-            tx.objectStore(STORES.BILLS).clear();
-            tx.objectStore(STORES.CATEGORIES).clear();
-            tx.objectStore(STORES.SYNC_QUEUE).clear();
-            tx.objectStore(STORES.SETTINGS).clear();
-            tx.objectStore(STORES.PENDING_BILLS).clear();
+
+            wipeStores.forEach(store => tx.objectStore(store).clear());
         });
     }
 
@@ -590,6 +599,21 @@ class OfflineManager {
     }
 
     async resetSyncRetries(): Promise<void> {
+        // Backend path (SQLite/WASM) — this is where live data resides.
+        if (this.backend?.isReady()) {
+            const bills = await this.backend.getAll<any>(STORES.PENDING_BILLS);
+            const toReset = bills.filter(b => !b.synced && (b.retries > 0 || b.syncError));
+            if (toReset.length > 0) {
+                await this.backend.putMany(STORES.PENDING_BILLS, toReset.map(b => ({
+                    ...b,
+                    retries: 0,
+                    syncError: undefined,
+                })));
+            }
+            console.log('[Sync] Reset retries and error flags for all pending bills');
+            return;
+        }
+
         if (!this.db) await this.initializeDB();
         
         return new Promise((resolve, reject) => {
@@ -737,6 +761,28 @@ class OfflineManager {
      * to prevent browser storage quota bloat. Keeps local-only bills untouched.
      */
     async pruneSyncedBills(retentionDays: number = 30): Promise<void> {
+        const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+
+        // Backend path (SQLite/WASM) — this is where live data resides.
+        if (this.backend?.isReady()) {
+            try {
+                const bills = await this.backend.getAll<any>(STORES.BILLS);
+                let prunedCount = 0;
+                for (const bill of bills) {
+                    if (bill.synced === true && bill.created_at && new Date(bill.created_at).getTime() < cutoffMs) {
+                        await this.backend.remove(STORES.BILLS, bill.id);
+                        prunedCount++;
+                    }
+                }
+                if (prunedCount > 0) {
+                    console.log(`[Cloud Pruning] Deleted ${prunedCount} old synced bills from local cache.`);
+                }
+            } catch (error) {
+                console.error('[Cloud Pruning] Error pruning bills:', error);
+            }
+            return;
+        }
+
         try {
             if (!this.db) await this.initializeDB();
             if (!this.db) return;
