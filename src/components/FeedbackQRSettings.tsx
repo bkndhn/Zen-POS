@@ -11,9 +11,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { useFeedbackForm } from '@/hooks/useFeedbackForm';
 import { FeedbackFieldBuilder } from './FeedbackFieldBuilder';
+import QRCode from 'qrcode';
 
-const generateQRCodeUrl = (text: string, size = 300, fg = '1a1a6c', bg = 'ffffff') =>
-  `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&margin=10&color=${fg}&bgcolor=${bg}`;
+const generateQRCodeDataUrl = async (text: string, size = 300, fg = '#1a1a6c', bg = '#ffffff') => {
+  try {
+    const dark = fg.startsWith('#') ? fg : `#${fg}`;
+    const light = bg.startsWith('#') ? bg : `#${bg}`;
+    return await QRCode.toDataURL(text, { width: size, margin: 2, color: { dark, light } });
+  } catch {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&margin=10&color=${fg.replace('#','')}&bgcolor=${bg.replace('#','')}`;
+  }
+};
 
 const FeedbackQRSettings: React.FC = () => {
   const { profile } = useAuth() as any;
@@ -22,11 +30,22 @@ const FeedbackQRSettings: React.FC = () => {
   const allowFeedback = (profile as any)?.client_permissions?.allow_feedback_module === true;
   const { form, fields, loading, saveForm, addField, updateField, deleteField, moveField, applyStarterPack } = useFeedbackForm();
   const [savingSettings, setSavingSettings] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const publicUrl = useMemo(() => {
     if (!form) return '';
     return `${window.location.origin}/feedback/${form.slug}?src=qr`;
   }, [form]);
+
+  useEffect(() => {
+    let active = true;
+    if (publicUrl && form?.primary_color) {
+      generateQRCodeDataUrl(publicUrl, 300, form.primary_color, '#ffffff').then(url => {
+        if (active) setQrDataUrl(url);
+      });
+    }
+    return () => { active = false; };
+  }, [publicUrl, form?.primary_color]);
 
   if (!allowFeedback) {
     return (
@@ -59,6 +78,21 @@ const FeedbackQRSettings: React.FC = () => {
     if (error) toast({ title: 'Save failed', description: (error as any).message, variant: 'destructive' });
   };
 
+  const handleDownloadFeedbackQR = async () => {
+    try {
+      const url = await generateQRCodeDataUrl(publicUrl, 600, form.primary_color, '#ffffff');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `feedback-qr-${form.slug || 'code'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast({ title: 'Downloaded!', description: 'Feedback QR saved.' });
+    } catch {
+      window.open(qrDataUrl || publicUrl, '_blank');
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* QR + Link */}
@@ -68,7 +102,13 @@ const FeedbackQRSettings: React.FC = () => {
           {branch && <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">{branch.name}</span>}
         </div>
         <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <img src={generateQRCodeUrl(publicUrl, 240, form.primary_color.replace('#',''))} alt="Feedback QR" className="rounded-md border" />
+          <div className="w-48 h-48 rounded-xl border bg-white p-2 flex items-center justify-center shadow-sm">
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt="Feedback QR" className="w-full h-full object-contain" />
+            ) : (
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            )}
+          </div>
           <div className="flex-1 w-full space-y-2">
             <div className="flex items-center gap-2">
               <Input readOnly value={publicUrl} className="text-xs" />
@@ -77,7 +117,7 @@ const FeedbackQRSettings: React.FC = () => {
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => window.open(generateQRCodeUrl(publicUrl, 600), '_blank')}>
+              <Button size="sm" variant="outline" onClick={handleDownloadFeedbackQR}>
                 <Download className="w-3 h-3 mr-1" /> Download
               </Button>
               <Button size="sm" variant="outline" onClick={() => window.open(publicUrl, '_blank')}>

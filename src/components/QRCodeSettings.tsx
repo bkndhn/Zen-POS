@@ -35,11 +35,21 @@ import {
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
-import { StoreOperatingHours } from '@/components/StoreOperatingHours';
 import { OperatingHours, defaultOperatingHours } from '@/types/operatingHours';
 import { Geolocation } from '@capacitor/geolocation';
+import QRCode from 'qrcode';
 
-// Simple QR Code generator using a public API
+// Local & offline QR Code generator using qrcode library with public API fallback
+const generateQRCodeDataUrl = async (text: string, size: number = 300, fgColor: string = '#1a1a6c', bgColor: string = '#ffffff'): Promise<string> => {
+    try {
+        const dark = fgColor.startsWith('#') ? fgColor : `#${fgColor}`;
+        const light = bgColor.startsWith('#') ? bgColor : `#${bgColor}`;
+        return await QRCode.toDataURL(text, { width: size, margin: 2, color: { dark, light } });
+    } catch {
+        return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&margin=10&color=${fgColor.replace('#', '')}&bgcolor=${bgColor.replace('#', '')}`;
+    }
+};
+
 const generateQRCodeUrl = (text: string, size: number = 300, fgColor: string = '1a1a6c', bgColor: string = 'ffffff'): string => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&margin=10&color=${fgColor}&bgcolor=${bgColor}`;
 };
@@ -146,6 +156,18 @@ const QRCodeSettings = () => {
     const currentQrUrl = selectedTable
         ? (selectedSeat ? `${baseUrl}?table=${selectedTable}&seat=${selectedSeat}` : `${baseUrl}?table=${selectedTable}`)
         : baseUrl;
+
+    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+
+    useEffect(() => {
+        let active = true;
+        if (currentQrUrl) {
+            generateQRCodeDataUrl(currentQrUrl, 300, '#1a1a6c', '#ffffff').then(url => {
+                if (active) setQrCodeDataUrl(url);
+            });
+        }
+        return () => { active = false; };
+    }, [currentQrUrl]);
 
     // Load settings from localStorage and Supabase
     const loadSettings = useCallback(async () => {
@@ -514,7 +536,7 @@ const QRCodeSettings = () => {
     const handleDownloadQR = async () => {
         try {
             const qrSize = 600;
-            const qrUrl = generateQRCodeUrl(currentQrUrl, qrSize, '1a1a6c');
+            const qrUrl = await generateQRCodeDataUrl(currentQrUrl, qrSize, '#1a1a6c');
 
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -784,7 +806,7 @@ const QRCodeSettings = () => {
                 const color = tableColors[successCount % tableColors.length];
                 const qrSize = 600;
                 try {
-                    const qrUrl = generateQRCodeUrl(target.url, qrSize, color.qr);
+                    const qrUrl = await generateQRCodeDataUrl(target.url, qrSize, color.qr);
 
                     const img = new Image();
                     img.crossOrigin = 'anonymous';
@@ -1442,12 +1464,18 @@ const QRCodeSettings = () => {
                     {/* QR Code Display */}
                     <div className="text-center space-y-4">
                         <div className="inline-block p-4 bg-white rounded-2xl border-2 border-dashed border-muted shadow-sm">
-                            <img
-                                ref={qrRef}
-                                src={generateQRCodeUrl(currentQrUrl, 200)}
-                                alt="Menu QR Code"
-                                className="w-48 h-48 mx-auto"
-                            />
+                            {qrCodeDataUrl ? (
+                                <img
+                                    ref={qrRef}
+                                    src={qrCodeDataUrl}
+                                    alt="Menu QR Code"
+                                    className="w-48 h-48 mx-auto object-contain"
+                                />
+                            ) : (
+                                <div className="w-48 h-48 flex items-center justify-center">
+                                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                </div>
+                            )}
                             {selectedTable && (
                                 <Badge className="mt-2 bg-orange-500">
                                     Table {selectedTable}{selectedSeat ? ` - Seat ${selectedSeat}` : ''}

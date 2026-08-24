@@ -75,7 +75,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.sentry.io https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.hcaptcha.com; frame-src https://*.hcaptcha.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.sentry.io https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://api.qrserver.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://*.hcaptcha.com; frame-src https://*.hcaptcha.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
         },
         {
           "key": "Permissions-Policy",

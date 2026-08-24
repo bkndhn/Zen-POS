@@ -180,50 +180,98 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         throw new Error("You already have an active order.");
       }
 
-      const { data: orderNumberRes, error: orderNumErr } = await supabase.rpc('get_next_remote_order_number', {
-        p_admin_id: adminId,
-        p_branch_id: branchId
+      let orderNumber = 1;
+      let insertedOrderId = '';
+
+      // Try dedicated SECURITY DEFINER RPC first (immune to anon RLS select restrictions)
+      const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('public_place_remote_order', {
+        p_order: {
+          admin_id: adminId,
+          branch_id: branchId,
+          device_id: deviceId,
+          customer_name: name,
+          customer_phone: phone,
+          order_type: orderType,
+          customer_address: orderType === 'delivery' ? address : null,
+          delivery_address: orderType === 'delivery' ? address : null,
+          delivery_distance_km: distanceKm,
+          is_scheduled: isScheduled,
+          scheduled_for: isScheduled && scheduledTime ? scheduledTime : null,
+          subtotal,
+          tax_total: tax,
+          delivery_fee: deliveryFee,
+          packaging_fee: packagingFee,
+          surge_fee: surgeFee,
+          tip_amount: tip,
+          total_amount: grandTotal,
+          payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
+          payment_method: payMethod,
+          pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
+          items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
+        }
       });
-      
-      if (orderNumErr) throw orderNumErr;
-      const orderNumber = orderNumberRes;
 
-      const orderData = {
-        admin_id: adminId,
-        branch_id: branchId,
-        device_id: deviceId,
-        order_number: orderNumber,
-        customer_name: name,
-        customer_phone: phone,
-        order_type: orderType,
-        customer_address: orderType === 'delivery' ? address : null,
-        delivery_address: orderType === 'delivery' ? address : null,
-        delivery_distance_km: distanceKm,
-        is_scheduled: isScheduled,
-        scheduled_for: isScheduled && scheduledTime ? scheduledTime : null,
-        subtotal,
-        tax_total: tax,
-        delivery_fee: deliveryFee,
-        packaging_fee: packagingFee,
-        surge_fee: surgeFee,
-        tip_amount: tip,
-        total_amount: grandTotal,
-        payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
-        payment_method: payMethod,
-        status: 'pending',
-        pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
-        // Store display qty (divided by base_value) so the KDS/tracker shows correct numbers
-        items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
-        is_paid: false
-      };
+      if (!rpcErr && rpcRes?.id) {
+        insertedOrderId = rpcRes.id;
+        orderNumber = rpcRes.order_number || 1;
+      } else {
+        // Fallback to direct insert with safe handling
+        const { data: orderNumberRes } = await supabase.rpc('get_next_remote_order_number', {
+          p_admin_id: adminId,
+          p_branch_id: branchId
+        });
+        orderNumber = orderNumberRes || 1;
 
-      const { data: insertedOrder, error: insertErr } = await (supabase as any)
-        .from('remote_orders')
-        .insert(orderData)
-        .select()
-        .single();
+        const orderData = {
+          admin_id: adminId,
+          branch_id: branchId,
+          device_id: deviceId,
+          order_number: orderNumber,
+          customer_name: name,
+          customer_phone: phone,
+          order_type: orderType,
+          customer_address: orderType === 'delivery' ? address : null,
+          delivery_address: orderType === 'delivery' ? address : null,
+          delivery_distance_km: distanceKm,
+          is_scheduled: isScheduled,
+          scheduled_for: isScheduled && scheduledTime ? scheduledTime : null,
+          subtotal,
+          tax_total: tax,
+          delivery_fee: deliveryFee,
+          packaging_fee: packagingFee,
+          surge_fee: surgeFee,
+          tip_amount: tip,
+          total_amount: grandTotal,
+          payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
+          payment_method: payMethod,
+          status: 'pending',
+          pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
+          items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
+          is_paid: false
+        };
 
-      if (insertErr) throw insertErr;
+        const { data: insertedOrder, error: insertErr } = await (supabase as any)
+          .from('remote_orders')
+          .insert(orderData)
+          .select('id, order_number')
+          .maybeSingle();
+
+        if (insertErr && !insertedOrder) {
+          // If select failed due to RLS, fetch active order for device
+          const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', {
+            p_admin_id: adminId,
+            p_branch_id: branchId,
+            p_device_id: deviceId
+          });
+          if (activeOrder?.id) {
+            insertedOrderId = activeOrder.id;
+          } else {
+            throw insertErr;
+          }
+        } else {
+          insertedOrderId = insertedOrder?.id;
+        }
+      }
 
       
       // Upsert customer via safe SECURITY DEFINER RPC (no public write access to customers)

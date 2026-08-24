@@ -1280,8 +1280,10 @@ const PublicMenu = () => {
         try {
             const orderItems = cart.map(c => {
                 const combinedInstructions = [c.customization_string, c.instructions].filter(Boolean).join(' | ');
+                const itemId = c.item_id || c.id;
                 return {
-                    item_id: c.item_id || c.id,
+                    id: itemId,
+                    item_id: itemId,
                     name: c.name,
                     price: c.price,
                     quantity: c.quantity,

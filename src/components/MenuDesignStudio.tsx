@@ -437,9 +437,10 @@ export const MenuDesignStudio = () => {
         if (!adminAuthUid) return;
         setSaving(true);
         try {
+            const effectiveBranchId = operatingBranchId || branches.find(b => b.is_main)?.id || null;
             const payload: any = {
                 user_id: adminAuthUid,
-                branch_id: operatingBranchId,
+                branch_id: effectiveBranchId,
                 menu_layout_style: `${layoutStyle}:${cardElevation}`,
                 menu_font_family: fontFamily,
                 menu_border_radius: borderRadius,
@@ -475,18 +476,37 @@ export const MenuDesignStudio = () => {
                 payload.visible_nav_pages = shopDetails.visible_nav_pages;
             }
 
-            const { data: existing } = await supabase
+            let query = supabase
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', adminAuthUid)
-                .eq('branch_id', operatingBranchId)
-                .maybeSingle();
+                .eq('user_id', adminAuthUid);
+            if (effectiveBranchId) {
+                query = query.eq('branch_id', effectiveBranchId);
+            } else {
+                query = query.is('branch_id', null);
+            }
+            const { data: existing } = await query.maybeSingle();
 
             if (existing?.id) {
                 await supabase.from('shop_settings').update(payload).eq('id', existing.id);
             } else {
                 await supabase.from('shop_settings').insert(payload);
             }
+
+            // Sync design tokens to all shop_settings rows for this admin so all branch menus update
+            const designTokens = {
+                menu_layout_style: `${layoutStyle}:${cardElevation}`,
+                menu_font_family: fontFamily,
+                menu_border_radius: borderRadius,
+                menu_glassmorphism: glassmorphism,
+                menu_ai_features_enabled: aiEnabled,
+                menu_primary_color: primaryColor,
+                menu_secondary_color: secondaryColor,
+                menu_background_color: backgroundColor,
+                menu_text_color: textColor,
+                menu_items_per_row: menuItemsPerRow
+            };
+            await supabase.from('shop_settings').update(designTokens).eq('user_id', adminAuthUid);
 
             toast({
                 title: "Settings Saved",
@@ -529,14 +549,20 @@ export const MenuDesignStudio = () => {
     return (
         <div className="space-y-6">
             <Card className="border-purple-500/20 shadow-sm bg-gradient-to-br from-purple-50/50 to-background dark:from-purple-950/10">
-                <CardHeader>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                        <Palette className="w-6 h-6 text-purple-600" />
-                        Menu Design Studio
-                    </CardTitle>
-                    <CardDescription>
-                        Completely transform the way your customers view and interact with your digital menu.
-                    </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                            <Palette className="w-6 h-6 text-purple-600" />
+                            Menu Design Studio
+                        </CardTitle>
+                        <CardDescription>
+                            Completely transform the way your customers view and interact with your digital menu.
+                        </CardDescription>
+                    </div>
+                    <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md">
+                        {saving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                        {saving ? "Saving..." : "Save Design"}
+                    </Button>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     
