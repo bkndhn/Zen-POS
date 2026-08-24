@@ -289,9 +289,9 @@ const ItemCustomizerDialog = ({
                                             ? selections[mod.name] === opt.name 
                                             : (selections[mod.name] as string[] || []).includes(opt.name);
                                         return (
-                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`}>
+                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'border-orange-500 bg-orange-50 dark:bg-slate-700/50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${isChecked ? 'border-orange-500 bg-orange-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${isChecked ? 'border-orange-500 bg-orange-50 dark:bg-slate-700/500' : 'border-gray-300 dark:border-gray-600'}`}>
                                                         {isChecked && <div className={`bg-white ${mod.type === 'radio' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 flex items-center justify-center'} `}>
                                                             {mod.type !== 'radio' && <CheckCircle2 className="w-3 h-3 text-white" />}
                                                         </div>}
@@ -2003,7 +2003,7 @@ const PublicMenu = () => {
                     (scrolled || shopSettings?.menu_glassmorphism) ? "backdrop-blur-2xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : "backdrop-blur-xl"
                 )}
                 style={{
-                    background: shopSettings?.menu_primary_color
+                    background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
                         ? ((scrolled || shopSettings.menu_glassmorphism)
                             ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
                             : `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`)
@@ -2144,10 +2144,10 @@ const PublicMenu = () => {
 
             {/* Main Content */}
             {itemCategories.length > 0 && (
-                <div className="sticky z-40 bg-white/95 backdrop-blur-md border-b shadow-sm transition-all duration-300"
+                <div className="sticky z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b dark:border-slate-800 shadow-sm transition-all duration-300"
                     style={{ 
                         top: `${72 + (storeStatus && storeStatus.status !== 'open' ? 40 : 0) + (showSearch ? 48 : 0)}px`,
-                        borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa' 
+                        borderColor: isDarkMode ? undefined : (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa') 
                     }}
                 >
                     <div className="max-w-2xl mx-auto px-4 py-2.5">
@@ -2158,7 +2158,7 @@ const PublicMenu = () => {
                                     "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
                                     selectedCategory === 'all'
                                         ? "text-white border-transparent shadow-md scale-105"
-                                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                                        : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-sm"
                                 )}
                                 style={selectedCategory === 'all' ? {
                                     background: shopSettings?.menu_primary_color
@@ -2178,7 +2178,7 @@ const PublicMenu = () => {
                                             "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
                                             selectedCategory === cat
                                                 ? "text-white border-transparent shadow-md scale-105"
-                                                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                                                : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-sm"
                                         )}
                                         style={selectedCategory === cat ? {
                                             background: shopSettings?.menu_primary_color
@@ -2222,7 +2222,7 @@ const PublicMenu = () => {
                             rel="noopener noreferrer"
                             className="flex-1 flex items-center justify-center gap-2 text-white py-2.5 px-3 rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99]"
                             style={{
-                                background: shopSettings?.menu_primary_color
+                                background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
                                     ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
                                     : 'linear-gradient(135deg, #ea580c, #dc2626)'
                             }}
@@ -2398,7 +2398,7 @@ const PublicMenu = () => {
                                                         shopSettings?.menu_primary_color ? 'border-orange-100/50' : 'border-orange-50/50'
                                                     )}
                                                 >
-                                                    <div className="aspect-square bg-orange-50 relative overflow-hidden">
+                                                    <div className="aspect-square bg-orange-50 dark:bg-slate-700/50 relative overflow-hidden">
                                                         {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
                                                             item.media_type === 'gif' ? (
                                                                 <img src={item.video_url || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.video_url || item.image_url)} />
@@ -2436,12 +2436,12 @@ const PublicMenu = () => {
                                                                             <Minus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                         <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             <Plus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                     </div>
                                                                 ) : (
-                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                         {t('common.add') || 'ADD'}
                                                                     </button>
                                                                 )}
@@ -2489,7 +2489,7 @@ const PublicMenu = () => {
                                             <div
                                                 key={item.id}
                                                 className={cn(
-                                                    `bg-white transition-all duration-300 overflow-hidden group ${borderRadiusClass} ${shadowClass}`,
+                                                    `bg-white dark:bg-slate-800 transition-all duration-300 overflow-hidden group ${borderRadiusClass} ${shadowClass}`,
                                                     useHorizontalLayout ? "flex items-center p-3.5 gap-3.5" : "flex flex-col"
                                                 )}
                                                 style={{ borderColor: shadowStyle !== 'glow' && shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : undefined }}
@@ -2502,7 +2502,7 @@ const PublicMenu = () => {
                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                                             <div>
                                                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                                                    <h3 className="font-semibold text-gray-900 text-sm leading-tight">
+                                                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight">
                                                                         {item.name}
                                                                     </h3>
                                                                     {((item as any).is_popular || (item as any).popular || (item as any).bestseller) && (
@@ -2532,12 +2532,12 @@ const PublicMenu = () => {
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )
@@ -2548,7 +2548,7 @@ const PublicMenu = () => {
                                                 ) : (
                                                     // Multi-column: vertical card with large image on top
                                                     <>
-                                                        <div className="aspect-[4/3] bg-orange-50 relative overflow-hidden">
+                                                        <div className="aspect-[4/3] bg-orange-50 dark:bg-slate-700/50 relative overflow-hidden">
                                                             {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
                                                                 item.media_type === 'gif' ? (
                                                                     <img
@@ -2588,7 +2588,7 @@ const PublicMenu = () => {
                                                         </div>
                                                         <div className="p-2.5 text-center flex flex-col flex-1 justify-between">
                                                             <h3 className={cn(
-                                                                "font-semibold text-gray-800 leading-tight line-clamp-2",
+                                                                "font-semibold text-gray-800 dark:text-gray-200 leading-tight line-clamp-2",
                                                                 shopSettings?.menu_items_per_row === 3 ? "text-xs" : "text-sm"
                                                             )}>
                                                                 {item.name}
@@ -2620,12 +2620,12 @@ const PublicMenu = () => {
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )}
@@ -2731,7 +2731,7 @@ const PublicMenu = () => {
                                         onClick={() => setShowCheckoutDialog(true)}
                                         className="w-full py-2.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md animate-pulse"
                                         style={{
-                                            background: shopSettings?.menu_primary_color
+                                            background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
                                                 ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
                                                 : 'linear-gradient(135deg, #ea580c, #dc2626)'
                                         }}
@@ -2783,7 +2783,7 @@ const PublicMenu = () => {
                                                     <Minus className="w-3.5 h-3.5" />
                                                 </button>
                                                 <span className="text-sm font-bold w-5 text-center">{item.quantity / (item.base_value || 1)}</span>
-                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
                                                     <Plus className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button onClick={() => removeFromCart(item.id)} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center hover:bg-red-100">
@@ -2875,7 +2875,7 @@ const PublicMenu = () => {
                                     onClick={isRemoteMode ? () => { setShowCart(false); setShowRemoteCheckout(true); } : placeOrder}
                                     disabled={isPlacingOrder || cart.length === 0}
                                     className="w-full h-12 text-base font-bold rounded-xl text-white"
-                                    style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                                    style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                                 >
                                     {isPlacingOrder ? (
                                         <><Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('menu.placingOrder') || 'Placing Order...'}</>
@@ -2898,7 +2898,7 @@ const PublicMenu = () => {
                         <button
                             onClick={() => setShowCart(true)}
                             className="pointer-events-auto w-full max-w-sm mx-auto flex items-center justify-between px-6 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-white transition-all active:scale-[0.96] floating-cart-bar-btn border border-white/20 backdrop-blur-xl"
-                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
+                            style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
                         >
                             <div className="flex items-center gap-3">
                                 <div className="relative">
@@ -2951,7 +2951,7 @@ const PublicMenu = () => {
                                     <button
                                         onClick={() => { setShowMyOrders(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                         className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-95 transition-all"
-                                        style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                                        style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                                     >
                                         <RefreshCw className="w-4 h-4" />
                                         Place More Order
@@ -3008,7 +3008,7 @@ const PublicMenu = () => {
                         onClick={() => setShowHelpSheet(true)}
                         className="fixed z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl text-white font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
                         style={{
-                            background: shopSettings?.menu_primary_color
+                            background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
                                 ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
                                 : 'linear-gradient(135deg, #ea580c, #dc2626)',
                             bottom: cart.length > 0 ? '180px' : (showMyOrders && sessionOrders.length > 0) ? '140px' : '100px',
@@ -3252,7 +3252,7 @@ const PublicMenu = () => {
                 <footer
                     className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]"
                     style={{
-                        background: shopSettings?.menu_primary_color
+                        background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
                             ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)`
                             : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)'
                     }}
@@ -3365,7 +3365,7 @@ const PublicMenu = () => {
                                         {suggested.image_url ? (
                                             <img src={getCDNUrl(suggested.image_url)} alt={suggested.name} className="w-12 h-12 rounded-xl object-cover" loading="lazy" onError={(e) => handleImageError(e, suggested.image_url)} />
                                         ) : (
-                                            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500"><Utensils className="w-5 h-5" /></div>
+                                            <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-slate-700/500/10 flex items-center justify-center text-orange-500"><Utensils className="w-5 h-5" /></div>
                                         )}
                                         <div>
                                             <h4 className="font-bold text-sm text-gray-900 dark:text-white">{suggested.name}</h4>
@@ -3375,7 +3375,7 @@ const PublicMenu = () => {
                                     <Button 
                                         size="sm" 
                                         className="rounded-full h-8 px-4 font-bold text-xs shadow-sm hover:shadow active:scale-95 text-white" 
-                                        style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}
+                                        style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}
                                         onClick={(e) => {
                                             addToCart(suggested, e);
                                             setPairedSuggestions(prev => prev.filter(p => p.id !== suggested.id));
