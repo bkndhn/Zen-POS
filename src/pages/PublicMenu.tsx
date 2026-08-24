@@ -2461,7 +2461,7 @@ const PublicMenu = () => {
                                             (() => {
                                                 const cols = shopSettings?.menu_items_per_row;
                                                 if (cols === 1) return "grid-cols-1";
-                                                if (cols === 3) return "grid-cols-2 sm:grid-cols-3";
+                                                if (cols === 3) return "grid-cols-3"; // Force 3 columns if selected
                                                 return "grid-cols-2"; // default: 2 columns (or explicit 2)
                                             })(),
                                             isCollapsed ? "max-h-0 opacity-0" : "max-h-[5000px] opacity-100"
@@ -2549,7 +2549,7 @@ const PublicMenu = () => {
                                                 ) : (
                                                     // Multi-column: vertical card with large image on top
                                                     <>
-                                                        <div className="aspect-square bg-orange-50 relative overflow-hidden">
+                                                        <div className="aspect-[4/3] bg-orange-50 relative overflow-hidden">
                                                             {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
                                                                 item.media_type === 'gif' ? (
                                                                     <img
