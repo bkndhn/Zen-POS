@@ -2222,7 +2222,7 @@ const PublicMenu = () => {
                             rel="noopener noreferrer"
                             className="flex-1 flex items-center justify-center gap-2 text-white py-2.5 px-3 rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99]"
                             style={{
-                                background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
+                                background: shopSettings?.menu_primary_color
                                     ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
                                     : 'linear-gradient(135deg, #ea580c, #dc2626)'
                             }}
@@ -2432,16 +2432,16 @@ const PublicMenu = () => {
                                                             <div className="mt-1.5">
                                                                 {getCartQuantity(item.id) > 0 ? (
                                                                     <div className="flex items-center justify-center gap-1">
-                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
+                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                             <Minus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                         <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             <Plus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                     </div>
                                                                 ) : (
-                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                         {t('common.add') || 'ADD'}
                                                                     </button>
                                                                 )}
@@ -2528,16 +2528,16 @@ const PublicMenu = () => {
                                                                 {isOrderingMode && (
                                                                     getCartQuantity(item.id) > 0 ? (
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
+                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )
@@ -2616,16 +2616,16 @@ const PublicMenu = () => {
                                                                 <div className="mt-2">
                                                                     {getCartQuantity(item.id) > 0 ? (
                                                                         <div className="flex items-center justify-center gap-1.5">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform">
+                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )}
@@ -2731,7 +2731,7 @@ const PublicMenu = () => {
                                         onClick={() => setShowCheckoutDialog(true)}
                                         className="w-full py-2.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md animate-pulse"
                                         style={{
-                                            background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
+                                            background: shopSettings?.menu_primary_color
                                                 ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}cc)`
                                                 : 'linear-gradient(135deg, #ea580c, #dc2626)'
                                         }}
@@ -2779,11 +2779,11 @@ const PublicMenu = () => {
                                                 <span className="text-xs text-gray-500">₹{item.price}/{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-white border flex items-center justify-center hover:bg-gray-100">
+                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 border flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600">
                                                     <Minus className="w-3.5 h-3.5" />
                                                 </button>
                                                 <span className="text-sm font-bold w-5 text-center">{item.quantity / (item.base_value || 1)}</span>
-                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                     <Plus className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button onClick={() => removeFromCart(item.id)} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center hover:bg-red-100">
@@ -2842,7 +2842,7 @@ const PublicMenu = () => {
                                     <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
                                         <span className="flex items-center gap-1.5 text-xs font-semibold">
                                             <Clock className="h-3.5 w-3.5" />
-                                            {t('menu.estimatedTime') || 'Estimated cooking time'}
+                                            {t('menu.estimatedTime', 'Estimated time')}
                                         </span>
                                         <span className="text-sm font-bold tabular-nums">~{formatMins(cartEtaMinutes)}</span>
                                     </div>
@@ -2875,7 +2875,7 @@ const PublicMenu = () => {
                                     onClick={isRemoteMode ? () => { setShowCart(false); setShowRemoteCheckout(true); } : placeOrder}
                                     disabled={isPlacingOrder || cart.length === 0}
                                     className="w-full h-12 text-base font-bold rounded-xl text-white"
-                                    style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                                    style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                                 >
                                     {isPlacingOrder ? (
                                         <><Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('menu.placingOrder') || 'Placing Order...'}</>
@@ -2898,7 +2898,7 @@ const PublicMenu = () => {
                         <button
                             onClick={() => setShowCart(true)}
                             className="pointer-events-auto w-full max-w-sm mx-auto flex items-center justify-between px-6 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-white transition-all active:scale-[0.96] floating-cart-bar-btn border border-white/20 backdrop-blur-xl"
-                            style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
+                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
                         >
                             <div className="flex items-center gap-3">
                                 <div className="relative">
@@ -2951,7 +2951,7 @@ const PublicMenu = () => {
                                     <button
                                         onClick={() => { setShowMyOrders(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                         className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-95 transition-all"
-                                        style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                                        style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
                                     >
                                         <RefreshCw className="w-4 h-4" />
                                         Place More Order
@@ -3008,7 +3008,7 @@ const PublicMenu = () => {
                         onClick={() => setShowHelpSheet(true)}
                         className="fixed z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl text-white font-bold text-sm transition-all duration-300 hover:scale-105 active:scale-95"
                         style={{
-                            background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
+                            background: shopSettings?.menu_primary_color
                                 ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
                                 : 'linear-gradient(135deg, #ea580c, #dc2626)',
                             bottom: cart.length > 0 ? '180px' : (showMyOrders && sessionOrders.length > 0) ? '140px' : '100px',
@@ -3252,7 +3252,7 @@ const PublicMenu = () => {
                 <footer
                     className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]"
                     style={{
-                        background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color
+                        background: shopSettings?.menu_primary_color
                             ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)`
                             : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)'
                     }}
@@ -3375,7 +3375,7 @@ const PublicMenu = () => {
                                     <Button 
                                         size="sm" 
                                         className="rounded-full h-8 px-4 font-bold text-xs shadow-sm hover:shadow active:scale-95 text-white" 
-                                        style={{ background: isDarkMode ? (scrolled ? "rgba(15, 23, 42, 0.9)" : "rgb(15, 23, 42)") : shopSettings?.menu_primary_color || '#ea580c' }}
+                                        style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}
                                         onClick={(e) => {
                                             addToCart(suggested, e);
                                             setPairedSuggestions(prev => prev.filter(p => p.id !== suggested.id));

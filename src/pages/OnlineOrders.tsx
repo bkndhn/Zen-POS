@@ -567,7 +567,7 @@ export default function OnlineOrders() {
               </div>
             )}
             <div className="flex justify-between font-bold text-lg border-t pt-1 mt-1">
-              <span>Total</span>
+              <span>Total ({Array.isArray(order.items) ? order.items.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) : 0} items)</span>
               <span>₹{order.total_amount}</span>
             </div>
           </div>

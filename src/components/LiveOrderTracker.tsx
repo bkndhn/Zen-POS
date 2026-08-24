@@ -243,10 +243,28 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
             {order.is_paid ? (
               <Badge className="w-full justify-center py-2 bg-emerald-600 hover:bg-emerald-600">Payment received</Badge>
             ) : !isCancelled && order.status !== 'completed' ? (
-              <Button className="w-full h-11 gap-2 rounded-xl" onClick={handlePayOnline} disabled={payingOnline}>
-                <CreditCard className="w-4 h-4" />
-                {payingOnline ? 'Opening secure payment…' : `Pay ₹${order.total_amount?.toFixed(2)} Online`}
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button className="w-full h-11 gap-2 rounded-xl" onClick={handlePayOnline} disabled={payingOnline}>
+                  <CreditCard className="w-4 h-4" />
+                  {payingOnline ? 'Opening secure payment…' : `Pay ₹${order.total_amount?.toFixed(2)} Online`}
+                </Button>
+                {shopSettings?.upi_id && (
+                  <Button 
+                    variant="outline"
+                    className="w-full h-11 gap-2 rounded-xl border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-900/20" 
+                    onClick={() => {
+                      const pa = encodeURIComponent(shopSettings.upi_id);
+                      const pn = encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant');
+                      const am = order.total_amount?.toFixed(2);
+                      const tr = encodeURIComponent(order.id);
+                      window.location.href = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tr=${tr}`;
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5z"/></svg>
+                    Pay via UPI App
+                  </Button>
+                )}
+              </div>
             ) : null}
           </CardContent>
 
