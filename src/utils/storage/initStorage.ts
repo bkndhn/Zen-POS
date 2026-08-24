@@ -29,11 +29,24 @@ export async function initStorage(): Promise<StorageBackend> {
 
   _initPromise = (async () => {
     try {
-      // Always try SQLite first — it handles native vs WASM internally
+      // Web/PWA: IndexedDB is the durable, well-supported path. The jeep-sqlite
+      // WASM build fails to link in several browsers (LinkError), so we never
+      // load it on the web.
+      const { Capacitor } = await import('@capacitor/core');
+      if (Capacitor.getPlatform() === 'web') {
+        console.log('[Storage] Web platform → using IndexedDBBackend');
+        const { IndexedDBBackend } = await import('./IndexedDBBackend');
+        _backend = new IndexedDBBackend();
+        await _backend.initialize();
+        return _backend;
+      }
+
+      // Native: SQLite (native plugin, or WASM fallback inside the WebView)
       console.log('[Storage] Initializing SQLiteBackend (auto-detects native vs WASM)...');
       const { SQLiteBackend } = await import('./SQLiteBackend');
       _backend = new SQLiteBackend();
       await _backend.initialize();
+
 
       // Run one-time migration from IndexedDB → SQLite on first use
       try {
