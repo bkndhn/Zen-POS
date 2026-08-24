@@ -2458,9 +2458,12 @@ const PublicMenu = () => {
                                     <div
                                         className={cn(
                                             "grid gap-3 transition-all duration-300 ease-in-out overflow-hidden",
-                                            shopSettings?.menu_items_per_row === 3 ? "grid-cols-3" :
-                                                shopSettings?.menu_items_per_row === 2 ? "grid-cols-2" :
-                                                    "grid-cols-1",
+                                            (() => {
+                                                const cols = shopSettings?.menu_items_per_row;
+                                                if (cols === 1) return "grid-cols-1";
+                                                if (cols === 3) return "grid-cols-2 sm:grid-cols-3";
+                                                return "grid-cols-2"; // default: 2 columns (or explicit 2)
+                                            })(),
                                             isCollapsed ? "max-h-0 opacity-0" : "max-h-[5000px] opacity-100"
                                         )}
                                     >

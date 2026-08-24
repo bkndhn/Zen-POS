@@ -267,7 +267,7 @@ export const MenuDesignStudio = () => {
 
     // Layout Settings
     const [layoutStyle, setLayoutStyle] = useState('classic');
-    const [menuItemsPerRow, setMenuItemsPerRow] = useState(1);
+    const [menuItemsPerRow, setMenuItemsPerRow] = useState(2);
     
     // Typography Settings
     const [fontFamily, setFontFamily] = useState('Inter');
