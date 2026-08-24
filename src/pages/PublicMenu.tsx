@@ -384,10 +384,9 @@ const PublicMenu = () => {
         if (isDarkMode) {
             return {
                 ...rawShopSettings,
-                menu_primary_color: undefined,
-                menu_secondary_color: undefined,
-                menu_background_color: undefined,
-                menu_text_color: undefined
+                // Preserve primary/secondary brand colors, but enforce dark background and light text
+                menu_background_color: '#0f172a', // slate-900
+                menu_text_color: '#f8fafc' // slate-50
             };
         }
         return rawShopSettings;
@@ -841,9 +840,9 @@ const PublicMenu = () => {
         };
     }, [adminId, cart.length]);
 
-    // Real-time subscription for menu settings changes (active only when user has items in their cart)
+    // Real-time subscription for menu settings changes
     useEffect(() => {
-        if (!adminId || cart.length === 0) return;
+        if (!adminId) return;
 
         const settingsChannel = supabase
             .channel(`menu-settings-${adminId}`)
@@ -875,7 +874,7 @@ const PublicMenu = () => {
         return () => {
             supabase.removeChannel(settingsChannel);
         };
-    }, [adminId, branchId, cart.length]);
+    }, [adminId, branchId]);
 
     // Real-time permission updates
     useEffect(() => {
