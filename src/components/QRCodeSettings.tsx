@@ -1237,8 +1237,8 @@ const QRCodeSettings = () => {
                                 if (!adminAuthUid) return;
                                 const ssPayload: any = { user_id: adminAuthUid, branch_id: operatingBranchId, operating_hours: newHours };
                                 supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle().then(({ data }) => {
-                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then(() => settingsChannel.send({ type: 'broadcast', event: 'menu-settings-updated', payload: ssPayload }));
-                                    else supabase.from('shop_settings').insert(ssPayload).then(() => settingsChannel.send({ type: 'broadcast', event: 'menu-settings-updated', payload: ssPayload }));
+                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then(() => broadcastMenuSettings(ssPayload));
+                                    else supabase.from('shop_settings').insert(ssPayload).then(() => broadcastMenuSettings(ssPayload));
                                 });
                             }}
                             onUpdateOverride={(newOverride) => {
