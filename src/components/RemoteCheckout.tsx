@@ -250,14 +250,18 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           is_paid: false
         };
 
+        // Guests have INSERT but no SELECT on remote_orders (anon reads are blocked for
+        // privacy), so the chained .select() returns no row. Always resolve the new order
+        // id via the device-scoped secure RPC.
         const { data: insertedOrder, error: insertErr } = await (supabase as any)
           .from('remote_orders')
           .insert(orderData)
           .select('id, order_number')
           .maybeSingle();
 
-        if (insertErr && !insertedOrder) {
-          // If select failed due to RLS, fetch active order for device
+        if (insertErr) throw insertErr;
+        insertedOrderId = insertedOrder?.id;
+        if (!insertedOrderId) {
           const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', {
             p_admin_id: adminId,
             p_branch_id: branchId,
@@ -266,10 +270,8 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           if (activeOrder?.id) {
             insertedOrderId = activeOrder.id;
           } else {
-            throw insertErr;
+            throw new Error('Order was placed but could not be retrieved. Please check with the shop.');
           }
-        } else {
-          insertedOrderId = insertedOrder?.id;
         }
       }
 
