@@ -2119,43 +2119,42 @@ const PublicMenu = () => {
                         borderColor: isDarkMode ? undefined : (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa') 
                     }}
                 >
-                    <div className="max-w-2xl mx-auto px-4 py-1.5">
+                    <div className="max-w-2xl mx-auto px-4 py-2.5">
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                            <button
-                                onClick={() => setSelectedCategory('all')}
-                                className={cn(
-                                    "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
-                                    selectedCategory === 'all'
-                                        ? "text-white border-transparent shadow-md scale-105"
-                                        : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-sm"
-                                )}
-                                style={selectedCategory === 'all' ? {
-                                    background: shopSettings?.menu_primary_color
-                                        ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
-                                        : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                                } : {}}
-                            >
-                                {t('menu.all') || 'All'} ({items.length})
-                            </button>
-                            {itemCategories.map(cat => {
-                                const count = items.filter(i => i.category === cat).length;
+                            {[
+                                { id: 'all' as string, label: t('menu.all') || 'All', count: items.length },
+                                ...itemCategories.map(cat => ({ id: cat as string, label: cat, count: items.filter(i => i.category === cat).length }))
+                            ].map(c => {
+                                const active = selectedCategory === c.id;
                                 return (
                                     <button
-                                        key={cat}
-                                        onClick={() => setSelectedCategory(cat)}
+                                        key={c.id}
+                                        onClick={() => setSelectedCategory(c.id)}
+                                        aria-pressed={active}
                                         className={cn(
-                                            "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
-                                            selectedCategory === cat
-                                                ? "text-white border-transparent shadow-md scale-105"
-                                                : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-sm"
+                                            "group flex-shrink-0 flex items-center gap-1.5 rounded-full h-9 pl-4 pr-2.5 text-xs font-bold transition-all duration-300 border active:scale-95",
+                                            active
+                                                ? "text-white border-transparent shadow-lg scale-105"
+                                                : "bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 border-gray-200/80 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-md hover:-translate-y-px backdrop-blur-sm"
                                         )}
-                                        style={selectedCategory === cat ? {
+                                        style={active ? {
                                             background: shopSettings?.menu_primary_color
                                                 ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
-                                                : 'linear-gradient(135deg, #ea580c, #dc2626)'
+                                                : 'linear-gradient(135deg, #ea580c, #dc2626)',
+                                            boxShadow: `0 6px 16px -4px ${shopSettings?.menu_primary_color || '#ea580c'}66`
                                         } : {}}
                                     >
-                                        {cat} ({count})
+                                        <span className="whitespace-nowrap">{c.label}</span>
+                                        <span
+                                            className={cn(
+                                                "min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[10px] font-extrabold tabular-nums transition-colors",
+                                                active
+                                                    ? "bg-white/25 text-white"
+                                                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-slate-600"
+                                            )}
+                                        >
+                                            {c.count}
+                                        </span>
                                     </button>
                                 );
                             })}
