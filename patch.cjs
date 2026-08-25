@@ -1,139 +1,68 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
-const filePath = path.join(__dirname, 'src', 'pages', 'SuperAdminUsers.tsx');
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = 'src/pages/PublicMenu.tsx';
+let content = fs.readFileSync(filePath, 'utf-8');
 
-// 1. Update handleTogglePermission
-content = content.replace(
-  `      // Update state
-      setRows(prev => prev.map(r => r.profile_id === adminProfileId ? { ...r, client_permissions: updatedPerms } : r));
-      setSelectedAdmin(prev => prev && prev.profile_id === adminProfileId ? { ...prev, client_permissions: updatedPerms } : prev);
+const replacements = [
+    [/<Label className="font-semibold text-gray-800 dark:text-gray-200">Special Instructions<\/Label>/g, `<Label className="font-semibold text-gray-800 dark:text-gray-200">{t('menu.specialInstructions') || 'Special Instructions'}</Label>`],
+    [/<span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Quantity<\/span>/g, `<span className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('menu.quantity') || 'Quantity'}</span>`],
+    [/>Loading menu\.\.\.</g, `>{t('common.loading') || 'Loading menu...'}<`],
+    [/>Loading menu[^<]+<\/p>/g, `>{t('common.loading') || 'Loading menu...'}</p>`],
+    [/>Menu Unavailable<\/h1>/g, `>{t('menu.menuUnavailable') || 'Menu Unavailable'}</h1>`],
+    [/>Menu is being updated\. Please check back soon!<\/p>/g, `>{t('menu.menuUpdating') || 'Menu is being updated. Please check back soon!'}</p>`],
+    [/>Get Directions<\/span>/g, `>{t('menu.getDirections') || 'Get Directions'}</span>`],
+    [/>Share Location<\/span>/g, `>{t('menu.shareLocation') || 'Share Location'}</span>`],
+    [/No items found for "\{searchQuery\}"/g, `{t('menu.noItemsFound', { query: searchQuery }) || \`No items found for "\${searchQuery}"\`}`],
+    [/>Order #\{order\.order_number\}<\/span>/g, `>{t('menu.orderNumber', { number: order.order_number }) || \`Order #\${order.order_number}\`}</span>`],
+    [/>Note: \{order\.customer_note\}<\/p>/g, `>{t('menu.note') || 'Note:'} {order.customer_note}</p>`],
+    [/>My Orders \(\{sessionOrders\.length\}\)<\/span>/g, `>{t('menu.myOrdersWithCount', { count: sessionOrders.length }) || \`My Orders (\${sessionOrders.length})\`}</span>`],
+    [/>All items served! [^<]+<\/p>/g, `>{t('menu.allItemsServed') || 'All items served! 🥂'}</p>`],
+    [/>Would you like anything else\?<\/p>/g, `>{t('menu.anythingElse') || 'Would you like anything else?'}</p>`],
+    [/>Bill generated!<\/p>/g, `>{t('menu.billGenerated') || 'Bill generated!'}</p>`],
+    [/>You can still order more items if you wish\.<\/p>/g, `>{t('menu.canStillOrder') || 'You can still order more items if you wish.'}</p>`],
+    [/>Need Assistance\?<\/h3>/g, `>{t('menu.needAssistance') || 'Need Assistance?'}</h3>`],
+    [/Table \{tableNo\}\{seatId \? \` - Seat \$\{seatId\}\` : ''\} [^<]+ Tap to notify staff/g, `{t('menu.tableSeat', { tableNo, seatId })} • {t('menu.tapToNotify') || 'Tap to notify staff'}`],
+    [/>Active \(Pending\)<\/span>/g, `>{t('menu.activePending') || 'Active (Pending)'}</span>`],
+    [/>Wait \{remainingSec\}s<\/span>/g, `>{t('menu.waitSecs', { secs: remainingSec }) || \`Wait \${remainingSec}s\`}</span>`],
+    [/>Amount to Pay<\/span>/g, `>{t('menu.amountToPay') || 'Amount to Pay'}</span>`],
+    [/Table \{tableNo\}\{seatId \? \` \\\(Seat \$\{seatId\}\\\)\` : ''\} [^<]+ Order Total/g, `{t('menu.tableSeat', { tableNo, seatId })} • {t('menu.orderTotal') || 'Order Total'}`],
+    [/>Merchant Name:<\/span>/g, `>{t('menu.merchantName') || 'Merchant Name:'}</span>`],
+    [/>UPI ID:<\/span>/g, `>{t('menu.upiId') || 'UPI ID:'}</span>`],
+    [/>Reference Submitted!<\/h4>/g, `>{t('menu.referenceSubmitted') || 'Reference Submitted!'}</h4>`],
+    [/>OR SCAN QR CODE<\/span>/g, `>{t('menu.orScanQR') || 'OR SCAN QR CODE'}</span>`],
+    [/>Scan using GPay, PhonePe, Paytm etc\.<\/span>/g, `>{t('menu.scanUsing') || 'Scan using GPay, PhonePe, Paytm etc.'}</span>`],
+    [/>Enter Payment Reference \(UTR \/ Txn ID\) \*<\/Label>/g, `>{t('menu.enterPaymentRef') || 'Enter Payment Reference (UTR / Txn ID) *'}</Label>`],
+    [/>Call<\/span>/g, `>{t('menu.call') || 'Call'}</span>`],
+    [/>WhatsApp<\/span>/g, `>{t('menu.whatsapp') || 'WhatsApp'}</span>`]
+];
 
-      toast({
-        title: "Permission updated",`,
-  `      // Update state
-      setRows(prev => prev.map(r => r.profile_id === adminProfileId ? { ...r, client_permissions: updatedPerms } : r));
-      setSelectedAdmin(prev => prev && prev.profile_id === adminProfileId ? { ...prev, client_permissions: updatedPerms } : prev);
+for (const [search, replace] of replacements) {
+    content = content.replace(search, replace);
+}
+fs.writeFileSync(filePath, content, 'utf-8');
 
-      // Broadcast update instantly
-      const channel = supabase.channel(\`permissions:\${adminProfileId}\`);
-      channel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.send({
-            type: 'broadcast',
-            event: 'permissions_updated',
-            payload: { client_permissions: updatedPerms }
-          });
-          supabase.removeChannel(channel);
-        }
-      });
+const enPath = 'src/i18n/locales/en.json';
+const enStrings = JSON.parse(fs.readFileSync(enPath, 'utf-8'));
+Object.assign(enStrings.menu, {
+    specialInstructions: "Special Instructions", quantity: "Quantity", menuUnavailable: "Menu Unavailable",
+    menuUpdating: "Menu is being updated. Please check back soon!", getDirections: "Get Directions", shareLocation: "Share Location",
+    noItemsFound: "No items found for \"{{query}}\"", orderNumber: "Order #{{number}}", note: "Note:",
+    myOrdersWithCount: "My Orders ({{count}})", allItemsServed: "All items served! 🥂", anythingElse: "Would you like anything else?",
+    billGenerated: "Bill generated!", canStillOrder: "You can still order more items if you wish.", needAssistance: "Need Assistance?",
+    tableSeat: "Table {{tableNo}}{{seatId ? ' - Seat ' + seatId : ''}}", tapToNotify: "Tap to notify staff",
+    activePending: "Active (Pending)", waitSecs: "Wait {{secs}}s", amountToPay: "Amount to Pay", orderTotal: "Order Total",
+    merchantName: "Merchant Name:", upiId: "UPI ID:", referenceSubmitted: "Reference Submitted!", orScanQR: "OR SCAN QR CODE",
+    scanUsing: "Scan using GPay, PhonePe, Paytm etc.", enterPaymentRef: "Enter Payment Reference (UTR / Txn ID) *", call: "Call"
+});
+fs.writeFileSync(enPath, JSON.stringify(enStrings, null, 2), 'utf-8');
 
-      toast({
-        title: "Permission updated",`
-);
-
-// 2. Add handleSetAllPermissions before handleStatusChange
-content = content.replace(
-  `  const handleStatusChange = async (profileId: string, newStatus: string) => {`,
-  `  const handleSetAllPermissions = async (adminProfileId: string, enabled: boolean) => {
-    const admin = rows.find(r => r.profile_id === adminProfileId);
-    if (!admin) return;
-
-    const updatedPerms: Record<string, boolean> = {};
-    ALL_NAV_ITEMS.forEach(item => {
-      updatedPerms[item.to] = enabled;
-    });
-    // Extra permissions
-    updatedPerms['receipt_qr'] = enabled;
-    updatedPerms['calci_billing'] = enabled;
-    updatedPerms['allow_cloud_storage'] = enabled;
-    updatedPerms['/qr-menu'] = enabled;
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ client_permissions: updatedPerms })
-        .eq('id', adminProfileId);
-
-      if (error) throw error;
-
-      // Update state
-      setRows(prev => prev.map(r => r.profile_id === adminProfileId ? { ...r, client_permissions: updatedPerms } : r));
-      setSelectedAdmin(prev => prev && prev.profile_id === adminProfileId ? { ...prev, client_permissions: updatedPerms } : prev);
-
-      // Broadcast update instantly
-      const channel = supabase.channel(\`permissions:\${adminProfileId}\`);
-      channel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.send({
-            type: 'broadcast',
-            event: 'permissions_updated',
-            payload: { client_permissions: updatedPerms }
-          });
-          supabase.removeChannel(channel);
-        }
-      });
-
-      toast({
-        title: \`All permissions \${enabled ? 'enabled' : 'disabled'}\`,
-        description: \`Successfully updated permissions for \${admin.hotel_name || admin.name}\`
-      });
-    } catch (e: any) {
-      toast({
-        title: "Error",
-        description: e.message || "Failed to update permissions",
-        variant: "destructive"
-      });
+const taPath = 'src/i18n/locales/ta.json';
+if (fs.existsSync(taPath)) {
+    const taStrings = JSON.parse(fs.readFileSync(taPath, 'utf-8'));
+    for (const [k, v] of Object.entries(enStrings.menu)) {
+        if (!taStrings.menu[k]) taStrings.menu[k] = v;
     }
-  };
-
-  const handleStatusChange = async (profileId: string, newStatus: string) => {`
-);
-
-// 3. Update DialogHeader
-content = content.replace(
-  `          <DialogHeader className="shrink-0 border-b pb-4 mb-4">
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-              <Shield className="w-5 h-5 text-primary" />
-              Client Permissions
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Toggle access to specific modules/pages for <strong>{selectedAdmin?.hotel_name || selectedAdmin?.name}</strong>.
-            </DialogDescription>
-          </DialogHeader>`,
-  `          <DialogHeader className="shrink-0 border-b pb-4 mb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-                  <Shield className="w-5 h-5 text-primary" />
-                  Client Permissions
-                </DialogTitle>
-                <DialogDescription className="text-xs">
-                  Toggle access to specific modules/pages for <strong>{selectedAdmin?.hotel_name || selectedAdmin?.name}</strong>.
-                </DialogDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/40 dark:border-green-800 dark:text-green-300"
-                  onClick={() => selectedAdmin && handleSetAllPermissions(selectedAdmin.profile_id, true)}
-                >
-                  Enable All
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:border-red-800 dark:text-red-300"
-                  onClick={() => selectedAdmin && handleSetAllPermissions(selectedAdmin.profile_id, false)}
-                >
-                  Disable All
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>`
-);
-
-fs.writeFileSync(filePath, content, 'utf8');
-console.log('Successfully patched SuperAdminUsers.tsx');
+    fs.writeFileSync(taPath, JSON.stringify(taStrings, null, 2), 'utf-8');
+}
+console.log("Patched PublicMenu.tsx!");

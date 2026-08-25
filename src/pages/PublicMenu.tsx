@@ -305,7 +305,7 @@ const ItemCustomizerDialog = ({
                     ) : null}
 
                     <div className="space-y-2">
-                        <Label className="font-semibold text-gray-800 dark:text-gray-200">Special Instructions</Label>
+                        <Label className="font-semibold text-gray-800 dark:text-gray-200">{t('menu.specialInstructions') || 'Special Instructions'}</Label>
                         <Input 
                             value={specialInstructions} 
                             onChange={e => setSpecialInstructions(e.target.value)} 
@@ -317,7 +317,7 @@ const ItemCustomizerDialog = ({
 
                 <div className="p-4 border-t dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl space-y-4 shrink-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Quantity</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">{t('menu.quantity') || 'Quantity'}</span>
                         <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-800 rounded-full p-1 border dark:border-slate-700">
                             <button onClick={() => setQuantity(q => Math.max(item.base_value || 1, q - (item.base_value || 1)))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
                             <span className="font-semibold w-8 text-center text-sm">{quantity} {item.unit !== 'pcs' && item.unit !== 'pc' ? getShortUnit(item.unit) : ''}</span>
@@ -1822,7 +1822,7 @@ const PublicMenu = () => {
                         </div>
                     ))}
                 </div>
-                <p className="mt-6 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Loading menu…</p>
+                <p className="mt-6 text-center text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.loading') || 'Loading menu...'}</p>
             </div>
         );
     }
@@ -1833,7 +1833,7 @@ const PublicMenu = () => {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
                 <QrCode className="w-20 h-20 text-muted-foreground mb-6 opacity-50" />
-                <h1 className="text-3xl font-bold mb-4 text-center">Menu Unavailable</h1>
+                <h1 className="text-3xl font-bold mb-4 text-center">{t('menu.menuUnavailable') || 'Menu Unavailable'}</h1>
                 <p className="text-muted-foreground text-center max-w-md">
                     This digital menu is currently disabled. Please contact {shopName} for more info.
                 </p>
@@ -1846,7 +1846,7 @@ const PublicMenu = () => {
             <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
                 <div className="text-center max-w-md">
                     <Utensils className="w-16 h-16 mx-auto mb-4 text-red-400" />
-                    <h1 className="text-2xl font-bold text-red-700 mb-2">Menu Unavailable</h1>
+                    <h1 className="text-2xl font-bold text-red-700 mb-2">{t('menu.menuUnavailable') || 'Menu Unavailable'}</h1>
                     <p className="text-red-600">{error}</p>
                 </div>
             </div>
@@ -1861,7 +1861,7 @@ const PublicMenu = () => {
                     <h1 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">
                         {headerTitle}
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-300">Menu is being updated. Please check back soon!</p>
+                    <p className="text-gray-600 dark:text-gray-300">{t('menu.menuUpdating') || 'Menu is being updated. Please check back soon!'}</p>
                 </div>
             </div>
         );
@@ -2186,14 +2186,14 @@ const PublicMenu = () => {
                             }}
                         >
                             <MapPin className="w-4 h-4" />
-                            <span>Get Directions</span>
+                            <span>{t('menu.getDirections') || 'Get Directions'}</span>
                         </a>
                         <button
                             onClick={handleShareLocation}
                             className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 py-2.5 px-3 rounded-xl shadow-sm hover:shadow-md transition-all text-xs sm:text-sm font-medium hover:scale-[1.01] active:scale-[0.99] border border-slate-200/50"
                         >
                             <Share2 className="w-4 h-4" />
-                            <span>Share Location</span>
+                            <span>{t('menu.shareLocation') || 'Share Location'}</span>
                         </button>
                     </div>
                 </div>
@@ -2292,7 +2292,7 @@ const PublicMenu = () => {
                 {filteredItems.length === 0 ? (
                     <div className="text-center py-12">
                         <Search className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                        <p className="text-gray-600 dark:text-gray-300">No items found for "{searchQuery}"</p>
+                        <p className="text-gray-600 dark:text-gray-300">{t('menu.noItemsFound', { query: searchQuery }) || `No items found for "${searchQuery}"`}</p>
                         <button
                             onClick={() => setSearchQuery('')}
                             className="mt-2 text-orange-500 hover:text-gray-700 dark:text-gray-200 underline text-sm"
@@ -2616,7 +2616,7 @@ const PublicMenu = () => {
                                 {sessionOrders.map(order => (
                                     <div key={order.id} className="p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Order #{order.order_number}</span>
+                                            <span className="font-semibold text-gray-800 dark:text-gray-100 text-sm">{t('menu.orderNumber', { number: order.order_number }) || `Order #${order.order_number}`}</span>
                                             <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(order.status))}>
                                                 {getStatusIcon(order.status)}
                                                 <span>{getStatusLabel(order.status)}</span>
@@ -2636,7 +2636,7 @@ const PublicMenu = () => {
                                             </div>
                                         ))}
                                         {order.customer_note && (
-                                            <p className="text-xs text-gray-400 mt-1 italic">Note: {order.customer_note}</p>
+                                            <p className="text-xs text-gray-400 mt-1 italic">{t('menu.note') || 'Note:'} {order.customer_note}</p>
                                         )}
                                         {!['served', 'cancelled'].includes(order.status) && (
                                             <PrepProgressBar
@@ -2868,7 +2868,7 @@ const PublicMenu = () => {
                         >
                             <div className="flex items-center gap-2">
                                 <ChefHat className="w-5 h-5" />
-                                <span className="font-semibold">My Orders ({sessionOrders.length})</span>
+                                <span className="font-semibold">{t('menu.myOrdersWithCount', { count: sessionOrders.length }) || `My Orders (${sessionOrders.length})`}</span>
                             </div>
                             <span className="font-bold">₹{sessionTotal.toFixed(0)}</span>
                         </button>
@@ -2888,8 +2888,8 @@ const PublicMenu = () => {
                             }}
                         >
                             <CheckCircle2 className="w-7 h-7 mx-auto mb-1.5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
-                            <p className="font-semibold text-sm mb-0.5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>All items served! ✨</p>
-                            <p className="text-gray-500 text-xs mb-3">Would you like anything else?</p>
+                            <p className="font-semibold text-sm mb-0.5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>{t('menu.allItemsServed') || 'All items served! 🥂'}</p>
+                            <p className="text-gray-500 text-xs mb-3">{t('menu.anythingElse') || 'Would you like anything else?'}</p>
                             <div className="flex items-center gap-2 justify-center">
                                     <button
                                         onClick={() => { setShowMyOrders(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -2929,8 +2929,8 @@ const PublicMenu = () => {
                 isTableMode && isSessionComplete && cartItemCount === 0 && (
                     <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div className="w-full max-w-2xl mx-auto bg-green-50 border border-green-200 rounded-2xl shadow-lg p-4 text-center">
-                            <p className="text-green-800 font-semibold text-sm mb-1">Bill generated!</p>
-                            <p className="text-green-600 text-xs mb-3">You can still order more items if you wish.</p>
+                            <p className="text-green-800 font-semibold text-sm mb-1">{t('menu.billGenerated') || 'Bill generated!'}</p>
+                            <p className="text-green-600 text-xs mb-3">{t('menu.canStillOrder') || 'You can still order more items if you wish.'}</p>
                             <button
                                 onClick={() => { setShowMyOrders(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition-colors"
@@ -2997,8 +2997,8 @@ const PublicMenu = () => {
                             <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl p-5 pb-8 animate-in slide-in-from-bottom duration-300">
                                 {/* Handle */}
                                 <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-                                <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">Need Assistance?</h3>
-                                <p className="text-xs text-gray-500 mb-4 text-center">Table {tableNo}{seatId ? ` - Seat ${seatId}` : ''} • Tap to notify staff</p>
+                                <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">{t('menu.needAssistance') || 'Need Assistance?'}</h3>
+                                <p className="text-xs text-gray-500 mb-4 text-center">{t('menu.tableSeat', { tableNo, seatId })} • {t('menu.tapToNotify') || 'Tap to notify staff'}</p>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     {HELP_ACTIONS.filter(a => a.type !== 'custom').map((action) => {
@@ -3023,10 +3023,10 @@ const PublicMenu = () => {
                                                 <action.icon className={cn("w-6 h-6", isPending && "animate-pulse")} />
                                                 <span>{action.label}</span>
                                                 {isPending && (
-                                                    <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-normal">Active (Pending)</span>
+                                                    <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full font-normal">{t('menu.activePending') || 'Active (Pending)'}</span>
                                                 )}
                                                 {isOnCooldown && !isPending && (
-                                                    <span className="text-[10px] opacity-75">Wait {remainingSec}s</span>
+                                                    <span className="text-[10px] opacity-75">{t('menu.waitSecs', { secs: remainingSec }) || `Wait ${remainingSec}s`}</span>
                                                 )}
                                                 {statusText && !isOnCooldown && !isPending && (
                                                     <span className="text-[10px] opacity-85">{statusText}</span>
@@ -3102,7 +3102,7 @@ const PublicMenu = () => {
                         {/* Content */}
                         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                             <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 text-center">
-                                <span className="text-xs text-emerald-700 font-semibold uppercase tracking-wider block mb-1">Amount to Pay</span>
+                                <span className="text-xs text-emerald-700 font-semibold uppercase tracking-wider block mb-1">{t('menu.amountToPay') || 'Amount to Pay'}</span>
                                 <span className="text-3xl font-extrabold text-emerald-900">₹{sessionTotal.toFixed(2)}</span>
                                 <p className="text-[11px] text-emerald-600/80 mt-1">Table {tableNo}{seatId ? ` (Seat ${seatId})` : ''} • Order Total</p>
                             </div>
@@ -3110,11 +3110,11 @@ const PublicMenu = () => {
                             {/* Merchant Details */}
                             <div className="text-xs space-y-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 p-3 rounded-xl dark:border dark:border-slate-700">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Merchant Name:</span>
+                                    <span className="text-gray-400">{t('menu.merchantName') || 'Merchant Name:'}</span>
                                     <span className="font-semibold text-gray-800 dark:text-gray-100">{shopSettings?.upi_name}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">UPI ID:</span>
+                                    <span className="text-gray-400">{t('menu.upiId') || 'UPI ID:'}</span>
                                     <span className="font-semibold text-gray-800 dark:text-gray-100 font-mono">{shopSettings?.upi_id}</span>
                                 </div>
                             </div>
@@ -3124,7 +3124,7 @@ const PublicMenu = () => {
                                     <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                                         <CheckCircle2 className="w-10 h-10" />
                                     </div>
-                                    <h4 className="font-bold text-gray-900">Reference Submitted!</h4>
+                                    <h4 className="font-bold text-gray-900">{t('menu.referenceSubmitted') || 'Reference Submitted!'}</h4>
                                     <p className="text-xs text-gray-500 max-w-xs mx-auto">
                                         We have notified the staff of your payment reference ({paymentReference}). Cashier will verify and mark your table as billed shortly.
                                     </p>
@@ -3143,7 +3143,7 @@ const PublicMenu = () => {
                                         </a>
                                         <div className="relative my-4 text-center">
                                             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
-                                            <span className="relative bg-white px-3 text-xs text-gray-400">OR SCAN QR CODE</span>
+                                            <span className="relative bg-white px-3 text-xs text-gray-400">{t('menu.orScanQR') || 'OR SCAN QR CODE'}</span>
                                         </div>
                                     </div>
 
@@ -3156,12 +3156,12 @@ const PublicMenu = () => {
                                             alt="UPI QR Code"
                                             className="w-40 h-40 object-contain"
                                         />
-                                        <span className="text-[10px] text-gray-400 mt-2 font-medium">Scan using GPay, PhonePe, Paytm etc.</span>
+                                        <span className="text-[10px] text-gray-400 mt-2 font-medium">{t('menu.scanUsing') || 'Scan using GPay, PhonePe, Paytm etc.'}</span>
                                     </div>
 
                                     {/* Reference Verification Input */}
                                     <div className="space-y-2 pt-2 border-t">
-                                        <Label htmlFor="payment_ref" className="text-xs font-semibold text-gray-700">Enter Payment Reference (UTR / Txn ID) *</Label>
+                                        <Label htmlFor="payment_ref" className="text-xs font-semibold text-gray-700">{t('menu.enterPaymentRef') || 'Enter Payment Reference (UTR / Txn ID) *'}</Label>
                                         <div className="flex gap-2">
                                             <Input
                                                 id="payment_ref"
@@ -3210,7 +3210,7 @@ const PublicMenu = () => {
                                     aria-label="Call us"
                                 >
                                     <Phone className="w-4 h-4 flex-shrink-0" />
-                                    <span className="text-xs font-medium hidden sm:inline">Call</span>
+                                    <span className="text-xs font-medium hidden sm:inline">{t('menu.call') || 'Call'}</span>
                                 </a>
                             )}
 
@@ -3226,7 +3226,7 @@ const PublicMenu = () => {
                                     <svg viewBox="0 0 32 32" className="w-4 h-4 flex-shrink-0" fill="white">
                                         <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.744 3.054 9.378L1.054 31.29l6.166-1.964C9.79 30.988 12.79 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.31 22.608c-.39 1.1-1.932 2.014-3.166 2.28-.846.18-1.95.322-5.668-1.218-4.762-1.97-7.824-6.8-8.062-7.114-.228-.314-1.918-2.554-1.918-4.872s1.214-3.456 1.644-3.928c.43-.472.94-.59 1.254-.59.312 0 .626.002.9.016.288.016.676-.11 1.058.808.39.94 1.328 3.242 1.446 3.476.118.234.196.508.04.82-.158.314-.236.508-.47.784-.236.274-.496.614-.708.824-.236.234-.482.49-.208.962.274.47 1.22 2.014 2.62 3.264 1.8 1.606 3.316 2.104 3.786 2.338.472.234.748.196 1.022-.118.274-.314 1.176-1.372 1.49-1.844.314-.47.626-.39 1.058-.234.43.156 2.736 1.292 3.206 1.526.47.234.784.352.9.548.118.196.118 1.138-.27 2.238z" />
                                     </svg>
-                                    <span className="text-xs font-medium hidden sm:inline">WhatsApp</span>
+                                    <span className="text-xs font-medium hidden sm:inline">{t('menu.whatsapp') || 'WhatsApp'}</span>
                                 </a>
                             )}
 
@@ -3247,7 +3247,7 @@ const PublicMenu = () => {
                                     {shopSettings?.address ? (
                                         <span className="truncate text-xs font-medium">{shopSettings.address}</span>
                                     ) : (
-                                        <span className="text-xs font-medium">Get Directions</span>
+                                        <span className="text-xs font-medium">{t('menu.getDirections') || 'Get Directions'}</span>
                                     )}
                                 </a>
                             )}
@@ -3294,7 +3294,7 @@ const PublicMenu = () => {
                         
                         <div className="flex items-center gap-2 mb-3">
                             <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
-                            <h3 className="font-extrabold text-lg text-gray-900 dark:text-white">Chef's Smart Pairing</h3>
+                            <h3 className="font-extrabold text-lg text-gray-900 dark:text-white">{t('menu.chefsSmartPairing') || 'Chef\'s Smart Pairing'}</h3>
                         </div>
                         
                         <p className="text-sm text-gray-600 dark:text-zinc-400 mb-5">

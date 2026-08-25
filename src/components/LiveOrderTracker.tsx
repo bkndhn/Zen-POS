@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Phone, MessageCircle, Star, X, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 
 interface LiveOrderTrackerProps {
   orderId: string;
@@ -18,6 +19,7 @@ interface LiveOrderTrackerProps {
 
 export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onClose, onOrderComplete, shopSettings }) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
@@ -119,14 +121,14 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   }, [orderId, toast, onOrderComplete]);
 
   if (loading) {
-    return <div className="fixed inset-0 bg-background flex items-center justify-center">Loading...</div>;
+    return <div className="fixed inset-0 bg-background flex items-center justify-center">{t('common.loading') || 'Loading...'}</div>;
   }
 
   if (!order) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4">
-        <p className="mb-4">Order not found.</p>
-        <Button onClick={onClose} className="hover:opacity-90" style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>Close</Button>
+        <p className="mb-4">{t('menu.orderNotFound') || 'Order not found.'}</p>
+        <Button onClick={onClose} className="hover:opacity-90" style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>{t('common.close') || 'Close'}</Button>
       </div>
     );
   }
@@ -199,7 +201,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
         {/* Animated Timeline */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Order Status</CardTitle>
+            <CardTitle className="text-base">{t('menu.orderStatus') || 'Order Status'}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="relative pl-4 border-l-2 border-muted space-y-6">
@@ -236,7 +238,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex justify-between">
-              <span>Order Summary</span>
+              <span>{t('menu.orderSummary') || 'Order Summary'}</span>
               <Badge variant="outline" className="capitalize">{order.order_type}</Badge>
             </CardTitle>
           </CardHeader>
@@ -250,20 +252,20 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
               ))}
             </div>
             <div className="border-t pt-2 space-y-1 text-sm text-muted-foreground">
-              <div className="flex justify-between"><span>Subtotal</span><span>₹{order.subtotal?.toFixed(2)}</span></div>
-              {order.tax_total > 0 && <div className="flex justify-between"><span>Tax</span><span>₹{order.tax_total?.toFixed(2)}</span></div>}
-              {order.delivery_fee > 0 && <div className="flex justify-between"><span>Delivery</span><span>₹{order.delivery_fee?.toFixed(2)}</span></div>}
-              {order.packaging_fee > 0 && <div className="flex justify-between"><span>Packaging</span><span>₹{order.packaging_fee?.toFixed(2)}</span></div>}
-              {order.surge_fee > 0 && <div className="flex justify-between"><span>Surge</span><span>₹{order.surge_fee?.toFixed(2)}</span></div>}
-              {order.tip_amount > 0 && <div className="flex justify-between"><span>Tip</span><span>₹{order.tip_amount?.toFixed(2)}</span></div>}
+              <div className="flex justify-between"><span>{t('menu.subtotal') || 'Subtotal'}</span><span>₹{order.subtotal?.toFixed(2)}</span></div>
+              {order.tax_total > 0 && <div className="flex justify-between"><span>{t('menu.tax') || 'Tax'}</span><span>₹{order.tax_total?.toFixed(2)}</span></div>}
+              {order.delivery_fee > 0 && <div className="flex justify-between"><span>{t('menu.deliveryFee') || 'Delivery'}</span><span>₹{order.delivery_fee?.toFixed(2)}</span></div>}
+              {order.packaging_fee > 0 && <div className="flex justify-between"><span>{t('menu.packaging') || 'Packaging'}</span><span>₹{order.packaging_fee?.toFixed(2)}</span></div>}
+              {order.surge_fee > 0 && <div className="flex justify-between"><span>{t('menu.surgeFee') || 'Surge'}</span><span>₹{order.surge_fee?.toFixed(2)}</span></div>}
+              {order.tip_amount > 0 && <div className="flex justify-between"><span>{t('menu.tip') || 'Tip'}</span><span>₹{order.tip_amount?.toFixed(2)}</span></div>}
             </div>
             <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
-              <span>Total</span>
+              <span>{t('menu.total') || 'Total'}</span>
               <span>₹{order.total_amount?.toFixed(2)}</span>
             </div>
 
             {order.is_paid ? (
-              <Badge className="w-full justify-center py-2 bg-emerald-600 hover:bg-emerald-600">Payment received</Badge>
+              <Badge className="w-full justify-center py-2 bg-emerald-600 hover:bg-emerald-600">{t('menu.paymentReceived') || 'Payment received'}</Badge>
             ) : !isCancelled && order.status !== 'completed' ? (
               <div className="flex flex-col gap-2">
                 <Button className="w-full h-11 gap-2 rounded-xl hover:opacity-90" onClick={handlePayOnline} disabled={payingOnline} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
@@ -282,9 +284,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
                       window.location.href = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tr=${tr}`;
                     }}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5z"/></svg>
-                    Pay via UPI App
-                  </Button>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5z"/></svg>{t('menu.payViaUPIApp') || 'Pay via UPI App'}</Button>
                 )}
               </div>
             ) : null}
@@ -312,7 +312,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
         {order.status === 'completed' && !order.rating && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base text-center">How was your experience?</CardTitle>
+              <CardTitle className="text-base text-center">{t('menu.howWasExperience') || 'How was your experience?'}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-center gap-2">

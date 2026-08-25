@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { MapPin, Clock, Banknote, ShoppingBag, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from 'react-i18next';
 
 interface RemoteCheckoutProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
   taxRates,
   onOrderPlaced
 }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   
   const [name, setName] = useState('');
@@ -144,10 +146,10 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
 
   const handlePlaceOrder = async (payMethod: 'pay_on_pickup' | 'upi') => {
     if (!name.trim()) {
-      return toast({ title: "Name is required", variant: "destructive" });
+      return toast({ title: t('menu.nameRequired') || 'Name is required', variant: "destructive" });
     }
     if (!validatePhone(phone)) {
-      return toast({ title: "Valid 10-digit phone number starting with 6-9 is required", variant: "destructive" });
+      return toast({ title: t('menu.phoneRequired') || 'Valid 10-digit phone number starting with 6-9 is required', variant: "destructive" });
     }
     if (orderType === 'delivery' && !address.trim()) {
       return toast({ title: "Delivery address is required", variant: "destructive" });
@@ -307,18 +309,18 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Complete Your Order</DialogTitle>
-          <DialogDescription>Fill in your details to checkout.</DialogDescription>
+          <DialogTitle>{t('menu.completeYourOrder') || 'Complete Your Order'}</DialogTitle>
+          <DialogDescription>{t('menu.fillDetails') || 'Fill in your details to checkout.'}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Name *</Label>
-            <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" />
+            <Label>{t('menu.nameStar') || 'Name *'}</Label>
+            <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('menu.namePlaceholder') || 'John Doe'} />
           </div>
 
           <div className="space-y-2">
-            <Label>Phone *</Label>
+            <Label>{t('menu.phoneStar') || 'Phone *'}</Label>
             <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" maxLength={10} />
           </div>
 
@@ -337,31 +339,31 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
 
           {orderType === 'delivery' && (
             <div className="space-y-2">
-              <Label>Delivery Address *</Label>
+              <Label>{t('menu.deliveryAddressStar') || 'Delivery Address *'}</Label>
               <div className="flex gap-2">
                 <Button variant="outline" size="icon" onClick={handleGetLocation} disabled={isGettingLocation}>
                   <MapPin className="w-4 h-4" />
                 </Button>
                 <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="flex-1 focus-visible:ring-1" value={address} 
                   onChange={(e) => setAddress(e.target.value)} 
-                  placeholder="Enter full address" 
-                  className="flex-1"
+                  placeholder={t('menu.addressPlaceholder') || 'Enter full address'} 
+                  
                 />
               </div>
               {distanceKm !== null && (
-                <p className="text-xs text-muted-foreground">Est. Distance: {distanceKm.toFixed(1)} km</p>
+                <p className="text-xs text-muted-foreground">{t('menu.estDistance') || 'Est. Distance:'} {distanceKm.toFixed(1)} km</p>
               )}
             </div>
           )}
 
           <div className="flex items-center gap-2">
             <input type="checkbox" id="sched" checked={isScheduled} onChange={(e) => setIsScheduled(e.target.checked)} className="w-4 h-4" />
-            <Label htmlFor="sched">Order for Later</Label>
+            <Label htmlFor="sched">{t('menu.orderForLater') || 'Order for Later'}</Label>
           </div>
           
           {isScheduled && (
             <div className="space-y-2">
-              <Label>Scheduled Time</Label>
+              <Label>{t('menu.scheduledTime') || 'Scheduled Time'}</Label>
               <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
             </div>
           )}
@@ -369,37 +371,37 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           <Card>
             <CardContent className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Subtotal</span>
+                <span>{t('menu.subtotal') || 'Subtotal'}</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
               {tax > 0 && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Tax</span>
+                  <span>{t('menu.tax') || 'Tax'}</span>
                   <span>₹{tax.toFixed(2)}</span>
                 </div>
               )}
               {orderType === 'delivery' && deliveryFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Delivery Fee</span>
+                  <span>{t('menu.deliveryFee') || 'Delivery Fee'}</span>
                   <span>₹{deliveryFee.toFixed(2)}</span>
                 </div>
               )}
               {packagingFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Packaging</span>
+                  <span>{t('menu.packaging') || 'Packaging'}</span>
                   <span>₹{packagingFee.toFixed(2)}</span>
                 </div>
               )}
               {surgeFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Surge Fee</span>
+                  <span>{t('menu.surgeFee') || 'Surge Fee'}</span>
                   <span>₹{surgeFee.toFixed(2)}</span>
                 </div>
               )}
               
               {shopSettings.tipping_enabled && (
                 <div className="pt-2 border-t">
-                  <Label className="mb-2 block">Add Tip</Label>
+                  <Label className="mb-2 block">{t('menu.addTip') || 'Add Tip'}</Label>
                   <div className="flex flex-wrap gap-2">
                     {[0, 20, 50].map((amt) => (
                       <Badge key={amt} variant={tipAmount === amt ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setTipAmount(amt)} style={tipAmount === amt ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
@@ -412,8 +414,8 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
                   </div>
                   {tipAmount === -1 && (
                     <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="mt-2 focus-visible:ring-1" type="number" 
-                      placeholder="Enter tip amount" 
-                      className="mt-2"
+                      placeholder={t('menu.enterTip') || 'Enter tip amount'} 
+                      
                       value={customTip}
                       onChange={(e) => setCustomTip(e.target.value)}
                     />
@@ -422,7 +424,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
               )}
 
               <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
-                <span>Total</span>
+                <span>{t('menu.total') || 'Total'}</span>
                 <span>₹{grandTotal.toFixed(2)}</span>
               </div>
             </CardContent>
@@ -431,7 +433,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           <div className="space-y-2 pt-2">
             <Button className="w-full hover:opacity-90 transition-opacity" onClick={() => handlePlaceOrder('pay_on_pickup')} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
               <Banknote className="w-4 h-4 mr-2" />
-              Pay at {orderType === 'delivery' ? 'Delivery' : 'Pickup'}
+              {t('menu.payAt', 'Pay at')} {orderType === 'delivery' ? (t('menu.delivery') || 'Delivery') : (t('menu.pickup') || 'Pickup')}
             </Button>
             
             {shopSettings.upi_id && (
@@ -441,9 +443,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
                 onClick={() => handlePlaceOrder('upi')}
                 disabled={isSubmitting}
               >
-                <CreditCard className="w-4 h-4 mr-2" />
-                Pay via UPI
-              </Button>
+                <CreditCard className="w-4 h-4 mr-2" />{t('menu.payViaUPI') || 'Pay via UPI'}</Button>
             )}
           </div>
         </div>
