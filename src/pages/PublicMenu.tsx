@@ -272,7 +272,7 @@ const ItemCustomizerDialog = ({
                     </button>
                     <div className="p-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{item.name}</h2>
-                        <p className="text-sm font-semibold text-orange-600 dark:text-orange-400 mt-1">₹{item.price.toFixed(2)} Base</p>
+                        <p className="text-sm font-semibold mt-1" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{item.price.toFixed(2)} Base</p>
                     </div>
                 </div>
 
@@ -289,9 +289,9 @@ const ItemCustomizerDialog = ({
                                             ? selections[mod.name] === opt.name 
                                             : (selections[mod.name] as string[] || []).includes(opt.name);
                                         return (
-                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'border-orange-500 bg-orange-50 dark:bg-slate-700/50 dark:bg-orange-900/20' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`}>
+                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'bg-opacity-10' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`} style={isChecked ? { borderColor: shopSettings?.menu_primary_color || '#ea580c', backgroundColor: `${shopSettings?.menu_primary_color}1a` || '#ea580c1a' } : {}}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${isChecked ? 'border-orange-500 bg-orange-50 dark:bg-slate-700/500' : 'border-gray-300 dark:border-gray-600'}`}>
+                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${!isChecked ? 'border-gray-300 dark:border-gray-600' : ''}`} style={isChecked ? { borderColor: shopSettings?.menu_primary_color || '#ea580c', backgroundColor: `${shopSettings?.menu_primary_color}20` || '#ea580c20' } : {}}>
                                                         {isChecked && <div className={`bg-white ${mod.type === 'radio' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 flex items-center justify-center'} `}>
                                                             {mod.type !== 'radio' && <CheckCircle2 className="w-3 h-3 text-white" />}
                                                         </div>}
@@ -327,7 +327,7 @@ const ItemCustomizerDialog = ({
                             <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
                         </div>
                     </div>
-                    <Button onClick={handleAdd} className="w-full h-12 rounded-xl text-lg font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-all">
+                    <Button onClick={handleAdd} className="w-full h-12 rounded-xl text-lg font-bold text-white shadow-lg active:scale-[0.98] transition-all hover:opacity-90" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                         Add to Cart - ₹{(totalPrice * (quantity / (item.base_value || 1))).toFixed(2)}
                     </Button>
                 </div>
@@ -1800,32 +1800,32 @@ const PublicMenu = () => {
             <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-4">
                 {/* Brand skeleton */}
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="h-14 w-14 shrink-0 rounded-2xl bg-orange-200/60 animate-pulse" />
+                    <div className="h-14 w-14 shrink-0 rounded-2xl bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
                     <div className="space-y-2">
-                        <div className="h-4 w-44 rounded-md bg-orange-200/60 animate-pulse" />
-                        <div className="h-3 w-28 rounded-md bg-orange-200/40 animate-pulse" />
+                        <div className="h-4 w-44 rounded-md bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                        <div className="h-3 w-28 rounded-md bg-gray-200/60 dark:bg-gray-700/40 animate-pulse" />
                     </div>
                 </div>
                 {/* Category chips skeleton */}
                 <div className="flex gap-2 mb-5 overflow-hidden">
                     {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-8 w-24 shrink-0 rounded-full bg-orange-200/50 animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
+                        <div key={i} className="h-8 w-24 shrink-0 rounded-full bg-gray-200/80 dark:bg-gray-700/50 animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
                     ))}
                 </div>
                 {/* Menu card skeletons */}
                 <div className="space-y-3">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex gap-3 rounded-2xl border border-orange-200/60 bg-white/70 p-3" style={{ animationDelay: `${i * 80}ms` }}>
-                            <div className="h-16 w-16 shrink-0 rounded-xl bg-orange-200/50 animate-pulse" />
+                        <div key={i} className="flex gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/70 p-3" style={{ animationDelay: `${i * 80}ms` }}>
+                            <div className="h-16 w-16 shrink-0 rounded-xl bg-gray-200/80 dark:bg-gray-700/50 animate-pulse" />
                             <div className="flex-1 space-y-2 py-1">
-                                <div className="h-3.5 w-2/3 rounded-md bg-orange-200/60 animate-pulse" />
-                                <div className="h-3 w-1/3 rounded-md bg-orange-200/40 animate-pulse" />
-                                <div className="h-3 w-16 rounded-md bg-orange-200/40 animate-pulse" />
+                                <div className="h-3.5 w-2/3 rounded-md bg-gray-200 dark:bg-gray-700/60 animate-pulse" />
+                                <div className="h-3 w-1/3 rounded-md bg-gray-200/60 dark:bg-gray-700/40 animate-pulse" />
+                                <div className="h-3 w-16 rounded-md bg-gray-200/60 dark:bg-gray-700/40 animate-pulse" />
                             </div>
                         </div>
                     ))}
                 </div>
-                <p className="mt-6 text-center text-sm font-medium text-orange-700/80">Loading menu…</p>
+                <p className="mt-6 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Loading menu…</p>
             </div>
         );
     }
@@ -1860,11 +1860,11 @@ const PublicMenu = () => {
         return (
             <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center p-4">
                 <div className="text-center max-w-md">
-                    <Utensils className="w-16 h-16 mx-auto mb-4 text-orange-400" />
-                    <h1 className="text-2xl font-bold text-orange-700 mb-2">
+                    <Utensils className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <h1 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">
                         {headerTitle}
                     </h1>
-                    <p className="text-orange-600">Menu is being updated. Please check back soon!</p>
+                    <p className="text-gray-600 dark:text-gray-300">Menu is being updated. Please check back soon!</p>
                 </div>
             </div>
         );
@@ -2053,13 +2053,13 @@ const PublicMenu = () => {
                     {showSearch && (
                         <div className="mt-3 flex gap-2">
                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <Input
                                     type="text"
                                     placeholder={t('menu.searchPlaceholder') || "Search menu items..."}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 pr-9 bg-white/95 border-0 text-gray-800 placeholder:text-gray-400"
+                                    className="pl-9 pr-9 bg-white/95 border-0 text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
                                     autoFocus
                                 />
                                 {searchQuery && (
@@ -2160,12 +2160,12 @@ const PublicMenu = () => {
             {searchQuery && (
                 <div className="max-w-2xl mx-auto px-4 pt-4">
                     <div className="flex items-center justify-between text-sm">
-                        <span className="text-orange-700">
+                        <span className="text-gray-700 dark:text-gray-200">
                             {filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''} for "{searchQuery}"
                         </span>
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="text-orange-500 hover:text-orange-700 underline text-xs"
+                            className="text-orange-500 hover:text-gray-700 dark:text-gray-200 underline text-xs"
                         >
                             Clear search
                         </button>
@@ -2294,11 +2294,11 @@ const PublicMenu = () => {
             <main className="max-w-2xl mx-auto px-4 py-4 pb-36">
                 {filteredItems.length === 0 ? (
                     <div className="text-center py-12">
-                        <Search className="w-12 h-12 mx-auto mb-4 text-orange-300" />
-                        <p className="text-orange-600">No items found for "{searchQuery}"</p>
+                        <Search className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                        <p className="text-gray-600 dark:text-gray-300">No items found for "{searchQuery}"</p>
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="mt-2 text-orange-500 hover:text-orange-700 underline text-sm"
+                            className="mt-2 text-orange-500 hover:text-gray-700 dark:text-gray-200 underline text-sm"
                         >
                             Show all items
                         </button>
@@ -2341,10 +2341,10 @@ const PublicMenu = () => {
                                                     key={item.id}
                                                     className={cn(
                                                         "flex-shrink-0 w-[140px] snap-start bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 overflow-hidden flex flex-col",
-                                                        shopSettings?.menu_primary_color ? 'border-orange-100/50' : 'border-orange-50/50'
+                                                        shopSettings?.menu_primary_color ? 'border-gray-200/50 dark:border-gray-700/50' : 'border-gray-100/50 dark:border-gray-800/50'
                                                     )}
                                                 >
-                                                    <div className="aspect-square bg-orange-50 dark:bg-slate-700/50 relative overflow-hidden">
+                                                    <div className="aspect-square bg-gray-50 dark:bg-slate-800/50 relative overflow-hidden">
                                                         {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
                                                             item.media_type === 'gif' ? (
                                                                 <img src={item.video_url || item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.video_url || item.image_url)} />
@@ -2354,7 +2354,7 @@ const PublicMenu = () => {
                                                         ) : item.image_url ? (
                                                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.image_url)} />
                                                         ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-orange-300">
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
                                                                 <Utensils className="w-10 h-10" />
                                                             </div>
                                                         )}
@@ -2494,7 +2494,7 @@ const PublicMenu = () => {
                                                 ) : (
                                                     // Multi-column: vertical card with large image on top
                                                     <>
-                                                        <div className="aspect-[4/3] bg-orange-50 dark:bg-slate-700/50 relative overflow-hidden">
+                                                        <div className="aspect-[4/3] bg-gray-50 dark:bg-slate-800/50 relative overflow-hidden">
                                                             {item.video_url || item.media_type === 'gif' || item.media_type === 'video' ? (
                                                                 item.media_type === 'gif' ? (
                                                                     <img
@@ -2527,7 +2527,7 @@ const PublicMenu = () => {
                                                                     onError={(e) => handleImageError(e, item.image_url)}
                                                                 />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-orange-300">
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
                                                                     <Utensils className="w-12 h-12" />
                                                                 </div>
                                                             )}
@@ -2619,7 +2619,7 @@ const PublicMenu = () => {
                                 {sessionOrders.map(order => (
                                     <div key={order.id} className="p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-gray-800 text-sm">Order #{order.order_number}</span>
+                                            <span className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Order #{order.order_number}</span>
                                             <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", getStatusColor(order.status))}>
                                                 {getStatusIcon(order.status)}
                                                 <span>{getStatusLabel(order.status)}</span>
@@ -2630,7 +2630,7 @@ const PublicMenu = () => {
                                                 <div>
                                                     <span>{item.name} ×{item.quantity}</span>
                                                     {item.instructions && (
-                                                        <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                                                        <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: shopSettings?.menu_primary_color || '#d97706' }}>
                                                             <MessageSquare className="w-3 h-3" /> {item.instructions}
                                                         </p>
                                                     )}
@@ -2705,7 +2705,7 @@ const PublicMenu = () => {
                                 <div className="flex items-center gap-2">
                                     <button 
                                         onClick={clearCart} 
-                                        className="text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                                        className="text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors hover:opacity-80" style={{ color: shopSettings?.menu_primary_color || '#ef4444' }}
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                         {t('menu.clearCart') || 'Clear Cart'}
@@ -2721,7 +2721,7 @@ const PublicMenu = () => {
                                     <div key={item.id} className="bg-gray-50 dark:bg-slate-800 dark:border dark:border-slate-700 rounded-xl p-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-semibold text-sm text-gray-800 truncate">{item.name}</h4>
+                                                <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{item.name}</h4>
                                                 <span className="text-xs text-gray-500">₹{item.price}/{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -2733,7 +2733,7 @@ const PublicMenu = () => {
                                                     <Plus className="w-3.5 h-3.5" />
                                                 </button>
                                                 <button onClick={() => removeFromCart(item.id)} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center hover:bg-red-100">
-                                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                                    <Trash2 className="w-3.5 h-3.5" style={{ color: shopSettings?.menu_primary_color || '#ef4444' }} />
                                                 </button>
                                             </div>
                                         </div>
@@ -2755,7 +2755,7 @@ const PublicMenu = () => {
                                             ) : (
                                                 <button
                                                     onClick={() => setInstructionItemId(item.id)}
-                                                    className="text-xs text-amber-600 flex items-center gap-1 hover:text-amber-700"
+                                                    className="text-xs flex items-center gap-1 hover:opacity-80" style={{ color: shopSettings?.menu_primary_color || '#d97706' }}
                                                 >
                                                     <MessageSquare className="w-3 h-3" />
                                                     {item.instructions || t('menu.addInstructions')}
@@ -2777,7 +2777,7 @@ const PublicMenu = () => {
                                         placeholder={t('menu.generalInstructionsPlaceholder') || "Any general instructions..."}
                                         value={orderNote}
                                         onChange={e => setOrderNote(e.target.value)}
-                                        className="h-9 text-sm"
+                                        className="h-9 text-sm focus-visible:ring-1" style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties}
                                     />
                                 </div>
                             </div>
@@ -3114,11 +3114,11 @@ const PublicMenu = () => {
                             <div className="text-xs space-y-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 p-3 rounded-xl dark:border dark:border-slate-700">
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">Merchant Name:</span>
-                                    <span className="font-semibold text-gray-800">{shopSettings?.upi_name}</span>
+                                    <span className="font-semibold text-gray-800 dark:text-gray-100">{shopSettings?.upi_name}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">UPI ID:</span>
-                                    <span className="font-semibold text-gray-800 font-mono">{shopSettings?.upi_id}</span>
+                                    <span className="font-semibold text-gray-800 dark:text-gray-100 font-mono">{shopSettings?.upi_id}</span>
                                 </div>
                             </div>
 
@@ -3311,7 +3311,7 @@ const PublicMenu = () => {
                                         {suggested.image_url ? (
                                             <img src={getCDNUrl(suggested.image_url)} alt={suggested.name} className="w-12 h-12 rounded-xl object-cover" loading="lazy" onError={(e) => handleImageError(e, suggested.image_url)} />
                                         ) : (
-                                            <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-slate-700/500/10 flex items-center justify-center text-orange-500"><Utensils className="w-5 h-5" /></div>
+                                            <div className="w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-800/500/10 flex items-center justify-center text-orange-500"><Utensils className="w-5 h-5" /></div>
                                         )}
                                         <div>
                                             <h4 className="font-bold text-sm text-gray-900 dark:text-white">{suggested.name}</h4>
@@ -3493,3 +3493,7 @@ const PublicMenu = () => {
 
 
 export default PublicMenu;
+
+
+
+
