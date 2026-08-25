@@ -5,7 +5,7 @@ import { Clock, Calendar, Coffee, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 
-interface StoreTimingsModalProps {
+interface StoreTimingsModalProps { primaryColor?: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     operatingHours: OperatingHours;
@@ -24,7 +24,7 @@ const formatTime = (time24: string) => {
     }
 };
 
-export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOpenChange, operatingHours, shopName }) => {
+export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOpenChange, operatingHours, shopName, primaryColor }) => {
     
     const renderWeeklyHours = () => {
         if (operatingHours.type === 'same_everyday') {
@@ -67,7 +67,7 @@ export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOp
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px] w-[95vw] rounded-2xl p-0 overflow-hidden bg-white dark:bg-zinc-950">
-                <div className="bg-gradient-to-br from-orange-500 to-red-600 p-6 text-white">
+                <div className="p-6 text-white" style={{ background: primaryColor || 'linear-gradient(to bottom right, #f97316, #dc2626)' }}>
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-white">
                             <Clock className="w-6 h-6" />
@@ -83,7 +83,7 @@ export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOp
                     {/* Weekly Hours */}
                     <div>
                         <h4 className="flex items-center gap-2 text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
-                            <Calendar className="w-5 h-5 text-orange-500" />
+                            <Calendar className="w-5 h-5" style={{ color: primaryColor || '#f97316' }} />
                             Weekly Schedule
                         </h4>
                         <div className="bg-gray-50 dark:bg-zinc-900 rounded-xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm">
@@ -141,3 +141,5 @@ export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOp
         </Dialog>
     );
 };
+
+

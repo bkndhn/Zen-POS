@@ -313,7 +313,7 @@ const ItemCustomizerDialog = ({
                             value={specialInstructions} 
                             onChange={e => setSpecialInstructions(e.target.value)} 
                             placeholder="e.g. No onions, extra crispy..."
-                            className="bg-gray-50 dark:bg-gray-800/50"
+                            className="bg-gray-50 dark:bg-slate-800/50"
                         />
                     </div>
                 </div>
@@ -321,7 +321,7 @@ const ItemCustomizerDialog = ({
                 <div className="p-4 border-t dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl space-y-4 shrink-0">
                     <div className="flex items-center justify-between">
                         <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Quantity</span>
-                        <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 rounded-full p-1 border dark:border-gray-700">
+                        <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-800 rounded-full p-1 border dark:border-slate-700">
                             <button onClick={() => setQuantity(q => Math.max(item.base_value || 1, q - (item.base_value || 1)))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
                             <span className="font-semibold w-8 text-center text-sm">{quantity} {item.unit !== 'pcs' && item.unit !== 'pc' ? getShortUnit(item.unit) : ''}</span>
                             <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
@@ -2718,7 +2718,7 @@ const PublicMenu = () => {
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 {cart.map(item => (
-                                    <div key={item.id} className="bg-gray-50 rounded-xl p-3">
+                                    <div key={item.id} className="bg-gray-50 dark:bg-slate-800 dark:border dark:border-slate-700 rounded-xl p-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex-1 min-w-0">
                                                 <h4 className="font-semibold text-sm text-gray-800 truncate">{item.name}</h4>
@@ -3074,7 +3074,7 @@ const PublicMenu = () => {
                                 {/* Close */}
                                 <button
                                     onClick={() => { setShowHelpSheet(false); setShowCustomInput(false); }}
-                                    className="mt-4 w-full py-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-semibold text-sm hover:bg-gray-50 transition-colors"
+                                    className="mt-4 w-full py-3 rounded-2xl border-2 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-gray-300 font-semibold text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                                 >
                                     Close
                                 </button>
@@ -3111,7 +3111,7 @@ const PublicMenu = () => {
                             </div>
 
                             {/* Merchant Details */}
-                            <div className="text-xs space-y-1.5 text-gray-600 bg-gray-50 p-3 rounded-xl">
+                            <div className="text-xs space-y-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 p-3 rounded-xl dark:border dark:border-slate-700">
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">Merchant Name:</span>
                                     <span className="font-semibold text-gray-800">{shopSettings?.upi_name}</span>
@@ -3353,6 +3353,7 @@ const PublicMenu = () => {
                     onOpenChange={setShowTimingsModal}
                     operatingHours={rawShopSettings.operating_hours as OperatingHours}
                     shopName={rawShopSettings.shop_name}
+                    primaryColor={shopSettings?.menu_primary_color}
                 />
             )}
 
