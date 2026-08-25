@@ -3198,15 +3198,8 @@ const PublicMenu = () => {
 
             {/* Footer with Contact Info */}
             {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram) && (
-                <footer
-                    className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]"
-                    style={{
-                        background: shopSettings?.menu_primary_color
-                            ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)`
-                            : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)'
-                    }}
-                >
-                    <div className="max-w-2xl mx-auto px-4 py-2.5">
+                <footer className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
+                    <div className="max-w-2xl mx-auto px-4 py-1.5">
                         <div className="flex items-center justify-center gap-3">
                             {/* Call Button */}
                             {shopSettings?.menu_show_phone !== false && shopSettings?.contact_number && (
@@ -3226,7 +3219,7 @@ const PublicMenu = () => {
                                     href={`https://wa.me/${shopSettings.whatsapp.replace(/[^0-9]/g, '')}?text=Hi! I visited your ${shopSettings.shop_name || 'restaurant'} and have a query.`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 border border-[#25D366]/40 shadow-sm"
+                                    className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20BD5A] active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 border border-[#25D366]/40 shadow-sm"
                                     aria-label="WhatsApp us"
                                 >
                                     <svg viewBox="0 0 32 32" className="w-4 h-4 flex-shrink-0" fill="white">
@@ -3258,9 +3251,14 @@ const PublicMenu = () => {
                                 </a>
                             )}
                         </div>
-                        <p className="text-center text-[7px] text-white/25 tracking-wider uppercase mt-1">
-                            Powered by ZenPOS
-                        </p>
+                        {appSettings?.show_powered_by_watermark !== false && (
+                            <p 
+                                onClick={() => setShowPromoModal(true)}
+                                className="text-center text-[10px] text-white/70 font-extrabold tracking-wider uppercase mt-1 cursor-pointer hover:text-white transition-colors py-0.5"
+                            >
+                                Powered by ZenPOS
+                            </p>
+                        )}
                     </div>
                 </footer>
             )}

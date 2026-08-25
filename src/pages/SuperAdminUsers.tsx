@@ -325,6 +325,8 @@ const SuperAdminUsers: React.FC = () => {
   const [showSupportEmail, setShowSupportEmail] = useState(true);
   const [showSupportWhatsapp, setShowSupportWhatsapp] = useState(true);
   const [showSupportCustom, setShowSupportCustom] = useState(true);
+  const [showPoweredByWatermark, setShowPoweredByWatermark] = useState(true);
+  const [poweredByContact, setPoweredByContact] = useState('');
   const [savingSupport, setSavingSupport] = useState(false);
   const [loadingSupport, setLoadingSupport] = useState(false);
 
@@ -361,6 +363,8 @@ const SuperAdminUsers: React.FC = () => {
         setShowSupportEmail(data.show_support_email ?? true);
         setShowSupportWhatsapp(data.show_support_whatsapp ?? true);
         setShowSupportCustom(data.show_support_custom ?? true);
+        setShowPoweredByWatermark(data.show_powered_by_watermark ?? true);
+        setPoweredByContact(data.powered_by_contact || '');
         setTermsAndConditionsText((data as any).terms_and_conditions || '');
       }
     } catch (e: any) {
