@@ -346,6 +346,14 @@ const QRCodeSettings = () => {
         supabase.removeChannel(settingsChannel);
     };
 
+    // One-shot broadcast used by inline savers below (channel must be created per-send)
+    const broadcastMenuSettings = (payload: Record<string, unknown>) => {
+        if (!adminId) return;
+        const ch = supabase.channel(`menu-settings-${adminId}`);
+        ch.send({ type: 'broadcast', event: 'menu-settings-updated', payload })
+            .finally(() => supabase.removeChannel(ch));
+    };
+
     // Get current location — uses Capacitor native GPS on Android, falls back to Web API
     const pinCurrentLocation = async () => {
         setLocationLoading(true);
