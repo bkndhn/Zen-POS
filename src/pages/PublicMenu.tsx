@@ -343,6 +343,7 @@ const PublicMenu = () => {
 
     const [adminId, setAdminId] = useState<string | null>(null);
     const [branchId, setBranchId] = useState<string | null>(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [items, setItems] = useState<MenuItem[]>([]);
     const [categories, setCategories] = useState<ItemCategory[]>([]);
     const [rawShopSettings, setShopSettings] = useState<ShopSettings | null>(null);
