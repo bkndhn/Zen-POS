@@ -3201,20 +3201,39 @@ const PublicMenu = () => {
             )}
 
             {/* Footer with Contact Info */}
-            {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram) && (
+            {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable) && (
                 <footer className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
                     <div className="max-w-2xl mx-auto px-4 py-1.5">
-                        <div className="flex items-center justify-center gap-3">
-                            {/* Call Button */}
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+                            {/* Call Button — deep links to the branch/client-isolated contact number */}
                             {shopSettings?.menu_show_phone !== false && shopSettings?.contact_number && (
                                 <a
-                                    href={`tel:${shopSettings.contact_number}`}
+                                    href={`tel:${shopSettings.contact_number.replace(/[^0-9+]/g, '')}`}
                                     className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 backdrop-blur-sm border border-white/20"
-                                    aria-label="Call us"
+                                    aria-label={`Call ${shopSettings.contact_number}`}
                                 >
                                     <Phone className="w-4 h-4 flex-shrink-0" />
-                                    <span className="text-xs font-medium hidden sm:inline">{t('menu.call') || 'Call'}</span>
+                                    <span className="text-xs font-medium hidden sm:inline">{shopSettings.contact_number}</span>
                                 </a>
+                            )}
+
+                            {/* Store Timings Button — same StoreTimingsModal as the logo tap, now discoverable */}
+                            {timingsAvailable && (
+                                <button
+                                    onClick={() => setShowTimingsModal(true)}
+                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 backdrop-blur-sm border border-white/20"
+                                    aria-label="View store timings"
+                                >
+                                    <Clock className="w-4 h-4 flex-shrink-0" />
+                                    <span className="text-xs font-medium hidden sm:inline">
+                                        {storeStatus ? storeStatus.message : (t('menu.timings') || 'Timings')}
+                                    </span>
+                                    <span className={cn(
+                                        "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                        storeStatus?.status === 'open' ? "bg-green-300" :
+                                        storeStatus?.status === 'break' ? "bg-amber-300" : "bg-red-300"
+                                    )} />
+                                </button>
                             )}
 
                             {/* WhatsApp Button */}
