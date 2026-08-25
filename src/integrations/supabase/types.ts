@@ -4727,6 +4727,7 @@ export type Database = {
         }
         Returns: string
       }
+      public_place_remote_order: { Args: { p_order: Json }; Returns: Json }
       public_place_table_order: {
         Args: {
           p_admin_id: string
