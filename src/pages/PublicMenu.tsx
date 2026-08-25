@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power } from 'lucide-react';
+import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CookingTimeBadge, PrepProgressBar } from '@/components/service/PrepTime';
 import {
@@ -391,6 +391,8 @@ const PublicMenu = () => {
     }, [rawShopSettings, isDarkMode]);
 
     const [banners, setBanners] = useState<PromoBanner[]>([]);
+    const [showPromoModal, setShowPromoModal] = useState(false);
+    const [appSettings, setAppSettings] = useState<{show_powered_by_watermark?: boolean, powered_by_contact?: string} | null>(null);
     const [gstEnabled, setGstEnabled] = useState(false);
     const [taxRatesMap, setTaxRatesMap] = useState<Record<string, { rate: number; name: string; cess: number }>>({});
     const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -765,6 +767,10 @@ const PublicMenu = () => {
                 setShopSettings(settingsData as ShopSettings | null);
                 setCategories(categoriesData || []);
                 setBanners(bannersData || []);
+                
+                // Fetch App Settings
+                const { data: appData } = await supabase.from('app_settings').select('show_powered_by_watermark, powered_by_contact').eq('id', true).maybeSingle();
+                if (appData) setAppSettings(appData);
 
                 if (!itemsData?.length && itemsError) {
                     setError('Failed to load menu. Please try again.');
@@ -2108,7 +2114,7 @@ const PublicMenu = () => {
                         borderColor: isDarkMode ? undefined : (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa') 
                     }}
                 >
-                    <div className="max-w-2xl mx-auto px-4 py-2.5">
+                    <div className="max-w-2xl mx-auto px-4 py-1.5">
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                             <button
                                 onClick={() => setSelectedCategory('all')}
@@ -3206,7 +3212,7 @@ const PublicMenu = () => {
                             {shopSettings?.menu_show_phone !== false && shopSettings?.contact_number && (
                                 <a
                                     href={`tel:${shopSettings.contact_number}`}
-                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 backdrop-blur-sm border border-white/20"
+                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 backdrop-blur-sm border border-white/20"
                                     aria-label="Call us"
                                 >
                                     <Phone className="w-4 h-4 flex-shrink-0" />
@@ -3240,7 +3246,7 @@ const PublicMenu = () => {
                                     }
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-2 transition-all duration-200 backdrop-blur-sm border border-white/20 max-w-[180px]"
+                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 backdrop-blur-sm border border-white/20 max-w-[180px]"
                                     aria-label="Get directions"
                                 >
                                     <MapPin className="w-4 h-4 flex-shrink-0" />

@@ -326,6 +326,8 @@ export type Database = {
           id: boolean
           privacy_policy: string | null
           show_support_custom: boolean
+            show_powered_by_watermark: boolean
+            powered_by_contact: string | null
           show_support_email: boolean
           show_support_phone: boolean
           show_support_whatsapp: boolean
@@ -342,6 +344,8 @@ export type Database = {
           id?: boolean
           privacy_policy?: string | null
           show_support_custom?: boolean
+            show_powered_by_watermark?: boolean
+            powered_by_contact?: string | null
           show_support_email?: boolean
           show_support_phone?: boolean
           show_support_whatsapp?: boolean
@@ -358,6 +362,8 @@ export type Database = {
           id?: boolean
           privacy_policy?: string | null
           show_support_custom?: boolean
+            show_powered_by_watermark?: boolean
+            powered_by_contact?: string | null
           show_support_email?: boolean
           show_support_phone?: boolean
           show_support_whatsapp?: boolean
@@ -4435,6 +4441,8 @@ export type Database = {
         Args: never
         Returns: {
           show_support_custom: boolean
+            show_powered_by_watermark: boolean
+            powered_by_contact: string | null
           show_support_email: boolean
           show_support_phone: boolean
           show_support_whatsapp: boolean
@@ -5002,3 +5010,4 @@ export const Constants = {
     },
   },
 } as const
+

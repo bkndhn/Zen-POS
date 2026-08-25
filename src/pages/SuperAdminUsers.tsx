@@ -405,6 +405,8 @@ const SuperAdminUsers: React.FC = () => {
           show_support_email: showSupportEmail,
           show_support_whatsapp: showSupportWhatsapp,
           show_support_custom: showSupportCustom,
+            show_powered_by_watermark: showPoweredByWatermark,
+            powered_by_contact: poweredByContact,
           updated_at: new Date().toISOString()
         })
         .eq('id', true);
