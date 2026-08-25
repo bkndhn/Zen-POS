@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +24,27 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   const [feedback, setFeedback] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [payingOnline, setPayingOnline] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
+  
+  const handleCustomerCancel = async () => {
+    if (!cancelReason.trim()) {
+      toast({ title: 'Reason required', description: 'Please tell us why you are cancelling.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('online_orders')
+        .update({ status: 'cancelled', reject_reason: cancelReason, rejection_reason: cancelReason })
+        .eq('id', orderId);
+      if (error) throw error;
+      toast({ title: 'Order Cancelled', description: 'Your order has been cancelled.' });
+      setIsCancelling(false);
+    } catch (err) {
+      toast({ title: 'Error', description: 'Could not cancel order.', variant: 'destructive' });
+    }
+  };
 
   const handlePayOnline = async () => {
     try {

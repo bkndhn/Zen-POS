@@ -322,9 +322,9 @@ const ItemCustomizerDialog = ({
                     <div className="flex items-center justify-between">
                         <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">Quantity</span>
                         <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 rounded-full p-1 border dark:border-gray-700">
-                            <button onClick={() => setQuantity(q => Math.max(item.base_value || 1, q - (item.base_value || 1)))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
+                            <button onClick={() => setQuantity(q => Math.max(item.base_value || 1, q - (item.base_value || 1)))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
                             <span className="font-semibold w-8 text-center text-sm">{quantity} {item.unit !== 'pcs' && item.unit !== 'pc' ? getShortUnit(item.unit) : ''}</span>
-                            <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
+                            <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
                         </div>
                     </div>
                     <Button onClick={handleAdd} className="w-full h-12 rounded-xl text-lg font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 active:scale-[0.98] transition-all">
@@ -589,7 +589,7 @@ const PublicMenu = () => {
         // Refresh periodically so busy-hour buffers reach guests without a reload
         const id = window.setInterval(load, 60000);
         return () => { cancelled = true; window.clearInterval(id); };
-    }, [adminId, branchId]);
+    }, [adminId, branchId, refreshTrigger]);
     const orderChannelRef = useRef<any>(null);
 
     // ========== HELP / SERVICE REQUEST STATE ==========
@@ -782,7 +782,7 @@ const PublicMenu = () => {
         };
 
         fetchMenuData();
-    }, [adminId, branchId]);
+    }, [adminId, branchId, refreshTrigger]);
 
     // Real-time subscription for item updates (active only when user has items in their cart)
     useEffect(() => {
@@ -790,49 +790,9 @@ const PublicMenu = () => {
 
         const channel = supabase
             .channel(`public-menu-${adminId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'items',
-                    filter: `admin_id = eq.${adminId} `
-                },
-                (payload) => {
-                    console.log('Menu item update:', payload);
-
-                    if (payload.eventType === 'UPDATE') {
-                        const updatedItem = payload.new as MenuItem;
-                        const mappedUpdate = {
-                            ...updatedItem,
-                            image_url: updatedItem.image_url ? getCDNUrl(updatedItem.image_url) : updatedItem.image_url
-                        };
-
-                        if (!updatedItem.is_active) {
-                            setItems(prev => prev.filter(item => item.id !== updatedItem.id));
-                        } else {
-                            setItems(prev => prev.map(item =>
-                                item.id === updatedItem.id ? mappedUpdate : item
-                            ));
-                        }
-                    } else if (payload.eventType === 'INSERT') {
-                        const newItem = payload.new as MenuItem;
-                        const mappedNew = {
-                            ...newItem,
-                            image_url: newItem.image_url ? getCDNUrl(newItem.image_url) : newItem.image_url
-                        };
-                        if (newItem.is_active) {
-                            setItems(prev => [...prev, mappedNew].sort((a, b) =>
-                                (a.category || '').localeCompare(b.category || '') ||
-                                a.name.localeCompare(b.name)
-                            ));
-                        }
-                    } else if (payload.eventType === 'DELETE') {
-                        const deletedItem = payload.old as MenuItem;
-                        setItems(prev => prev.filter(item => item.id !== deletedItem.id));
-                    }
-                }
-            )
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: `admin_id=eq.${adminId}` }, () => setRefreshTrigger(p => p + 1))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'item_categories', filter: `admin_id=eq.${adminId}` }, () => setRefreshTrigger(p => p + 1))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'promo_banners', filter: `admin_id=eq.${adminId}` }, () => setRefreshTrigger(p => p + 1))
             .subscribe();
 
         return () => {
@@ -874,7 +834,7 @@ const PublicMenu = () => {
         return () => {
             supabase.removeChannel(settingsChannel);
         };
-    }, [adminId, branchId]);
+    }, [adminId, branchId, refreshTrigger]);
 
     // Real-time permission updates
     useEffect(() => {
@@ -2307,21 +2267,6 @@ const PublicMenu = () => {
                             </div>
                             {banners.length > 1 && (
                                 <>
-                                    {/* Arrow Navigation */}
-                                    <button
-                                        onClick={goToPrevBanner}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors"
-                                        aria-label="Previous banner"
-                                    >
-                                        <ChevronLeft className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={goToNextBanner}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition-colors"
-                                        aria-label="Next banner"
-                                    >
-                                        <ChevronRight className="w-5 h-5" />
-                                    </button>
                                     {/* Dot Indicators */}
                                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                                         {banners.map((_, idx) => (
@@ -2432,7 +2377,7 @@ const PublicMenu = () => {
                                                             <div className="mt-1.5">
                                                                 {getCartQuantity(item.id) > 0 ? (
                                                                     <div className="flex items-center justify-center gap-1">
-                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
+                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                             <Minus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                         <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
@@ -2528,7 +2473,7 @@ const PublicMenu = () => {
                                                                 {isOrderingMode && (
                                                                     getCartQuantity(item.id) > 0 ? (
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
+                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
@@ -2616,7 +2561,7 @@ const PublicMenu = () => {
                                                                 <div className="mt-2">
                                                                     {getCartQuantity(item.id) > 0 ? (
                                                                         <div className="flex items-center justify-center gap-1.5">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
+                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
@@ -2779,7 +2724,7 @@ const PublicMenu = () => {
                                                 <span className="text-xs text-gray-500">₹{item.price}/{item.base_value && item.base_value > 1 ? item.base_value : ''}{getShortUnit(item.unit)}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 border flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600">
+                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600">
                                                     <Minus className="w-3.5 h-3.5" />
                                                 </button>
                                                 <span className="text-sm font-bold w-5 text-center">{item.quantity / (item.base_value || 1)}</span>
