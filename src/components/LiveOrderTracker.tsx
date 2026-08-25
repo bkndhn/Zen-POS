@@ -126,7 +126,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4">
         <p className="mb-4">Order not found.</p>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={onClose} className="hover:opacity-90" style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>Close</Button>
       </div>
     );
   }
@@ -266,7 +266,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
               <Badge className="w-full justify-center py-2 bg-emerald-600 hover:bg-emerald-600">Payment received</Badge>
             ) : !isCancelled && order.status !== 'completed' ? (
               <div className="flex flex-col gap-2">
-                <Button className="w-full h-11 gap-2 rounded-xl" onClick={handlePayOnline} disabled={payingOnline}>
+                <Button className="w-full h-11 gap-2 rounded-xl hover:opacity-90" onClick={handlePayOnline} disabled={payingOnline} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
                   <CreditCard className="w-4 h-4" />
                   {payingOnline ? 'Opening secure payment…' : `Pay ₹${order.total_amount?.toFixed(2)} Online`}
                 </Button>
@@ -331,7 +331,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
                   />
-                  <Button className="w-full" onClick={handleFeedbackSubmit} disabled={submittingFeedback}>
+                  <Button className="w-full hover:opacity-90" onClick={handleFeedbackSubmit} disabled={submittingFeedback} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
                     Submit Feedback
                   </Button>
                 </div>
@@ -349,3 +349,4 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     </div>
   );
 };
+

@@ -314,29 +314,21 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Name *</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" />
+            <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" />
           </div>
 
           <div className="space-y-2">
             <Label>Phone *</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" maxLength={10} />
+            <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" maxLength={10} />
           </div>
 
           {shopSettings.remote_order_modes === 'both' && (
             <div className="flex gap-2 p-1 bg-muted rounded-md">
-              <Button 
-                variant={orderType === 'pickup' ? 'default' : 'ghost'} 
-                className="flex-1"
-                onClick={() => setOrderType('pickup')}
-              >
+              <Button variant={orderType === 'pickup' ? 'default' : 'ghost'} className="flex-1" onClick={() => setOrderType('pickup')} style={orderType === 'pickup' ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
                 <ShoppingBag className="w-4 h-4 mr-2" />
                 Pickup
               </Button>
-              <Button 
-                variant={orderType === 'delivery' ? 'default' : 'ghost'} 
-                className="flex-1"
-                onClick={() => setOrderType('delivery')}
-              >
+              <Button variant={orderType === 'delivery' ? 'default' : 'ghost'} className="flex-1" onClick={() => setOrderType('delivery')} style={orderType === 'delivery' ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
                 <MapPin className="w-4 h-4 mr-2" />
                 Delivery
               </Button>
@@ -350,8 +342,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
                 <Button variant="outline" size="icon" onClick={handleGetLocation} disabled={isGettingLocation}>
                   <MapPin className="w-4 h-4" />
                 </Button>
-                <Input 
-                  value={address} 
+                <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="flex-1 focus-visible:ring-1" value={address} 
                   onChange={(e) => setAddress(e.target.value)} 
                   placeholder="Enter full address" 
                   className="flex-1"
@@ -371,7 +362,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           {isScheduled && (
             <div className="space-y-2">
               <Label>Scheduled Time</Label>
-              <Input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+              <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="focus-visible:ring-1" type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
             </div>
           )}
 
@@ -411,26 +402,16 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
                   <Label className="mb-2 block">Add Tip</Label>
                   <div className="flex flex-wrap gap-2">
                     {[0, 20, 50].map((amt) => (
-                      <Badge 
-                        key={amt} 
-                        variant={tipAmount === amt ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => setTipAmount(amt)}
-                      >
+                      <Badge key={amt} variant={tipAmount === amt ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setTipAmount(amt)} style={tipAmount === amt ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
                         ₹{amt}
                       </Badge>
                     ))}
-                    <Badge 
-                      variant={tipAmount === -1 ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => setTipAmount(-1)}
-                    >
+                    <Badge variant={tipAmount === -1 ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setTipAmount(-1)} style={tipAmount === -1 ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
                       Custom
                     </Badge>
                   </div>
                   {tipAmount === -1 && (
-                    <Input 
-                      type="number" 
+                    <Input style={{ '--tw-ring-color': shopSettings?.menu_primary_color || '#ea580c' } as React.CSSProperties} className="mt-2 focus-visible:ring-1" type="number" 
                       placeholder="Enter tip amount" 
                       className="mt-2"
                       value={customTip}
@@ -448,11 +429,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           </Card>
 
           <div className="space-y-2 pt-2">
-            <Button 
-              className="w-full" 
-              onClick={() => handlePlaceOrder('pay_on_pickup')}
-              disabled={isSubmitting}
-            >
+            <Button className="w-full hover:opacity-90 transition-opacity" onClick={() => handlePlaceOrder('pay_on_pickup')} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
               <Banknote className="w-4 h-4 mr-2" />
               Pay at {orderType === 'delivery' ? 'Delivery' : 'Pickup'}
             </Button>
@@ -474,3 +451,4 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
     </Dialog>
   );
 };
+
