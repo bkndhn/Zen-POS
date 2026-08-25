@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
 import { getAppBaseUrl } from '@/utils/urlUtils';
 import { StoreTimingsModal } from '@/components/StoreTimingsModal';
+import { ContactSupportDialog } from '@/components/ContactSupportDialog';
 import { OperatingHours } from '@/types/operatingHours';
 import { RemoteCheckout } from '@/components/RemoteCheckout';
 import { LiveOrderTracker } from '@/components/LiveOrderTracker';
@@ -3290,37 +3291,7 @@ const PublicMenu = () => {
             )}
 
             {/* Powered by ZenPOS Promo Modal */}
-            <Dialog open={showPromoModal} onOpenChange={setShowPromoModal}>
-                <DialogContent className="max-w-sm rounded-2xl p-6">
-                    <DialogHeader className="items-center text-center space-y-3">
-                        <div
-                            className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
-                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
-                        >
-                            <QrCode className="w-7 h-7 text-white" />
-                        </div>
-                        <DialogTitle className="text-lg font-extrabold">Powered by ZenPOS</DialogTitle>
-                        <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
-                            This digital menu runs on ZenPOS — billing, KOT printing, online orders, table management and more for restaurants &amp; shops.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="flex-col gap-2 sm:flex-col mt-2">
-                        <a
-                            href={`${getAppBaseUrl()}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full h-11 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
-                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
-                        >
-                            <Sparkles className="w-4 h-4" />
-                            Get ZenPOS for your business
-                        </a>
-                        <Button variant="ghost" className="w-full rounded-xl" onClick={() => setShowPromoModal(false)}>
-                            Close
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ContactSupportDialog open={showPromoModal} onOpenChange={setShowPromoModal} />
 
 
             {/* Smart AI Waiter Floating Button */}
