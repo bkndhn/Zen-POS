@@ -2340,7 +2340,7 @@ const PublicMenu = () => {
                                                 <div
                                                     key={item.id}
                                                     className={cn(
-                                                        "flex-shrink-0 w-[140px] snap-start bg-white/80 backdrop-blur-sm rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 overflow-hidden flex flex-col",
+                                                        "flex-shrink-0 w-[140px] snap-start bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 overflow-hidden flex flex-col",
                                                         shopSettings?.menu_primary_color ? 'border-orange-100/50' : 'border-orange-50/50'
                                                     )}
                                                 >
@@ -2360,7 +2360,7 @@ const PublicMenu = () => {
                                                         )}
                                                     </div>
                                                     <div className="p-2 text-center flex flex-col flex-1 justify-between">
-                                                        <h3 className="font-semibold text-gray-800 text-xs leading-tight line-clamp-2">{item.name}</h3>
+                                                        <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-xs leading-tight line-clamp-2">{item.name}</h3>
                                                         {item.cooking_time_mins ? (
                                                             <div className="mt-1 flex justify-center">
                                                                 <CookingTimeBadge minutes={item.cooking_time_mins} compact />
@@ -2381,7 +2381,7 @@ const PublicMenu = () => {
                                                                         <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                             <Minus className="w-3.5 h-3.5" />
                                                                         </button>
-                                                                        <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
+                                                                        <span className="text-sm font-bold w-6 text-center text-gray-900 dark:text-gray-100">{getCartQuantity(item.id)}</span>
                                                                         <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             <Plus className="w-3.5 h-3.5" />
                                                                         </button>
@@ -2477,7 +2477,7 @@ const PublicMenu = () => {
                                                                             <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
-                                                                            <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
+                                                                            <span className="text-sm font-bold w-6 text-center text-gray-900 dark:text-gray-100">{getCartQuantity(item.id)}</span>
                                                                             <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
@@ -2565,7 +2565,7 @@ const PublicMenu = () => {
                                                                             <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
-                                                                            <span className="text-sm font-bold w-6 text-center">{getCartQuantity(item.id)}</span>
+                                                                            <span className="text-sm font-bold w-6 text-center text-gray-900 dark:text-gray-100">{getCartQuantity(item.id)}</span>
                                                                             <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
@@ -2696,9 +2696,9 @@ const PublicMenu = () => {
             {
                 isOrderingMode && showCart && cart.length > 0 && (
                     <div className="fixed inset-0 z-[60] bg-black/50 flex items-end" onClick={() => setShowCart(false)}>
-                        <div className="w-full max-w-2xl mx-auto bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="w-full max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center justify-between p-4 border-b">
-                                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <ShoppingCart className="w-5 h-5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
                                     {t('menu.yourCart') || 'Your Cart'}
                                 </h2>
@@ -2728,7 +2728,7 @@ const PublicMenu = () => {
                                                 <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600">
                                                     <Minus className="w-3.5 h-3.5" />
                                                 </button>
-                                                <span className="text-sm font-bold w-5 text-center">{item.quantity / (item.base_value || 1)}</span>
+                                                <span className="text-sm font-bold w-5 text-center text-gray-900 dark:text-gray-100">{item.quantity / (item.base_value || 1)}</span>
                                                 <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                     <Plus className="w-3.5 h-3.5" />
                                                 </button>
@@ -2997,7 +2997,7 @@ const PublicMenu = () => {
                                 onClick={() => { setShowHelpSheet(false); setShowCustomInput(false); }}
                             />
                             {/* Sheet */}
-                            <div className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl p-5 pb-8 animate-in slide-in-from-bottom duration-300">
+                            <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl p-5 pb-8 animate-in slide-in-from-bottom duration-300">
                                 {/* Handle */}
                                 <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
                                 <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">Need Assistance?</h3>
@@ -3090,7 +3090,7 @@ const PublicMenu = () => {
                     <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 overflow-hidden flex flex-col max-h-[90vh]">
                         {/* Header */}
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <QrCode className="w-5 h-5 text-emerald-600" />
                                 UPI Self Checkout
                             </h3>
