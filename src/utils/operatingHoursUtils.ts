@@ -56,10 +56,11 @@ export function getStoreStatus(
         }
     }
 
-    // 3. Determine today's schedule
+    // 3. Determine today's schedule (null-safe: partial operating_hours rows may
+    //    be missing `daily` or specific days — fall back to the default schedule)
     let todaysSchedule;
     if (operatingHours.type === 'custom_daily') {
-        todaysSchedule = operatingHours.daily[currentDay];
+        todaysSchedule = operatingHours.daily?.[currentDay] ?? operatingHours.default;
     } else {
         todaysSchedule = operatingHours.default;
     }

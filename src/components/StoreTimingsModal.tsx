@@ -29,13 +29,14 @@ export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOp
     
     const { t } = useTranslation();
     const renderWeeklyHours = () => {
-        if (operatingHours.type === 'same_everyday') {
+        if (operatingHours.type === 'same_everyday' || !operatingHours.daily) {
+            const def = operatingHours.default;
             return (
                 <div className="flex justify-between items-center py-2 border-b">
                     <span className="font-medium text-gray-700 dark:text-gray-300">{t('menu.everyday') || 'Everyday'}</span>
-                    {operatingHours.default.isOpen ? (
+                    {def?.isOpen ? (
                         <span className="text-gray-600 dark:text-gray-400">
-                            {formatTime(operatingHours.default.openTime)} - {formatTime(operatingHours.default.closeTime)}
+                            {formatTime(def.openTime)} - {formatTime(def.closeTime)}
                         </span>
                     ) : (
                         <span className="text-red-500 font-medium">{t('menu.closed') || 'Closed'}</span>
@@ -48,7 +49,8 @@ export const StoreTimingsModal: React.FC<StoreTimingsModalProps> = ({ open, onOp
         return (
             <div className="space-y-1">
                 {days.map(day => {
-                    const hrs = operatingHours.daily[day];
+                    const hrs = operatingHours.daily?.[day] ?? operatingHours.default;
+                    if (!hrs) return null;
                     return (
                         <div key={t(`menu.days.${day}`) || day} className="flex justify-between items-center py-1.5 border-b last:border-0">
                             <span className="font-medium text-gray-700 dark:text-gray-300 capitalize">{t(`menu.days.${day}`) || day}</span>
