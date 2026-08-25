@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound, Activity, CreditCard, Bell, FileText, ExternalLink, PhoneCall } from 'lucide-react';
+import { Shield, Users as UsersIcon, Settings, Database, RefreshCw, Play, CheckCircle2, XCircle, Download, Upload, KeyRound, Activity, CreditCard, Bell, FileText, ExternalLink, PhoneCall , Globe } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -1587,8 +1587,45 @@ const SuperAdminUsers: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Button 
-                    onClick={handleSaveSupport} 
+                    {/* Client Portal Branding */}
+                    <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden col-span-1 lg:col-span-2 mt-2 mb-2">
+                      <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b pb-4">
+                        <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                          <Globe className="w-4 h-4 text-primary" />
+                          Client Portal Branding (Powered by ZenPOS)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-5">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="font-semibold text-gray-800 dark:text-gray-200">Show "Powered by ZenPOS" Footer</Label>
+                              <p className="text-xs text-slate-500 mt-0.5">Displays a clickable promotion in all client public menus.</p>
+                            </div>
+                            <Switch 
+                              checked={showPoweredByWatermark} 
+                              onCheckedChange={setShowPoweredByWatermark} 
+                            />
+                          </div>
+                          {showPoweredByWatermark && (
+                            <div className="pt-2">
+                              <Label className="font-semibold text-gray-800 dark:text-gray-200 block mb-2">Promotion Contact Text</Label>
+                              <textarea 
+                                value={poweredByContact}
+                                onChange={(e) => setPoweredByContact(e.target.value)}
+                                placeholder="e.g., Call us at +91 9876543210 or visit zenpos.com to get this for your restaurant!"
+                                className="w-full text-sm p-3 rounded-xl border border-input bg-slate-50/50 dark:bg-zinc-950 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                rows={2}
+                              />
+                              <p className="text-xs text-slate-500 mt-1.5">This text appears when clients' customers click the footer branding.</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Button 
+                      onClick={handleSaveSupport} 
                     disabled={savingSupport} 
                     className="w-full h-11 font-bold text-white shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
                   >
