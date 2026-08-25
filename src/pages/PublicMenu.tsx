@@ -1025,7 +1025,12 @@ const PublicMenu = () => {
     const showAddress = shopSettings?.menu_show_address !== false;
     const showPhone = shopSettings?.menu_show_phone !== false;
     const headerTitle = showShopName && shopSettings?.shop_name ? shopSettings.shop_name : 'Our Menu';
-    const hasStickyFooter = Boolean(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram);
+    // Store timings footer button — visible whenever operating hours exist and the shop allows showing them
+    const timingsAvailable = Boolean(
+        rawShopSettings?.operating_hours &&
+        (rawShopSettings.operating_hours as OperatingHours)?.showTimingsToCustomers !== false
+    );
+    const hasStickyFooter = Boolean(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable);
 
     // Toggle category collapse
     const toggleCategory = useCallback((category: string) => {
