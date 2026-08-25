@@ -220,7 +220,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           p_admin_id: adminId,
           p_branch_id: branchId
         });
-        orderNumber = orderNumberRes || 1;
+        orderNumber = Number(orderNumberRes) || 1;
 
         const orderData = {
           admin_id: adminId,
