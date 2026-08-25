@@ -176,13 +176,10 @@ const ItemCustomizerDialog = ({
     isOpen, 
     onClose, 
     item, 
-    onAddToCart 
-}: { 
+    onAddToCart, primaryColor }: { 
     isOpen: boolean; 
     onClose: () => void; 
-    item: MenuItem | null; 
-    onAddToCart: (item: CartItem, e?: React.MouseEvent) => void; 
-}) => {
+    item: MenuItem | null; onAddToCart: (item: CartItem, e?: React.MouseEvent) => void; primaryColor?: string; }) => {
     const { t } = useTranslation();
     const [selections, setSelections] = useState<Record<string, string | string[]>>({});
     const [specialInstructions, setSpecialInstructions] = useState('');
@@ -272,7 +269,7 @@ const ItemCustomizerDialog = ({
                     </button>
                     <div className="p-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{item.name}</h2>
-                        <p className="text-sm font-semibold mt-1" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{item.price.toFixed(2)} Base</p>
+                        <p className="text-sm font-semibold mt-1" style={{ color: primaryColor || '#ea580c' }}>₹{item.price.toFixed(2)} Base</p>
                     </div>
                 </div>
 
@@ -289,9 +286,9 @@ const ItemCustomizerDialog = ({
                                             ? selections[mod.name] === opt.name 
                                             : (selections[mod.name] as string[] || []).includes(opt.name);
                                         return (
-                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'bg-opacity-10' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`} style={isChecked ? { borderColor: shopSettings?.menu_primary_color || '#ea580c', backgroundColor: `${shopSettings?.menu_primary_color}1a` || '#ea580c1a' } : {}}>
+                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'bg-opacity-10' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`} style={isChecked ? { borderColor: primaryColor || '#ea580c', backgroundColor: `${primaryColor}1a` || '#ea580c1a' } : {}}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${!isChecked ? 'border-gray-300 dark:border-gray-600' : ''}`} style={isChecked ? { borderColor: shopSettings?.menu_primary_color || '#ea580c', backgroundColor: `${shopSettings?.menu_primary_color}20` || '#ea580c20' } : {}}>
+                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${!isChecked ? 'border-gray-300 dark:border-gray-600' : ''}`} style={isChecked ? { borderColor: primaryColor || '#ea580c', backgroundColor: `${primaryColor}20` || '#ea580c20' } : {}}>
                                                         {isChecked && <div className={`bg-white ${mod.type === 'radio' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 flex items-center justify-center'} `}>
                                                             {mod.type !== 'radio' && <CheckCircle2 className="w-3 h-3 text-white" />}
                                                         </div>}
@@ -327,7 +324,7 @@ const ItemCustomizerDialog = ({
                             <button onClick={() => setQuantity(q => q + (item.base_value || 1))} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
                         </div>
                     </div>
-                    <Button onClick={handleAdd} className="w-full h-12 rounded-xl text-lg font-bold text-white shadow-lg active:scale-[0.98] transition-all hover:opacity-90" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                    <Button onClick={handleAdd} className="w-full h-12 rounded-xl text-lg font-bold text-white shadow-lg active:scale-[0.98] transition-all hover:opacity-90" style={{ background: primaryColor || '#ea580c' }}>
                         Add to Cart - ₹{(totalPrice * (quantity / (item.base_value || 1))).toFixed(2)}
                     </Button>
                 </div>
@@ -3456,8 +3453,7 @@ const PublicMenu = () => {
                 />
             )}
             
-            <ItemCustomizerDialog 
-                isOpen={!!customizerItem}
+            <ItemCustomizerDialog isOpen={!!customizerItem} primaryColor={shopSettings?.menu_primary_color}
                 onClose={() => setCustomizerItem(null)}
                 item={customizerItem?.item || null}
                 onAddToCart={confirmAddToCart}
@@ -3493,6 +3489,7 @@ const PublicMenu = () => {
 
 
 export default PublicMenu;
+
 
 
 
