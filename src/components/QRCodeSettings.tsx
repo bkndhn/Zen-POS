@@ -346,6 +346,14 @@ const QRCodeSettings = () => {
         supabase.removeChannel(settingsChannel);
     };
 
+    // One-shot broadcast used by inline savers below (channel must be created per-send)
+    const broadcastMenuSettings = (payload: Record<string, unknown>) => {
+        if (!adminId) return;
+        const ch = supabase.channel(`menu-settings-${adminId}`);
+        ch.send({ type: 'broadcast', event: 'menu-settings-updated', payload })
+            .finally(() => supabase.removeChannel(ch));
+    };
+
     // Get current location — uses Capacitor native GPS on Android, falls back to Web API
     const pinCurrentLocation = async () => {
         setLocationLoading(true);
@@ -1229,8 +1237,8 @@ const QRCodeSettings = () => {
                                 if (!adminAuthUid) return;
                                 const ssPayload: any = { user_id: adminAuthUid, branch_id: operatingBranchId, operating_hours: newHours };
                                 supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle().then(({ data }) => {
-                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then(() => settingsChannel.send({ type: 'broadcast', event: 'menu-settings-updated', payload: ssPayload }));
-                                    else supabase.from('shop_settings').insert(ssPayload).then(() => settingsChannel.send({ type: 'broadcast', event: 'menu-settings-updated', payload: ssPayload }));
+                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then(() => broadcastMenuSettings(ssPayload));
+                                    else supabase.from('shop_settings').insert(ssPayload).then(() => broadcastMenuSettings(ssPayload));
                                 });
                             }}
                             onUpdateOverride={(newOverride) => {
@@ -1238,8 +1246,8 @@ const QRCodeSettings = () => {
                                 if (!adminAuthUid) return;
                                 const ssPayload: any = { user_id: adminAuthUid, branch_id: operatingBranchId, store_status_override: newOverride };
                                 supabase.from('shop_settings').select('id').eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId).maybeSingle().then(({ data }) => {
-                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then(() => settingsChannel.send({ type: 'broadcast', event: 'menu-settings-updated', payload: ssPayload }));
-                                    else supabase.from('shop_settings').insert(ssPayload).then(() => settingsChannel.send({ type: 'broadcast', event: 'menu-settings-updated', payload: ssPayload }));
+                                    if (data?.id) supabase.from('shop_settings').update(ssPayload).eq('id', data.id).then(() => broadcastMenuSettings(ssPayload));
+                                    else supabase.from('shop_settings').insert(ssPayload).then(() => broadcastMenuSettings(ssPayload));
                                 });
                             }}
                         />

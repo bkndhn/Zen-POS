@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast';
 import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { useTranslation } from 'react-i18next';
 import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
+import { getAppBaseUrl } from '@/utils/urlUtils';
 import { StoreTimingsModal } from '@/components/StoreTimingsModal';
 import { OperatingHours } from '@/types/operatingHours';
 import { RemoteCheckout } from '@/components/RemoteCheckout';
@@ -1025,7 +1026,12 @@ const PublicMenu = () => {
     const showAddress = shopSettings?.menu_show_address !== false;
     const showPhone = shopSettings?.menu_show_phone !== false;
     const headerTitle = showShopName && shopSettings?.shop_name ? shopSettings.shop_name : 'Our Menu';
-    const hasStickyFooter = Boolean(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram);
+    // Store timings footer button — visible whenever operating hours exist and the shop allows showing them
+    const timingsAvailable = Boolean(
+        rawShopSettings?.operating_hours &&
+        (rawShopSettings.operating_hours as OperatingHours)?.showTimingsToCustomers !== false
+    );
+    const hasStickyFooter = Boolean(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable);
 
     // Toggle category collapse
     const toggleCategory = useCallback((category: string) => {
@@ -2114,43 +2120,42 @@ const PublicMenu = () => {
                         borderColor: isDarkMode ? undefined : (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa') 
                     }}
                 >
-                    <div className="max-w-2xl mx-auto px-4 py-1.5">
+                    <div className="max-w-2xl mx-auto px-4 py-2.5">
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                            <button
-                                onClick={() => setSelectedCategory('all')}
-                                className={cn(
-                                    "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
-                                    selectedCategory === 'all'
-                                        ? "text-white border-transparent shadow-md scale-105"
-                                        : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-sm"
-                                )}
-                                style={selectedCategory === 'all' ? {
-                                    background: shopSettings?.menu_primary_color
-                                        ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
-                                        : 'linear-gradient(135deg, #ea580c, #dc2626)'
-                                } : {}}
-                            >
-                                {t('menu.all') || 'All'} ({items.length})
-                            </button>
-                            {itemCategories.map(cat => {
-                                const count = items.filter(i => i.category === cat).length;
+                            {[
+                                { id: 'all' as string, label: t('menu.all') || 'All', count: items.length },
+                                ...itemCategories.map(cat => ({ id: cat as string, label: cat, count: items.filter(i => i.category === cat).length }))
+                            ].map(c => {
+                                const active = selectedCategory === c.id;
                                 return (
                                     <button
-                                        key={cat}
-                                        onClick={() => setSelectedCategory(cat)}
+                                        key={c.id}
+                                        onClick={() => setSelectedCategory(c.id)}
+                                        aria-pressed={active}
                                         className={cn(
-                                            "flex-shrink-0 rounded-full h-8 px-4 text-xs font-semibold transition-all duration-200 border",
-                                            selectedCategory === cat
-                                                ? "text-white border-transparent shadow-md scale-105"
-                                                : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-sm"
+                                            "group flex-shrink-0 flex items-center gap-1.5 rounded-full h-9 pl-4 pr-2.5 text-xs font-bold transition-all duration-300 border active:scale-95",
+                                            active
+                                                ? "text-white border-transparent shadow-lg scale-105"
+                                                : "bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 border-gray-200/80 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-md hover:-translate-y-px backdrop-blur-sm"
                                         )}
-                                        style={selectedCategory === cat ? {
+                                        style={active ? {
                                             background: shopSettings?.menu_primary_color
                                                 ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
-                                                : 'linear-gradient(135deg, #ea580c, #dc2626)'
+                                                : 'linear-gradient(135deg, #ea580c, #dc2626)',
+                                            boxShadow: `0 6px 16px -4px ${shopSettings?.menu_primary_color || '#ea580c'}66`
                                         } : {}}
                                     >
-                                        {cat} ({count})
+                                        <span className="whitespace-nowrap">{c.label}</span>
+                                        <span
+                                            className={cn(
+                                                "min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[10px] font-extrabold tabular-nums transition-colors",
+                                                active
+                                                    ? "bg-white/25 text-white"
+                                                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-slate-600"
+                                            )}
+                                        >
+                                            {c.count}
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -3197,20 +3202,39 @@ const PublicMenu = () => {
             )}
 
             {/* Footer with Contact Info */}
-            {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram) && (
+            {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable) && (
                 <footer className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
                     <div className="max-w-2xl mx-auto px-4 py-1.5">
-                        <div className="flex items-center justify-center gap-3">
-                            {/* Call Button */}
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+                            {/* Call Button — deep links to the branch/client-isolated contact number */}
                             {shopSettings?.menu_show_phone !== false && shopSettings?.contact_number && (
                                 <a
-                                    href={`tel:${shopSettings.contact_number}`}
+                                    href={`tel:${shopSettings.contact_number.replace(/[^0-9+]/g, '')}`}
                                     className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 backdrop-blur-sm border border-white/20"
-                                    aria-label="Call us"
+                                    aria-label={`Call ${shopSettings.contact_number}`}
                                 >
                                     <Phone className="w-4 h-4 flex-shrink-0" />
-                                    <span className="text-xs font-medium hidden sm:inline">{t('menu.call') || 'Call'}</span>
+                                    <span className="text-xs font-medium hidden sm:inline">{shopSettings.contact_number}</span>
                                 </a>
+                            )}
+
+                            {/* Store Timings Button — same StoreTimingsModal as the logo tap, now discoverable */}
+                            {timingsAvailable && (
+                                <button
+                                    onClick={() => setShowTimingsModal(true)}
+                                    className="flex items-center gap-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-xl px-3 py-1.5 transition-all duration-200 backdrop-blur-sm border border-white/20"
+                                    aria-label="View store timings"
+                                >
+                                    <Clock className="w-4 h-4 flex-shrink-0" />
+                                    <span className="text-xs font-medium hidden sm:inline">
+                                        {storeStatus ? storeStatus.message : (t('menu.timings') || 'Timings')}
+                                    </span>
+                                    <span className={cn(
+                                        "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                        storeStatus?.status === 'open' ? "bg-green-300" :
+                                        storeStatus?.status === 'break' ? "bg-amber-300" : "bg-red-300"
+                                    )} />
+                                </button>
                             )}
 
                             {/* WhatsApp Button */}
@@ -3252,16 +3276,51 @@ const PublicMenu = () => {
                             )}
                         </div>
                         {appSettings?.show_powered_by_watermark !== false && (
-                            <p 
+                            <button
+                                type="button"
                                 onClick={() => setShowPromoModal(true)}
-                                className="text-center text-[10px] text-white/70 font-extrabold tracking-wider uppercase mt-1 cursor-pointer hover:text-white transition-colors py-0.5"
+                                className="block w-full text-center text-[10px] text-white/70 font-extrabold tracking-wider uppercase mt-1 cursor-pointer hover:text-white active:scale-95 transition-all py-0.5"
+                                aria-label="About ZenPOS"
                             >
                                 Powered by ZenPOS
-                            </p>
+                            </button>
                         )}
                     </div>
                 </footer>
             )}
+
+            {/* Powered by ZenPOS Promo Modal */}
+            <Dialog open={showPromoModal} onOpenChange={setShowPromoModal}>
+                <DialogContent className="max-w-sm rounded-2xl p-6">
+                    <DialogHeader className="items-center text-center space-y-3">
+                        <div
+                            className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
+                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                        >
+                            <QrCode className="w-7 h-7 text-white" />
+                        </div>
+                        <DialogTitle className="text-lg font-extrabold">Powered by ZenPOS</DialogTitle>
+                        <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+                            This digital menu runs on ZenPOS — billing, KOT printing, online orders, table management and more for restaurants &amp; shops.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex-col gap-2 sm:flex-col mt-2">
+                        <a
+                            href={`${getAppBaseUrl()}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full h-11 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
+                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Get ZenPOS for your business
+                        </a>
+                        <Button variant="ghost" className="w-full rounded-xl" onClick={() => setShowPromoModal(false)}>
+                            Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
 
             {/* Smart AI Waiter Floating Button */}
