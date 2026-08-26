@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranch } from '@/contexts/BranchContext';
 import { format } from 'date-fns';
 import { Printer, X } from 'lucide-react';
-import { usePrinter } from '@/hooks/usePrinter';
 import { toast } from '@/hooks/use-toast';
 
 interface ZReportDialogProps {
@@ -17,7 +17,7 @@ interface ZReportDialogProps {
 
 export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange }) => {
   const { profile } = useAuth();
-  const { printers, activePrinterId } = usePrinter();
+  const { operatingBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
   const [actualClosingCash, setActualClosingCash] = useState<string>("");
   const [isClosingShift, setIsClosingShift] = useState(false);
@@ -34,13 +34,13 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     if (open && profile) {
       generateReport();
     }
-  }, [open, profile]);
+  }, [open, profile, operatingBranchId]);
 
   const generateReport = async () => {
     setLoading(true);
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
-      const branchId = profile?.branch_id || profile?.id;
+      const branchId = operatingBranchId || profile?.id;
       const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
       
       // Fetch dynamic payment methods
@@ -101,8 +101,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
       // Get branch name if available
       let bName = 'Main Branch';
-      if (profile?.branch_id) {
-         const { data: bData } = await supabase.from('branches').select('name').eq('id', profile.branch_id).single();
+      if (operatingBranchId) {
+         const { data: bData } = await supabase.from('branches').select('name').eq('id', operatingBranchId).maybeSingle();
          if (bData) bName = bData.name;
       }
 

@@ -297,7 +297,13 @@ class SyncEngine {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
     try {
-      await fetch(`${base}/auth/v1/health`, { method: 'GET', signal: controller.signal, cache: 'no-store' });
+      const apikey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+      await fetch(`${base}/auth/v1/health`, {
+        method: 'GET',
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: apikey ? { apikey } : undefined,
+      });
       this.emit({ online: true, reachable: true });
       return true;
     } catch {
