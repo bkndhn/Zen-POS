@@ -20,9 +20,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const [reportData, setReportData] = useState<{
     date: string;
     totalAmount: number;
-    cashAmount: number;
-    upiAmount: number;
-    cardAmount: number;
+    paymentTotals: Record<string, number>;
     totalBills: number;
     branchName: string;
   } | null>(null);
@@ -38,6 +36,17 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const branchId = profile?.branch_id || profile?.id;
+      const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+      
+      // Fetch dynamic payment methods
+      const { data: paymentsData } = await supabase
+        .from('payments')
+        .select('payment_type, branch_id')
+        .eq('admin_id', adminId)
+        .eq('is_disabled', false);
+        
+      // Filter for this branch or global (branch_id is null)
+      const validPayments = paymentsData?.filter(p => !p.branch_id || p.branch_id === branchId) || [];
       
       const { data, error } = await supabase
         .from('bills')
@@ -48,16 +57,23 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
       if (error) throw error;
 
-      let cash = 0;
-      let upi = 0;
-      let card = 0;
+      let paymentTotals: Record<string, number> = {};
+      
+      // Initialize with configured active payment methods
+      if (validPayments.length > 0) {
+        validPayments.forEach(p => {
+          if (p.payment_type) paymentTotals[p.payment_type.toLowerCase()] = 0;
+        });
+      } else {
+        paymentTotals = { 'cash': 0, 'upi': 0, 'card': 0 };
+      }
+
       let total = 0;
 
       data?.forEach((bill) => {
         total += bill.total_amount || 0;
-        if (bill.payment_mode === 'cash') cash += bill.total_amount || 0;
-        else if (bill.payment_mode === 'upi') upi += bill.total_amount || 0;
-        else if (bill.payment_mode === 'card') card += bill.total_amount || 0;
+        const mode = (bill.payment_mode || 'unknown').toLowerCase();
+        paymentTotals[mode] = (paymentTotals[mode] || 0) + (bill.total_amount || 0);
       });
 
       // Get branch name if available
@@ -70,9 +86,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       setReportData({
         date: format(new Date(), 'dd-MM-yyyy hh:mm a'),
         totalAmount: total,
-        cashAmount: cash,
-        upiAmount: upi,
-        cardAmount: card,
+        paymentTotals,
         totalBills: data?.length || 0,
         branchName: bName
       });
@@ -85,6 +99,12 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
   const handlePrint = async () => {
     if (!reportData) return;
+    
+    // Generate dynamic payment rows for HTML print
+    const paymentRowsHTML = Object.entries(reportData.paymentTotals)
+      .filter(([_, amount]) => amount > 0 || Object.keys(reportData.paymentTotals).length <= 5) // Show 0 only if not too many modes
+      .map(([mode, amount]) => `<div class="row"><span>${mode.toUpperCase()}</span><span>Rs ${amount.toFixed(2)}</span></div>`)
+      .join('');
     
     // Fallback to standard browser print
     const printWin = window.open('', '_blank');
@@ -113,9 +133,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
             <div>Total Bills: ${reportData.totalBills}</div>
             <div class="line"></div>
             <div class="row bold"><span>Total Sales</span><span>Rs ${reportData.totalAmount.toFixed(2)}</span></div>
-            <div class="row"><span>CASH</span><span>Rs ${reportData.cashAmount.toFixed(2)}</span></div>
-            <div class="row"><span>UPI</span><span>Rs ${reportData.upiAmount.toFixed(2)}</span></div>
-            <div class="row"><span>CARD</span><span>Rs ${reportData.cardAmount.toFixed(2)}</span></div>
+            ${paymentRowsHTML}
             <div class="line"></div>
             <div class="center">END OF REPORT</div>
           </body>
@@ -160,18 +178,12 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
               <span>₹{reportData.totalAmount.toFixed(2)}</span>
             </div>
             
-            <div className="flex justify-between text-muted-foreground mt-2">
-              <span>CASH:</span>
-              <span>₹{reportData.cashAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>UPI:</span>
-              <span>₹{reportData.upiAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>CARD:</span>
-              <span>₹{reportData.cardAmount.toFixed(2)}</span>
-            </div>
+            {Object.entries(reportData.paymentTotals).map(([mode, amount]) => (
+              <div key={mode} className="flex justify-between text-muted-foreground mt-1">
+                <span className="uppercase">{mode}:</span>
+                <span>₹{amount.toFixed(2)}</span>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">No data found for today.</div>
