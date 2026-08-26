@@ -57,8 +57,9 @@ interface MenuItem {
     image_url?: string;
     quick_chips?: string[] | null;
     stock_quantity?: number;
-    min_stock_threshold?: number;
-    is_unlimited_stock?: boolean;
+    
+    minimum_stock_alert?: number;
+    unlimited_stock?: boolean;
 }
 
 interface CartItem {
@@ -299,7 +300,7 @@ const WaiterCompanion: React.FC = () => {
                     const updatedItem = payload.new as MenuItem;
                     setMenuItems(prev => prev.map(item => 
                         item.id === updatedItem.id 
-                            ? { ...item, stock_quantity: updatedItem.stock_quantity, min_stock_threshold: updatedItem.min_stock_threshold, is_unlimited_stock: updatedItem.is_unlimited_stock } 
+                            ? { ...item, stock_quantity: updatedItem.stock_quantity, minimum_stock_alert: updatedItem.minimum_stock_alert, unlimited_stock: updatedItem.unlimited_stock } 
                             : item
                     ));
                 }
@@ -930,8 +931,8 @@ const WaiterCompanion: React.FC = () => {
                                 )}>
                                     {filteredMenuItems.map(item => {
                                         const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
-                                        const isOutOfStock = !item.is_unlimited_stock && (item.stock_quantity ?? 0) <= 0;
-                                        const isLowStock = !item.is_unlimited_stock && !isOutOfStock && (item.stock_quantity ?? 0) <= (item.min_stock_threshold ?? 0);
+                                        const isOutOfStock = item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= 0;
+                                        const isLowStock = !isOutOfStock && item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= Number(item.minimum_stock_alert ?? 0);
                                         return (
                                             <Card key={item.id} className={cn("overflow-hidden border border-muted shadow-sm transition-all flex flex-col justify-between group", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
                                                 <div className="relative">
@@ -1033,8 +1034,8 @@ const WaiterCompanion: React.FC = () => {
                                 <div className="grid grid-cols-1 gap-2.5">
                                     {filteredMenuItems.map(item => {
                                         const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
-                                        const isOutOfStock = !item.is_unlimited_stock && (item.stock_quantity ?? 0) <= 0;
-                                        const isLowStock = !item.is_unlimited_stock && !isOutOfStock && (item.stock_quantity ?? 0) <= (item.min_stock_threshold ?? 0);
+                                        const isOutOfStock = item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= 0;
+                                        const isLowStock = !isOutOfStock && item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= Number(item.minimum_stock_alert ?? 0);
                                         return (
                                             <Card key={item.id} className={cn("overflow-hidden border border-muted shadow-sm transition-all", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
                                                 <CardContent className="p-3 flex items-center justify-between">
