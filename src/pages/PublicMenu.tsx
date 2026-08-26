@@ -263,7 +263,7 @@ const ItemCustomizerDialog = ({
                 <div className="relative shrink-0 border-b dark:border-gray-800">
                     {item.image_url && (
                         <div className="w-full h-48 sm:h-56 overflow-hidden rounded-t-2xl">
-                            <img src={getCDNUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover" />
+                            <img src={getCDNUrl(item.image_url)} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                         </div>
                     )}
                     <button onClick={onClose} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-black/40 text-white hover:bg-black/60 transition-colors backdrop-blur-md`}>
@@ -422,6 +422,23 @@ const PublicMenu = () => {
 
     // Collapsible categories state
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+    const [itemsLimit, setItemsLimit] = useState(20);
+
+    // Infinite Scroll logic
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600) {
+                setItemsLimit(prev => prev + 20);
+            }
+        };
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    // Reset limit when changing category or search
+    useEffect(() => {
+        setItemsLimit(20);
+    }, [selectedCategory, searchQuery]);
 
     // ========== TABLE ORDERING STATE (only active when ?table=N) ==========
     const isTableMode = !!tableNo;
@@ -1006,15 +1023,25 @@ const PublicMenu = () => {
     }, [items, selectedCategory, searchQuery]);
 
     // Group items by category
+    const categoryTotals = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredItems.forEach(item => {
+            const cat = item.category || 'Other';
+            counts[cat] = (counts[cat] || 0) + 1;
+        });
+        return counts;
+    }, [filteredItems]);
+
     const groupedItems = useMemo(() => {
         const groups: Record<string, MenuItem[]> = {};
-        filteredItems.forEach(item => {
+        const slicedItems = filteredItems.slice(0, itemsLimit);
+        slicedItems.forEach(item => {
             const cat = item.category || 'Other';
             if (!groups[cat]) groups[cat] = [];
             groups[cat].push(item);
         });
         return groups;
-    }, [filteredItems]);
+    }, [filteredItems, itemsLimit]);
 
     // Clear search
     const clearSearch = useCallback(() => {
@@ -2325,7 +2352,7 @@ const PublicMenu = () => {
                                 >
                                     <span className="w-8 h-0.5 rounded-full" style={{ background: `linear-gradient(to right, ${shopSettings?.menu_primary_color || '#ea580c'}, transparent)` }} />
                                     <span className="text-[15px] tracking-tight">{category}</span>
-                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: `${shopSettings?.menu_primary_color || '#ea580c'}15`, color: shopSettings?.menu_primary_color || '#ea580c' }}>({categoryItems.length})</span>
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: `${shopSettings?.menu_primary_color || '#ea580c'}15`, color: shopSettings?.menu_primary_color || '#ea580c' }}>({categoryTotals[category] || categoryItems.length})</span>
                                     <span className="ml-auto pr-2">
                                         {isCollapsed ? (
                                             <ChevronDown className="w-4 h-4" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
@@ -2598,7 +2625,14 @@ const PublicMenu = () => {
                         );
                     })
                 )}
-            </main>
+            
+                    {filteredItems.length > itemsLimit && (
+                        <div className="flex justify-center items-center py-6 mt-4">
+                            <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+                            <span className="ml-2 text-sm text-gray-500">Loading more...</span>
+                        </div>
+                    )}
+                </main>
 
             {/* ========== TABLE ORDERING UI ========== */}
 
