@@ -3166,6 +3166,7 @@ const Reports: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ZReportDialog open={zReportOpen} onOpenChange={setZReportOpen} />
     </div >
   );
 };
@@ -3174,8 +3175,7 @@ export default function ReportsProtected() {
   return (
     <PinLockGuard>
       <Reports />
-      <ZReportDialog open={zReportOpen} onOpenChange={setZReportOpen} />
-    </PinLockGuard>
+      </PinLockGuard>
   );
 }
 
