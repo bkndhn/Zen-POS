@@ -313,17 +313,10 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
 
         if (profileError) throw profileError;
 
-        // Also try the subscriptions table as fallback
-        const { data: subData, error: subError } = await (supabase as any)
-            .from('subscriptions')
-            .select('status, plan_name, current_period_end')
-            .eq('admin_id', adminId)
-            .maybeSingle();
-
-        // Merge data — profiles table takes priority
-        const status = profileData?.subscription_status || subData?.status || 'active';
-        const planName = profileData?.subscription_plan || subData?.plan_name || 'Pro';
-        const endDate = profileData?.subscription_end_date || subData?.current_period_end || null;
+        // Subscription data lives on profiles (no separate subscriptions table)
+        const status = profileData?.subscription_status || 'active';
+        const planName = profileData?.subscription_plan || 'Pro';
+        const endDate = profileData?.subscription_end_date || null;
         const forceLogout = profileData?.force_logout || false;
         const forceLogoutReason = profileData?.force_logout_reason || null;
         const subscriptionAmount = profileData?.subscription_amount || 999;
