@@ -288,9 +288,9 @@ const ItemCustomizerDialog = ({
                                             ? selections[mod.name] === opt.name 
                                             : (selections[mod.name] as string[] || []).includes(opt.name);
                                         return (
-                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'bg-opacity-10' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`} style={isChecked ? { borderColor: primaryColor || '#ea580c', backgroundColor: `${primaryColor}1a` || '#ea580c1a' } : {}}>
+                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-xl border ${isChecked ? 'bg-opacity-10' : 'border-gray-200 dark:border-gray-800'} cursor-pointer active:scale-[0.98] transition-all`} style={isChecked ? { borderColor: primaryColor || '#ea580c', backgroundColor: primaryColor ? `${primaryColor}1a` : '#ea580c1a' } : {}}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${!isChecked ? 'border-gray-300 dark:border-gray-600' : ''}`} style={isChecked ? { borderColor: primaryColor || '#ea580c', backgroundColor: `${primaryColor}20` || '#ea580c20' } : {}}>
+                                                    <div className={`w-5 h-5 rounded-${mod.type === 'radio' ? 'full' : 'md'} border flex items-center justify-center ${!isChecked ? 'border-gray-300 dark:border-gray-600' : ''}`} style={isChecked ? { borderColor: primaryColor || '#ea580c', backgroundColor: primaryColor ? `${primaryColor}20` : '#ea580c20' } : {}}>
                                                         {isChecked && <div className={`bg-white ${mod.type === 'radio' ? 'w-2 h-2 rounded-full' : 'w-3 h-3 flex items-center justify-center'} `}>
                                                             {mod.type !== 'radio' && <CheckCircle2 className="w-3 h-3 text-white" />}
                                                         </div>}
