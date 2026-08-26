@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
@@ -17,12 +19,15 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const { profile } = useAuth();
   const { printers, activePrinterId } = usePrinter();
   const [loading, setLoading] = useState(false);
+  const [actualClosingCash, setActualClosingCash] = useState<string>("");
+  const [isClosingShift, setIsClosingShift] = useState(false);
   const [reportData, setReportData] = useState<{
     date: string;
     totalAmount: number;
     paymentTotals: Record<string, number>;
     totalBills: number;
     branchName: string;
+    shift?: any;
   } | null>(null);
 
   useEffect(() => {
@@ -48,12 +53,30 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       // Filter for this branch or global (branch_id is null)
       const validPayments = paymentsData?.filter(p => !p.branch_id || p.branch_id === branchId) || [];
       
-      const { data, error } = await supabase
+      
+      // Fetch open shift
+      const { data: shiftData } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('admin_id', adminId)
+        .eq('branch_id', branchId)
+        .eq('status', 'open')
+        .maybeSingle();
+
+      let query = supabase
         .from('bills')
         .select('total_amount, payment_mode')
         .eq('branch_id', branchId)
-        .eq('date', today)
         .eq('is_deleted', false);
+        
+      if (shiftData) {
+        query = query.gte('created_at', shiftData.opened_at);
+      } else {
+        query = query.eq('date', today);
+      }
+
+      const { data, error } = await query;
+
 
       if (error) throw error;
 
@@ -88,7 +111,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         totalAmount: total,
         paymentTotals,
         totalBills: data?.length || 0,
-        branchName: bName
+        branchName: bName,
+        shift: shiftData
       });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -97,8 +121,33 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     }
   };
 
+
   const handlePrint = async () => {
     if (!reportData) return;
+    
+    if (reportData.shift) {
+      if (!actualClosingCash || isNaN(Number(actualClosingCash))) {
+        toast({ title: 'Validation Error', description: 'Please enter the actual closing cash in drawer.', variant: 'destructive' });
+        return;
+      }
+      setIsClosingShift(true);
+      try {
+        const expectedCash = Number(reportData.shift.opening_cash) + (reportData.paymentTotals['cash'] || 0);
+        await supabase.from('shifts').update({
+          status: 'closed',
+          closed_at: new Date().toISOString(),
+          actual_closing_cash: Number(actualClosingCash),
+          expected_closing_cash: expectedCash
+        }).eq('id', reportData.shift.id);
+        toast({ title: 'Shift Closed', description: 'Shift has been successfully closed.' });
+      } catch (err: any) {
+        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        setIsClosingShift(false);
+        return;
+      }
+      setIsClosingShift(false);
+    }
+
     
     // Generate dynamic payment rows for HTML print
     const paymentRowsHTML = Object.entries(reportData.paymentTotals)
@@ -132,6 +181,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
             <div>Date/Time: ${reportData.date}</div>
             <div>Total Bills: ${reportData.totalBills}</div>
             <div class="line"></div>
+            ${reportData.shift ? `<div class="row"><span>Opening Cash</span><span>Rs ${Number(reportData.shift.opening_cash).toFixed(2)}</span></div>` : ''}
             <div class="row bold"><span>Total Sales</span><span>Rs ${reportData.totalAmount.toFixed(2)}</span></div>
             ${paymentRowsHTML}
             <div class="line"></div>
@@ -173,8 +223,16 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
             
             <div className="border-t border-dashed border-zinc-300 dark:border-zinc-700 my-2 pt-2"></div>
             
+            
+            {reportData.shift && (
+              <div className="flex justify-between text-muted-foreground mt-2 mb-2 pb-2 border-b border-dashed border-zinc-300 dark:border-zinc-700">
+                <span>Opening Cash:</span>
+                <span>₹{Number(reportData.shift.opening_cash).toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold text-base">
               <span>Total Sales:</span>
+
               <span>₹{reportData.totalAmount.toFixed(2)}</span>
             </div>
             
@@ -189,12 +247,28 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           <div className="py-8 text-center text-sm text-muted-foreground">No data found for today.</div>
         )}
 
+        
+        {reportData && reportData.shift && (
+          <div className="px-4 pb-4 space-y-2">
+            <Label className="text-xs text-muted-foreground uppercase">Close Shift: Actual Cash in Drawer</Label>
+            <Input 
+              type="number" 
+              placeholder="0.00" 
+              value={actualClosingCash} 
+              onChange={(e) => setActualClosingCash(e.target.value)} 
+            />
+            <div className="text-[10px] text-muted-foreground">
+              Expected Cash: ₹{(Number(reportData.shift.opening_cash) + (reportData.paymentTotals['cash'] || 0)).toFixed(2)}
+            </div>
+          </div>
+        )}
         <DialogFooter className="gap-2">
+
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4 mr-2" /> Cancel
           </Button>
-          <Button onClick={handlePrint} disabled={loading || !reportData || reportData.totalBills === 0}>
-            <Printer className="w-4 h-4 mr-2" /> Print Z-Report
+          <Button onClick={handlePrint} disabled={loading || isClosingShift || !reportData || reportData.totalBills === 0}>
+            {isClosingShift ? "Closing Shift..." : "Close Shift & Print"}
           </Button>
         </DialogFooter>
       </DialogContent>

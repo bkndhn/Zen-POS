@@ -464,6 +464,62 @@ const Billing = () => {
   const [billingMode, setBillingMode] = useState<'qty' | 'amount'>('qty');
   const [paymentTypes, setPaymentTypes] = useState<PaymentType[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<string>('');
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [openingCash, setOpeningCash] = useState<string>('');
+  const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
+
+  // Check for open shift
+  useEffect(() => {
+    const checkShift = async () => {
+      if (!adminId) return;
+      const branchId = operatingBranchId || profile?.branch_id || profile?.id;
+      
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('id, status')
+        .eq('admin_id', adminId)
+        .eq('branch_id', branchId)
+        .eq('status', 'open')
+        .maybeSingle();
+
+      if (!data) {
+        setShowShiftModal(true);
+      } else {
+        setShowShiftModal(false);
+      }
+    };
+    if (adminId && !isAllBranchesView) {
+       checkShift();
+    } else {
+       setShowShiftModal(false);
+    }
+  }, [adminId, operatingBranchId, profile, isAllBranchesView]);
+
+  const handleOpenShift = async () => {
+    if (!openingCash || isNaN(Number(openingCash))) {
+      toast({ title: 'Invalid Amount', description: 'Please enter a valid opening cash amount.', variant: 'destructive' });
+      return;
+    }
+    setOpeningShiftLoading(true);
+    try {
+      const branchId = operatingBranchId || profile?.branch_id || profile?.id;
+      const { error } = await supabase.from('shifts').insert({
+        admin_id: adminId,
+        branch_id: branchId,
+        user_id: profile?.id,
+        opening_cash: Number(openingCash),
+        status: 'open'
+      });
+      if (error) throw error;
+      toast({ title: 'Shift Started', description: 'Your shift has been opened successfully.' });
+      setShowShiftModal(false);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setOpeningShiftLoading(false);
+    }
+  };
+
   const [discount, setDiscount] = useState(0);
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [tempQuantity, setTempQuantity] = useState<string>('');
