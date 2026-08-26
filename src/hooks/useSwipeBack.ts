@@ -20,7 +20,8 @@ export const useSwipeBack = () => {
     let swiping = false;
 
     const onTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
+      const touch = e.touches?.[0];
+      if (!touch) return;
       // Only activate if touch starts at the left edge
       if (touch.clientX <= EDGE_WIDTH) {
         startX = touch.clientX;
@@ -33,7 +34,8 @@ export const useSwipeBack = () => {
       if (!swiping) return;
       swiping = false;
 
-      const touch = e.changedTouches[0];
+      const touch = e.changedTouches?.[0];
+      if (!touch) return;
       const deltaX = touch.clientX - startX;
       const deltaY = Math.abs(touch.clientY - startY);
 

@@ -19,6 +19,9 @@ Sentry.init({
   // Noise from third-party/injected scripts and unsupported native plugins —
   // not actionable application errors.
   ignoreErrors: [
+    /AbortError: The operation was aborted/i,
+    /The operation was aborted/i,
+    /navigatorLock/i,
     /has no method 'updateFrom'/i,
     /plugin is not implemented on (android|ios)/i,
     /ResizeObserver loop/i,

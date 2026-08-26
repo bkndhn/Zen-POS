@@ -12,7 +12,9 @@ export const PullToRefresh: React.FC<{ children: React.ReactNode; onRefresh?: ()
   const handleTouchStart = (e: React.TouchEvent) => {
     // Only allow pull if we are at the very top of the scroll container
     if (scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 1) {
-      pullStartY.current = e.touches[0].clientY;
+      const touch = e.touches?.[0];
+      if (!touch) return;
+      pullStartY.current = touch.clientY;
       setIsPulling(true);
     }
   };
@@ -20,7 +22,9 @@ export const PullToRefresh: React.FC<{ children: React.ReactNode; onRefresh?: ()
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isPulling || isRefreshing) return;
     
-    const y = e.touches[0].clientY;
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    const y = touch.clientY;
     const distance = y - pullStartY.current;
     
     // Only drag down if we started at top and are moving down
