@@ -473,7 +473,7 @@ const Billing = () => {
     
     const checkShift = async () => {
       if (!adminId) return;
-      const branchId = operatingBranchId || profile?.branch_id || profile?.id;
+      const branchId = operatingBranchId || profile?.id;
       
       // 1. Check if shift management is enabled for this branch
       const { data: settingsData } = await supabase
@@ -519,7 +519,7 @@ const Billing = () => {
     }
     setOpeningShiftLoading(true);
     try {
-      const branchId = operatingBranchId || profile?.branch_id || profile?.id;
+      const branchId = operatingBranchId || profile?.id;
       const { error } = await supabase.from('shifts').insert({
         admin_id: adminId,
         branch_id: branchId,
