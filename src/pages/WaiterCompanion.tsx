@@ -969,7 +969,12 @@ const WaiterCompanion: React.FC = () => {
 
                                                     <div className="p-2.5">
                                                         <h4 className="font-bold text-xs line-clamp-2 leading-snug">{item.name}</h4>
-                                                        <span className="text-primary font-black text-xs block mt-1">₹{item.price.toFixed(0)}</span>
+                                                        <div className="flex items-center justify-between mt-1">
+        <span className="text-primary font-black text-xs block">₹{item.price.toFixed(0)}</span>
+        {item.stock_quantity !== null && item.stock_quantity !== undefined && !isOutOfStock && !isLowStock && (
+            <span className="text-[9px] text-muted-foreground border px-1 rounded-sm bg-muted/50 whitespace-nowrap">Stk: {item.stock_quantity}</span>
+        )}
+    </div>
 
                                                         {/* Quick Chips per Item */}
                                                         {item.quick_chips && item.quick_chips.length > 0 && (
@@ -1055,7 +1060,10 @@ const WaiterCompanion: React.FC = () => {
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5">
                                                                 <span className="text-primary font-black text-sm">₹{item.price.toFixed(0)}</span>
-                                                                {(item.selling_unit || item.unit) && (
+    {item.stock_quantity !== null && item.stock_quantity !== undefined && !isOutOfStock && !isLowStock && (
+        <span className="text-[10px] text-muted-foreground border px-1.5 py-0.5 rounded-sm bg-muted/50 font-medium whitespace-nowrap">Stk: {item.stock_quantity}</span>
+    )}
+    {(item.selling_unit || item.unit) && (
                                                                     <Badge variant="outline" className="text-[10px] scale-90 px-1 py-0 h-4">
                                                                         per {item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)}
                                                                     </Badge>
