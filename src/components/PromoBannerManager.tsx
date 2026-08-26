@@ -107,7 +107,7 @@ export const PromoBannerManager = () => {
                 fileExt = 'jpg';
             } else {
                 // Compress and convert to WebP format
-                uploadBlob = await compressImage(file, 200); // 200KB is plenty for high quality banners
+                uploadBlob = await compressImage(file, 150); // 150KB is plenty for high quality banners
                 fileExt = 'webp';
             }
 

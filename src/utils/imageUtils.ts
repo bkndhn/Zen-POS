@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Image cache for performance
 const imageCache = new Map<string, string>();
 
-export const compressImage = (file: File, maxSizeKB: number = 400): Promise<Blob> => {
+export const compressImage = (file: File, maxSizeKB: number = 150): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
@@ -95,7 +95,7 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
   // Compress the image (best-effort — fall back to original blob if compression fails)
   let uploadBlob: Blob;
   try {
-    uploadBlob = await compressImage(file, 400);
+    uploadBlob = await compressImage(file, 150);
   } catch (err) {
     console.warn('[uploadItemImage] compression failed, uploading original:', err);
     uploadBlob = file;
@@ -162,7 +162,7 @@ export const uploadItemImage = async (file: File, itemId: string): Promise<strin
     throw new Error('Permission denied while uploading. Please sign in again or contact support.');
   }
   if (/payload too large|exceeded/i.test(msg)) {
-    throw new Error('File is too large for upload. Try a smaller image (max 400KB).');
+    throw new Error('File is too large for upload. Try a smaller image (max 150KB).');
   }
   if (/network|fetch|timeout|failed to fetch/i.test(msg)) {
     throw new Error('Network error during upload. Check your connection and try again.');
@@ -282,7 +282,7 @@ export const deleteItemImage = async (imageUrl: string): Promise<void> => {
  * For true GIF compression, a backend solution would be needed.
  * This reduces file size significantly while maintaining visual quality.
  */
-export const compressGifToImage = async (file: File, maxSizeKB: number = 400): Promise<Blob> => {
+export const compressGifToImage = async (file: File, maxSizeKB: number = 150): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
@@ -290,7 +290,7 @@ export const compressGifToImage = async (file: File, maxSizeKB: number = 400): P
 
     img.onload = () => {
       // Calculate dimensions - scale down if needed
-      const maxDimension = maxSizeKB <= 400 ? 800 : 1000;
+      const maxDimension = maxSizeKB <= 150 ? 800 : 1000;
       let { width, height } = img;
 
       if (width > maxDimension || height > maxDimension) {
@@ -424,7 +424,7 @@ export const compressVideo = async (
  * Simple GIF compression by reducing dimensions
  * Keeps it as GIF format but makes it smaller
  */
-export const compressGifSimple = async (file: File, maxSizeKB: number = 400): Promise<File> => {
+export const compressGifSimple = async (file: File, maxSizeKB: number = 150): Promise<File> => {
   // If already small enough, return as-is
   if (file.size <= maxSizeKB * 1024) {
     return file;
