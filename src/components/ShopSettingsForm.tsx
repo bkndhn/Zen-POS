@@ -78,9 +78,10 @@ export const ShopSettingsForm = () => {
     const [googleReviewUrl, setGoogleReviewUrl] = useState('');
     const [telegram, setTelegram] = useState('');
     const [receiptQrEnabled, setReceiptQrEnabled] = useState(false);
-    const [receiptQrType, shiftManagementEnabled, shiftManagementUnlocked, setReceiptQrType] = useState('payment');
+    const [receiptQrType, setReceiptQrType] = useState('payment');
     const [shiftManagementEnabled, setShiftManagementEnabled] = useState(false);
     const [shiftManagementUnlocked, setShiftManagementUnlocked] = useState(false);
+    const [remoteOrderFlow, setRemoteOrderFlow] = useState('manual_settle');
 
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>([]);
@@ -134,6 +135,7 @@ export const ShopSettingsForm = () => {
                 if (parsed.receiptQrType) setReceiptQrType(parsed.receiptQrType);
                 if (parsed.shiftManagementEnabled !== undefined) setShiftManagementEnabled(parsed.shiftManagementEnabled);
                 if (parsed.shiftManagementUnlocked !== undefined) setShiftManagementUnlocked(parsed.shiftManagementUnlocked);
+                if (parsed.remoteOrderFlow) setRemoteOrderFlow(parsed.remoteOrderFlow);
             } catch (e) { /* ignore parse errors */ }
         }
         // Always show the form (with cached or empty values)
@@ -496,6 +498,7 @@ export const ShopSettingsForm = () => {
                 receipt_qr_enabled: receiptQrEnabled,
                 receipt_qr_type: receiptQrType,
                     shift_management_enabled: shiftManagementEnabled,
+                    remote_order_flow: remoteOrderFlow,
             };
 
             // Find existing row for THIS branch only

@@ -71,7 +71,7 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
       const { data, error } = await (supabase as any)
         .from('remote_orders')
         .select('*')
-        .eq('admin_id', adminId)
+        .eq('user_id', adminId)
         .eq('branch_id', branchId)
         .not('status', 'in', '(completed,cancelled,no_show)')
         .order('created_at', { ascending: false });
@@ -142,6 +142,35 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
       toast({ title: `Order ${status.replace('_', ' ')}` });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Update failed', description: err.message });
+    }
+  };
+
+  
+  const handleCompleteOrder = async (id: string) => {
+    try {
+      // 1. Fetch branch setting to check flow
+      const { data: settings } = await (supabase as any)
+        .from('shop_settings')
+        .select('remote_order_flow')
+        .eq('admin_id', adminId)
+        .eq('branch_id', branchId)
+        .maybeSingle();
+
+      const flow = settings?.remote_order_flow || 'manual_settle';
+
+      if (flow === 'auto_settle') {
+        const { data, error } = await (supabase as any).rpc('process_remote_order_auto_settle', {
+          p_order_id: id
+        });
+        if (error) throw error;
+        toast({ title: 'Order Completed & Auto-Settled', description: 'Bill successfully generated.' });
+        setOrders(prev => prev.filter(o => o.id !== id));
+      } else {
+        // Manual Settle - just update the status so the cashier knows to bill it, or complete it here and assume they billed it
+        await updateOrderStatus(id, 'completed', { completed_at: new Date().toISOString() });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Action failed', description: err.message });
     }
   };
 

@@ -3263,6 +3263,7 @@ export type Database = {
           show_whatsapp: boolean | null
             shift_management_enabled: boolean | null
             shift_management_unlocked: boolean | null
+            remote_order_flow: string | null
           store_status_override: string | null
           surge_fee_amount: number | null
           surge_fee_enabled: boolean | null
@@ -3354,6 +3355,8 @@ export type Database = {
           show_whatsapp?: boolean | null
             shift_management_enabled?: boolean | null
             shift_management_unlocked?: boolean | null
+            remote_order_flow?: string | null
+            remote_order_flow?: string | null
             shift_management_enabled?: boolean | null
             shift_management_unlocked?: boolean | null
           store_status_override?: string | null
