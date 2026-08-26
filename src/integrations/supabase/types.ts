@@ -3191,6 +3191,54 @@ export type Database = {
         }
         Relationships: []
       }
+      shifts: {
+        Row: {
+          actual_closing_cash: number | null
+          admin_id: string
+          branch_id: string | null
+          closed_at: string | null
+          created_at: string | null
+          expected_closing_cash: number | null
+          id: string
+          notes: string | null
+          opened_at: string | null
+          opening_cash: number
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_closing_cash?: number | null
+          admin_id: string
+          branch_id?: string | null
+          closed_at?: string | null
+          created_at?: string | null
+          expected_closing_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string | null
+          opening_cash?: number
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actual_closing_cash?: number | null
+          admin_id?: string
+          branch_id?: string | null
+          closed_at?: string | null
+          created_at?: string | null
+          expected_closing_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string | null
+          opening_cash?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       shop_settings: {
         Row: {
           address: string | null
@@ -3251,9 +3299,12 @@ export type Database = {
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
           receipt_qr_type: string | null
+          remote_order_flow: string | null
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          shift_management_enabled: boolean | null
+          shift_management_unlocked: boolean | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -3261,9 +3312,6 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
-            shift_management_enabled: boolean | null
-            shift_management_unlocked: boolean | null
-            remote_order_flow: string | null
           store_status_override: string | null
           surge_fee_amount: number | null
           surge_fee_enabled: boolean | null
@@ -3343,9 +3391,12 @@ export type Database = {
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
           receipt_qr_type?: string | null
+          remote_order_flow?: string | null
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          shift_management_enabled?: boolean | null
+          shift_management_unlocked?: boolean | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -3353,12 +3404,6 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
-            shift_management_enabled?: boolean | null
-            shift_management_unlocked?: boolean | null
-            remote_order_flow?: string | null
-            remote_order_flow?: string | null
-            shift_management_enabled?: boolean | null
-            shift_management_unlocked?: boolean | null
           store_status_override?: string | null
           surge_fee_amount?: number | null
           surge_fee_enabled?: boolean | null
@@ -3438,9 +3483,12 @@ export type Database = {
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
           receipt_qr_type?: string | null
+          remote_order_flow?: string | null
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          shift_management_enabled?: boolean | null
+          shift_management_unlocked?: boolean | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -4521,9 +4569,12 @@ export type Database = {
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
           receipt_qr_type: string | null
+          remote_order_flow: string | null
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          shift_management_enabled: boolean | null
+          shift_management_unlocked: boolean | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -4741,6 +4792,10 @@ export type Database = {
           p_target_table?: string
         }
         Returns: string
+      }
+      process_remote_order_auto_settle: {
+        Args: { p_order_id: string }
+        Returns: Json
       }
       public_place_remote_order: { Args: { p_order: Json }; Returns: Json }
       public_place_table_order: {
