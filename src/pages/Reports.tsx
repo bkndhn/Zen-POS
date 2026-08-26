@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 
 import { PinLockGuard } from '@/components/PinLockGuard';
+import { ZReportDialog } from '@/components/ZReportDialog';
 
 interface Bill {
   id: string;
@@ -1637,7 +1638,10 @@ const Reports: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-row gap-2">
-          <Button onClick={handleExportAllExcel} variant="outline" size="sm" className="text-xs h-8 rounded-lg">
+          <Button onClick={() => setZReportOpen(true)} variant="default" size="sm" className="text-xs h-8 rounded-lg mr-2 font-bold bg-primary text-white">
+              Z-Report
+            </Button>
+            <Button onClick={handleExportAllExcel} variant="outline" size="sm" className="text-xs h-8 rounded-lg">
             <FileSpreadsheet className="w-3 h-3 mr-1" />
             Excel
           </Button>
@@ -3169,6 +3173,7 @@ export default function ReportsProtected() {
   return (
     <PinLockGuard>
       <Reports />
+      <ZReportDialog open={zReportOpen} onOpenChange={setZReportOpen} />
     </PinLockGuard>
   );
 }
