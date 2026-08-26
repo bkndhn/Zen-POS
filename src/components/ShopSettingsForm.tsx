@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { Store, Upload, X, Facebook, Instagram, Phone, Navigation, Link2, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
+import { Store, Upload, X, Facebook, Instagram, Phone, Navigation, Link2, Eye, EyeOff, Check, AlertCircle, DollarSign } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BOTTOM_NAV_OPTIONS, ALL_NAV_ITEMS } from '@/config/navItems';
@@ -78,7 +78,9 @@ export const ShopSettingsForm = () => {
     const [googleReviewUrl, setGoogleReviewUrl] = useState('');
     const [telegram, setTelegram] = useState('');
     const [receiptQrEnabled, setReceiptQrEnabled] = useState(false);
-    const [receiptQrType, setReceiptQrType] = useState('payment');
+    const [receiptQrType, shiftManagementEnabled, shiftManagementUnlocked, setReceiptQrType] = useState('payment');
+    const [shiftManagementEnabled, setShiftManagementEnabled] = useState(false);
+    const [shiftManagementUnlocked, setShiftManagementUnlocked] = useState(false);
 
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>([]);
@@ -130,6 +132,8 @@ export const ShopSettingsForm = () => {
                 if (parsed.telegram) setTelegram(parsed.telegram);
                 if (parsed.receiptQrEnabled !== undefined) setReceiptQrEnabled(parsed.receiptQrEnabled);
                 if (parsed.receiptQrType) setReceiptQrType(parsed.receiptQrType);
+                if (parsed.shiftManagementEnabled !== undefined) setShiftManagementEnabled(parsed.shiftManagementEnabled);
+                if (parsed.shiftManagementUnlocked !== undefined) setShiftManagementUnlocked(parsed.shiftManagementUnlocked);
             } catch (e) { /* ignore parse errors */ }
         }
         // Always show the form (with cached or empty values)
@@ -491,6 +495,7 @@ export const ShopSettingsForm = () => {
                 telegram: cleanUrl(telegram),
                 receipt_qr_enabled: receiptQrEnabled,
                 receipt_qr_type: receiptQrType,
+                    shift_management_enabled: shiftManagementEnabled,
             };
 
             // Find existing row for THIS branch only

@@ -3261,6 +3261,8 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+            shift_management_enabled: boolean | null
+            shift_management_unlocked: boolean | null
           store_status_override: string | null
           surge_fee_amount: number | null
           surge_fee_enabled: boolean | null
@@ -3350,6 +3352,10 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+            shift_management_enabled?: boolean | null
+            shift_management_unlocked?: boolean | null
+            shift_management_enabled?: boolean | null
+            shift_management_unlocked?: boolean | null
           store_status_override?: string | null
           surge_fee_amount?: number | null
           surge_fee_enabled?: boolean | null

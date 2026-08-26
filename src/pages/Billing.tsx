@@ -470,12 +470,29 @@ const Billing = () => {
 
   // Check for open shift
   useEffect(() => {
+    
     const checkShift = async () => {
       if (!adminId) return;
       const branchId = operatingBranchId || profile?.branch_id || profile?.id;
       
+      // 1. Check if shift management is enabled for this branch
+      const { data: settingsData } = await supabase
+        .from('shop_settings')
+        .select('shift_management_enabled')
+        .eq('user_id', adminId)
+        .eq('branch_id', branchId)
+        .maybeSingle();
+        
+      const isShiftEnabled = settingsData?.shift_management_enabled === true;
+      
+      if (!isShiftEnabled) {
+        setShowShiftModal(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('shifts')
+
         .select('id, status')
         .eq('admin_id', adminId)
         .eq('branch_id', branchId)
