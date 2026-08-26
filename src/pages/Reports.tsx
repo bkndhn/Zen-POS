@@ -149,6 +149,7 @@ const Reports: React.FC = () => {
     return map;
   }, [branches]);
   const navigate = useNavigate();
+  const [zReportOpen, setZReportOpen] = useState(false);
   const [dateRange, setDateRange] = useState('today');
   const [hourRange, setHourRange] = useState(12);
   const [customStartDate, setCustomStartDate] = useState(new Date().toISOString().split('T')[0]);
