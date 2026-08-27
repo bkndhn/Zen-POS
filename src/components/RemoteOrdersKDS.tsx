@@ -71,7 +71,7 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
       const { data, error } = await (supabase as any)
         .from('remote_orders')
         .select('*')
-        .eq('user_id', adminId)
+        .eq('admin_id', adminId)
         .eq('branch_id', branchId)
         .not('status', 'in', '(completed,cancelled,no_show)')
         .order('created_at', { ascending: false });
@@ -152,7 +152,7 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
       const { data: settings } = await (supabase as any)
         .from('shop_settings')
         .select('remote_order_flow')
-        .eq('admin_id', adminId)
+        .eq('user_id', adminId)
         .eq('branch_id', branchId)
         .maybeSingle();
 

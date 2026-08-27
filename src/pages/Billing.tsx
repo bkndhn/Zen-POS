@@ -4349,6 +4349,31 @@ const Billing = () => {
       onOpenChange={setIsCustomItemOpen} 
       onAdd={handleAddCustomItem} 
     />
+
+    <Dialog open={showShiftModal} onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Start Your Shift</DialogTitle>
+          <DialogDescription>
+            Enter the opening cash in the drawer to begin billing for this branch.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <Label htmlFor="opening-cash">Opening Cash (₹)</Label>
+          <Input
+            id="opening-cash"
+            type="number"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={openingCash}
+            onChange={(e) => setOpeningCash(e.target.value)}
+          />
+          <Button className="w-full" onClick={handleOpenShift} disabled={openingShiftLoading}>
+            {openingShiftLoading ? 'Starting…' : 'Start Shift'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>;
 };
 export default Billing;
