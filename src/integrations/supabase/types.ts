@@ -4747,6 +4747,13 @@ export type Database = {
           rate: number
         }[]
       }
+      get_public_watermark_info: {
+        Args: never
+        Returns: {
+          powered_by_contact: string
+          show_powered_by_watermark: boolean
+        }[]
+      }
       get_remote_order_for_device: {
         Args: { p_device_id: string; p_order_id: string }
         Returns: Json
