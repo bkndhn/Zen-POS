@@ -787,9 +787,10 @@ const PublicMenu = () => {
                 setCategories(categoriesData || []);
                 setBanners(bannersData || []);
                 
-                // Fetch App Settings
-                const { data: appData } = await supabase.from('app_settings').select('show_powered_by_watermark, powered_by_contact').eq('id', true).maybeSingle();
-                if (appData) setAppSettings(appData);
+                // Fetch App Settings (public-safe RPC)
+                const { data: appData } = await (supabase as any).rpc('get_public_watermark_info');
+                const appRow = Array.isArray(appData) ? appData[0] : appData;
+                if (appRow) setAppSettings(appRow);
 
                 if (!itemsData?.length && itemsError) {
                     setError('Failed to load menu. Please try again.');
