@@ -3191,6 +3191,77 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_reconciliations: {
+        Row: {
+          actual_cash: number
+          adjustments: number
+          admin_id: string
+          branch_id: string | null
+          cash_sales: number
+          closed_at: string
+          closed_by: string | null
+          created_at: string
+          expected_cash: number
+          id: string
+          notes: string | null
+          opened_at: string | null
+          opening_cash: number
+          payment_breakdown: Json
+          shift_id: string | null
+          total_bills: number
+          total_sales: number
+          variance: number
+        }
+        Insert: {
+          actual_cash?: number
+          adjustments?: number
+          admin_id: string
+          branch_id?: string | null
+          cash_sales?: number
+          closed_at?: string
+          closed_by?: string | null
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string | null
+          opening_cash?: number
+          payment_breakdown?: Json
+          shift_id?: string | null
+          total_bills?: number
+          total_sales?: number
+          variance?: number
+        }
+        Update: {
+          actual_cash?: number
+          adjustments?: number
+          admin_id?: string
+          branch_id?: string | null
+          cash_sales?: number
+          closed_at?: string
+          closed_by?: string | null
+          created_at?: string
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string | null
+          opening_cash?: number
+          payment_breakdown?: Json
+          shift_id?: string | null
+          total_bills?: number
+          total_sales?: number
+          variance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_reconciliations_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           actual_closing_cash: number | null
