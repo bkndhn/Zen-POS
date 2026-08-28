@@ -7,8 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { format } from 'date-fns';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { checkSupabaseResult } from '@/utils/monitoring';
+import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHistory';
+
 
 interface ZReportDialogProps {
   open: boolean;
