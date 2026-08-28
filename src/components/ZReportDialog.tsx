@@ -20,7 +20,11 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const { operatingBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
   const [actualClosingCash, setActualClosingCash] = useState<string>("");
+  const [adjustments, setAdjustments] = useState<string>("");
+  const [reconNotes, setReconNotes] = useState<string>("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [isClosingShift, setIsClosingShift] = useState(false);
+
   const [reportData, setReportData] = useState<{
     date: string;
     totalAmount: number;
