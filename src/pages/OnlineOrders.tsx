@@ -590,9 +590,9 @@ export default function OnlineOrders() {
                 </Button>
               </>
             )}
-            {!isPickup && order.customer_lat && order.customer_lng && (
+            {!isPickup && order.customer_latitude && order.customer_longitude && (
                <Button size="sm" variant="outline" className="h-9 flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200" asChild>
-                 <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.customer_lat},${order.customer_lng}`} target="_blank" rel="noreferrer"><Navigation className="w-4 h-4 mr-1" /> Navigate</a>
+                 <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`} target="_blank" rel="noreferrer"><Navigation className="w-4 h-4 mr-1" /> Navigate</a>
                </Button>
             )}
             {order.device_id && mode === 'active' && (
