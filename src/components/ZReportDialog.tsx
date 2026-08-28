@@ -7,8 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { format } from 'date-fns';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { checkSupabaseResult } from '@/utils/monitoring';
+import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHistory';
+
 
 interface ZReportDialogProps {
   open: boolean;
@@ -20,7 +23,11 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const { operatingBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
   const [actualClosingCash, setActualClosingCash] = useState<string>("");
+  const [adjustments, setAdjustments] = useState<string>("");
+  const [reconNotes, setReconNotes] = useState<string>("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [isClosingShift, setIsClosingShift] = useState(false);
+
   const [reportData, setReportData] = useState<{
     date: string;
     totalAmount: number;
@@ -124,7 +131,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
   const handlePrint = async () => {
     if (!reportData) return;
-    
+
     if (reportData.shift) {
       if (!actualClosingCash || isNaN(Number(actualClosingCash))) {
         toast({ title: 'Validation Error', description: 'Please enter the actual closing cash in drawer.', variant: 'destructive' });
@@ -132,14 +139,43 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       }
       setIsClosingShift(true);
       try {
-        const expectedCash = Number(reportData.shift.opening_cash) + (reportData.paymentTotals['cash'] || 0);
+        const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+        const branchId = operatingBranchId || profile?.id;
+        const openingCash = Number(reportData.shift.opening_cash) || 0;
+        const cashSales = reportData.paymentTotals['cash'] || 0;
+        const adjustmentValue = Number(adjustments) || 0;
+        const expectedCash = openingCash + cashSales + adjustmentValue;
+        const actualCash = Number(actualClosingCash);
+
         await supabase.from('shifts').update({
           status: 'closed',
           closed_at: new Date().toISOString(),
-          actual_closing_cash: Number(actualClosingCash),
+          actual_closing_cash: actualCash,
           expected_closing_cash: expectedCash
         }).eq('id', reportData.shift.id);
-        toast({ title: 'Shift Closed', description: 'Shift has been successfully closed.' });
+
+        // Traceable reconciliation record
+        const reconResult = await supabase.from('shift_reconciliations').insert({
+          admin_id: adminId,
+          branch_id: branchId,
+          shift_id: reportData.shift.id,
+          closed_by: profile?.id ?? null,
+          opened_at: reportData.shift.opened_at,
+          closed_at: new Date().toISOString(),
+          opening_cash: openingCash,
+          cash_sales: cashSales,
+          adjustments: adjustmentValue,
+          expected_cash: expectedCash,
+          actual_cash: actualCash,
+          variance: Number((actualCash - expectedCash).toFixed(2)),
+          total_sales: reportData.totalAmount,
+          total_bills: reportData.totalBills,
+          payment_breakdown: reportData.paymentTotals as any,
+          notes: reconNotes || null,
+        } as any);
+        checkSupabaseResult('shift_reconciliations.insert', reconResult as any);
+
+        toast({ title: 'Shift Closed', description: 'Shift closed and reconciliation recorded.' });
       } catch (err: any) {
         toast({ title: 'Error', description: err.message, variant: 'destructive' });
         setIsClosingShift(false);
@@ -147,6 +183,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       }
       setIsClosingShift(false);
     }
+
 
     
     // Generate dynamic payment rows for HTML print
