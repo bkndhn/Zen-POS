@@ -583,9 +583,9 @@ export default function OnlineOrders() {
                 </Button>
               </>
             )}
-            {!isPickup && order.customer_latitude && order.customer_longitude && (
+            {!isPickup && resolveOrderLocation(order).mapsUrl && (
                <Button size="sm" variant="outline" className="h-9 flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200" asChild>
-                 <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`} target="_blank" rel="noreferrer"><Navigation className="w-4 h-4 mr-1" /> Navigate</a>
+                 <a href={resolveOrderLocation(order).mapsUrl!} target="_blank" rel="noreferrer"><Navigation className="w-4 h-4 mr-1" /> {resolveOrderLocation(order).hasCoords ? 'Navigate' : 'Address'}</a>
                </Button>
             )}
             {order.device_id && mode === 'active' && (
