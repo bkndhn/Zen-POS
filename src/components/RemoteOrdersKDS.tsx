@@ -285,9 +285,9 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
                   </Button>
                 </>
               )}
-              {order.order_type === 'delivery' && order.customer_latitude && order.customer_longitude && (
+              {order.order_type === 'delivery' && resolveOrderLocation(order).mapsUrl && (
                  <Button size="sm" variant="outline" className="h-8 flex-1" asChild>
-                   <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`} target="_blank" rel="noreferrer"><Map className="w-3 h-3 mr-1" /> Map</a>
+                   <a href={resolveOrderLocation(order).mapsUrl!} target="_blank" rel="noreferrer"><Map className="w-3 h-3 mr-1" /> {resolveOrderLocation(order).hasCoords ? 'Map' : 'Address'}</a>
                  </Button>
               )}
               {order.device_id && (
