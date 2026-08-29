@@ -11,15 +11,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Lazy initialization of Firebase Admin to prevent cold start issues if not configured
+// Lazy initialization of Firebase Admin
 let firebaseApp: any = null;
-const initFirebase = () => {
+const initFirebase = async () => {
   if (firebaseApp) return firebaseApp;
   
-  const serviceAccountEnv = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
-  if (!serviceAccountEnv) throw new Error("FIREBASE_SERVICE_ACCOUNT env var is missing");
+  // Try env var first
+  let serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
   
-  const serviceAccount = JSON.parse(serviceAccountEnv);
+  // If not in env, fetch from Supabase vault
+  if (!serviceAccountJson) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? "";
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? "";
+    const vaultClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data, error } = await vaultClient.rpc('vault_read_secret', { secret_name: 'firebase_service_account' });
+    
+    // Fallback: try direct query to vault.decrypted_secrets
+    if (error || !data) {
+      const { data: vaultData, error: vaultError } = await vaultClient
+        .from('decrypted_secrets' as any)
+        .select('decrypted_secret')
+        .eq('name', 'firebase_service_account')
+        .single();
+      
+      if (vaultError || !vaultData) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT not found in env or vault. Error: " + (vaultError?.message || 'not found'));
+      }
+      serviceAccountJson = (vaultData as any).decrypted_secret;
+    } else {
+      serviceAccountJson = typeof data === 'string' ? data : JSON.stringify(data);
+    }
+  }
+  
+  if (!serviceAccountJson) throw new Error("Firebase service account credentials not available");
+  
+  const serviceAccount = typeof serviceAccountJson === 'string' ? JSON.parse(serviceAccountJson) : serviceAccountJson;
   firebaseApp = initializeApp({
     credential: cert(serviceAccount)
   });
@@ -80,7 +107,7 @@ serve(async (req) => {
        });
     }
 
-    initFirebase();
+    await initFirebase();
     const messaging = getMessaging();
 
     const tokens = devices.map(d => d.device_token);
