@@ -38,6 +38,7 @@ Sentry.init({
 });
 
 
+installErrorMonitoring();
 installPerfProfiler();
 startRum();
 initStoragePersistence().catch(() => {});
