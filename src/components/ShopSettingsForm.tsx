@@ -82,6 +82,9 @@ export const ShopSettingsForm = () => {
     const [shiftManagementEnabled, setShiftManagementEnabled] = useState(false);
     const [shiftManagementUnlocked, setShiftManagementUnlocked] = useState(false);
     const [remoteOrderFlow, setRemoteOrderFlow] = useState('manual_settle');
+    const [fcmUnlocked, setFcmUnlocked] = useState(false);
+    const [fcmEnabled, setFcmEnabled] = useState(false);
+    const [dailySummaryTime, setDailySummaryTime] = useState<string | null>(null);
 
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>([]);
@@ -230,6 +233,9 @@ export const ShopSettingsForm = () => {
                 setShiftManagementEnabled((data as any).shift_management_enabled ?? false);
                 setShiftManagementUnlocked((data as any).shift_management_unlocked ?? false);
                 setRemoteOrderFlow((data as any).remote_order_flow || 'manual_settle');
+                setFcmUnlocked((data as any).fcm_unlocked ?? false);
+                setFcmEnabled((data as any).fcm_enabled ?? false);
+                setDailySummaryTime((data as any).daily_summary_time || null);
                 let resolvedVisiblePages: string[] = [];
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
                     resolvedVisiblePages = (data as any).visible_nav_pages as string[];
@@ -502,6 +508,8 @@ export const ShopSettingsForm = () => {
                 receipt_qr_type: receiptQrType,
                     shift_management_enabled: shiftManagementEnabled,
                     remote_order_flow: remoteOrderFlow,
+                    fcm_enabled: fcmEnabled,
+                    daily_summary_time: dailySummaryTime,
             };
 
             // Find existing row for THIS branch only
@@ -1004,6 +1012,63 @@ export const ShopSettingsForm = () => {
                                 </SelectContent>
                             </Select>
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Push Notifications (FCM) */}
+                <Card className="mb-6">
+                    <CardHeader className="p-4 pb-2 border-b">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            🔔 Push Notifications
+                            {!fcmUnlocked && (
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-[10px]">PRO ADD-ON</Badge>
+                            )}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <Label>Enable Push Notifications</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Receive alerts for new orders, service requests, low stock and more — even when the app is closed.
+                                </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <Switch
+                                    checked={fcmEnabled}
+                                    onCheckedChange={setFcmEnabled}
+                                    disabled={!fcmUnlocked}
+                                />
+                                {!fcmUnlocked && (
+                                    <span className="text-[10px] text-red-500 font-medium">Contact Super Admin to unlock</span>
+                                )}
+                            </div>
+                        </div>
+                        {fcmEnabled && fcmUnlocked && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                                <div>
+                                    <Label>Daily Sales Summary</Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Get a summary of total sales, payment breakdown, and top items at your chosen time daily.
+                                    </p>
+                                </div>
+                                <Select value={dailySummaryTime || 'off'} onValueChange={(v) => setDailySummaryTime(v === 'off' ? null : v)}>
+                                    <SelectTrigger className="w-[120px] h-8 text-xs">
+                                        <SelectValue placeholder="Off" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="off">Off</SelectItem>
+                                        <SelectItem value="18:00">6:00 PM</SelectItem>
+                                        <SelectItem value="19:00">7:00 PM</SelectItem>
+                                        <SelectItem value="20:00">8:00 PM</SelectItem>
+                                        <SelectItem value="21:00">9:00 PM</SelectItem>
+                                        <SelectItem value="22:00">10:00 PM</SelectItem>
+                                        <SelectItem value="23:00">11:00 PM</SelectItem>
+                                        <SelectItem value="00:00">12:00 AM</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
