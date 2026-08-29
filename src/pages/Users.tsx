@@ -259,15 +259,18 @@ const Users: React.FC = () => {
           admin.subUsers = subUsers.filter(sub => sub.admin_id === admin.id);
         });
 
-        // Fetch item counts and branch counts per admin
+        // Fetch item counts, branch counts, and pro add-on settings per admin
         for (const admin of admins) {
-          const [{ count: itemCount }, { count: branchCount }] = await Promise.all([
+          const [{ count: itemCount }, { count: branchCount }, { data: settingsData }] = await Promise.all([
             supabase.from('items').select('*', { count: 'exact', head: true }).eq('admin_id', admin.id),
             supabase.from('branches').select('*', { count: 'exact', head: true }).eq('admin_id', admin.id),
+            supabase.from('shop_settings').select('shift_management_unlocked, fcm_unlocked').eq('admin_id', admin.id).limit(1).single(),
           ]);
           admin.itemCount = itemCount ?? 0;
           admin.branchCount = branchCount ?? 0;
           admin.subUserCount = (admin.subUsers || []).filter(s => s.status !== 'deleted').length;
+          (admin as any)._shiftUnlocked = (settingsData as any)?.shift_management_unlocked ?? false;
+          (admin as any)._fcmUnlocked = (settingsData as any)?.fcm_unlocked ?? false;
         }
 
         setUsers(admins);
@@ -782,6 +785,38 @@ const Users: React.FC = () => {
                             <Badge variant="outline" className="text-[10px] whitespace-nowrap">
                               {admin.subUserCount ?? (admin.subUsers?.length ?? 0)}/{admin.max_sub_users ?? 5}
                             </Badge>
+                          </div>
+
+                          {/* Pro Add-on Toggles */}
+                          <div className="flex flex-wrap items-center gap-3 mt-1" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5">
+                              <Switch
+                                id={`shift-${admin.id}`}
+                                checked={(admin as any)._shiftUnlocked ?? false}
+                                onCheckedChange={async (val) => {
+                                  await supabase.from('shop_settings').update({ shift_management_unlocked: val } as any).eq('admin_id', admin.id);
+                                  setUsers(prev => prev.map(u => u.id === admin.id ? { ...u, _shiftUnlocked: val } as any : u));
+                                  setFilteredUsers(prev => prev.map(u => u.id === admin.id ? { ...u, _shiftUnlocked: val } as any : u));
+                                  toast({ title: val ? 'Shift Management unlocked' : 'Shift Management locked' });
+                                }}
+                                className="scale-75"
+                              />
+                              <Label htmlFor={`shift-${admin.id}`} className="text-[10px] cursor-pointer">Shifts</Label>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Switch
+                                id={`fcm-${admin.id}`}
+                                checked={(admin as any)._fcmUnlocked ?? false}
+                                onCheckedChange={async (val) => {
+                                  await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('admin_id', admin.id);
+                                  setUsers(prev => prev.map(u => u.id === admin.id ? { ...u, _fcmUnlocked: val } as any : u));
+                                  setFilteredUsers(prev => prev.map(u => u.id === admin.id ? { ...u, _fcmUnlocked: val } as any : u));
+                                  toast({ title: val ? 'Push Notifications unlocked' : 'Push Notifications locked' });
+                                }}
+                                className="scale-75"
+                              />
+                              <Label htmlFor={`fcm-${admin.id}`} className="text-[10px] cursor-pointer">FCM</Label>
+                            </div>
                           </div>
 
                           <Button
