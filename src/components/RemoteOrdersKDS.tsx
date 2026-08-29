@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Package, Truck, Phone, MessageCircle, Map, Ban, Clock } from 'lucide-react';
+import { useResilientChannel } from '@/hooks/useResilientChannel';
+import { resolveOrderLocation } from '@/utils/geoUtils';
+
 
 interface RemoteOrdersKDSProps {
   adminId: string;
