@@ -227,6 +227,9 @@ export const ShopSettingsForm = () => {
                 setTelegram(data.telegram || '');
                 setReceiptQrEnabled(data.receipt_qr_enabled || false);
                 setReceiptQrType(data.receipt_qr_type || 'payment');
+                setShiftManagementEnabled((data as any).shift_management_enabled ?? false);
+                setShiftManagementUnlocked((data as any).shift_management_unlocked ?? false);
+                setRemoteOrderFlow((data as any).remote_order_flow || 'manual_settle');
                 let resolvedVisiblePages: string[] = [];
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
                     resolvedVisiblePages = (data as any).visible_nav_pages as string[];
@@ -948,6 +951,61 @@ export const ShopSettingsForm = () => {
                         </div>
                     </div>
                 )}
+
+
+                {/* Add-ons & Features */}
+                <Card className="mb-6">
+                    <CardHeader className="p-4 pb-2 border-b">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <DollarSign className="w-5 h-5 text-orange-500" />
+                            Add-ons & Features
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <Label>Shift & Cash Management</Label>
+                                    {!shiftManagementUnlocked && (
+                                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-[10px]">PRO ADD-ON</Badge>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Require staff to open a shift with opening cash before billing.
+                                </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <Switch
+                                    checked={shiftManagementEnabled}
+                                    onCheckedChange={setShiftManagementEnabled}
+                                    disabled={!shiftManagementUnlocked}
+                                />
+                                {!shiftManagementUnlocked && (
+                                    <span className="text-[10px] text-red-500 font-medium">Contact Super Admin to unlock</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-4 border-t">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <Label>Web Orders Processing</Label>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Auto-Settle generates a bill immediately upon completion. Manual-Settle requires the cashier to settle the bill in POS.
+                                </p>
+                            </div>
+                            <Select value={remoteOrderFlow} onValueChange={setRemoteOrderFlow}>
+                                <SelectTrigger className="w-[140px] h-8 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="manual_settle">Manual Settle</SelectItem>
+                                    <SelectItem value="auto_settle">Auto Settle</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <Button onClick={handleSave} disabled={saving || isAllBranchesView} className="w-full md:w-auto">
                     {saving ? 'Saving...' : 'Save Shop Details'}
