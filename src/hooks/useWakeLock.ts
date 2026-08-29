@@ -182,18 +182,18 @@ export const useWakeLock = (enabled: boolean = true) => {
         touchIntervalRef.current = setInterval(() => {
             if (!isActiveRef.current || document.visibilityState !== 'visible') return;
 
-            // Dispatch a minimal touch event that won't interfere with UI
+            // Dispatch a minimal synthetic event to keep the browser active
+            // NOTE: We avoid `new TouchEvent()` because on Android 10 / Chrome Mobile
+            // the constructor crashes with "Cannot read properties of undefined
+            // (reading 'clientX')" when given empty touch arrays.
             try {
-                const event = new TouchEvent('touchstart', {
+                const event = new Event('zenpos-keepalive', {
                     bubbles: false,
                     cancelable: false,
-                    touches: [],
-                    targetTouches: [],
-                    changedTouches: [],
                 });
                 document.dispatchEvent(event);
             } catch (e) {
-                // TouchEvent constructor not supported in some browsers, skip
+                // Ignore — worst case the keep-alive just doesn't fire
             }
         }, 25000); // Every 25 seconds
     }, []);
