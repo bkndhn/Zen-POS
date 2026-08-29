@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Package, Truck, Phone, MessageCircle, Map, Ban, Clock } from 'lucide-react';
+import { useResilientChannel } from '@/hooks/useResilientChannel';
+import { resolveOrderLocation } from '@/utils/geoUtils';
+
 
 interface RemoteOrdersKDSProps {
   adminId: string;
@@ -30,40 +33,31 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
   const audioContext = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    fetchOrders();
-
-    const channel = (supabase as any)
-      .channel('public:remote_orders')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'remote_orders',
-        filter: `admin_id=eq.${adminId}`
-      }, (payload: any) => {
-        // If it's a new order for this branch
-        if (payload.eventType === 'INSERT' && payload.new.branch_id === branchId) {
-          playChime();
-          showNotification(payload.new.customer_name);
-          setOrders(prev => [payload.new, ...prev]);
-        } else if (payload.eventType === 'UPDATE' && payload.new.branch_id === branchId) {
-          setOrders(prev => {
-            const updated = prev.map(o => o.id === payload.new.id ? payload.new : o);
-            // Remove if it's completed/cancelled/no_show
-            return updated.filter(o => !['completed', 'cancelled', 'no_show'].includes(o.status));
-          });
-        }
-      })
-      .subscribe();
-
     // Request notification permission
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
+  }, []);
 
-    return () => {
-      (supabase as any).removeChannel(channel);
-    };
-  }, [adminId, branchId]);
+  const { status: realtimeStatus } = useResilientChannel({
+    channelName: adminId && branchId ? `kds:remote_orders:${branchId}` : null,
+    table: 'remote_orders',
+    filter: `admin_id=eq.${adminId}`,
+    onResync: () => fetchOrders(),
+    onChange: (payload: any) => {
+      if (payload.eventType === 'INSERT' && payload.new?.branch_id === branchId) {
+        playChime();
+        showNotification(payload.new.customer_name);
+        setOrders(prev => (prev.some(o => o.id === payload.new.id) ? prev : [payload.new, ...prev]));
+      } else if (payload.eventType === 'UPDATE' && payload.new?.branch_id === branchId) {
+        setOrders(prev => {
+          const updated = prev.map(o => (o.id === payload.new.id ? payload.new : o));
+          return updated.filter(o => !['completed', 'cancelled', 'no_show'].includes(o.status));
+        });
+      }
+    },
+  });
+
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -291,9 +285,9 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
                   </Button>
                 </>
               )}
-              {order.order_type === 'delivery' && order.customer_latitude && order.customer_longitude && (
+              {order.order_type === 'delivery' && resolveOrderLocation(order).mapsUrl && (
                  <Button size="sm" variant="outline" className="h-8 flex-1" asChild>
-                   <a href={`https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`} target="_blank" rel="noreferrer"><Map className="w-3 h-3 mr-1" /> Map</a>
+                   <a href={resolveOrderLocation(order).mapsUrl!} target="_blank" rel="noreferrer"><Map className="w-3 h-3 mr-1" /> {resolveOrderLocation(order).hasCoords ? 'Map' : 'Address'}</a>
                  </Button>
               )}
               {order.device_id && (

@@ -9,6 +9,8 @@ import { installPerfProfiler } from './utils/perfProfiler'
 import { syncEngine } from './utils/syncEngine'
 import { offlineManager } from './utils/offlineManager'
 import { initStorage } from './utils/storage'
+import { installErrorMonitoring } from './utils/monitoring'
+
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || "",
@@ -36,6 +38,7 @@ Sentry.init({
 });
 
 
+installErrorMonitoring();
 installPerfProfiler();
 startRum();
 initStoragePersistence().catch(() => {});

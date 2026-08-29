@@ -300,7 +300,9 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           </div>
         )}
         <DialogFooter className="gap-2">
-
+          <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
+            <History className="w-4 h-4 mr-2" /> History
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4 mr-2" /> Cancel
           </Button>
@@ -308,6 +310,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
             {isClosingShift ? "Closing Shift..." : "Close Shift & Print"}
           </Button>
         </DialogFooter>
+
+        <ShiftReconciliationHistory open={historyOpen} onOpenChange={setHistoryOpen} />
       </DialogContent>
     </Dialog>
   );
