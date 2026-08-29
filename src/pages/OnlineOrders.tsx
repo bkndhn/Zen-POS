@@ -130,49 +130,42 @@ export default function OnlineOrders() {
   };
 
   useEffect(() => {
-    fetchOrders();
-    fetchHistory();
-    fetchBlockedDevices();
-
-    if (!adminId || !branchId) return;
-
-    const channel = (supabase as any)
-      .channel('public:remote_orders:hub')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'remote_orders',
-        filter: `admin_id=eq.${adminId}`
-      }, (payload: any) => {
-        if (payload.new && payload.new.branch_id === branchId) {
-          if (payload.eventType === 'INSERT') {
-            playChime();
-            showNotification(payload.new.customer_name);
-            setOrders(prev => [payload.new, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            const isCompleted = ['completed', 'cancelled', 'no_show'].includes(payload.new.status);
-            setOrders(prev => {
-              const exists = prev.some(o => o.id === payload.new.id);
-              if (!exists && !isCompleted) return [payload.new, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-              if (isCompleted) return prev.filter(o => o.id !== payload.new.id);
-              return prev.map(o => o.id === payload.new.id ? payload.new : o);
-            });
-            if (isCompleted) {
-              setHistoryOrders(prev => [payload.new, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 50));
-            }
-          }
-        }
-      })
-      .subscribe();
-
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
+  }, []);
 
-    return () => {
-      (supabase as any).removeChannel(channel);
-    };
-  }, [adminId, branchId]);
+  useResilientChannel({
+    channelName: adminId && branchId ? `online-orders:${branchId}` : null,
+    table: 'remote_orders',
+    filter: `admin_id=eq.${adminId}`,
+    onResync: () => {
+      fetchOrders();
+      fetchHistory();
+      fetchBlockedDevices();
+    },
+    onChange: (payload: any) => {
+      if (payload.new && payload.new.branch_id === branchId) {
+        if (payload.eventType === 'INSERT') {
+          playChime();
+          showNotification(payload.new.customer_name);
+          setOrders(prev => (prev.some(o => o.id === payload.new.id) ? prev : [payload.new, ...prev]));
+        } else if (payload.eventType === 'UPDATE') {
+          const isCompleted = ['completed', 'cancelled', 'no_show'].includes(payload.new.status);
+          setOrders(prev => {
+            const exists = prev.some(o => o.id === payload.new.id);
+            if (!exists && !isCompleted) return [payload.new, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            if (isCompleted) return prev.filter(o => o.id !== payload.new.id);
+            return prev.map(o => o.id === payload.new.id ? payload.new : o);
+          });
+          if (isCompleted) {
+            setHistoryOrders(prev => [payload.new, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 50));
+          }
+        }
+      }
+    },
+  });
+
 
   const playChime = () => {
     if (!audioEnabled) return;
