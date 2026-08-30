@@ -86,8 +86,10 @@ export const ShopSettingsForm = () => {
     const [remoteOrderFlow, setRemoteOrderFlow] = useState('manual_settle');
     const [fcmUnlocked, setFcmUnlocked] = useState(false);
     const [fcmEnabled, setFcmEnabled] = useState(false);
-    const [liveBillPushEnabled, setLiveBillPushEnabled] = useState(false);
     const [liveBillPushUnlocked, setLiveBillPushUnlocked] = useState(false);
+    // Per-branch live bill push state: { branchId: boolean }
+    const [liveBillBranchMap, setLiveBillBranchMap] = useState<Record<string, boolean>>({});
+    const [liveBillBranchSettings, setLiveBillBranchSettings] = useState<Array<{id: string; name: string; live_bill_push_enabled: boolean; user_id: string}>>([]);
     const [dailySummaryTime, setDailySummaryTime] = useState<string | null>(null);
     const [nativeAppUnlocked, setNativeAppUnlocked] = useState(false);
 
@@ -240,8 +242,30 @@ export const ShopSettingsForm = () => {
                 setRemoteOrderFlow((data as any).remote_order_flow || 'manual_settle');
                 setFcmUnlocked((data as any).fcm_unlocked ?? false);
                 setFcmEnabled((data as any).fcm_enabled ?? false);
-                setLiveBillPushEnabled((data as any).live_bill_push_enabled ?? false);
                 setLiveBillPushUnlocked((data as any).live_bill_push_unlocked ?? false);
+                // Load per-branch live bill settings
+                if (adminAuthUid) {
+                  const { data: allBranchSettings } = await supabase
+                    .from('shop_settings')
+                    .select('id, branch_id, live_bill_push_enabled, user_id')
+                    .eq('user_id', adminAuthUid);
+                  const { data: allBranches } = await supabase
+                    .from('branches')
+                    .select('id, name')
+                    .eq('admin_id', adminAuthUid);
+                  if (allBranches && allBranchSettings) {
+                    const merged = allBranches.map(b => ({
+                      id: b.id,
+                      name: b.name,
+                      live_bill_push_enabled: allBranchSettings.find(s => s.branch_id === b.id)?.live_bill_push_enabled ?? false,
+                      user_id: adminAuthUid
+                    }));
+                    setLiveBillBranchSettings(merged);
+                    const bMap: Record<string, boolean> = {};
+                    merged.forEach(b => { bMap[b.id] = b.live_bill_push_enabled; });
+                    setLiveBillBranchMap(bMap);
+                  }
+                }
                 setDailySummaryTime((data as any).daily_summary_time || null);
                 setNativeAppUnlocked((data as any).native_app_unlocked ?? false);
                 let resolvedVisiblePages: string[] = [];
