@@ -863,8 +863,8 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const { data: shopSettingsData } = await supabase.from('shop_settings').select('admin_id, shift_management_unlocked, fcm_unlocked') as { data: any[] | null };
-        const settingsMap = new Map((shopSettingsData || []).map((s: any) => [s.admin_id, s]));
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, shift_management_unlocked, fcm_unlocked') as { data: any[] | null };
+        const settingsMap = new Map((shopSettingsData || []).map((s: any) => [s.user_id, s]));
 
         const enrichedRows = (data as Row[]).map(r => {
           const prof: any = profileMap.get(r.profile_id) || {};
@@ -1350,11 +1350,7 @@ const SuperAdminUsers: React.FC = () => {
                                       id={`sa-shift-${r.profile_id}`}
                                       checked={r._shiftUnlocked ?? false}
                                       onCheckedChange={async (val) => {
-                                        const { error } = await supabase.from('shop_settings').update({ shift_management_unlocked: val } as any).eq('admin_id', r.profile_id);
-                                        if (error) {
-                                          // If no row exists, insert
-                                          await supabase.from('shop_settings').insert({ admin_id: r.profile_id, shift_management_unlocked: val } as any);
-                                        }
+                                        await supabase.from('shop_settings').update({ shift_management_unlocked: val } as any).eq('user_id', r.profile_id);
                                         setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _shiftUnlocked: val } : u));
                                         toast({ title: val ? 'Shift Management unlocked' : 'Shift Management locked' });
                                       }}
@@ -1367,10 +1363,7 @@ const SuperAdminUsers: React.FC = () => {
                                       id={`sa-fcm-${r.profile_id}`}
                                       checked={r._fcmUnlocked ?? false}
                                       onCheckedChange={async (val) => {
-                                        const { error } = await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('admin_id', r.profile_id);
-                                        if (error) {
-                                          await supabase.from('shop_settings').insert({ admin_id: r.profile_id, fcm_unlocked: val } as any);
-                                        }
+                                        await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('user_id', r.profile_id);
                                         setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _fcmUnlocked: val } : u));
                                         toast({ title: val ? 'Push Notifications unlocked' : 'Push Notifications locked' });
                                       }}
