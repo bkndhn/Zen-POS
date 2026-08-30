@@ -171,11 +171,10 @@ async function sendToToken(
         notification: {
           title,
           body,
-          icon: '/logo.png',
-          badge: '/logo.png',
-          requireInteraction: true,
+          icon: 'https://zen-pos.vercel.app/logo.png',
+          badge: 'https://zen-pos.vercel.app/logo.png',
         },
-        fcm_options: { link: data.url || '/' },
+        fcm_options: { link: data.url ? `https://zen-pos.vercel.app${data.url}` : 'https://zen-pos.vercel.app/' },
       },
     },
   };
