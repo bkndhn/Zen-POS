@@ -14,7 +14,7 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tamilnews-63848',
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tamilnews-63848'}.appspot.com`,
   messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID || '650662888105',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:650662888105:web:a4387bcce9ebf7e62d1fb8',
 };
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BM8N4kX1uE1vTI4IJE4F8GTaAy2o4uzz-loI_1m615_PWnR7pKI0U5-yamDl5uCXdLjrkTzKXFfo3XvkeNRjUUc';
