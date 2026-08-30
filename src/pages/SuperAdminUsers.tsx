@@ -868,7 +868,7 @@ const SuperAdminUsers: React.FC = () => {
 
         const enrichedRows = (data as Row[]).map(r => {
           const prof: any = profileMap.get(r.profile_id) || {};
-          const settings: any = settingsMap.get(r.profile_id) || {};
+          const settings: any = settingsMap.get(r.user_id) || {};
           return {
             ...r,
             client_permissions: prof.client_permissions || {},
@@ -1350,7 +1350,7 @@ const SuperAdminUsers: React.FC = () => {
                                       id={`sa-shift-${r.profile_id}`}
                                       checked={r._shiftUnlocked ?? false}
                                       onCheckedChange={async (val) => {
-                                        await supabase.from('shop_settings').update({ shift_management_unlocked: val } as any).eq('user_id', r.profile_id);
+                                        await supabase.from('shop_settings').update({ shift_management_unlocked: val } as any).eq('user_id', r.user_id);
                                         setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _shiftUnlocked: val } : u));
                                         toast({ title: val ? 'Shift Management unlocked' : 'Shift Management locked' });
                                       }}
@@ -1363,7 +1363,7 @@ const SuperAdminUsers: React.FC = () => {
                                       id={`sa-fcm-${r.profile_id}`}
                                       checked={r._fcmUnlocked ?? false}
                                       onCheckedChange={async (val) => {
-                                        await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('user_id', r.profile_id);
+                                        await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('user_id', r.user_id);
                                         setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _fcmUnlocked: val } : u));
                                         toast({ title: val ? 'Push Notifications unlocked' : 'Push Notifications locked' });
                                       }}
