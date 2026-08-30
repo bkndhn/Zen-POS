@@ -85,6 +85,7 @@ export const ShopSettingsForm = () => {
     const [fcmUnlocked, setFcmUnlocked] = useState(false);
     const [fcmEnabled, setFcmEnabled] = useState(false);
     const [dailySummaryTime, setDailySummaryTime] = useState<string | null>(null);
+    const [nativeAppUnlocked, setNativeAppUnlocked] = useState(false);
 
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>([]);
@@ -236,6 +237,7 @@ export const ShopSettingsForm = () => {
                 setFcmUnlocked((data as any).fcm_unlocked ?? false);
                 setFcmEnabled((data as any).fcm_enabled ?? false);
                 setDailySummaryTime((data as any).daily_summary_time || null);
+                setNativeAppUnlocked((data as any).native_app_unlocked ?? false);
                 let resolvedVisiblePages: string[] = [];
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
                     resolvedVisiblePages = (data as any).visible_nav_pages as string[];
@@ -1068,6 +1070,78 @@ export const ShopSettingsForm = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* ─── Mobile App ─── */}
+                <Card className="border-orange-200 dark:border-orange-900/40">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            📱 Mobile App
+                            {!nativeAppUnlocked && (
+                                <span className="text-[10px] bg-orange-500 text-white rounded-full px-2 py-0.5 font-bold uppercase">Pro Add-on</span>
+                            )}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {nativeAppUnlocked ? (
+                            <>
+                                <p className="text-sm text-muted-foreground">
+                                    Download and install the ZenPOS Android app for the best experience — instant notifications, offline billing, and Bluetooth printing.
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    <Button
+                                        variant="outline"
+                                        className="gap-2"
+                                        onClick={async () => {
+                                            try {
+                                                const { data } = await supabase.storage
+                                                    .from('app-releases')
+                                                    .createSignedUrl('zenpos-latest.apk', 3600);
+                                                if (data?.signedUrl) {
+                                                    window.open(data.signedUrl, '_blank');
+                                                } else {
+                                                    toast({ title: 'APK not available yet', description: 'Please contact support.', variant: 'destructive' });
+                                                }
+                                            } catch {
+                                                toast({ title: 'Download failed', variant: 'destructive' });
+                                            }
+                                        }}
+                                    >
+                                        ⬇️ Download APK
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="gap-2 text-muted-foreground"
+                                        onClick={async () => {
+                                            try {
+                                                const { data } = await supabase.storage
+                                                    .from('app-releases')
+                                                    .createSignedUrl('zenpos-latest.apk', 86400);
+                                                if (data?.signedUrl) {
+                                                    await navigator.clipboard.writeText(data.signedUrl);
+                                                    toast({ title: 'Download link copied! Share with your staff.' });
+                                                } else {
+                                                    toast({ title: 'APK not available yet', variant: 'destructive' });
+                                                }
+                                            } catch {
+                                                toast({ title: 'Failed to copy link', variant: 'destructive' });
+                                            }
+                                        }}
+                                    >
+                                        🔗 Share Link with Staff
+                                    </Button>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                    After downloading, open the APK file to install. You may need to enable &quot;Install from unknown sources&quot; in your device settings.
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-sm text-orange-600 dark:text-orange-400">
+                                Contact Super Admin to unlock native app access for your account.
+                            </p>
                         )}
                     </CardContent>
                 </Card>

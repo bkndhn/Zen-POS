@@ -95,6 +95,7 @@ interface Row {
   public_ordering_enabled?: boolean;
   _shiftUnlocked?: boolean;
   _fcmUnlocked?: boolean;
+  _nativeAppUnlocked?: boolean;
 }
 
 interface ClientLimitsModalProps {
@@ -863,7 +864,7 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, shift_management_unlocked, fcm_unlocked') as { data: any[] | null };
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, shift_management_unlocked, fcm_unlocked, native_app_unlocked') as { data: any[] | null };
         const settingsMap = new Map((shopSettingsData || []).map((s: any) => [s.user_id, s]));
 
         const enrichedRows = (data as Row[]).map(r => {
@@ -884,6 +885,7 @@ const SuperAdminUsers: React.FC = () => {
             public_ordering_enabled: prof.public_ordering_enabled !== false,
             _shiftUnlocked: settings.shift_management_unlocked ?? false,
             _fcmUnlocked: settings.fcm_unlocked ?? false,
+            _nativeAppUnlocked: settings.native_app_unlocked ?? false,
           };
         });
 
@@ -1370,6 +1372,19 @@ const SuperAdminUsers: React.FC = () => {
                                       className="scale-75"
                                     />
                                     <Label htmlFor={`sa-fcm-${r.profile_id}`} className="text-[10px] cursor-pointer whitespace-nowrap">FCM</Label>
+                                  </div>
+                                  <div className="flex items-center gap-1.5" title="Unlock Native App (Capacitor APK) for this client">
+                                    <Switch
+                                      id={`sa-app-${r.profile_id}`}
+                                      checked={r._nativeAppUnlocked ?? false}
+                                      onCheckedChange={async (val) => {
+                                        await supabase.from('shop_settings').update({ native_app_unlocked: val } as any).eq('user_id', r.user_id);
+                                        setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _nativeAppUnlocked: val } : u));
+                                        toast({ title: val ? 'Native App unlocked' : 'Native App locked' });
+                                      }}
+                                      className="scale-75"
+                                    />
+                                    <Label htmlFor={`sa-app-${r.profile_id}`} className="text-[10px] cursor-pointer whitespace-nowrap">App</Label>
                                   </div>
                                 </div>
                               </>

@@ -959,6 +959,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       severity: 'info',
       details: { platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web' },
     });
+    // ─── NATIVE APP ACCESS GATE ──────────────────────────────────
+    // Block login on Capacitor if super admin hasn't unlocked native app
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          // Resolve admin auth uid: if user is admin, use own id; if sub-user, get admin's auth uid
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, role, admin_id')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+
+          let adminAuthUid = authUser.id;
+          if (profileData?.role === 'user' && profileData?.admin_id) {
+            const { data: adminProfile } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .eq('id', profileData.admin_id)
+              .maybeSingle();
+            if (adminProfile?.user_id) adminAuthUid = adminProfile.user_id;
+          }
+
+          const { data: settings } = await supabase
+            .from('shop_settings')
+            .select('native_app_unlocked')
+            .eq('user_id', adminAuthUid)
+            .limit(1)
+            .maybeSingle();
+
+          if (!settings?.native_app_unlocked) {
+            await supabase.auth.signOut();
+            return {
+              error: 'Native app access is not enabled for your account. Please use the web app or contact your administrator.',
+            };
+          }
+        }
+      } catch (gateErr) {
+        devLog('Native app gate check failed (allowing login):', gateErr);
+        // Fail-open: if the gate check itself errors, allow login
+      }
+    }
 
     return { error: null };
   };
