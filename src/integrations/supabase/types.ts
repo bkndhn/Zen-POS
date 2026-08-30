@@ -438,6 +438,44 @@ export type Database = {
           },
         ]
       }
+      auth_providers: {
+        Row: {
+          id: string
+          last_used_at: string | null
+          linked_at: string | null
+          metadata: Json | null
+          profile_id: string
+          provider: string
+          provider_uid: string
+        }
+        Insert: {
+          id?: string
+          last_used_at?: string | null
+          linked_at?: string | null
+          metadata?: Json | null
+          profile_id: string
+          provider: string
+          provider_uid: string
+        }
+        Update: {
+          id?: string
+          last_used_at?: string | null
+          linked_at?: string | null
+          metadata?: Json | null
+          profile_id?: string
+          provider?: string
+          provider_uid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_providers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backup_logs: {
         Row: {
           backup_time: string
@@ -2894,6 +2932,36 @@ export type Database = {
           },
         ]
       }
+      push_queue: {
+        Row: {
+          body: string
+          created_at: string | null
+          data: Json | null
+          id: string
+          processed: boolean | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          processed?: boolean | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          processed?: boolean | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       recipes: {
         Row: {
           admin_id: string
@@ -3191,6 +3259,53 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_audit_log: {
+        Row: {
+          action: string
+          admin_id: string
+          branch_id: string | null
+          created_at: string | null
+          details: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          performed_by: string | null
+          shift_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+          shift_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string | null
+          shift_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_audit_log_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_reconciliations: {
         Row: {
           actual_cash: number
@@ -3326,6 +3441,7 @@ export type Database = {
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
+          daily_summary_time: string | null
           default_cooking_time_mins: number
           default_order_type: string | null
           default_payment_gateway: string | null
@@ -3335,6 +3451,8 @@ export type Database = {
           delivery_fee_mode: string | null
           delivery_fee_per_km: number | null
           facebook: string | null
+          fcm_enabled: boolean | null
+          fcm_unlocked: boolean | null
           google_review_url: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -3362,6 +3480,7 @@ export type Database = {
           menu_show_shop_name: boolean | null
           menu_slug: string | null
           menu_text_color: string | null
+          native_app_unlocked: boolean | null
           operating_hours: Json | null
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
@@ -3418,6 +3537,7 @@ export type Database = {
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
+          daily_summary_time?: string | null
           default_cooking_time_mins?: number
           default_order_type?: string | null
           default_payment_gateway?: string | null
@@ -3427,6 +3547,8 @@ export type Database = {
           delivery_fee_mode?: string | null
           delivery_fee_per_km?: number | null
           facebook?: string | null
+          fcm_enabled?: boolean | null
+          fcm_unlocked?: boolean | null
           google_review_url?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -3454,6 +3576,7 @@ export type Database = {
           menu_show_shop_name?: boolean | null
           menu_slug?: string | null
           menu_text_color?: string | null
+          native_app_unlocked?: boolean | null
           operating_hours?: Json | null
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
@@ -3510,6 +3633,7 @@ export type Database = {
           composition_rate?: number | null
           contact_number?: string | null
           created_at?: string | null
+          daily_summary_time?: string | null
           default_cooking_time_mins?: number
           default_order_type?: string | null
           default_payment_gateway?: string | null
@@ -3519,6 +3643,8 @@ export type Database = {
           delivery_fee_mode?: string | null
           delivery_fee_per_km?: number | null
           facebook?: string | null
+          fcm_enabled?: boolean | null
+          fcm_unlocked?: boolean | null
           google_review_url?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -3546,6 +3672,7 @@ export type Database = {
           menu_show_shop_name?: boolean | null
           menu_slug?: string | null
           menu_text_color?: string | null
+          native_app_unlocked?: boolean | null
           operating_hours?: Json | null
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
@@ -4541,6 +4668,7 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_daily_summaries: { Args: never; Returns: undefined }
       get_active_remote_order_for_device: {
         Args: { p_admin_id: string; p_branch_id: string; p_device_id: string }
         Returns: Json
@@ -4596,6 +4724,7 @@ export type Database = {
           composition_rate: number | null
           contact_number: string | null
           created_at: string | null
+          daily_summary_time: string | null
           default_cooking_time_mins: number
           default_order_type: string | null
           default_payment_gateway: string | null
@@ -4605,6 +4734,8 @@ export type Database = {
           delivery_fee_mode: string | null
           delivery_fee_per_km: number | null
           facebook: string | null
+          fcm_enabled: boolean | null
+          fcm_unlocked: boolean | null
           google_review_url: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -4632,6 +4763,7 @@ export type Database = {
           menu_show_shop_name: boolean | null
           menu_slug: string | null
           menu_text_color: string | null
+          native_app_unlocked: boolean | null
           operating_hours: Json | null
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
@@ -4681,6 +4813,16 @@ export type Database = {
         }
       }
       get_my_admin_id: { Args: never; Returns: string }
+      get_my_auth_providers: {
+        Args: never
+        Returns: {
+          last_used_at: string
+          linked_at: string
+          metadata: Json
+          provider: string
+          provider_uid: string
+        }[]
+      }
       get_my_permissions: {
         Args: never
         Returns: {
@@ -4860,6 +5002,10 @@ export type Database = {
           reason: string
         }[]
       }
+      link_auth_provider: {
+        Args: { p_metadata?: Json; p_provider: string; p_provider_uid: string }
+        Returns: Json
+      }
       log_security_event: {
         Args: {
           p_action: string
@@ -4870,6 +5016,17 @@ export type Database = {
           p_target_table?: string
         }
         Returns: string
+      }
+      notify_by_permission: {
+        Args: {
+          p_admin_id: string
+          p_body: string
+          p_branch_id: string
+          p_data?: Json
+          p_required_page: string
+          p_title: string
+        }
+        Returns: undefined
       }
       process_remote_order_auto_settle: {
         Args: { p_order_id: string }
@@ -4933,6 +5090,10 @@ export type Database = {
           branch_id: string
         }[]
       }
+      resolve_profile_by_provider: {
+        Args: { p_provider: string; p_provider_uid: string }
+        Returns: string
+      }
       secure_create_bill:
         | {
             Args: {
@@ -4987,10 +5148,12 @@ export type Database = {
         Returns: undefined
       }
       sweep_admin_storage_alerts: { Args: never; Returns: number }
+      unlink_auth_provider: { Args: { p_provider: string }; Returns: Json }
       user_has_branch_access: {
         Args: { p_branch_id: string }
         Returns: boolean
       }
+      vault_read_secret: { Args: { secret_name: string }; Returns: string }
       void_purchase_transaction: {
         Args: { p_purchase_id: string; p_reason?: string }
         Returns: Json
