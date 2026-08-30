@@ -4447,25 +4447,34 @@ export type Database = {
         Row: {
           created_at: string
           device_token: string
+          enabled: boolean
           id: string
+          last_seen_at: string
           platform: string
           updated_at: string
+          user_agent: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           device_token: string
+          enabled?: boolean
           id?: string
+          last_seen_at?: string
           platform?: string
           updated_at?: string
+          user_agent?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           device_token?: string
+          enabled?: boolean
           id?: string
+          last_seen_at?: string
           platform?: string
           updated_at?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -4967,6 +4976,13 @@ export type Database = {
           show_powered_by_watermark: boolean
         }[]
       }
+      get_push_gate: {
+        Args: never
+        Returns: {
+          enabled: boolean
+          unlocked: boolean
+        }[]
+      }
       get_remote_order_for_device: {
         Args: { p_device_id: string; p_order_id: string }
         Returns: Json
@@ -5075,6 +5091,10 @@ export type Database = {
         Args: { p_admin_id: string }
         Returns: number
       }
+      register_device_token: {
+        Args: { p_platform?: string; p_token: string; p_user_agent?: string }
+        Returns: undefined
+      }
       resolve_branch_menu: {
         Args: { p_branch_code: string; p_shop_slug: string }
         Returns: {
@@ -5149,6 +5169,7 @@ export type Database = {
       }
       sweep_admin_storage_alerts: { Args: never; Returns: number }
       unlink_auth_provider: { Args: { p_provider: string }; Returns: Json }
+      unregister_device_token: { Args: { p_token: string }; Returns: undefined }
       user_has_branch_access: {
         Args: { p_branch_id: string }
         Returns: boolean
