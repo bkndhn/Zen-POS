@@ -17,7 +17,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
 };
 
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BM8N4kX1uE1vTI4IJE4F8GTaAy2o4uzz-loI_1m615_PWnR7pKI0U5-yamDl5uCXdLjrkTzKXFfo3XvkeNRjUUc';
 
 // Singleton Firebase app
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
