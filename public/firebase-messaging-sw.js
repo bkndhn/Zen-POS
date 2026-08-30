@@ -29,7 +29,7 @@ messaging.onBackgroundMessage((payload) => {
 
   const title = payload.notification?.title || 'ZenPOS Alert';
   const body = payload.notification?.body || 'You have a new notification.';
-  const icon = '/lovable-uploads/8779c404-f498-4818-afef-87931b3e4cf0.png'; // ZenPOS logo
+  const icon = '/logo.png'; // ZenPOS logo
   const data = payload.data || {};
 
   // Show the notification

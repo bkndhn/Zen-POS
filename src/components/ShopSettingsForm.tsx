@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { BOTTOM_NAV_OPTIONS, ALL_NAV_ITEMS } from '@/config/navItems';
 import { sanitizeString } from '@/utils/sanitization';
+import PushNotificationDeviceCard from '@/components/PushNotificationDeviceCard';
+
 
 
 export const ShopSettingsForm = () => {
@@ -1046,7 +1048,9 @@ export const ShopSettingsForm = () => {
                                 )}
                             </div>
                         </div>
+                        {fcmEnabled && fcmUnlocked && <PushNotificationDeviceCard />}
                         {fcmEnabled && fcmUnlocked && (
+
                             <div className="flex items-center justify-between pt-4 border-t">
                                 <div>
                                     <Label>Daily Sales Summary</Label>
