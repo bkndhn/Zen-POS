@@ -176,7 +176,27 @@ async function initWeb(
   const messaging = await getMessagingInstance();
   if (!messaging) return;
 
-  // Get the push token (will request permission if needed)
+  // IMPORTANT: Browsers block Notification.requestPermission() if not triggered by a user gesture.
+  // If permission is default, we show a toast with an action button so they can click it.
+  if (Notification.permission === 'default') {
+    toast.info('Enable Web Notifications', {
+      description: 'Get alerts for new orders and low stock',
+      action: {
+        label: 'Allow',
+        onClick: async () => {
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') {
+            toast.success('Notifications enabled!');
+            initWeb(userId, isCleanedUp, unsubRef); // Retry init
+          }
+        }
+      },
+      duration: 10000,
+    });
+    return;
+  }
+
+  // Get the push token (will request permission if needed, but we already gated it above)
   const token = await getWebPushToken();
   if (!token) return;
   if (isCleanedUp()) return;
