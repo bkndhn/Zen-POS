@@ -13,7 +13,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: 'AIzaSyC7iBPg-_1zF3kevK-KboP1vof6rGDrClA',
+  apiKey: 'AIzaSyCUQW2tLm6Jh0Ib0IJ-uBZY1RpFOW2joSE',
   authDomain: 'tamilnews-63848.firebaseapp.com',
   projectId: 'tamilnews-63848',
   storageBucket: 'tamilnews-63848.appspot.com',

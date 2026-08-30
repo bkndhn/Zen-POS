@@ -18,7 +18,7 @@ import {
 } from 'firebase/messaging';
 
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyC7iBPg-_1zF3kevK-KboP1vof6rGDrClA',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCUQW2tLm6Jh0Ib0IJ-uBZY1RpFOW2joSE',
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tamilnews-63848'}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tamilnews-63848',
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tamilnews-63848'}.appspot.com`,
