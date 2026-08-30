@@ -93,6 +93,8 @@ interface Row {
   max_branches?: number;
   max_sub_users?: number;
   public_ordering_enabled?: boolean;
+  _shiftUnlocked?: boolean;
+  _fcmUnlocked?: boolean;
 }
 
 interface ClientLimitsModalProps {
@@ -861,10 +863,12 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id') as { data: any[] | null };
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('admin_id, shift_management_unlocked, fcm_unlocked') as { data: any[] | null };
+        const settingsMap = new Map((shopSettingsData || []).map((s: any) => [s.admin_id, s]));
 
         const enrichedRows = (data as Row[]).map(r => {
           const prof: any = profileMap.get(r.profile_id) || {};
+          const settings: any = settingsMap.get(r.profile_id) || {};
           return {
             ...r,
             client_permissions: prof.client_permissions || {},
@@ -878,6 +882,8 @@ const SuperAdminUsers: React.FC = () => {
             max_branches: prof.max_branches ?? 1,
             max_sub_users: prof.max_sub_users ?? 5,
             public_ordering_enabled: prof.public_ordering_enabled !== false,
+            _shiftUnlocked: settings.shift_management_unlocked ?? false,
+            _fcmUnlocked: settings.fcm_unlocked ?? false,
           };
         });
 
@@ -1331,13 +1337,48 @@ const SuperAdminUsers: React.FC = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteClientClick(r)}
+                    onClick={() => handleDeleteClientClick(r)}
                                   className="h-8 text-xs px-2.5 border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white dark:border-rose-900 dark:text-rose-400 rounded-xl font-bold gap-1 transition-all"
                                   title="Delete Client & Entire Data (Force Logout)"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                   Delete
                                 </Button>
+                                <div className="flex items-center gap-3 ml-1">
+                                  <div className="flex items-center gap-1.5" title="Unlock Shift Management for this client">
+                                    <Switch
+                                      id={`sa-shift-${r.profile_id}`}
+                                      checked={r._shiftUnlocked ?? false}
+                                      onCheckedChange={async (val) => {
+                                        const { error } = await supabase.from('shop_settings').update({ shift_management_unlocked: val } as any).eq('admin_id', r.profile_id);
+                                        if (error) {
+                                          // If no row exists, insert
+                                          await supabase.from('shop_settings').insert({ admin_id: r.profile_id, shift_management_unlocked: val } as any);
+                                        }
+                                        setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _shiftUnlocked: val } : u));
+                                        toast({ title: val ? 'Shift Management unlocked' : 'Shift Management locked' });
+                                      }}
+                                      className="scale-75"
+                                    />
+                                    <Label htmlFor={`sa-shift-${r.profile_id}`} className="text-[10px] cursor-pointer whitespace-nowrap">Shifts</Label>
+                                  </div>
+                                  <div className="flex items-center gap-1.5" title="Unlock FCM Push Notifications for this client">
+                                    <Switch
+                                      id={`sa-fcm-${r.profile_id}`}
+                                      checked={r._fcmUnlocked ?? false}
+                                      onCheckedChange={async (val) => {
+                                        const { error } = await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('admin_id', r.profile_id);
+                                        if (error) {
+                                          await supabase.from('shop_settings').insert({ admin_id: r.profile_id, fcm_unlocked: val } as any);
+                                        }
+                                        setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _fcmUnlocked: val } : u));
+                                        toast({ title: val ? 'Push Notifications unlocked' : 'Push Notifications locked' });
+                                      }}
+                                      className="scale-75"
+                                    />
+                                    <Label htmlFor={`sa-fcm-${r.profile_id}`} className="text-[10px] cursor-pointer whitespace-nowrap">FCM</Label>
+                                  </div>
+                                </div>
                               </>
                             )}
                           </div>
