@@ -168,12 +168,6 @@ async function sendToToken(
       },
       webpush: {
         headers: { Urgency: 'high' },
-        notification: {
-          title,
-          body,
-          icon: 'https://zen-pos.vercel.app/logo.png',
-          badge: 'https://zen-pos.vercel.app/logo.png',
-        },
         fcm_options: { link: data.url ? `https://zen-pos.vercel.app${data.url}` : 'https://zen-pos.vercel.app/' },
       },
     },

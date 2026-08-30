@@ -86,6 +86,8 @@ export const ShopSettingsForm = () => {
     const [remoteOrderFlow, setRemoteOrderFlow] = useState('manual_settle');
     const [fcmUnlocked, setFcmUnlocked] = useState(false);
     const [fcmEnabled, setFcmEnabled] = useState(false);
+    const [liveBillPushEnabled, setLiveBillPushEnabled] = useState(false);
+    const [liveBillPushUnlocked, setLiveBillPushUnlocked] = useState(false);
     const [dailySummaryTime, setDailySummaryTime] = useState<string | null>(null);
     const [nativeAppUnlocked, setNativeAppUnlocked] = useState(false);
 
@@ -238,6 +240,8 @@ export const ShopSettingsForm = () => {
                 setRemoteOrderFlow((data as any).remote_order_flow || 'manual_settle');
                 setFcmUnlocked((data as any).fcm_unlocked ?? false);
                 setFcmEnabled((data as any).fcm_enabled ?? false);
+                setLiveBillPushEnabled((data as any).live_bill_push_enabled ?? false);
+                setLiveBillPushUnlocked((data as any).live_bill_push_unlocked ?? false);
                 setDailySummaryTime((data as any).daily_summary_time || null);
                 setNativeAppUnlocked((data as any).native_app_unlocked ?? false);
                 let resolvedVisiblePages: string[] = [];
@@ -513,6 +517,7 @@ export const ShopSettingsForm = () => {
                     shift_management_enabled: shiftManagementEnabled,
                     remote_order_flow: remoteOrderFlow,
                     fcm_enabled: fcmEnabled,
+                    live_bill_push_enabled: liveBillPushEnabled,
                     daily_summary_time: dailySummaryTime,
             };
 

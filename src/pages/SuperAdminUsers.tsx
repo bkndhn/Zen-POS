@@ -864,7 +864,7 @@ const SuperAdminUsers: React.FC = () => {
 
         const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, shift_management_unlocked, fcm_unlocked, native_app_unlocked') as { data: any[] | null };
+        const { data: shopSettingsData } = await supabase.from('shop_settings').select('user_id, shift_management_unlocked, fcm_unlocked, native_app_unlocked, live_bill_push_unlocked') as { data: any[] | null };
         const settingsMap = new Map((shopSettingsData || []).map((s: any) => [s.user_id, s]));
 
         const enrichedRows = (data as Row[]).map(r => {
@@ -885,7 +885,8 @@ const SuperAdminUsers: React.FC = () => {
             public_ordering_enabled: prof.public_ordering_enabled !== false,
             _shiftUnlocked: settings.shift_management_unlocked ?? false,
             _fcmUnlocked: settings.fcm_unlocked ?? false,
-            _nativeAppUnlocked: settings.native_app_unlocked ?? false,
+            _nativeAppUnlocked: settings.native_app_unlocked,
+              _liveBillPushUnlocked: settings.live_bill_push_unlocked ?? false,
           };
         });
 
@@ -1133,7 +1134,8 @@ const SuperAdminUsers: React.FC = () => {
             <TabsTrigger value="support" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm">
               <Settings className="w-3.5 h-3.5 mr-2" /> Support & Legal
             </TabsTrigger>
-          </TabsList>
+            <TabsTrigger value="push" className="rounded-lg py-2 text-xs font-bold transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm"><Bell className="w-3.5 h-3.5 mr-2" /> Push Alerts</TabsTrigger>
+            </TabsList>
 
           <TabsContent value="users" className="space-y-4 mt-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1400,6 +1402,20 @@ const SuperAdminUsers: React.FC = () => {
                                     />
                                     <Label htmlFor={`sa-app-${r.profile_id}`} className="text-[10px] cursor-pointer whitespace-nowrap">App</Label>
                                   </div>
+
+                                    <div className="flex items-center gap-1.5" title="Unlock Live Bill Push for this client">
+                                      <Switch
+                                        id={`sa-livebill-${r.profile_id}`}
+                                        checked={r._liveBillPushUnlocked ?? false}
+                                        onCheckedChange={async (val) => {
+                                          await supabase.from('shop_settings').update({ live_bill_push_unlocked: val } as any).eq('user_id', r.user_id);
+                                          setRows(prev => prev.map(u => u.profile_id === r.profile_id ? { ...u, _liveBillPushUnlocked: val } : u));
+                                          toast({ title: val ? 'Live Bill Push unlocked' : 'Live Bill Push locked' });
+                                        }}
+                                        className="scale-75"
+                                      />
+                                      <Label htmlFor={`sa-livebill-${r.profile_id}`} className="text-[10px] cursor-pointer whitespace-nowrap">Live Bill</Label>
+                                    </div>
                                 </div>
                               </>
                             )}
@@ -2045,8 +2061,65 @@ const SuperAdminUsers: React.FC = () => {
             )}
           </TabsContent>
 
-        </Tabs>
-      </div>
+            <TabsContent value="push" className="space-y-4 mt-6">
+              <Card className="border-2 border-indigo-100 dark:border-indigo-900 shadow-md">
+                <CardHeader className="bg-indigo-50/50 dark:bg-indigo-950/20 border-b pb-4">
+                  <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+                    <Bell className="w-5 h-5" /> Broadcast Custom Push Notification
+                  </CardTitle>
+                  <CardDescription>
+                    Send a custom notification to all clients or a specific client. Only users who have FCM unlocked and enabled will receive it.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4 max-w-2xl">
+                  <div className="space-y-2">
+                    <Label>Target Recipient</Label>
+                    <select id="push-target" className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+                      <option value="all">🌍 All Active Clients (Broadcast)</option>
+                      {rows.filter(r => r.role === 'admin' || r.role === 'super_admin').map(client => (
+                        <option key={client.profile_id} value={client.profile_id}>
+                          👤 {client.hotel_name || client.name} ({client.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notification Title</Label>
+                    <Input id="push-title" placeholder="e.g. ZenPOS System Update" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Message Body</Label>
+                    <Textarea id="push-body" placeholder="e.g. We just released a new feature..." className="resize-none h-24" />
+                  </div>
+                  <Button className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 text-white" onClick={async () => {
+                    const target = (document.getElementById('push-target') as HTMLSelectElement).value;
+                    const title = (document.getElementById('push-title') as HTMLInputElement).value;
+                    const body = (document.getElementById('push-body') as HTMLTextAreaElement).value;
+                    if (!title || !body) return alert('Title and body are required!');
+                    
+                    try {
+                      // @ts-ignore
+                      const { data, error } = await supabase.rpc('admin_send_custom_push', {
+                        p_title: title,
+                        p_body: body,
+                        p_target_user_id: target === 'all' ? null : target
+                      });
+                      if (error) throw error;
+                      alert('Successfully queued ' + data + ' push notifications!');
+                      (document.getElementById('push-title') as HTMLInputElement).value = '';
+                      (document.getElementById('push-body') as HTMLTextAreaElement).value = '';
+                    } catch (e: any) {
+                      alert('Failed: ' + e.message);
+                    }
+                  }}>
+                    <Play className="w-4 h-4 mr-2 fill-current" /> Send Notification Now
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+          </Tabs>
+        </div>
 
       {/* Permissions Dialog */}
       <Dialog open={permsDialogOpen} onOpenChange={setPermsDialogOpen}>
