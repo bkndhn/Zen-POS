@@ -146,6 +146,21 @@ serve(async (req) => {
             }
           }
         },
+        webpush: {
+          headers: {
+            Urgency: 'high',
+          },
+          notification: {
+            title,
+            body,
+            icon: '/lovable-uploads/8779c404-f498-4818-afef-87931b3e4cf0.png',
+            badge: '/lovable-uploads/8779c404-f498-4818-afef-87931b3e4cf0.png',
+            requireInteraction: true,
+          },
+          fcmOptions: {
+            link: fcmData.url || '/',
+          },
+        },
         tokens: chunk,
       };
 
