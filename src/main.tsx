@@ -35,6 +35,16 @@ Sentry.init({
   tracesSampleRate: 1.0, 
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
+  environment: import.meta.env.PROD ? 'production' : 'development',
+  beforeSend(event) {
+    // Enrich every Sentry event with Supabase context
+    event.tags = {
+      ...event.tags,
+      app_version: import.meta.env.VITE_APP_VERSION || 'dev',
+      connection: navigator.onLine ? 'online' : 'offline',
+    };
+    return event;
+  },
 });
 
 

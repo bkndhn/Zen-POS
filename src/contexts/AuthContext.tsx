@@ -1,4 +1,5 @@
 import { getAppBaseUrl } from '@/utils/urlUtils';
+import * as Sentry from '@sentry/react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { User, Session } from '@supabase/supabase-js';
@@ -367,6 +368,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   setAdminProfileId(pId);
                   setAdminAuthUid(aId);
                   setProfile(userProfile);
+                  Sentry.setUser({
+                    id: userProfile.user_id,
+                    username: userProfile.name || undefined,
+                    segment: userProfile.role,
+                  });
+                  Sentry.setTag('admin_id', pId || userProfile.id);
+                  Sentry.setTag('user_role', userProfile.role);
                   devLog('Profile and Admin IDs set');
                 }
               }
@@ -992,6 +1000,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAdminProfileId(null);
     setAdminAuthUid(null);
     setProfile(null);
+    Sentry.setUser(null);
     setLoading(false);
   };
 

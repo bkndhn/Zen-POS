@@ -46,8 +46,22 @@ export function reportIssue({ category, message, context, level = 'error' }: Rep
 
     Sentry.withScope((scope) => {
       scope.setTag('alert_category', category);
+      scope.setTag('connection_state', navigator.onLine ? 'online' : 'offline');
       scope.setLevel(level);
-      if (context) scope.setContext('details', context as Record<string, unknown>);
+
+      // Add rich Supabase context
+      if (context) {
+        scope.setContext('supabase_details', context as Record<string, unknown>);
+        if (context.code) scope.setTag('pg_error_code', String(context.code));
+        if (context.label) scope.setTag('query_label', String(context.label));
+        if (context.table) scope.setTag('db_table', String(context.table));
+      }
+
+      // Group realtime errors together
+      if (category === 'realtime') {
+        scope.setFingerprint(['realtime', context?.channelName as string || message]);
+      }
+
       Sentry.captureMessage(`[${category}] ${message}`, level);
     });
 

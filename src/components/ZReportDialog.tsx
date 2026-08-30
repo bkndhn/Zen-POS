@@ -7,10 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { format } from 'date-fns';
-import { Printer, X, History } from 'lucide-react';
+import { Printer, X, History, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { checkSupabaseResult } from '@/utils/monitoring';
 import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHistory';
+import { generateZReportPdf } from '@/utils/zReportPdf';
 
 
 interface ZReportDialogProps {
@@ -128,6 +129,41 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!reportData) return;
+    setLoading(true);
+    try {
+      const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+      const branchId = operatingBranchId || profile?.id;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: historyData } = await supabase
+        .from('shift_reconciliations')
+        .select('*')
+        .eq('admin_id', adminId)
+        .eq('branch_id', branchId)
+        .gte('opened_at', thirtyDaysAgo.toISOString())
+        .order('opened_at', { ascending: false });
+
+      const pdfData = {
+        branchName: reportData.branchName,
+        date: reportData.date,
+        totalSales: reportData.totalAmount,
+        totalBills: reportData.totalBills,
+        paymentTotals: reportData.paymentTotals,
+        openingCash: reportData.shift ? Number(reportData.shift.opening_cash) : undefined,
+      };
+      
+      const doc = generateZReportPdf(pdfData, historyData || []);
+      doc.save(`Z-Report_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.pdf`);
+      toast({ title: 'Success', description: 'PDF generated successfully.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePrint = async () => {
     if (!reportData) return;
@@ -302,6 +338,9 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         <DialogFooter className="gap-2">
           <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
             <History className="w-4 h-4 mr-2" /> History
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPdf} disabled={loading || !reportData}>
+            <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4 mr-2" /> Cancel
