@@ -18,7 +18,7 @@ firebase.initializeApp({
   projectId: 'tamilnews-63848',
   storageBucket: 'tamilnews-63848.appspot.com',
   messagingSenderId: '650662888105',
-  appId: '',  // Will be populated after registering a web app in Firebase Console
+  appId: '1:650662888105:web:a4387bcce9ebf7e62d1fb8',
 });
 
 const messaging = firebase.messaging();
