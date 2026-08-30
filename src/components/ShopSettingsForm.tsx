@@ -1079,13 +1079,13 @@ export const ShopSettingsForm = () => {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                             📱 Mobile App
-                            {!nativeAppUnlocked && (
+                            {!nativeAppUnlocked && profile?.role !== 'super_admin' && (
                                 <span className="text-[10px] bg-orange-500 text-white rounded-full px-2 py-0.5 font-bold uppercase">Pro Add-on</span>
                             )}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {nativeAppUnlocked ? (
+                        {(nativeAppUnlocked || profile?.role === 'super_admin') ? (
                             <>
                                 <p className="text-sm text-muted-foreground">
                                     Download and install the ZenPOS Android app for the best experience — instant notifications, offline billing, and Bluetooth printing.

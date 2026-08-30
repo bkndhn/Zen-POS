@@ -972,28 +972,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('user_id', authUser.id)
             .maybeSingle();
 
-          let adminAuthUid = authUser.id;
-          if (profileData?.role === 'user' && profileData?.admin_id) {
-            const { data: adminProfile } = await supabase
-              .from('profiles')
-              .select('user_id')
-              .eq('id', profileData.admin_id)
+          // Super admins always bypass the native app gate
+          if (profileData?.role === 'super_admin') {
+            // Allow super admin to login on native app always
+          } else {
+            let adminAuthUid = authUser.id;
+            if (profileData?.role === 'user' && profileData?.admin_id) {
+              const { data: adminProfile } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('id', profileData.admin_id)
+                .maybeSingle();
+              if (adminProfile?.user_id) adminAuthUid = adminProfile.user_id;
+            }
+
+            const { data: settings } = await supabase
+              .from('shop_settings')
+              .select('native_app_unlocked')
+              .eq('user_id', adminAuthUid)
+              .limit(1)
               .maybeSingle();
-            if (adminProfile?.user_id) adminAuthUid = adminProfile.user_id;
-          }
 
-          const { data: settings } = await supabase
-            .from('shop_settings')
-            .select('native_app_unlocked')
-            .eq('user_id', adminAuthUid)
-            .limit(1)
-            .maybeSingle();
-
-          if (!settings?.native_app_unlocked) {
-            await supabase.auth.signOut();
-            return {
-              error: 'Native app access is not enabled for your account. Please use the web app or contact your administrator.',
-            };
+            if (!settings?.native_app_unlocked) {
+              await supabase.auth.signOut();
+              return {
+                error: 'Native app access is not enabled for your account. Please use the web app or contact your administrator.',
+              };
+            }
           }
         }
       } catch (gateErr) {

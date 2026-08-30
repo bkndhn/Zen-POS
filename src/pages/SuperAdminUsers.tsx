@@ -1098,6 +1098,20 @@ const SuperAdminUsers: React.FC = () => {
             <Button size="sm" variant="outline" onClick={() => window.location.assign('/super-admin/rum')}>
               <Activity className="w-3.5 h-3.5 mr-1" /> RUM Dashboard
             </Button>
+            <Button size="sm" variant="outline" onClick={async () => {
+              try {
+                const { data } = await supabase.storage.from('app-releases').createSignedUrl('zenpos-latest.apk', 3600);
+                if (data?.signedUrl) {
+                  window.open(data.signedUrl, '_blank');
+                } else {
+                  toast({ title: 'APK not available', description: 'Upload an APK to app-releases bucket first.', variant: 'destructive' });
+                }
+              } catch {
+                toast({ title: 'Download failed', variant: 'destructive' });
+              }
+            }}>
+              📱 Download APK
+            </Button>
             <Badge className="px-3 py-1 font-bold text-xs uppercase tracking-wider bg-primary/10 border-primary/20 text-primary">System Overlord</Badge>
           </div>
         </div>
