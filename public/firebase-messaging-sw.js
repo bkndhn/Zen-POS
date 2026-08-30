@@ -4,10 +4,14 @@
  * This service worker handles push notifications when the web app is in the
  * background or closed. It MUST be at the root of the domain (public/).
  *
- * Firebase SDK version must match the one installed in package.json.
+ * Uses BOTH the raw push event listener (most reliable for background/closed apps)
+ * AND the Firebase SDK onBackgroundMessage as a fallback.
  */
 /* eslint-disable no-restricted-globals */
 /* eslint-disable no-undef */
+
+const SITE_URL = 'https://zen-pos.vercel.app';
+const ICON_URL = `${SITE_URL}/brand/logo.png`;
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
@@ -23,48 +27,91 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background messages (when the web app is not in focus)
-messaging.onBackgroundMessage((payload) => {
-  console.log('[FCM SW] Background message received:', payload);
+// ─── RAW PUSH EVENT (Most reliable — fires even when app is completely closed) ───
+// This fires for ANY push event. We parse the payload manually.
+// The Firebase SDK's onBackgroundMessage only fires for data-only messages,
+// so we use this raw handler to guarantee notification display.
+self.addEventListener('push', (event) => {
+  console.log('[FCM SW] Raw push event received');
 
-  const title = payload.notification?.title || 'ZenPOS Alert';
-  const body = payload.notification?.body || 'You have a new notification.';
-  const icon = '/logo.png'; // ZenPOS logo
-  const data = payload.data || {};
+  if (!event.data) {
+    console.warn('[FCM SW] Push event has no data');
+    return;
+  }
 
-  // Show the notification
-  self.registration.showNotification(title, {
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (e) {
+    console.warn('[FCM SW] Could not parse push data as JSON:', e);
+    return;
+  }
+
+  console.log('[FCM SW] Push payload:', JSON.stringify(payload));
+
+  // FCM wraps the notification in different ways depending on the platform
+  // Try all possible locations for title/body/data
+  const notification =
+    payload.notification ||
+    payload.data?.notification ||
+    payload.fcmOptions?.notification ||
+    {};
+
+  const title = notification.title || payload.data?.title || 'ZenPOS Alert';
+  const body = notification.body || payload.data?.body || 'You have a new notification.';
+  const url = payload.fcmOptions?.link || payload.data?.url || '/';
+  const clickUrl = url.startsWith('http') ? url : `${SITE_URL}${url}`;
+
+  const showNotification = self.registration.showNotification(title, {
     body,
-    icon,
-    badge: icon,
-    tag: `zenpos-${Date.now()}`,
-    data: { url: data.url || '/', ...data },
+    icon: ICON_URL,
+    badge: ICON_URL,
+    tag: 'zenpos-push',
+    data: { url: clickUrl },
     vibrate: [200, 100, 200],
-    requireInteraction: true,
+    requireInteraction: false,
   });
+
+  event.waitUntil(showNotification);
 });
 
-// Handle notification click
+// ─── FIREBASE SDK BACKGROUND HANDLER (Fallback for data-only messages) ───
+messaging.onBackgroundMessage((payload) => {
+  console.log('[FCM SW] Firebase background message:', payload);
+  // The raw push handler above already shows the notification for most messages.
+  // This only fires for data-only FCM messages (no notification field).
+  if (!payload.notification) {
+    const title = payload.data?.title || 'ZenPOS Alert';
+    const body = payload.data?.body || 'You have a new notification.';
+    const url = payload.data?.url || '/';
+
+    self.registration.showNotification(title, {
+      body,
+      icon: ICON_URL,
+      badge: ICON_URL,
+      tag: 'zenpos-push',
+      data: { url: url.startsWith('http') ? url : `${SITE_URL}${url}` },
+      vibrate: [200, 100, 200],
+    });
+  }
+});
+
+// ─── NOTIFICATION CLICK ───
 self.addEventListener('notificationclick', (event) => {
   console.log('[FCM SW] Notification click:', event.notification.data);
   event.notification.close();
 
-  const url = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || SITE_URL;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If the app is already open, focus it and navigate
       for (const client of clientList) {
-        if ('focus' in client) {
+        if (client.url.startsWith(SITE_URL) && 'focus' in client) {
           client.focus();
-          client.postMessage({
-            type: 'NOTIFICATION_CLICK',
-            url,
-          });
+          client.postMessage({ type: 'NOTIFICATION_CLICK', url });
           return;
         }
       }
-      // Otherwise open a new window
       return clients.openWindow(url);
     })
   );

@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: null, // We handle SW registration manually so Firebase SW can coexist
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'ZenPOS',
@@ -41,6 +42,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB limit
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm}'],
+        globIgnores: ['firebase-messaging-sw.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/supabase\//],
         runtimeCaching: [
