@@ -631,7 +631,7 @@ const PublicMenu = () => {
     const enablePush = async () => {
         if (!adminId || !sessionId) return;
         try {
-            const res = await enableWebPush(adminId);
+            const res = await enableWebPush(true);
             if (res.status === 'registered' && res.token) {
                 await supabase.from('table_orders').update({ customer_fcm_token: res.token }).eq('session_id', sessionId);
                 setPushStatus('enabled');

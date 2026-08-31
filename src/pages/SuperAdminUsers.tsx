@@ -97,6 +97,7 @@ interface Row {
   _shiftUnlocked?: boolean;
   _fcmUnlocked?: boolean;
   _nativeAppUnlocked?: boolean;
+  _liveBillPushUnlocked?: boolean;
 }
 
 interface ClientLimitsModalProps {
