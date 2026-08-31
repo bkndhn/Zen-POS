@@ -1,56 +1,6 @@
--- FCM Gate & Daily Summary System
--- Super admin controls FCM access per client
-
-ALTER TABLE public.shop_settings
-  ADD COLUMN IF NOT EXISTS fcm_unlocked BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS fcm_enabled BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS daily_summary_time TEXT DEFAULT NULL;
-
--- Update notify_by_permission to check FCM gate
-CREATE OR REPLACE FUNCTION public.notify_by_permission(
-  p_admin_id UUID,
-  p_branch_id UUID,
-  p_required_page TEXT,
-  p_title TEXT,
-  p_body TEXT,
-  p_data JSONB DEFAULT '{}'
-) RETURNS void AS $$
-DECLARE
-  v_fcm_active BOOLEAN;
-BEGIN
-  SELECT (COALESCE(fcm_unlocked, false) AND COALESCE(fcm_enabled, false))
-  INTO v_fcm_active
-  FROM shop_settings
-  WHERE admin_id = p_admin_id
-  LIMIT 1;
-
-  IF NOT COALESCE(v_fcm_active, false) THEN
-    RETURN;
-  END IF;
-
-  INSERT INTO public.push_queue (user_id, title, body, data)
-  SELECT p.user_id, p_title, p_body, p_data
-  FROM profiles p
-  WHERE p.id = p_admin_id AND p.role = 'admin'
-  UNION ALL
-  SELECT p.user_id, p_title, p_body, p_data
-  FROM profiles p
-  INNER JOIN user_permissions up ON up.user_id = p.id
-    AND up.page_name = p_required_page
-    AND up.has_access = true
-  WHERE p.admin_id = p_admin_id
-    AND p.role = 'user'
-    AND (
-      EXISTS (SELECT 1 FROM user_branches ub WHERE ub.user_id = p.user_id AND ub.branch_id = p_branch_id)
-      OR NOT EXISTS (SELECT 1 FROM user_branches ub WHERE ub.user_id = p.user_id)
-    );
-EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'Push notification enqueue failed: %', SQLERRM;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
--- Daily summary generator
+-- Fix: generate_daily_summaries was joining on wrong column
+-- shop_settings has user_id (auth uid), NOT admin_id
+-- profiles links via p.user_id = ss.user_id
 CREATE OR REPLACE FUNCTION public.generate_daily_summaries()
 RETURNS void AS $$
 DECLARE
@@ -92,12 +42,15 @@ BEGIN
 
     SELECT i.name || ' (' || SUM(bi.quantity)::TEXT || ' sold)'
     INTO v_top_item
-    FROM bill_items bi JOIN bills b ON b.id = bi.bill_id JOIN items i ON i.id = bi.item_id
+    FROM bill_items bi
+    JOIN bills b ON b.id = bi.bill_id
+    JOIN items i ON i.id = bi.item_id
     WHERE b.admin_id = v_admin.admin_profile_id AND b.is_deleted = false AND b.created_at::date = v_today
     GROUP BY i.name ORDER BY SUM(bi.quantity) DESC LIMIT 1;
 
     SELECT COUNT(*) INTO v_low_stock_count
-    FROM items WHERE admin_id = v_admin.admin_profile_id AND stock_quantity IS NOT NULL AND stock_quantity < 5;
+    FROM items
+    WHERE admin_id = v_admin.admin_profile_id AND stock_quantity IS NOT NULL AND stock_quantity < 5;
 
     v_summary := 'Total: Rs.' || ROUND(v_total_sales)::TEXT || ' (' || v_bill_count || ' bills)';
     IF v_payment_modes IS NOT NULL THEN v_summary := v_summary || E'\n' || v_payment_modes; END IF;
@@ -118,5 +71,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Cron: run every hour to check which admins need their daily summary
+-- Re-ensure cron job exists
+SELECT cron.unschedule('daily-sales-summary');
 SELECT cron.schedule('daily-sales-summary', '0 * * * *', 'SELECT public.generate_daily_summaries();');
