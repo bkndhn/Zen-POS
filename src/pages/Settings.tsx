@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { Settings as SettingsIcon, DollarSign, Monitor, Plus, Edit, Trash2, Printer, Type, UtensilsCrossed, Search, ChevronRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,24 @@ interface AdditionalCharge {
   is_default: boolean;
 }
 
+
+const SearchableSection = ({ title, keywords, searchQuery, children, isTopLevel = false }: { title: string, keywords: string, searchQuery: string, children: React.ReactNode, isTopLevel?: boolean }) => {
+  if (!searchQuery.trim()) return <>{children}</>;
+  const lowerQ = searchQuery.toLowerCase();
+  const match = title.toLowerCase().includes(lowerQ) || keywords.toLowerCase().includes(lowerQ);
+  if (!match) return null;
+  return (
+    <div className={cn("relative animate-in fade-in slide-in-from-bottom-2", isTopLevel ? "mb-6" : "")}>
+      <div className="absolute -top-3 left-4 z-10">
+        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 shadow-sm font-bold bg-background">{title}</Badge>
+      </div>
+      <div className="border-2 border-primary/20 rounded-xl p-4 bg-primary/5 pt-6 shadow-sm">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 const Settings = () => {
   const { profile , adminProfileId } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
@@ -82,17 +101,6 @@ const Settings = () => {
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
-    if (!q.trim()) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-    const lowerQ = q.toLowerCase();
-    const results = SEARCH_INDEX.filter(item => 
-      item.title.toLowerCase().includes(lowerQ) || item.keywords.includes(lowerQ)
-    );
-    setSearchResults(results);
-    setShowDropdown(true);
   };
 
   const handleSelectResult = (result: any) => {
@@ -323,27 +331,7 @@ const Settings = () => {
               className="pl-9 bg-background/50 backdrop-blur-sm shadow-sm border-primary/20 focus-visible:ring-primary/30"
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              onFocus={() => { if (searchQuery) setShowDropdown(true); }}
             />
-            {showDropdown && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
-                {searchResults.map((res) => (
-                  <div 
-                    key={res.id} 
-                    className="p-3 text-sm hover:bg-muted cursor-pointer flex items-center justify-between border-b last:border-0"
-                    onClick={() => handleSelectResult(res)}
-                  >
-                    <span>{res.title}</span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-            )}
-            {showDropdown && searchResults.length === 0 && searchQuery && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-md shadow-md p-4 text-center text-sm text-muted-foreground">
-                No settings found matching "{searchQuery}"
-              </div>
-            )}
           </div>
         </div>
 
@@ -352,30 +340,32 @@ const Settings = () => {
           <AllBranchesReadOnlyBanner message="Switch to a specific branch to modify settings." />
 
           {/* Shop Details */}
-          <ShopSettingsForm />
+          <SearchableSection title="Shop Details (Name, FCM, Shifts)" keywords="shop fcm live bill name fssai address shift" searchQuery={searchQuery} isTopLevel={true}><ShopSettingsForm /></SearchableSection>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full flex flex-wrap h-auto mb-4 p-1 bg-muted/50 gap-1 justify-start">
-              <TabsTrigger value="billing" className="flex-1 min-w-[120px] text-xs sm:text-sm">🛒 Billing & Checkout</TabsTrigger>
-              <TabsTrigger value="hardware" className="flex-1 min-w-[120px] text-xs sm:text-sm">🖨️ Hardware & Print</TabsTrigger>
-              <TabsTrigger value="preferences" className="flex-1 min-w-[120px] text-xs sm:text-sm">⚙️ App Preferences</TabsTrigger>
-              <TabsTrigger value="integrations" className="flex-1 min-w-[120px] text-xs sm:text-sm">📲 Integrations</TabsTrigger>
-              {profile?.role === 'admin' && <TabsTrigger value="branches" className="flex-1 min-w-[120px] text-xs sm:text-sm">🏢 Branches</TabsTrigger>}
-            </TabsList>
+          <div className="w-full">
+            {!searchQuery.trim() && (
+            <div className="w-full flex flex-wrap h-auto mb-4 p-1 bg-muted/50 gap-1 justify-start rounded-lg">
+              <button onClick={() => setActiveTab('billing')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'billing' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🛒 Billing & Checkout</button>
+              <button onClick={() => setActiveTab('hardware')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'hardware' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🖨️ Hardware & Print</button>
+              <button onClick={() => setActiveTab('preferences')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'preferences' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>⚙️ App Preferences</button>
+              <button onClick={() => setActiveTab('integrations')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'integrations' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🔗 Integrations</button>
+              {profile?.role === 'admin' && <button onClick={() => setActiveTab('branches')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'branches' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🏢 Branches</button>}
+            </div>
+          )}
 
-            <TabsContent value="billing" className="space-y-4 sm:space-y-6 mt-0">
+            <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "billing") ? "hidden" : "block")}>
               {/* Device Prefix Settings */}
-              <DevicePrefixSettings />
+              <SearchableSection title="Device Prefix" keywords="device prefix bill number" searchQuery={searchQuery}><DevicePrefixSettings /></SearchableSection>
 
               {/* GST / Tax Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">GST Settings failed to load. Try refreshing.</div>}>
-            <GSTSettings />
+            <SearchableSection title="GST & Tax Settings" keywords="gst tax hsn cgst sgst" searchQuery={searchQuery}><GSTSettings /></SearchableSection>
           </ErrorBoundary>
               {/* Order Type (Dine In / Parcel) Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Order Type Settings failed to load. Try refreshing.</div>}>
-            <OrderTypeSettings />
+            <SearchableSection title="Order Types & Delivery" keywords="order type dine in parcel delivery" searchQuery={searchQuery}><OrderTypeSettings /></SearchableSection>
           </ErrorBoundary>
-              {profile?.role === 'admin' && <PaymentTypesManagement />}
+              {profile?.role === 'admin' && <SearchableSection title='Payment Types' keywords='payment methods cash card upi g pay' searchQuery={searchQuery}><PaymentTypesManagement /></SearchableSection>}
               {/* Additional Charges Management */}
           <Card>
             <CardHeader className="p-4 sm:p-6">
@@ -571,12 +561,12 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
-            </TabsContent>
+            </div>
 
-            <TabsContent value="hardware" className="space-y-4 sm:space-y-6 mt-0">
+            <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "hardware") ? "hidden" : "block")}>
               {/* Bluetooth Printer Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Printer Settings failed to load. Try refreshing.</div>}>
-            <BluetoothPrinterSettings />
+            <SearchableSection title="Bluetooth Printer" keywords="printer bluetooth print thermal esc pos paper" searchQuery={searchQuery}><BluetoothPrinterSettings /></SearchableSection>
           </ErrorBoundary>
               {/* Print Settings */}
           <Card>
@@ -612,11 +602,11 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
-            </TabsContent>
+            </div>
 
-            <TabsContent value="preferences" className="space-y-4 sm:space-y-6 mt-0">
+            <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "preferences") ? "hidden" : "block")}>
               {/* Local Backup Settings */}
-              <LocalBackupSettings />
+              <SearchableSection title="Local Backup & Privacy" keywords="local backup privacy wipe self destruct storage" searchQuery={searchQuery}><LocalBackupSettings /></SearchableSection>
 
               {/* Display Settings */}
           <Card>
@@ -634,7 +624,7 @@ const Settings = () => {
           </Card>
               {/* Theme Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Theme Settings failed to load. Try refreshing.</div>}>
-            <ThemeSettings />
+            <SearchableSection title="Theme Settings (Dark Mode)" keywords="theme colors dark light mode appearance" searchQuery={searchQuery}><ThemeSettings /></SearchableSection>
           </ErrorBoundary>
               {/* Accessibility Settings */}
           <Card>
@@ -827,38 +817,38 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
-            </TabsContent>
+            </div>
 
-            <TabsContent value="integrations" className="space-y-4 sm:space-y-6 mt-0">
+            <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "integrations") ? "hidden" : "block")}>
               {/* Payment Gateway (auto-collection) */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Payment Gateway Settings failed to load. Try refreshing.</div>}>
-            <PaymentGatewaySettings />
+            <SearchableSection title="Payment Gateway" keywords="payment gateway razorpay payu stripe upi dynamic auto collect" searchQuery={searchQuery}><PaymentGatewaySettings /></SearchableSection>
           </ErrorBoundary>
               {/* WhatsApp Bill Share Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">WhatsApp Settings failed to load. Try refreshing.</div>}>
-            <WhatsAppSettings />
+            <SearchableSection title="WhatsApp Settings" keywords="whatsapp share text image integration chat msg" searchQuery={searchQuery}><WhatsAppSettings /></SearchableSection>
           </ErrorBoundary>
               {/* Food Aggregator Integrations */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Aggregator Settings failed to load. Try refreshing.</div>}>
-            <AggregatorIntegrationSettings />
+            <SearchableSection title="Aggregators" keywords="aggregator zomato swiggy webhook" searchQuery={searchQuery}><AggregatorIntegrationSettings /></SearchableSection>
           </ErrorBoundary>
 
               {/* Remote Ordering Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Remote Ordering Settings failed to load. Try refreshing.</div>}>
-            <RemoteOrderSettings />
+            <SearchableSection title="Remote & QR Orders" keywords="remote online orders qr menu" searchQuery={searchQuery}><RemoteOrderSettings /></SearchableSection>
           </ErrorBoundary>
               {profile?.role === 'admin' && <StorageUsageSettings />}
-            </TabsContent>
+            </div>
 
             {profile?.role === 'admin' && (
-              <TabsContent value="branches" className="space-y-4 sm:space-y-6 mt-0">
+              <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "branches") ? "hidden" : "block")}>
                 {/* Branch Management (admin only) */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Branch Management failed to load. Try refreshing.</div>}>
-            <BranchManagement />
+            <SearchableSection title="Branch Management" keywords="branch locations multi stores" searchQuery={searchQuery}><BranchManagement /></SearchableSection>
           </ErrorBoundary>
-              </TabsContent>
+              </div>
             )}
-          </Tabs>
+          </div>
 
 
           {/* Payment Types Management */}
