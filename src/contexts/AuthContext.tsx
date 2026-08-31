@@ -473,29 +473,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Inactivity auto-logout for shared POS terminals (30 min)
   useEffect(() => {
     if (!user || !profile) return;
-
-    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-    let inactivityTimer: ReturnType<typeof setTimeout>;
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => {
-        // Only auto-logout sub-users (not admin) on shared terminals
-        if (profile.role !== 'admin') {
-          devLog('[Security] Inactivity timeout — signing out sub-user');
-          signOut();
-        }
-      }, INACTIVITY_TIMEOUT_MS);
-    };
-
-    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
-    events.forEach(evt => window.addEventListener(evt, resetTimer, { passive: true }));
-    resetTimer();
-
-    return () => {
-      clearTimeout(inactivityTimer);
-      events.forEach(evt => window.removeEventListener(evt, resetTimer));
-    };
+    // User requested to disable inactivity auto-logout: "keep logged in until user manual or force log out"
+    // Previously we had a 30-min auto logout for sub-users here.
+    return () => {};
   }, [user, profile]);
 
   // SECURITY: session watchdog — absolute max session age + automatic revocation

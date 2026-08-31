@@ -6,7 +6,7 @@ const EPOCH_KEY = 'zp_security_epoch';
 const SESSION_START_KEY = 'zp_session_started_at';
 
 /** Absolute session lifetime: sessions older than this are revoked even if active. */
-export const ABSOLUTE_SESSION_MAX_MS = 12 * 60 * 60 * 1000; // 12 hours
+export const ABSOLUTE_SESSION_MAX_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /** How often we re-verify role/permission epoch against the server. */
 export const EPOCH_CHECK_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
