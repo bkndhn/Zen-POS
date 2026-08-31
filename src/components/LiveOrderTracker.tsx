@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Phone, MessageCircle, Star, X, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { enableWebPush } from '@/utils/firebaseWeb';
 import { useTranslation } from 'react-i18next';
 
 interface LiveOrderTrackerProps {
@@ -28,6 +29,27 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   const [payingOnline, setPayingOnline] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+
+  const enablePush = async () => {
+    if (!order?.admin_id) return;
+    try {
+      const res = await enableWebPush(order.admin_id);
+      if (res.status === 'registered' && res.token) {
+        await supabase.from('remote_orders').update({ customer_fcm_token: res.token }).eq('id', orderId);
+        setPushStatus('enabled');
+        toast({ title: 'Notifications Enabled!' });
+      } else if (res.status === 'unsupported' || res.status === 'insecure') {
+        toast({ title: 'Not Supported', description: 'Your browser cannot receive push notifications.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Permission Required', description: 'Please allow notifications in your browser.', variant: 'destructive' });
+      }
+    } catch (err) {
+      console.warn('Push registration failed:', err);
+    }
+  };
+
 
   
   const handleCustomerCancel = async () => {

@@ -29,6 +29,7 @@ import { ContactSupportDialog } from '@/components/ContactSupportDialog';
 import { OperatingHours } from '@/types/operatingHours';
 import { RemoteCheckout } from '@/components/RemoteCheckout';
 import { LiveOrderTracker } from '@/components/LiveOrderTracker';
+import { enableWebPush } from '@/utils/firebaseWeb';
 
 // Types
 interface MenuItem {
@@ -624,6 +625,27 @@ const PublicMenu = () => {
     const [paymentReference, setPaymentReference] = useState('');
     const [isSubmittingReference, setIsSubmittingReference] = useState(false);
     const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
+
+    const [pushStatus, setPushStatus] = useState<string | null>(null);
+
+    const enablePush = async () => {
+        if (!adminId || !sessionId) return;
+        try {
+            const res = await enableWebPush(adminId);
+            if (res.status === 'registered' && res.token) {
+                await supabase.from('table_orders').update({ customer_fcm_token: res.token }).eq('session_id', sessionId);
+                setPushStatus('enabled');
+                toast({ title: 'Notifications Enabled!' });
+            } else if (res.status === 'unsupported' || res.status === 'insecure') {
+                toast({ title: 'Not Supported', description: 'Your browser cannot receive push notifications.', variant: 'destructive' });
+            } else {
+                toast({ title: 'Permission Required', description: 'Please allow notifications in your browser.', variant: 'destructive' });
+            }
+        } catch (err) {
+            console.warn('Push registration failed:', err);
+        }
+    };
+
 
     // Online/Offline detection
     useEffect(() => {
