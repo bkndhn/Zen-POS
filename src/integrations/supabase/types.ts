@@ -4731,6 +4731,7 @@ export type Database = {
           support_whatsapp: string
         }[]
       }
+      get_backend_health: { Args: never; Returns: Json }
       get_backup_cron_status: { Args: never; Returns: Json }
       get_branch_scoped_shop_settings: {
         Args: { p_branch_id: string; p_user_id: string }
@@ -5079,6 +5080,7 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      prune_diagnostic_tables: { Args: never; Returns: Json }
       public_place_remote_order: { Args: { p_order: Json }; Returns: Json }
       public_place_table_order:
         | {
