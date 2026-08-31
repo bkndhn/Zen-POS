@@ -28,6 +28,7 @@ import { shareBillImageViaWhatsApp, type BillImageData } from '@/utils/billImage
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
+import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 
 import { PinLockGuard } from '@/components/PinLockGuard';
 import { ZReportDialog } from '@/components/ZReportDialog';
@@ -136,6 +137,7 @@ const StaffRow: React.FC<{
 };
 
 const Reports: React.FC = () => {
+  useRealTimeUpdates();
   const { profile , adminProfileId } = useAuth();
   const { t } = useTranslation();
   const adminId = adminProfileId;

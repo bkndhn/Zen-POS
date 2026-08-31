@@ -1009,7 +1009,7 @@ export const ShopSettingsForm = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <Label>Shift & Cash Management</Label>
+                                    <Label>Z-Report & Shift Management</Label>
                                     {!shiftManagementUnlocked && (
                                         <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-[10px]">PRO ADD-ON</Badge>
                                     )}
