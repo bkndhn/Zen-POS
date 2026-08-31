@@ -21,6 +21,7 @@ import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
 import { SuperAdminStorageQuota } from '@/components/SuperAdminStorageQuota';
+import { BackendHealthCard } from '@/components/BackendHealthCard';
 import { PlatformPaymentSettings } from '@/components/PlatformPaymentSettings';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Pencil, Sparkles, HardDrive, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
@@ -96,6 +97,7 @@ interface Row {
   _shiftUnlocked?: boolean;
   _fcmUnlocked?: boolean;
   _nativeAppUnlocked?: boolean;
+  _liveBillPushUnlocked?: boolean;
 }
 
 interface ClientLimitsModalProps {
@@ -1437,6 +1439,7 @@ const SuperAdminUsers: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Backup Settings Configuration */}
               <div className="lg:col-span-1 space-y-6">
+                <BackendHealthCard />
                 <Card className="border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-sm sm:text-base flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
