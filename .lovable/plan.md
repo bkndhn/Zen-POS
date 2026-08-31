@@ -1,84 +1,83 @@
-# ZenPOS Capacity & Market Launch Report (Suggestions Only)
+# ZenPOS — Worth, Launch Readiness, Offline Lock & Feature Gaps
 
-## 1. How many clients & public users can the app handle?
+## 1. What actually exists today (verified)
 
-### Free Vercel + Free Supabase (current setup)
+- ~98,900 lines across 294 TypeScript/React files, 38 pages, ~100 feature components, 84 Supabase tables, 100+ database functions, 17 edge functions.
+- Modules live: Calci Billing, Table/KOT service, KDS, Waiter Companion, Items + variants + batches, Stock (ledger, adjustments, transfers, reorder), Purchases + GRN + returns + supplier ledger, Expenses + budgets, CRM + Khata, Reports + Z-report + shift reconciliation, Analytics + AI insights, QR public menu + remote ordering + feedback, Branches, Users/roles/permissions, Subscription + super-admin console, Bluetooth/USB thermal printing, backups (local AES-256 + pg_cron cloud), push (native + web FCM), RUM + Sentry monitoring, i18n EN/TA.
+- Offline layer confirmed: SQLite (native) / IndexedDB (web) backend, cached profile + cached license for offline login, sync queue currently handling bills, expenses, items, table orders and tables.
 
-| Resource | Free limit | Practical capacity for ZenPOS |
-|---|---|---|
-| Supabase database | 500 MB | ~40–60 restaurant clients (bills + items + images metadata) before DB pressure |
-| Supabase storage | 1 GB | ~15–25 clients if every menu item has a photo (100–300 KB each); ~50+ with compressed WebP |
-| Supabase bandwidth | 5 GB/month (egress) | ~30–50k public-menu page loads/month; heavy image menus burn this fast |
-| Supabase realtime | 200 concurrent connections | ~40–60 outlets with 3–4 devices each (billing + KDS + service) simultaneously online |
-| Auth MAU | 50,000 | Not a constraint — POS staff counts are tiny |
-| Edge functions | 500k invocations/month | Comfortable for backups, payments, AI insights at pilot scale |
-| Auto-pause | Pauses after 7 days of inactivity | Real clients keep it warm; still add an external cron ping (UptimeRobot) as insurance |
-| Vercel free (Hobby) | 100 GB bandwidth, 100 GB-hrs serverless | Effectively unlimited for a SPA — the app is static; Vercel only serves JS/CSS/images |
+Conclusion: this is a real, production-grade product, not a demo.
 
-**Realistic answer (free Vercel + free Supabase):**
-- **30–50 paying restaurant clients** comfortably.
-- **~150–200 concurrent staff devices** across all clients.
-- **~30,000–50,000 public-menu visitors/month** (guest QR ordering) before egress becomes the bottleneck.
-- Peak "ultra fast" performance holds as long as realtime connections stay under ~150 and DB stays under ~400 MB. The app's React Query caching, IndexedDB/SQLite offline layer, and edge-cached images already do the heavy lifting for speed.
+## 2. Valuation in INR
 
-**Bottleneck order:** (1) Supabase bandwidth → (2) realtime connections → (3) DB size → (4) storage. Vercel is never the bottleneck.
+| Basis | Value |
+|---|---|
+| Rebuild cost (agency, 4–5 devs, 12–14 months) | ₹38–52 lakh |
+| Asset sale today (code + DB + native apps, no revenue) | ₹22–32 lakh |
+| With 30–50 paying outlets at ₹999/mo (ARR ~₹4–6 L) | ₹45–70 lakh (8–12x ARR SaaS multiple) |
+| With 300+ outlets and clean churn data | ₹2–4 crore |
 
-### Free Supabase + Hostinger/GoDaddy
+The gap between rebuild cost and sale price is the "no revenue yet" discount. Every paying pilot outlet you add is worth roughly ₹1–1.5 lakh of valuation.
 
-| Scenario | Frontend hosting | Capacity vs Vercel-free |
-|---|---|---|
-| Domain only (no hosting), DNS → Vercel | Vercel free serves the app | Identical to above — a custom domain costs nothing in capacity |
-| Hostinger shared hosting (~₹150–300/mo) hosting the static build | Hostinger serves JS/CSS/images | Slightly better bandwidth headroom than Vercel free, but slower global delivery (no edge CDN), manual deploys via FTP/CI, no preview URLs. Not recommended unless you outgrow Vercel's 100 GB |
-| GoDaddy hosting | Similar shared hosting | Same trade-offs as Hostinger; GoDaddy shared hosting is typically slower. Use GoDaddy only to buy the domain, point DNS to Vercel |
+### Calci feature alone vs combined
+- Calci billing standalone (quick keys, offline bill, thermal print, day report): a sellable ₹299–₹499/mo micro-product; standalone worth ₹4–7 lakh. It is the strongest single wedge because a kirana/bakery owner understands it in 30 seconds.
+- Combined suite (Calci + tables + stock + purchases + QR + branches): worth ~5x the standalone, because switching cost becomes total — the shop's stock, khata and history all live inside. Sell Calci as the entry tier, upsell the rest.
 
-**Recommendation:** Buy the domain from whoever is cheapest (GoDaddy/Hostinger/Cloudflare), keep hosting on Vercel free, and spend the first rupee on **Supabase Pro (₹~2,100/mo)** when you cross ~40 clients — that is the single lever that 10x's capacity (8 GB DB, 100 GB bandwidth, 500 concurrent realtime, no auto-pause).
+## 3. Can you launch now?
 
-## 2. Scaling ladder (when to upgrade)
+Yes — a controlled paid pilot, not a mass launch. Free Vercel + free Supabase supports roughly 30–50 outlets. Before charging: real-device print QA on 5+ printer models, GST invoice format signed off by 2 accountants, an onboarding kit (Tamil + English video, CSV item import, printer pairing sheet), and a keep-alive cron so Supabase never auto-pauses.
+
+## 4. Competitor position (Petpooja, Gofrugal, Posist, DotPe, Zomato Base)
+
+Where ZenPOS already wins: true offline-first with a device sync engine, ₹999 vs ₹1,500–₹3,000 pricing, Tamil-first UI, QR ordering + feedback + CRM bundled instead of paid add-ons, AI menu import from a photo, encrypted local backup, per-tenant storage quotas.
+
+Where competitors still win: GST e-invoice/IRN, aggregator sync, recipe costing, loyalty, and a mature onboarding/support machine.
+
+## 5. Features to add (excluding Razorpay and Swiggy/aggregator work)
+
+**Tier 1 — needed before charging money**
+1. GST e-invoice (IRN + QR) and GSTR-1/3B export — legally blocking for ₹5cr+ outlets and the top objection in demos.
+2. Recipe / BOM costing with automatic raw-material depletion — the tables exist (`recipes`, `ingredients`) but costing and per-dish margin reporting are not surfaced.
+3. Day-end cash-drawer flow polish: denomination counting, short/excess reasons, manager approval on variance.
+4. Bulk item import/export via CSV with error preview.
+
+**Tier 2 — retention and stickiness**
+5. Loyalty wallet + points redemption on the bill screen.
+6. Staff attendance, shift-wise sales and incentive report.
+7. Wastage/spoilage entry with reason codes feeding into P&L.
+8. Multi-brand / franchise consolidated dashboard on top of existing branches.
+9. Customer WhatsApp campaign push from CRM segments (repeat, lapsed, high-value).
+
+**Tier 3 — differentiation**
+10. Voice billing in Tamil (partially present — finish and harden).
+11. Predictive reorder using sales velocity and lead time.
+12. Table turn-time and waiter performance leaderboard.
+
+## 6. Fully offline Capacitor app — what is possible and what has to be built
+
+Target you described: first login online against Supabase, after that everything runs from the device; super-admin can still control users; APK cannot be copied to another device.
+
+What already works: cached profile + cached license enable offline app open; SQLite stores items and bills; the sync engine flushes bills, expenses, items, tables and table orders when connectivity returns.
+
+What must be added for true full-offline:
+
+1. **Offline auth vault** — on first successful login, store an encrypted credential envelope (PIN or biometric unlocks it) so subsequent logins never touch Supabase. Session validity extends to the license window rather than 12 hours while offline.
+2. **Full local mirror** — extend the local schema beyond items/bills to categories, taxes, customers, khata, suppliers, purchases, stock ledger, settings, users and permissions, so every screen renders offline. Today several screens still assume network.
+3. **Two-way delta sync** — a `last_synced_at` cursor per table pulling server changes, with last-write-wins plus a conflict log, instead of the current push-only queue.
+4. **Device binding / anti-APK-sharing** — on first login, register a hardware-derived device id in `user_devices` and enforce a per-account device limit (super-admin sets it). A second device is refused, and `blocked_devices` (table exists, currently unused for staff login) becomes the kill switch. Store a signed device token locally so a copied APK on new hardware fails offline as well.
+5. **Signed offline license** — server issues a short-lived signed license blob (device id + expiry + limits) at each online contact. The app verifies the signature locally; expiry ends the grace window. This is what makes remote control work without the internet being present at the shop.
+6. **Remote kill / wipe** — super-admin marks a device blocked or a client paused; the next online contact revokes the license and clears the local database.
+
+Honest limitation: an app that never contacts the server again cannot be remotely controlled. The workable model is a grace window — full offline operation for 7–30 days (super-admin configurable), and one successful contact required inside that window to renew.
+
+## 7. Suggested sequence
 
 ```text
-0–40 clients     → Free Vercel + Free Supabase + cron keep-alive ping
-40–150 clients   → Supabase Pro (~$25/mo), Vercel free
-150–500 clients  → Supabase Pro + Vercel Pro ($20/mo) + image CDN (Cloudflare free)
-500+ clients     → Supabase compute add-on + read replicas + per-client storage quotas (already built)
+Step 1  Device binding + signed offline license + super-admin device limit / kill switch
+Step 2  Offline auth vault (PIN/biometric) + full local mirror of remaining tables
+Step 3  Two-way delta sync with conflict log
+Step 4  GST e-invoice + recipe costing + CSV import
+Step 5  Loyalty, attendance, wastage, franchise dashboard
 ```
 
-## 3. Current flow — what already supports scale
-
-- React Query persistent caching + IndexedDB/SQLite offline-first — instant repeat loads, works through internet drops.
-- Station-routed printing, offline bill queue, encrypted backups.
-- Per-admin storage quotas + lifecycle purge tools already built.
-- Server-side pg_cron backups — no dependency on the app being open.
-- Public menu rate limiting + session-scoped guest RPCs.
-- RLS tenant isolation with audited security findings fixed.
-
-## 4. What to add/enhance before market launch (priority order)
-
-### Must-do (cheap, high impact)
-1. **Keep-alive cron** — UptimeRobot or Cloudflare Worker hitting `/api/health.js` and a lightweight Supabase RPC every 5 minutes; prevents auto-pause and cold starts.
-2. **Image compression on upload** — enforce WebP ≤ 150 KB per menu image; doubles free-tier storage/bandwidth headroom.
-3. **Cloudflare free CDN in front of public menu images** — moves image egress off Supabase's 5 GB budget entirely.
-4. **Realtime connection hygiene audit** — ensure each device opens only the channels it needs; KDS doesn't need payments channel, etc. This is the #1 lever for fitting more outlets under the 200-connection cap.
-5. **Uptime + error monitoring dashboard** — Sentry already integrated; add a public status page for client trust.
-
-### Should-do (before charging money)
-6. **GST e-invoice readiness / invoice format sign-off** by 2–3 local accountants.
-7. **Payment gateway live-mode verification** (Razorpay/PhonePe webhooks + reconciliation).
-8. **Day-end / shift-close Z-report** — cashiers expect this on day one.
-9. **Onboarding kit** — Tamil + English training video, sample CSV item import, printer pairing checklist.
-10. **Real-device print QA** — 5+ different 58/80mm Bluetooth printers, low-end Android phones.
-
-### Nice-to-have (revenue features, Wave 2)
-11. Recipe/BOM costing, loyalty wallet, Swiggy/Zomato sync, UPI QR on receipts, franchise multi-brand reporting.
-
-## 5. Launch recommendation
-
-```text
-Phase 1 (weeks 1–4):   3–5 friendly restaurants, free pilot, stay 100% on free tiers.
-Phase 2 (weeks 5–8):   Fix field issues (printing, offline), finalize onboarding kit.
-Phase 3 (weeks 9–12):  Open paid subscriptions at ₹799–₹999/mo or ₹3,999/yr launch offer;
-                       move to Supabase Pro at ~40 clients or when egress crosses 4 GB/mo.
-```
-
-**Bottom line:** Free Vercel + free Supabase genuinely supports a 30–50 client launch. Do not pay for Hostinger/GoDaddy hosting — buy only the domain there. The first paid upgrade should be Supabase Pro, funded by your first 3–4 subscriptions.
-
-*This is a suggestions-only report — no code changes included. Approve only if you want any of the "Must-do" items implemented.*
+Confirm which step to build first and I will produce a detailed implementation plan for it.
