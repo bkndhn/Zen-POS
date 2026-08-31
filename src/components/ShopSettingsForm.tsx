@@ -90,6 +90,23 @@ export const ShopSettingsForm = () => {
     // Per-branch live bill push state: { branchId: boolean }
     const [liveBillBranchMap, setLiveBillBranchMap] = useState<Record<string, boolean>>({});
     const [liveBillBranchSettings, setLiveBillBranchSettings] = useState<Array<{id: string; name: string; live_bill_push_enabled: boolean; user_id: string}>>([]);
+    const [liveBillDbSettings, setLiveBillDbSettings] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (adminAuthUid && branches && branches.length > 0) {
+            const merged = branches.map(b => ({
+                id: b.id,
+                name: b.name,
+                live_bill_push_enabled: liveBillDbSettings.find(s => s.branch_id === b.id)?.live_bill_push_enabled ?? false,
+                user_id: adminAuthUid
+            }));
+            setLiveBillBranchSettings(merged);
+            const bMap: Record<string, boolean> = {};
+            merged.forEach(b => { bMap[b.id] = b.live_bill_push_enabled; });
+            setLiveBillBranchMap(bMap);
+        }
+    }, [branches, liveBillDbSettings, adminAuthUid]);
+
     const [dailySummaryTime, setDailySummaryTime] = useState<string | null>(null);
     const [nativeAppUnlocked, setNativeAppUnlocked] = useState(false);
 
@@ -249,21 +266,8 @@ export const ShopSettingsForm = () => {
                     .from('shop_settings')
                     .select('id, branch_id, live_bill_push_enabled, user_id')
                     .eq('user_id', adminAuthUid);
-                  const { data: allBranches } = await supabase
-                    .from('branches')
-                    .select('id, name')
-                    .eq('admin_id', adminAuthUid);
-                  if (allBranches && allBranchSettings) {
-                    const merged = allBranches.map(b => ({
-                      id: b.id,
-                      name: b.name,
-                      live_bill_push_enabled: allBranchSettings.find(s => s.branch_id === b.id)?.live_bill_push_enabled ?? false,
-                      user_id: adminAuthUid
-                    }));
-                    setLiveBillBranchSettings(merged);
-                    const bMap: Record<string, boolean> = {};
-                    merged.forEach(b => { bMap[b.id] = b.live_bill_push_enabled; });
-                    setLiveBillBranchMap(bMap);
+                  if (allBranchSettings) {
+                    setLiveBillDbSettings(allBranchSettings);
                   }
                 }
                 setDailySummaryTime((data as any).daily_summary_time || null);
@@ -541,7 +545,6 @@ export const ShopSettingsForm = () => {
                     shift_management_enabled: shiftManagementEnabled,
                     remote_order_flow: remoteOrderFlow,
                     fcm_enabled: fcmEnabled,
-                    live_bill_push_enabled: liveBillPushEnabled,
                     daily_summary_time: dailySummaryTime,
             };
 
