@@ -340,7 +340,7 @@ const Settings = () => {
           <AllBranchesReadOnlyBanner message="Switch to a specific branch to modify settings." />
 
           {/* Shop Details */}
-          <SearchableSection title="Shop Details (Name, FCM, Shifts)" keywords="shop fcm live bill name fssai address shift" searchQuery={searchQuery} isTopLevel={true}><ShopSettingsForm /></SearchableSection>
+          <SearchableSection title="Shop Details (Name, FCM, Shifts)" keywords="shop fcm live bill name fssai address shift z-report z report opening closing cash" searchQuery={searchQuery} isTopLevel={true}><ShopSettingsForm /></SearchableSection>
 
           <div className="w-full">
             {!searchQuery.trim() && (
