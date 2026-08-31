@@ -73,7 +73,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
       let query = supabase
         .from('bills')
-        .select('total_amount, payment_mode')
+        .select('total_amount, payment_mode, payment_details')
         .eq('branch_id', branchId)
         .eq('is_deleted', false);
         
@@ -84,7 +84,6 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       }
 
       const { data, error } = await query;
-
 
       if (error) throw error;
 
@@ -103,8 +102,20 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
       data?.forEach((bill) => {
         total += bill.total_amount || 0;
-        const mode = (bill.payment_mode || 'unknown').toLowerCase();
-        paymentTotals[mode] = (paymentTotals[mode] || 0) + (bill.total_amount || 0);
+        const details = bill.payment_details as Record<string, number> | null;
+        
+        // Use detailed payment breakdown if available
+        if (details && typeof details === 'object' && Object.keys(details).length > 0) {
+          Object.entries(details).forEach(([key, amount]) => {
+            const mode = key.toLowerCase();
+            const val = Number(amount) || 0;
+            paymentTotals[mode] = (paymentTotals[mode] || 0) + val;
+          });
+        } else {
+          // Fallback to legacy single payment_mode
+          const mode = (bill.payment_mode || 'unknown').toLowerCase();
+          paymentTotals[mode] = (paymentTotals[mode] || 0) + (bill.total_amount || 0);
+        }
       });
 
       // Get branch name if available

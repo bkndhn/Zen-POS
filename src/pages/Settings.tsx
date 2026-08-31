@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Settings as SettingsIcon, DollarSign, Monitor, Plus, Edit, Trash2, Printer, Type, UtensilsCrossed } from 'lucide-react';
+import { Settings as SettingsIcon, DollarSign, Monitor, Plus, Edit, Trash2, Printer, Type, UtensilsCrossed, Search, ChevronRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,6 +57,49 @@ const Settings = () => {
   const [editChargeDialogOpen, setEditChargeDialogOpen] = useState(false);
   const [editingCharge, setEditingCharge] = useState<AdditionalCharge | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('billing');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const SEARCH_INDEX = [
+    { id: 'shop-settings', title: 'Shop Details (Name, FSSAI, Address)', tab: 'billing', keywords: 'shop name fssai address contact details' },
+    { id: 'live-bill-push', title: 'Live Bill Notifications (FCM)', tab: 'billing', keywords: 'live bill push notifications fcm alerts mobile apk pwa super admin toggle' },
+    { id: 'gst-settings', title: 'GST & Tax Settings', tab: 'billing', keywords: 'gst tax hsn cgst sgst igst inclusive exclusive billing' },
+    { id: 'order-type-settings', title: 'Order Types & Delivery Charges', tab: 'billing', keywords: 'order types delivery parcel takeaway dine in charges fees' },
+    { id: 'additional-charges', title: 'Additional Charges (Packing, Service)', tab: 'billing', keywords: 'additional charges extra fees packing service delivery' },
+    { id: 'payment-types', title: 'Manage Payment Types', tab: 'billing', keywords: 'payment types methods cash card upi g pay custom split' },
+    { id: 'device-prefix', title: 'Device Prefix & Bill Numbering', tab: 'billing', keywords: 'device prefix bill number sequence counter hide' },
+    { id: 'bluetooth-printer', title: 'Bluetooth Thermal Printer', tab: 'hardware', keywords: 'bluetooth printer print thermal esc pos paper width receipt kot' },
+    { id: 'bill-printing-size', title: 'Bill Font Size & Layout', tab: 'hardware', keywords: 'bill print font size layout text scale large small display' },
+    { id: 'display-theme', title: 'Display Theme (Dark Mode)', tab: 'preferences', keywords: 'display theme dark light mode colors appearance layout grid list' },
+    { id: 'whatsapp-settings', title: 'WhatsApp Integration', tab: 'integrations', keywords: 'whatsapp share text image integration chat msg message' },
+    { id: 'remote-orders', title: 'Remote Ordering (QR Menu & Aggregators)', tab: 'integrations', keywords: 'remote online orders zomato swiggy qr menu aggregator webhook' },
+    { id: 'payment-gateway', title: 'Payment Gateway (Auto-collection)', tab: 'integrations', keywords: 'payment gateway razorpay payu stripe upi dynamic auto collect' },
+    { id: 'branches', title: 'Branch Management', tab: 'branches', keywords: 'branch locations multi stores add edit delete branches' },
+    { id: 'local-backup', title: 'Local Backup & Privacy', tab: 'preferences', keywords: 'local backup privacy wipe self destruct storage pin lock' }
+  ];
+
+  const handleSearch = (q: string) => {
+    setSearchQuery(q);
+    if (!q.trim()) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const lowerQ = q.toLowerCase();
+    const results = SEARCH_INDEX.filter(item => 
+      item.title.toLowerCase().includes(lowerQ) || item.keywords.includes(lowerQ)
+    );
+    setSearchResults(results);
+    setShowDropdown(true);
+  };
+
+  const handleSelectResult = (result: any) => {
+    setSearchQuery('');
+    setShowDropdown(false);
+    setActiveTab(result.tab);
+  };
 
   // Branch-scoped localStorage helper
   const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
@@ -264,12 +307,43 @@ const Settings = () => {
   return (
     <div className="min-h-screen p-3 sm:p-4">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md shadow-primary/20">
               <SettingsIcon className="w-5 h-5 text-primary-foreground" />
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight">Settings</h1>
+          </div>
+          
+          <div className="relative w-full sm:w-auto min-w-[300px] z-50">
+            <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+            <Input 
+              type="text"
+              placeholder="Search settings (e.g. GST, Printer, WhatsApp)..."
+              className="pl-9 bg-background/50 backdrop-blur-sm shadow-sm border-primary/20 focus-visible:ring-primary/30"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              onFocus={() => { if (searchQuery) setShowDropdown(true); }}
+            />
+            {showDropdown && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-md shadow-md overflow-hidden max-h-60 overflow-y-auto">
+                {searchResults.map((res) => (
+                  <div 
+                    key={res.id} 
+                    className="p-3 text-sm hover:bg-muted cursor-pointer flex items-center justify-between border-b last:border-0"
+                    onClick={() => handleSelectResult(res)}
+                  >
+                    <span>{res.title}</span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {showDropdown && searchResults.length === 0 && searchQuery && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-md shadow-md p-4 text-center text-sm text-muted-foreground">
+                No settings found matching "{searchQuery}"
+              </div>
+            )}
           </div>
         </div>
 
@@ -280,7 +354,7 @@ const Settings = () => {
           {/* Shop Details */}
           <ShopSettingsForm />
 
-          <Tabs defaultValue="billing" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full flex flex-wrap h-auto mb-4 p-1 bg-muted/50 gap-1 justify-start">
               <TabsTrigger value="billing" className="flex-1 min-w-[120px] text-xs sm:text-sm">🛒 Billing & Checkout</TabsTrigger>
               <TabsTrigger value="hardware" className="flex-1 min-w-[120px] text-xs sm:text-sm">🖨️ Hardware & Print</TabsTrigger>
