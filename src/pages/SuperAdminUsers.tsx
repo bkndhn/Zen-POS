@@ -21,6 +21,7 @@ import { ResetPasswordDialog } from '@/components/ResetPasswordDialog';
 import { EditContactDialog } from '@/components/EditContactDialog';
 import { SuperAdminAiLimits } from '@/components/SuperAdminAiLimits';
 import { SuperAdminStorageQuota } from '@/components/SuperAdminStorageQuota';
+import { BackendHealthCard } from '@/components/BackendHealthCard';
 import { PlatformPaymentSettings } from '@/components/PlatformPaymentSettings';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Pencil, Sparkles, HardDrive, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
