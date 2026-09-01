@@ -456,8 +456,11 @@ export const MenuDesignStudio = () => {
             const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
             if (uploadError) throw uploadError;
 
-            setCoverPhotoUrl(filePath);
-            await supabase.from('shop_settings').update({ cover_photo_url: filePath }).eq('user_id', adminId).eq('branch_id', operatingBranchId ?? adminId);
+            const { data: publicData } = supabase.storage.from('logos').getPublicUrl(filePath);
+            const publicUrl = publicData.publicUrl;
+            
+            setCoverPhotoUrl(publicUrl);
+            await supabase.from('shop_settings').update({ cover_photo_url: publicUrl }).eq('user_id', adminId).eq('branch_id', operatingBranchId ?? adminId);
             toast({ title: 'Cover photo updated successfully' });
         } catch (error: any) {
             toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
