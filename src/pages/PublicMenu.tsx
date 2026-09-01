@@ -3405,7 +3405,7 @@ const PublicMenu = () => {
 
             {/* Floating Instagram Promo Widget */}
             {(rawShopSettings as any)?.promo_reel_url && (rawShopSettings as any)?.promo_reel_image_url && showPromoWidget && (
-                <div className="fixed bottom-[148px] sm:bottom-24 left-4 z-40 animate-in slide-in-from-bottom-8 fade-in duration-500">
+                <div className="fixed bottom-[148px] sm:bottom-24 right-4 z-40 animate-in slide-in-from-bottom-8 fade-in duration-500">
                     <div className="relative group shadow-2xl rounded-2xl overflow-hidden border-2 border-white/20">
                         <Button 
                             variant="destructive" 
@@ -3419,7 +3419,7 @@ const PublicMenu = () => {
                             href={(rawShopSettings as any).promo_reel_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="block relative w-24 h-36 sm:w-28 sm:h-40 bg-black"
+                            className="block relative w-24 h-44 sm:w-28 sm:h-52 bg-black"
                             onClick={() => {
                                 // Handled natively by browser targeting instagram.com
                             }}
