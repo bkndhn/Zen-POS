@@ -334,24 +334,7 @@ export const MenuDesignStudio = () => {
         document.head.appendChild(link);
     }, [fontFamily]);
 
-    const [adminAuthUid, setAdminAuthUid] = useState<string | null>(null);
 
-    useEffect(() => {
-        const resolveAuthUid = async () => {
-            if (!profile) return;
-            if (profile.role === 'admin') {
-                setAdminAuthUid(profile.user_id);
-            } else if (profile.admin_id) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('user_id')
-                    .eq('id', profile.admin_id)
-                    .maybeSingle();
-                if (data?.user_id) setAdminAuthUid(data.user_id);
-            }
-        };
-        resolveAuthUid();
-    }, [profile]);
 
     useEffect(() => {
         if (adminAuthUid) {
