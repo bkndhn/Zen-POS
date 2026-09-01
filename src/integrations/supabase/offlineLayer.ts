@@ -192,7 +192,6 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
         table,
         operation: 'UPDATE',
         data: { ...mutation.args[0], ...(filters.id ? { id: filters.id } : {}) },
-        // @ts-expect-error extended queue shape
         filters,
       });
       return shapeResult(chain, [{ ...mutation.args[0], ...filters }]);
@@ -202,7 +201,6 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
       table,
       operation: 'DELETE',
       data: { ...(filters.id ? { id: filters.id } : {}) },
-      // @ts-expect-error extended queue shape
       filters,
     });
     return shapeResult(chain, []);
