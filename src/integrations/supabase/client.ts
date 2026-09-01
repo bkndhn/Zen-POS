@@ -45,3 +45,123 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     },
   },
 });
+
+
+// ==========================================
+// OFFLINE-FIRST MUTATION INTERCEPTOR
+// ==========================================
+
+
+const originalFrom = supabase.from.bind(supabase);
+
+// Create a dummy builder that absorbs chained calls (.select, .single, .eq, etc)
+// and eventually resolves to a fake successful response
+const createOfflineDummyBuilder = (mockData: any) => {
+  const dummy: any = Promise.resolve({ data: mockData, error: null });
+  const chainableMethods = ['select', 'single', 'eq', 'in', 'order', 'limit', 'match', 'or', 'contains'];
+  
+  chainableMethods.forEach(method => {
+    dummy[method] = () => dummy;
+  });
+  
+  return dummy;
+};
+
+(supabase as any).from = (table: string) => {
+  const builder = originalFrom(table);
+  
+  const originalInsert = builder.insert.bind(builder);
+  const originalUpdate = builder.update.bind(builder);
+  const originalDelete = builder.delete.bind(builder);
+
+  builder.insert = (payload: any, options?: any) => {
+    const isLocalOnly = localStorage.getItem('privacy_storage_mode') === 'local';
+    if (!navigator.onLine || isLocalOnly) {
+      import('@/utils/offlineManager').then(({ offlineManager }) => {
+        // Ensure payload is array for iteration
+        const payloads = Array.isArray(payload) ? payload : [payload];
+        payloads.forEach(p => {
+          if (!p.id) p.id = crypto.randomUUID(); // Auto-generate ID if missing
+          offlineManager.queueWrite({
+            table,
+            operation: 'INSERT',
+            data: p
+          });
+        });
+      });
+      return createOfflineDummyBuilder(Array.isArray(payload) ? payload : [payload]);
+    }
+    return originalInsert(payload, options);
+  };
+
+  builder.update = (payload: any, options?: any) => {
+    const isLocalOnly = localStorage.getItem('privacy_storage_mode') === 'local';
+    if (!navigator.onLine || isLocalOnly) {
+      // For updates, we need the ID, but it's usually chained like .update(p).eq('id', id)
+      // We can capture the 'eq' call!
+      const dummy = createOfflineDummyBuilder(payload);
+      const originalEq = dummy.eq;
+      dummy.eq = (column: string, value: any) => {
+        if (column === 'id') {
+          payload.id = value;
+          import('@/utils/offlineManager').then(({ offlineManager }) => {
+            offlineManager.queueWrite({
+              table,
+              operation: 'UPDATE',
+              data: payload
+            });
+          });
+        }
+        return dummy;
+      };
+      
+      // Also capture .in for bulk updates
+      dummy.in = (column: string, values: any[]) => {
+         if (column === 'id') {
+           import('@/utils/offlineManager').then(({ offlineManager }) => {
+             values.forEach(val => {
+               offlineManager.queueWrite({
+                 table,
+                 operation: 'UPDATE',
+                 data: { ...payload, id: val }
+               });
+             });
+           });
+         }
+         return dummy;
+      };
+
+      return dummy;
+    }
+    return originalUpdate(payload, options);
+  };
+
+  builder.delete = (options?: any) => {
+    const isLocalOnly = localStorage.getItem('privacy_storage_mode') === 'local';
+    if (!navigator.onLine || isLocalOnly) {
+      const dummy = createOfflineDummyBuilder(null);
+      dummy.eq = (column: string, value: any) => {
+        if (column === 'id') {
+          import('@/utils/offlineManager').then(({ offlineManager }) => {
+            offlineManager.queueWrite({ table, operation: 'DELETE', data: { id: value } });
+          });
+        }
+        return dummy;
+      };
+      dummy.in = (column: string, values: any[]) => {
+         if (column === 'id') {
+           import('@/utils/offlineManager').then(({ offlineManager }) => {
+             values.forEach(val => {
+               offlineManager.queueWrite({ table, operation: 'DELETE', data: { id: val } });
+             });
+           });
+         }
+         return dummy;
+      };
+      return dummy;
+    }
+    return originalDelete(options);
+  };
+
+  return builder;
+};
