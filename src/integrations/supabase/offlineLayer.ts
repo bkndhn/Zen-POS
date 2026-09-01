@@ -17,7 +17,13 @@
  * awaited, so there is no extra latency online (one extra object hop).
  */
 
-import { offlineManager } from '@/utils/offlineManager';
+// NOTE: imported lazily to avoid a circular import with the supabase client.
+type OfflineManager = typeof import('@/utils/offlineManager')['offlineManager'];
+let _om: OfflineManager | null = null;
+const om = async (): Promise<OfflineManager> => {
+  if (!_om) _om = (await import('@/utils/offlineManager')).offlineManager;
+  return _om;
+};
 
 /** Tables driven by dedicated sync engines — never double-queue them. */
 const EXCLUDED_TABLES = new Set(['bills', 'bill_items', 'pending_bills']);
@@ -97,7 +103,7 @@ function rowMatches(row: any, filters: Record<string, any>): boolean {
 async function applyPendingOverlay(table: string, rows: any[]): Promise<any[]> {
   let out = Array.isArray(rows) ? [...rows] : [];
   try {
-    const queue = await offlineManager.getWriteQueue();
+    const queue = await (await om()).getWriteQueue();
     const mine = queue
       .filter((q: any) => q.table === table && q.status !== 'synced')
       .sort((a: any, b: any) => a.timestamp - b.timestamp);
@@ -147,7 +153,7 @@ async function executeRead(realFrom: any, table: string, chain: ChainCall[]) {
   const key = chainKey(chain);
 
   const fromCache = async () => {
-    const cached = await offlineManager.getCachedQueryResult(table, key);
+    const cached = await (await om()).getCachedQueryResult(table, key);
     const rows = await applyPendingOverlay(table, (cached?.data as any[]) || []);
     return shapeResult(chain, rows);
   };
@@ -160,7 +166,7 @@ async function executeRead(realFrom: any, table: string, chain: ChainCall[]) {
     if (!res?.error && res?.data != null) {
       const rows = Array.isArray(res.data) ? res.data : [res.data];
       // Cache in the background — never block the UI path.
-      offlineManager.cacheQueryResult(table, key, rows).catch(() => {});
+      om().then((m) => m.cacheQueryResult(table, key, rows)).catch(() => {});
     }
     return res;
   } catch (err) {
@@ -183,12 +189,12 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
         ...r,
       }));
       for (const row of rows) {
-        await offlineManager.queueWrite({ table, operation: 'INSERT', data: row });
+        await (await om()).queueWrite({ table, operation: 'INSERT', data: row });
       }
       return shapeResult(chain, rows);
     }
     if (op === 'update') {
-      await offlineManager.queueWrite({
+      await (await om()).queueWrite({
         table,
         operation: 'UPDATE',
         data: { ...mutation.args[0], ...(filters.id ? { id: filters.id } : {}) },
@@ -197,7 +203,7 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
       return shapeResult(chain, [{ ...mutation.args[0], ...filters }]);
     }
     // delete
-    await offlineManager.queueWrite({
+    await (await om()).queueWrite({
       table,
       operation: 'DELETE',
       data: { ...(filters.id ? { id: filters.id } : {}) },
@@ -211,7 +217,7 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
   try {
     const res: any = await replay(realFrom, table, chain);
     if (res?.error && isNetworkError(res.error)) return queueIt();
-    if (!res?.error) offlineManager.clearCacheForTable(table).catch(() => {});
+    if (!res?.error) om().then((m) => m.clearCacheForTable(table)).catch(() => {});
     return res;
   } catch (err) {
     if (isNetworkError(err)) return queueIt();
