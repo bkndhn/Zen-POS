@@ -1628,7 +1628,7 @@ class OfflineManager {
 
     // ──────────── Universal Write Queue ────────────
 
-    async queueWrite(entry: { table: string; operation: 'INSERT' | 'UPDATE' | 'DELETE'; data: any; adminId?: string; branchId?: string }): Promise<string> {
+    async queueWrite(entry: { table: string; operation: 'INSERT' | 'UPDATE' | 'DELETE'; data: any; adminId?: string; branchId?: string; filters?: Record<string, any> }): Promise<string> {
         if (!this.db) throw new Error('DB not initialized');
         const id = crypto.randomUUID();
         const item = {
@@ -1636,6 +1636,7 @@ class OfflineManager {
             table: entry.table,
             operation: entry.operation,
             data: entry.data,
+            filters: entry.filters || null,
             adminId: entry.adminId || null,
             branchId: entry.branchId || null,
             timestamp: Date.now(),
