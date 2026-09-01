@@ -450,8 +450,8 @@ export const MenuDesignStudio = () => {
             const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true };
             const compressedFile = await imageCompression(file, options);
             const fileExt = file.name.split('.').pop();
-            const fileName = cover_\_\_\.\;
-            const filePath = covers/\;
+            const fileName = `cover_${adminId}_${operatingBranchId || adminId}_${Date.now()}.${fileExt}`;
+            const filePath = `covers/${fileName}`;
 
             const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
             if (uploadError) throw uploadError;
