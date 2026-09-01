@@ -429,7 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Faster timeout for session fetch
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session fetch timeout')), 2000)
+          setTimeout(() => reject(new Error('Session fetch timeout')), 15000)
         );
 
         const { data: { session: initialSession } } = await Promise.race([
@@ -458,7 +458,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         clearTimeout(failsafeTimeout);
       }
-    }, 2500);
+    }, 16000);
 
     initAuth();
 
