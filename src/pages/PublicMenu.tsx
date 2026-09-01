@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe } from 'lucide-react';
+import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe } , Instagram from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CookingTimeBadge, PrepProgressBar } from '@/components/service/PrepTime';
 import {
@@ -3405,21 +3405,31 @@ const PublicMenu = () => {
 
             {/* Floating Instagram Promo Widget */}
             {(rawShopSettings as any)?.promo_reel_url && (rawShopSettings as any)?.promo_reel_image_url && showPromoWidget && (
-                <div className="fixed bottom-[148px] sm:bottom-24 right-4 z-40 animate-in slide-in-from-bottom-8 fade-in duration-500">
-                    <div className="relative group shadow-2xl rounded-2xl overflow-hidden border-2 border-white/20">
-                        <Button 
-                            variant="destructive" 
-                            size="icon" 
-                            className="absolute -top-1 -right-1 w-6 h-6 rounded-full shadow-md z-10 scale-75 opacity-80 hover:opacity-100"
+                <div className="fixed bottom-[148px] sm:bottom-24 right-4 z-40 animate-in slide-in-from-bottom-8 fade-in duration-500 hover:scale-105 transition-transform">
+                    <div 
+                        className="relative group shadow-2xl rounded-2xl overflow-visible"
+                    >
+                        {/* Theme-colored glow behind the widget */}
+                        <div 
+                            className="absolute inset-0 rounded-2xl blur-md opacity-40 -z-10" 
+                            style={{ backgroundColor: shopSettings?.menu_primary_color || '#db2777' }}
+                        />
+                        
+                        {/* Custom Close Button matching theme */}
+                        <button 
+                            className="absolute -top-3 -right-3 w-7 h-7 rounded-full shadow-lg z-50 flex items-center justify-center text-white border-2 border-white transition-transform hover:scale-110"
+                            style={{ backgroundColor: shopSettings?.menu_primary_color || '#ef4444' }}
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); closePromoWidget(); }}
                         >
-                            <X className="w-3 h-3" />
-                        </Button>
+                            <X className="w-4 h-4" />
+                        </button>
+                        
                         <a 
                             href={(rawShopSettings as any).promo_reel_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="block relative w-24 h-44 sm:w-28 sm:h-52 bg-black"
+                            className="block relative w-24 h-44 sm:w-28 sm:h-52 bg-black rounded-2xl overflow-hidden border-2"
+                            style={{ borderColor: shopSettings?.menu_primary_color || 'white' }}
                             onClick={() => {
                                 // Handled natively by browser targeting instagram.com
                             }}
@@ -3427,11 +3437,30 @@ const PublicMenu = () => {
                             <img 
                                 src={getCDNUrl((rawShopSettings as any).promo_reel_image_url)} 
                                 alt="Watch our latest Reel" 
-                                className="w-full h-full object-cover opacity-90 transition-transform group-hover:scale-105"
+                                className="w-full h-full object-cover opacity-90 transition-transform group-hover:scale-110 duration-700"
                             />
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse shadow-[0_0_15px_rgba(255,255,255,0.4)]">
-                                    <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                            
+                            {/* Dark overlay for contrast */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10 pointer-events-none" />
+                            
+                            {/* Play Button */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div 
+                                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.6)] animate-pulse"
+                                    style={{ backgroundColor: shopSettings?.menu_primary_color ? ${shopSettings.menu_primary_color}CC : 'rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }}
+                                >
+                                    <Play className="w-5 h-5 text-white ml-1" fill="white" />
+                                </div>
+                            </div>
+                            
+                            {/* Bottom Badge */}
+                            <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
+                                <div 
+                                    className="px-2.5 py-1 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-md"
+                                    style={{ backgroundColor: shopSettings?.menu_primary_color || '#db2777' }}
+                                >
+                                    <Instagram className="w-3 h-3" />
+                                    Watch Reel
                                 </div>
                             </div>
                         </a>
