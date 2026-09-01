@@ -12,7 +12,7 @@ import { getCDNUrl } from '@/utils/imageUtils';
 import imageCompression from 'browser-image-compression';
 
 export const PromoWidgetManager = () => {
-    const { profile } = useAuth();
+    const { profile, adminAuthUid, adminProfileId } = useAuth();
     const { operatingBranchId } = useBranch();
     const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
     const branchId = operatingBranchId || profile?.id;
@@ -29,7 +29,7 @@ export const PromoWidgetManager = () => {
             const { data } = await supabase
                 .from('shop_settings')
                 .select('promo_reel_url, promo_reel_image_url')
-                .eq('user_id', adminId)
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', branchId ?? adminId)
                 .maybeSingle();
 
@@ -49,7 +49,7 @@ export const PromoWidgetManager = () => {
             await supabase.from('shop_settings').update({
                 promo_reel_url: reelUrl,
                 promo_reel_image_url: imgUrl,
-            }).eq('user_id', adminId).eq('branch_id', branchId ?? adminId);
+            }).eq('user_id', adminAuthUid).eq('branch_id', branchId ?? adminId);
             toast({ title: 'Saved successfully' });
         } catch (e: any) {
             toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -100,7 +100,7 @@ export const PromoWidgetManager = () => {
         try {
             await supabase.from('shop_settings').update({
                 promo_reel_image_url: null,
-            }).eq('user_id', adminId).eq('branch_id', branchId ?? adminId);
+            }).eq('user_id', adminAuthUid).eq('branch_id', branchId ?? adminId);
             setImageUrl(null);
             toast({ title: 'Thumbnail deleted' });
         } catch (e: any) {

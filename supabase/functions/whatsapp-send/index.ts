@@ -44,7 +44,12 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .maybeSingle();
     if (!profile) return json({ error: 'Profile not found' }, 403);
-    const adminId = profile.admin_id || profile.user_id;
+    
+    let adminId = profile.user_id;
+    if (profile.admin_id) {
+        const { data: parentProfile } = await sb.from('profiles').select('user_id').eq('id', profile.admin_id).maybeSingle();
+        if (parentProfile?.user_id) adminId = parentProfile.user_id;
+    }
 
     const requestedMode = body.mode === 'cloud' ? 'cloud' : body.mode === 'link' ? 'link' : null;
 

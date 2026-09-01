@@ -6,7 +6,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
 export const useAutomation = () => {
-  const { profile } = useAuth();
+  const { profile, adminAuthUid } = useAuth();
   const { operatingBranchId } = useBranch();
   const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
   
@@ -77,7 +77,7 @@ export const useAutomation = () => {
 
     try {
       // 1. Fetch Advanced Settings
-      let query = supabase.from('shop_settings').select('low_stock_notification_enabled, auto_report_enabled, auto_report_time').eq('user_id', adminId);
+      let query = supabase.from('shop_settings').select('low_stock_notification_enabled, auto_report_enabled, auto_report_time').eq('user_id', adminAuthUid);
       
       if (operatingBranchId) {
           query = query.eq('branch_id', operatingBranchId);

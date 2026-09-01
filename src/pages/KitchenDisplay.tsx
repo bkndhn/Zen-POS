@@ -1423,7 +1423,7 @@ const KitchenDisplay = () => {
                 {/* ========== REMOTE ORDERS SECTION ========== */}
                 {adminId && branchFilterId && (
                     <div className="mt-6 pt-4 border-t-2 border-dashed border-purple-300">
-                        <RemoteOrdersKDS adminId={adminId} branchId={branchFilterId} />
+                        <RemoteOrdersKDS adminId={adminId} adminAuthUid={adminAuthUid} branchId={branchFilterId} />
                     </div>
                 )}
 

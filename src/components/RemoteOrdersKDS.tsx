@@ -15,10 +15,11 @@ import { resolveOrderLocation } from '@/utils/geoUtils';
 
 interface RemoteOrdersKDSProps {
   adminId: string;
+  adminAuthUid?: string | null;
   branchId: string;
 }
 
-export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branchId }) => {
+export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, adminAuthUid, branchId }) => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -146,7 +147,7 @@ export const RemoteOrdersKDS: React.FC<RemoteOrdersKDSProps> = ({ adminId, branc
       const { data: settings } = await (supabase as any)
         .from('shop_settings')
         .select('remote_order_flow')
-        .eq('user_id', adminId)
+        .eq('user_id', adminAuthUid || adminId)
         .eq('branch_id', branchId)
         .maybeSingle();
 

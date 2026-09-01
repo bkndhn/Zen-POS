@@ -259,7 +259,7 @@ const FONT_OPTIONS: { value: string; label: string; group: string }[] = [
 ];
 
 export const MenuDesignStudio = () => {
-    const { profile , adminProfileId } = useAuth();
+    const { profile , adminProfileId, adminAuthUid } = useAuth();
     const adminId = adminProfileId;
     const { operatingBranchId, branches } = useBranch();
     const isMainBranch = branches.find(b => b.id === operatingBranchId)?.is_main;
@@ -460,7 +460,7 @@ export const MenuDesignStudio = () => {
             const publicUrl = publicData.publicUrl;
             
             setCoverPhotoUrl(publicUrl);
-            await supabase.from('shop_settings').update({ cover_photo_url: publicUrl }).eq('user_id', adminId).eq('branch_id', operatingBranchId ?? adminId);
+            await supabase.from('shop_settings').update({ cover_photo_url: publicUrl }).eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId ?? adminId);
             toast({ title: 'Cover photo updated successfully' });
         } catch (error: any) {
             toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
@@ -472,7 +472,7 @@ export const MenuDesignStudio = () => {
     const handleRemoveCover = async () => {
         if (!adminId) return;
         setCoverPhotoUrl(null);
-        await supabase.from('shop_settings').update({ cover_photo_url: null }).eq('user_id', adminId).eq('branch_id', operatingBranchId ?? adminId);
+        await supabase.from('shop_settings').update({ cover_photo_url: null }).eq('user_id', adminAuthUid).eq('branch_id', operatingBranchId ?? adminId);
         toast({ title: 'Cover photo removed' });
     };
 
