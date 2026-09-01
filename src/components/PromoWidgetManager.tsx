@@ -82,7 +82,8 @@ export const PromoWidgetManager = () => {
 
             if (uploadError) throw uploadError;
 
-            const newImageUrl = filePath;
+                        const { data: publicData } = supabase.storage.from('logos').getPublicUrl(filePath);
+            const newImageUrl = publicData.publicUrl;
             setImageUrl(newImageUrl);
             await handleSave(newImageUrl);
         } catch (error: any) {
