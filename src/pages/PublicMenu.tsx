@@ -3387,6 +3387,43 @@ const PublicMenu = () => {
                 </button>
             )}
 
+
+            {/* Floating Instagram Promo Widget */}
+            {(rawShopSettings as any)?.promo_reel_url && (rawShopSettings as any)?.promo_reel_image_url && showPromoWidget && (
+                <div className="fixed bottom-[148px] sm:bottom-24 left-4 z-40 animate-in slide-in-from-bottom-8 fade-in duration-500">
+                    <div className="relative group shadow-2xl rounded-2xl overflow-hidden border-2 border-white/20">
+                        <Button 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute -top-1 -right-1 w-6 h-6 rounded-full shadow-md z-10 scale-75 opacity-80 hover:opacity-100"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); closePromoWidget(); }}
+                        >
+                            <X className="w-3 h-3" />
+                        </Button>
+                        <a 
+                            href={(rawShopSettings as any).promo_reel_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="block relative w-24 h-36 sm:w-28 sm:h-40 bg-black"
+                            onClick={() => {
+                                // Handled natively by browser targeting instagram.com
+                            }}
+                        >
+                            <img 
+                                src={getCDNUrl((rawShopSettings as any).promo_reel_image_url)} 
+                                alt="Watch our latest Reel" 
+                                className="w-full h-full object-cover opacity-90 transition-transform group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+                                    <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            )}
+
             {/* AI Dish Pairing Modal */}
             {showPairingModal && lastPairedItem && pairedSuggestions.length > 0 && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end justify-center transition-all duration-300">
