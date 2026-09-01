@@ -338,17 +338,37 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         insertPayload.hsn_code = formData.hsn_code.trim() || null;
       }
 
-      const { data: insertedData, error } = await supabase
-        .from('items')
-        .insert(insertPayload)
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      if (insertedData?.id) {
-        const { autoAssignCalciQuickKey } = await import('@/utils/calciQuickKeyUtils');
-        await autoAssignCalciQuickKey(insertedData.id, profile?.user_id, operatingBranchId);
+      // OFFLINE-FIRST: Generate ID locally and queue the write
+      const newItemId = crypto.randomUUID();
+      insertPayload.id = newItemId;
+      insertPayload.admin_id = adminId;
+      insertPayload.branch_id = operatingBranchId;
+      
+      const { offlineManager } = await import('@/utils/offlineManager');
+      
+      try {
+        await offlineManager.queueWrite({
+          table: 'items',
+          operation: 'INSERT',
+          data: insertPayload,
+          adminId: adminId || undefined,
+          branchId: operatingBranchId || undefined
+        });
+        
+        // Update local read cache instantly for zero-latency UI
+        const cachedItems = await offlineManager.getCachedItems(adminId, operatingBranchId);
+        if (cachedItems) {
+          await offlineManager.cacheItems([...cachedItems, insertPayload]);
+        }
+        
+        // Quick Keys can be generated locally later or skipped in offline
+        if (navigator.onLine) {
+          const { autoAssignCalciQuickKey } = await import('@/utils/calciQuickKeyUtils');
+          autoAssignCalciQuickKey(newItemId, profile?.user_id, operatingBranchId).catch(console.error);
+        }
+      } catch (err) {
+        console.error('Failed to queue offline write:', err);
+        throw err;
       }
 
       toast({

@@ -361,12 +361,27 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         updatePayload.hsn_code = formData.hsn_code.trim() || null;
       }
 
-      const { error } = await supabase
-        .from('items')
-        .update(updatePayload)
-        .eq('id', item.id);
-
-      if (error) throw error;
+      // OFFLINE-FIRST: Queue the update locally
+      const { offlineManager } = await import('@/utils/offlineManager');
+      try {
+        await offlineManager.queueWrite({
+          table: 'items',
+          operation: 'UPDATE',
+          data: { ...updatePayload, id: item.id }
+        });
+        
+        // Update local read cache instantly for zero-latency UI
+        // We get admin_id from the profile
+        const targetAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || '');
+        const cachedItems = await offlineManager.getCachedItems(targetAdminId, operatingBranchId);
+        if (cachedItems) {
+          const newItems = cachedItems.map((i: any) => i.id === item.id ? { ...i, ...updatePayload } : i);
+          await offlineManager.cacheItems(newItems);
+        }
+      } catch (err) {
+        console.error('Failed to queue offline update:', err);
+        throw err;
+      }
 
       toast({
         title: "Success",

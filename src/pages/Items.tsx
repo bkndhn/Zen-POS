@@ -450,12 +450,17 @@ const Items: React.FC = () => {
     if (!itemToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from('items')
-        .delete()
-        .eq('id', itemToDelete.id);
-
-      if (error) throw error;
+      const { offlineManager } = await import('@/utils/offlineManager');
+        await offlineManager.queueWrite({
+          table: 'items',
+          operation: 'DELETE',
+          data: { id: itemToDelete.id }
+        });
+        const targetAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || '');
+        const cachedItems = await offlineManager.getCachedItems(targetAdminId, operatingBranchId);
+        if (cachedItems) {
+          await offlineManager.cacheItems(cachedItems.filter((i: any) => i.id !== itemToDelete.id));
+        }
 
       toast({
         title: "Item Deleted",
@@ -489,12 +494,18 @@ const Items: React.FC = () => {
     setIsToggling(true);
     try {
       const newStatus = !itemToToggle.is_active;
-      const { error } = await supabase
-        .from('items')
-        .update({ is_active: newStatus })
-        .eq('id', itemToToggle.id);
-
-      if (error) throw error;
+        const { offlineManager } = await import('@/utils/offlineManager');
+        await offlineManager.queueWrite({
+          table: 'items',
+          operation: 'UPDATE',
+          data: { id: itemToToggle.id, is_active: newStatus }
+        });
+        const targetAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || '');
+        const cachedItems = await offlineManager.getCachedItems(targetAdminId, operatingBranchId);
+        if (cachedItems) {
+          const newItems = cachedItems.map((i: any) => i.id === itemToToggle.id ? { ...i, is_active: newStatus } : i);
+          await offlineManager.cacheItems(newItems);
+        }
 
       toast({
         title: newStatus ? "Item Available" : "Item Unavailable",
@@ -577,11 +588,15 @@ const Items: React.FC = () => {
   const handleBulkDelete = async () => {
     try {
       const ids = Array.from(selectedItems);
-      const { error } = await supabase
-        .from('items')
-        .delete()
-        .in('id', ids);
-      if (error) throw error;
+        const { offlineManager } = await import('@/utils/offlineManager');
+        for (const id of ids) {
+          await offlineManager.queueWrite({ table: 'items', operation: 'DELETE', data: { id } });
+        }
+        const targetAdminId = profile?.role === 'admin' ? profile.id : (profile?.admin_id || '');
+        const cachedItems = await offlineManager.getCachedItems(targetAdminId, operatingBranchId);
+        if (cachedItems) {
+          await offlineManager.cacheItems(cachedItems.filter((i: any) => !ids.includes(i.id)));
+        }
       toast({ title: 'Success', description: `${ids.length} items deleted permanently` });
       setItems(prev => prev.filter(item => !selectedItems.has(item.id)));
       clearSelection();
