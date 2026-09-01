@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe } from 'lucide-react';
+import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CookingTimeBadge, PrepProgressBar } from '@/components/service/PrepTime';
 import {
@@ -410,6 +410,16 @@ const PublicMenu = () => {
     const [scrolled, setScrolled] = useState(false);
     // AI Dish Pairing states
     const [showPairingModal, setShowPairingModal] = useState(false);
+
+    const [showPromoWidget, setShowPromoWidget] = useState(() => {
+        return localStorage.getItem('hide_promo_widget') !== 'true';
+    });
+
+    const closePromoWidget = () => {
+        setShowPromoWidget(false);
+        localStorage.setItem('hide_promo_widget', 'true');
+    };
+
     const [lastPairedItem, setLastPairedItem] = useState<MenuItem | null>(null);
     const [pairedSuggestions, setPairedSuggestions] = useState<MenuItem[]>([]);
     

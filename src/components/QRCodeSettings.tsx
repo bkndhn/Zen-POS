@@ -34,6 +34,7 @@ import {
     Pencil
 } from 'lucide-react';
 import { PromoBannerManager } from '@/components/PromoBannerManager';
+import { PromoWidgetManager } from '@/components/PromoWidgetManager';
 import { MenuDesignStudio } from '@/components/MenuDesignStudio';
 import { StoreOperatingHours } from '@/components/StoreOperatingHours';
 import { OperatingHours, defaultOperatingHours } from '@/types/operatingHours';
@@ -1668,6 +1669,9 @@ const QRCodeSettings = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Instagram Promo Widget */}
+            <PromoWidgetManager />
 
             {/* Promotional Banners Section */}
             <PromoBannerManager />
