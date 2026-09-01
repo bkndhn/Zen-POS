@@ -2,6 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
+import { installOfflineLayer } from './offlineLayer';
+
 
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
