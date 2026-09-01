@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from '@/hooks/use-toast';
+import { getCDNUrl } from '@/utils/imageUtils';
+import imageCompression from 'browser-image-compression';
 import { Palette, LayoutTemplate, LayoutGrid, Type, Sparkles, Box, Check, RefreshCw, Droplets } from 'lucide-react';
 
 const COLOR_PRESETS = [
@@ -265,6 +267,10 @@ export const MenuDesignStudio = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    const [coverPhotoUrl, setCoverPhotoUrl] = useState<string | null>(null);
+    const [uploadingCover, setUploadingCover] = useState(false);
+
+
     // Layout Settings
     const [layoutStyle, setLayoutStyle] = useState('classic');
     const [menuItemsPerRow, setMenuItemsPerRow] = useState(2);
@@ -411,7 +417,8 @@ export const MenuDesignStudio = () => {
                 if (data.menu_items_per_row) setMenuItemsPerRow(data.menu_items_per_row);
                 
                 // Color settings
-                if (data.menu_primary_color) setPrimaryColor(data.menu_primary_color);
+                if (data.menu_primary_color) setCoverPhotoUrl(data.cover_photo_url || null);
+                setPrimaryColor(data.menu_primary_color);
                 if (data.menu_secondary_color) setSecondaryColor(data.menu_secondary_color);
                 if (data.menu_background_color) setBackgroundColor(data.menu_background_color);
                 if (data.menu_text_color) setTextColor(data.menu_text_color);
@@ -431,6 +438,39 @@ export const MenuDesignStudio = () => {
                 }
             }
         setLoading(false);
+    };
+
+
+    const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !adminId) return;
+
+        setUploadingCover(true);
+        try {
+            const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true };
+            const compressedFile = await imageCompression(file, options);
+            const fileExt = file.name.split('.').pop();
+            const fileName = cover_\_\_\.\;
+            const filePath = covers/\;
+
+            const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
+            if (uploadError) throw uploadError;
+
+            setCoverPhotoUrl(filePath);
+            await supabase.from('shop_settings').update({ cover_photo_url: filePath }).eq('user_id', adminId).eq('branch_id', operatingBranchId ?? adminId);
+            toast({ title: 'Cover photo updated successfully' });
+        } catch (error: any) {
+            toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+        } finally {
+            setUploadingCover(false);
+        }
+    };
+
+    const handleRemoveCover = async () => {
+        if (!adminId) return;
+        setCoverPhotoUrl(null);
+        await supabase.from('shop_settings').update({ cover_photo_url: null }).eq('user_id', adminId).eq('branch_id', operatingBranchId ?? adminId);
+        toast({ title: 'Cover photo removed' });
     };
 
     const handleSave = async () => {

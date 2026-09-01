@@ -2271,6 +2271,21 @@ const PublicMenu = () => {
                 </div>
             )}
 
+
+            {/* Hero Cover Photo */}
+            {(rawShopSettings as any)?.cover_photo_url && (
+                <div className="relative w-full h-48 sm:h-64 object-cover overflow-hidden bg-black/10">
+                    <img 
+                        src={getCDNUrl((rawShopSettings as any).cover_photo_url)} 
+                        alt="Cover" 
+                        className="w-full h-full object-cover"
+                        loading="eager"
+                    />
+                    {/* Optional gradient overlay to make things pop */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                </div>
+            )}
+
             {/* Promotional Banners Carousel */}
             {
                 banners.length > 0 && (
