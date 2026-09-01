@@ -73,8 +73,8 @@ export const PromoWidgetManager = () => {
             const compressedFile = await imageCompression(file, options);
             
             const fileExt = file.name.split('.').pop();
-            const fileName = promo_\_\_\.\;
-            const filePath = promo_widgets/\;
+            const fileName = `promo_${adminId}_${branchId}_${Date.now()}.${fileExt}`;
+            const filePath = `promo_widgets/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('logos')
