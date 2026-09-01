@@ -3447,7 +3447,7 @@ const PublicMenu = () => {
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                 <div 
                                     className="w-12 h-12 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.6)] animate-pulse"
-                                    style={{ backgroundColor: shopSettings?.menu_primary_color ? ${shopSettings.menu_primary_color}CC : 'rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }}
+                                    style={{ backgroundColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}CC` : 'rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)' }}
                                 >
                                     <Play className="w-5 h-5 text-white ml-1" fill="white" />
                                 </div>
