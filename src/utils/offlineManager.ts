@@ -1628,7 +1628,7 @@ class OfflineManager {
 
     // ──────────── Universal Write Queue ────────────
 
-    async queueWrite(entry: { table: string; operation: 'INSERT' | 'UPDATE' | 'DELETE'; data: any; adminId?: string; branchId?: string }): Promise<string> {
+    async queueWrite(entry: { table: string; operation: 'INSERT' | 'UPDATE' | 'DELETE'; data: any; adminId?: string; branchId?: string; filters?: Record<string, any> }): Promise<string> {
         if (!this.db) throw new Error('DB not initialized');
         const id = crypto.randomUUID();
         const item = {
@@ -1636,6 +1636,7 @@ class OfflineManager {
             table: entry.table,
             operation: entry.operation,
             data: entry.data,
+            filters: entry.filters || null,
             adminId: entry.adminId || null,
             branchId: entry.branchId || null,
             timestamp: Date.now(),
@@ -1725,27 +1726,42 @@ class OfflineManager {
         let synced = 0;
         let failed = 0;
 
+        const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
+
         for (const item of pending) {
             try {
                 await this.updateWriteQueueItem(item.id, { status: 'syncing' });
-                
-                let result;
-                if (item.operation === 'INSERT') {
-                    const { data: d, error } = await supabase.from(item.table).insert(item.data).select();
-                    if (error) throw error;
-                    result = d;
-                } else if (item.operation === 'UPDATE') {
-                    const { id: recordId, ...updateData } = item.data;
-                    const { error } = await supabase.from(item.table).update(updateData).eq('id', recordId);
-                    if (error) throw error;
-                } else if (item.operation === 'DELETE') {
-                    const { error } = await supabase.from(item.table).delete().eq('id', item.data.id);
-                    if (error) throw error;
-                }
+
+                // Rebuild the original filter set (generic .eq/.in support, id fallback)
+                const filters: Record<string, any> = item.filters
+                    || (item.data?.id ? { id: item.data.id } : {});
+                const applyFilters = (q: any) => {
+                    for (const [col, val] of Object.entries(filters)) {
+                        if (val && typeof val === 'object' && '__in' in (val as any)) q = q.in(col, (val as any).__in);
+                        else q = q.eq(col, val);
+                    }
+                    return q;
+                };
+
+                await withOfflineBypass(async () => {
+                    if (item.operation === 'INSERT') {
+                        const { __pendingSync, ...row } = item.data || {};
+                        const { error } = await supabase.from(item.table).upsert(row, { onConflict: 'id' });
+                        if (error) throw error;
+                    } else if (item.operation === 'UPDATE') {
+                        const { id: recordId, __pendingSync, ...updateData } = item.data || {};
+                        const { error } = await applyFilters(supabase.from(item.table).update(updateData));
+                        if (error) throw error;
+                    } else if (item.operation === 'DELETE') {
+                        const { error } = await applyFilters(supabase.from(item.table).delete());
+                        if (error) throw error;
+                    }
+                });
 
                 await this.removeFromWriteQueue(item.id);
                 // Invalidate cache for this table so next load gets fresh data
                 await this.clearCacheForTable(item.table);
+
                 synced++;
             } catch (err: any) {
                 console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);

@@ -3443,6 +3443,7 @@ export type Database = {
           calci_shortcodes: Json | null
           composition_rate: number | null
           contact_number: string | null
+          cover_photo_url: string | null
           created_at: string | null
           daily_summary_time: string | null
           default_cooking_time_mins: number
@@ -3490,6 +3491,8 @@ export type Database = {
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
           printer_width: string | null
+          promo_reel_image_url: string | null
+          promo_reel_url: string | null
           qr_payment_enabled: boolean
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
@@ -3541,6 +3544,7 @@ export type Database = {
           calci_shortcodes?: Json | null
           composition_rate?: number | null
           contact_number?: string | null
+          cover_photo_url?: string | null
           created_at?: string | null
           daily_summary_time?: string | null
           default_cooking_time_mins?: number
@@ -3588,6 +3592,8 @@ export type Database = {
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
           printer_width?: string | null
+          promo_reel_image_url?: string | null
+          promo_reel_url?: string | null
           qr_payment_enabled?: boolean
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
@@ -3639,6 +3645,7 @@ export type Database = {
           calci_shortcodes?: Json | null
           composition_rate?: number | null
           contact_number?: string | null
+          cover_photo_url?: string | null
           created_at?: string | null
           daily_summary_time?: string | null
           default_cooking_time_mins?: number
@@ -3686,6 +3693,8 @@ export type Database = {
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
           printer_width?: string | null
+          promo_reel_image_url?: string | null
+          promo_reel_url?: string | null
           qr_payment_enabled?: boolean
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
@@ -4749,6 +4758,7 @@ export type Database = {
           calci_shortcodes: Json | null
           composition_rate: number | null
           contact_number: string | null
+          cover_photo_url: string | null
           created_at: string | null
           daily_summary_time: string | null
           default_cooking_time_mins: number
@@ -4796,6 +4806,8 @@ export type Database = {
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
           printer_width: string | null
+          promo_reel_image_url: string | null
+          promo_reel_url: string | null
           qr_payment_enabled: boolean
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
