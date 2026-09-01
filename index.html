@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/brand/logo.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <title>ZenPOS</title>
+
+  <!-- Security Headers -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="ZenPOS - Fast, Modern Billing for Restaurants & Hotels. Kitchen Display, Reports, Offline Support." />
+  <meta name="keywords" content="POS, billing, restaurant, hotel, kitchen display, Tamil Nadu, Tirupur" />
+  <meta name="author" content="ZenPOS" />
+
+  <!-- Open Graph / WhatsApp / Facebook Meta Tags -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://zenpos-tn.vercel.app/" />
+  <meta property="og:title" content="ZenPOS - Restaurant Billing Made Simple" />
+  <meta property="og:description"
+    content="Fast billing, Kitchen Display, Daily Reports, Works Offline! Perfect for restaurants and hotels." />
+  <meta property="og:image" content="https://zenpos-tn.vercel.app/brand/logo.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:site_name" content="ZenPOS" />
+
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ZenPOS - Restaurant Billing Made Simple" />
+  <meta name="twitter:description" content="Fast billing, Kitchen Display, Daily Reports, Works Offline!" />
+  <meta name="twitter:image" content="https://zenpos-tn.vercel.app/brand/logo.png" />
+
+  <!-- Google Fonts - Inter (Professional Typography) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <meta name="theme-color" content="#db2777" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ZenPOS" />
+  <link rel="apple-touch-icon" href="/brand/logo.png" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script>
+    // Service Worker Cache Buster v2 — forces old broken SW to be replaced
+    // Increment SW_VERSION when you need to force-clear all users' caches
+    (function() {
+      var SW_VERSION = '3';
+      var key = 'zenpos_sw_version';
+      if (localStorage.getItem(key) !== SW_VERSION) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            registrations.forEach(function(reg) { reg.unregister(); });
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            names.forEach(function(name) { caches.delete(name); });
+          });
+        }
+        localStorage.setItem(key, SW_VERSION);
+        // Reload once to start fresh without old SW
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          location.reload();
+        }
+      }
+    })();
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+
+</body>
+
+</html>
