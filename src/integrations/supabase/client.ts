@@ -57,12 +57,26 @@ const originalFrom = supabase.from.bind(supabase);
 // Create a dummy builder that absorbs chained calls (.select, .single, .eq, etc)
 // and eventually resolves to a fake successful response
 const createOfflineDummyBuilder = (mockData: any) => {
-  const dummy: any = Promise.resolve({ data: mockData, error: null });
-  const chainableMethods = ['select', 'single', 'eq', 'in', 'order', 'limit', 'match', 'or', 'contains'];
+  let isSingle = false;
   
+  // Create a proxy that acts as a Promise but also captures chainable methods
+  const executor = (resolve: any) => {
+    // If .single() was called and mockData is an array, return the first item
+    const resolvedData = isSingle && Array.isArray(mockData) ? mockData[0] : mockData;
+    resolve({ data: resolvedData, error: null });
+  };
+  
+  const dummy: any = new Promise(executor);
+  
+  const chainableMethods = ['select', 'eq', 'in', 'order', 'limit', 'match', 'or', 'contains'];
   chainableMethods.forEach(method => {
     dummy[method] = () => dummy;
   });
+  
+  dummy.single = () => {
+    isSingle = true;
+    return dummy;
+  };
   
   return dummy;
 };
