@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { getCDNUrl } from '@/utils/urlUtils';
+import { getCDNUrl } from '@/utils/imageUtils';
 import imageCompression from 'browser-image-compression';
 
 export const PromoWidgetManager = () => {
