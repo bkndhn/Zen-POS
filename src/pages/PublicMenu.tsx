@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe } , Instagram from 'lucide-react';
+import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe , Instagram } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CookingTimeBadge, PrepProgressBar } from '@/components/service/PrepTime';
 import {
