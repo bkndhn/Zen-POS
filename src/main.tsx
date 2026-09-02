@@ -55,16 +55,19 @@ initStoragePersistence().catch(() => {});
 
 // Initialize SQLite backend (native or WASM) and wire into offlineManager
 // This runs in the background — offlineManager falls back to IndexedDB until ready
-initStorage()
-  .then((backend) => {
+async function boot() {
+  try {
+    const backend = await initStorage();
     offlineManager.setBackend(backend);
     console.log('[Boot] Storage backend wired into offlineManager');
-  })
-  .catch((err) => {
-    console.warn('[Boot] SQLite init failed — offlineManager continues with IndexedDB:', err);
-  });
+  } catch (err) {
+    console.warn('[Boot] SQLite init failed - offlineManager continues with IndexedDB:', err);
+  }
 
-syncEngine.start();
+  syncEngine.start();
+  createRoot(document.getElementById("root")!).render(<App />);
+}
 
-createRoot(document.getElementById("root")!).render(<App />);
+boot();
+
 
