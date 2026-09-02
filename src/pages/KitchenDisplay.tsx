@@ -382,7 +382,6 @@ const KitchenDisplay = () => {
             fetchTableOrders();
         }, 30000);
         return () => {
-            clearInterval(pollInterval);
             if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
         };
     }, [fetchBills, fetchTableOrders]);

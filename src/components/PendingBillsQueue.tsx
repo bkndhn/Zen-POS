@@ -30,12 +30,9 @@ export const PendingBillsQueue: React.FC = () => {
         });
         
         // Refresh periodically
-        const interval = setInterval(fetchPendingBills, 5000);
-        
         return () => {
             unsubscribe();
-            clearInterval(interval);
-        };
+            };
     }, []);
 
     const handleSync = async () => {
@@ -182,3 +179,4 @@ export const PendingBillsQueue: React.FC = () => {
         </div>
     );
 };
+

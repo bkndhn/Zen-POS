@@ -500,11 +500,7 @@ const TableOrderBilling: React.FC = () => {
         // Seed bill counter
         initBillCounter(adminId, operatingBranchId).catch(console.warn);
 
-        const interval = setInterval(() => {
-            fetchTableOrders();
-            fetchConfiguredTables();
-        }, 15000);
-
+        // Polling removed to save battery - relies on Postgres changes below.
         // Listen on the SAME shared channel that PublicMenu/Kitchen/ServiceArea use
         const channel = supabase.channel('table-order-sync', {
             config: { broadcast: { self: true } }
@@ -527,7 +523,6 @@ const TableOrderBilling: React.FC = () => {
         syncChannelRef.current = syncChannel;
 
         return () => {
-            clearInterval(interval);
             supabase.removeChannel(channel);
             supabase.removeChannel(pgChannel);
             supabase.removeChannel(syncChannel);
@@ -1711,3 +1706,6 @@ const TableOrderBilling: React.FC = () => {
 };
 
 export default TableOrderBilling;
+
+
+

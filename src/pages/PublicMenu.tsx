@@ -1980,73 +1980,7 @@ const PublicMenu = () => {
                     style={{ backgroundColor: shopSettings?.menu_secondary_color || '#f97316' }} 
                 />
             </div>
-            <style>{`
-                .public-menu-container .text-\\[10px\\] { font-size: 12.5px !important; }
-                .public-menu-container .text-\\[11px\\] { font-size: 13px !important; }
-                .public-menu-container .text-\\[12px\\] { font-size: 14px !important; }
-                .public-menu-container .text-xs { font-size: 14px !important; }
-                .public-menu-container .text-sm { font-size: 15.5px !important; }
-                .public-menu-container .text-base { font-size: 17.5px !important; }
-                .public-menu-container .text-lg { font-size: 19.5px !important; }
-                .public-menu-container .text-xl { font-size: 22px !important; }
-                .public-menu-container .text-2xl { font-size: 26px !important; }
-                .public-menu-container .text-3xl { font-size: 32px !important; }
-                /* Dynamic text color for muted text inheriting brand */
-                .public-menu-container { --menu-primary: ${shopSettings?.menu_primary_color || '#f97316'}; --menu-text: ${shopSettings?.menu_text_color || '#1c1917'}; }
-                
-                /* Custom brand glow shadow hover effects */
-                .menu-card-glow {
-                    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 12px ${shopSettings?.menu_primary_color || '#ea580c'}15;
-                    border-color: ${shopSettings?.menu_primary_color || '#ea580c'}25;
-                }
-                .menu-card-glow:hover {
-                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 0 20px ${shopSettings?.menu_primary_color || '#ea580c'}30;
-                    border-color: ${shopSettings?.menu_primary_color || '#ea580c'}40;
-                    transform: translateY(-4px);
-                }
-
-                @keyframes fly-cart-animation {
-                    0% {
-                        transform: translate3d(0, 0, 0) scale(1);
-                        opacity: 1;
-                    }
-                    35% {
-                        transform: translate3d(var(--fly-mid-x), var(--fly-mid-y), 0) scale(1.2);
-                        opacity: 1;
-                    }
-                    100% {
-                        transform: translate3d(var(--fly-target-x), var(--fly-target-y), 0) scale(0.2);
-                        opacity: 0;
-                    }
-                }
-                .fly-cart-particle {
-                    position: fixed;
-                    z-index: 9999;
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    background-size: cover;
-                    background-position: center;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 8px var(--menu-primary);
-                    border: 2px solid white;
-                    pointer-events: none;
-                    animation: fly-cart-animation 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-                }
-                @keyframes cart-bounce {
-                    0%, 100% { transform: scale(1); }
-                    50% { transform: scale(1.08); }
-                }
-                .animate-cart-pulse {
-                    animation: cart-bounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1;
-                }
-                @keyframes slide-up {
-                    0% { transform: translateY(100%); }
-                    100% { transform: translateY(0); }
-                }
-                .animate-slide-up {
-                    animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                }
-            `}</style>
+            
             {/* Header with Shop Name */}
             <header
                 className={cn(
@@ -3691,6 +3625,8 @@ const PublicMenu = () => {
 
 
 export default PublicMenu;
+
+
 
 
 
