@@ -12,8 +12,8 @@ const localBroadcast = typeof BroadcastChannel !== 'undefined'
 
 export const useRealTimeUpdates = () => {
   const broadcastChannelRef = useRef<any>(null);
-  const { profile } = useAuth();
-  const adminId = profile?.admin_id || profile?.id;
+  const { profile, adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const { operatingBranchId } = useBranch();
 
   useEffect(() => {

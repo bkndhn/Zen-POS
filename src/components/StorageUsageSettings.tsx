@@ -31,8 +31,8 @@ const monthsAgo = (n: number) => {
 };
 
 export const StorageUsageSettings: React.FC = () => {
-  const { profile } = useAuth();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id ?? null;
+  const { profile, adminProfileId } = useAuth();
+  const adminId = adminProfileId;
   const isAdmin = profile?.role === 'admin';
 
   const [loading, setLoading] = useState(true);

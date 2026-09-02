@@ -107,7 +107,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
   useEffect(() => {
     const checkPremiumAccess = async () => {
       if (!profile) return;
-      const adminId = profile.role === 'admin' ? profile.id : profile.admin_id;
+      const adminId = adminProfileId;
       if (!adminId) return;
 
       const { data } = await supabase

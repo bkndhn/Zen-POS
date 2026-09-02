@@ -629,7 +629,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
     // Also subscribe to broadcast channel for instant force logout from Super Admin or Client Admin
-    const adminId = profile.role === 'admin' ? profile.id : profile.admin_id;
+    const adminId = adminProfileId;
     let broadcastChannel: any = null;
     let userBroadcastChannel: any = null;
 

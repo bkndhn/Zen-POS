@@ -33,12 +33,12 @@ interface ReconRow {
 const money = (n: number | null | undefined) => `₹${Number(n || 0).toFixed(2)}`;
 
 export const ShiftReconciliationHistory: React.FC<Props> = ({ open, onOpenChange }) => {
-  const { profile } = useAuth();
+  const { profile, adminProfileId } = useAuth();
   const { operatingBranchId } = useBranch();
   const [rows, setRows] = useState<ReconRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const branchId = operatingBranchId || profile?.id;
 
   const load = useCallback(async () => {

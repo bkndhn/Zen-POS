@@ -20,7 +20,7 @@ interface ZReportDialogProps {
 }
 
 export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange }) => {
-  const { profile } = useAuth();
+  const { profile, adminProfileId } = useAuth();
   const { operatingBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
   const [actualClosingCash, setActualClosingCash] = useState<string>("");
@@ -49,7 +49,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const branchId = operatingBranchId || profile?.id;
-      const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+      const adminId = adminProfileId;
       
       // Fetch dynamic payment methods
       const { data: paymentsData } = await supabase
@@ -144,7 +144,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     if (!reportData) return;
     setLoading(true);
     try {
-      const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+      const adminId = adminProfileId;
       const branchId = operatingBranchId || profile?.id;
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -186,7 +186,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       }
       setIsClosingShift(true);
       try {
-        const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+        const adminId = adminProfileId;
         const branchId = operatingBranchId || profile?.id;
         const openingCash = Number(reportData.shift.opening_cash) || 0;
         const cashSales = reportData.paymentTotals['cash'] || 0;

@@ -143,7 +143,7 @@ const RenewSubscription: React.FC = () => {
 
 
   const adminId: string | undefined =
-    profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    adminProfileId;
 
   /* ---- state ---- */
   const [license, setLicense] = useState<LicenseStatus | null>(null);

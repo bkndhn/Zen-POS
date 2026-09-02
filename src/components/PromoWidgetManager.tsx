@@ -14,7 +14,7 @@ import imageCompression from 'browser-image-compression';
 export const PromoWidgetManager = () => {
     const { profile, adminAuthUid, adminProfileId } = useAuth();
     const { operatingBranchId } = useBranch();
-    const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    const adminId = adminProfileId;
     const branchId = operatingBranchId || profile?.id;
 
     const [reelUrl, setReelUrl] = useState('');

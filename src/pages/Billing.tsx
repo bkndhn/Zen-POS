@@ -444,11 +444,9 @@ const BillingListItemCard = React.memo(({
 });
 
 const Billing = () => {
-  const {
-    profile
-  } = useAuth();
+  const { profile, adminProfileId } = useAuth();
   const { t } = useTranslation();
-  const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+  const adminId = adminProfileId;
   const { branchFilterId, isAllBranchesView, operatingBranchId, activeBranch } = useBranchScopedQuery(() => {
     fetchItems();
   });
@@ -781,7 +779,7 @@ const Billing = () => {
         payment_details: { online: orderSubtotal },
         additional_charges: [],
         created_by: profile?.user_id,
-        admin_id: profile?.role === 'admin' ? profile.id : profile?.admin_id || null,
+        admin_id: adminProfileId,
         branch_id: operatingBranchId || null,
         date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
         service_status: 'pending',
@@ -813,7 +811,7 @@ const Billing = () => {
 
   // Real-time listener for incoming Food Aggregator Webhook orders
   useEffect(() => {
-    const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+    const adminId = adminProfileId;
     if (!adminId) return;
 
     // Fetch initial pending orders
@@ -987,7 +985,7 @@ const Billing = () => {
     syncChannelRef.current = channel;
 
     // Seed bill counter from DB on first use (prevents 0001 on new device)
-    const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+    const adminId = adminProfileId;
     initBillCounter(adminId, operatingBranchId).catch(console.warn);
 
     return () => { supabase.removeChannel(channel); };
@@ -2937,7 +2935,7 @@ const Billing = () => {
       const isOffline = !navigator.onLine;
 
       // Get admin_id for data isolation (admin's own id if admin, or parent admin_id if sub-user)
-      const adminId = profile?.role === 'admin' ? profile?.id : profile?.admin_id;
+      const adminId = adminProfileId;
 
       // ======= ZERO-LATENCY BILL NUMBER GENERATION =======
       // Uses shared utility for unified bill numbering across POS and table orders

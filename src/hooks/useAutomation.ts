@@ -8,7 +8,7 @@ import { Capacitor } from '@capacitor/core';
 export const useAutomation = () => {
   const { profile, adminAuthUid } = useAuth();
   const { operatingBranchId } = useBranch();
-  const adminId = profile?.role === 'admin' ? profile.id : profile?.admin_id;
+  const adminId = adminProfileId;
   
   const checkingStock = useRef(false);
   const lastReportTime = useRef<string | null>(null);
