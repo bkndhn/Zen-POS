@@ -1165,15 +1165,6 @@ const PublicMenu = () => {
     const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity / (item.base_value || 1)), 0), [cart]);
 
     // Handle item click for customization or simple add
-    const addToCart = useCallback((item: MenuItem, e?: React.MouseEvent) => {
-        if (storeStatus && storeStatus.status !== 'open') {
-            toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
-            return;
-        }
-
-        setCustomizerItem({ item, event: e });
-    }, [storeStatus]);
-
     const confirmAddToCart = useCallback((customizedItem: CartItem, e?: React.MouseEvent) => {
         setCart(prev => {
             const existing = prev.find(c => c.id === customizedItem.id);
@@ -1239,6 +1230,35 @@ const PublicMenu = () => {
     const removeFromCart = useCallback((itemId: string) => {
         setCart(prev => prev.filter(c => c.id !== itemId));
     }, []);
+
+    const addToCart = useCallback((item: MenuItem, e?: React.MouseEvent) => {
+        if (storeStatus && storeStatus.status !== 'open') {
+            toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
+            return;
+        }
+
+        const allModifiers = item.modifiers || item.customization_options || item.addons || [];
+        if (allModifiers.length === 0) {
+            const simpleItem = {
+                id: item.id,
+                item_id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.base_value || 1,
+                unit: item.unit,
+                base_value: item.base_value,
+                instructions: '',
+                tax_rate_id: item.tax_rate_id,
+                is_tax_inclusive: item.is_tax_inclusive,
+                selected_modifiers: [],
+                customization_string: ''
+            };
+            confirmAddToCart(simpleItem as any, e);
+            return;
+        }
+
+        setCustomizerItem({ item, event: e });
+    }, [storeStatus, confirmAddToCart]);
 
     // Clear whole cart
     const clearCart = useCallback(() => {
