@@ -59,17 +59,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "additional_charges_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "additional_charges_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_additional_charges_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -102,7 +102,15 @@ export type Database = {
           performed_by?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_admin_cleanup_logs_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_storage_alerts: {
         Row: {
@@ -138,7 +146,15 @@ export type Database = {
           threshold?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_admin_storage_alerts_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_storage_quotas: {
         Row: {
@@ -168,7 +184,15 @@ export type Database = {
           notes?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_admin_storage_quotas_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_storage_usage: {
         Row: {
@@ -198,7 +222,15 @@ export type Database = {
           file_bytes?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_admin_storage_usage_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       aggregator_integrations: {
         Row: {
@@ -234,7 +266,15 @@ export type Database = {
           updated_at?: string | null
           webhook_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_aggregator_integrations_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_insights_log: {
         Row: {
@@ -266,7 +306,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ai_insights_log_admin_id_fkey"
+            foreignKeyName: "fk_ai_insights_log_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -313,7 +353,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ai_usage_limits_admin_id_fkey"
+            foreignKeyName: "fk_ai_usage_limits_admin_id"
             columns: ["admin_id"]
             isOneToOne: true
             referencedRelation: "profiles"
@@ -434,6 +474,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointments_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -741,13 +788,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "bills_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bills_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -759,6 +799,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_bills_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -790,17 +837,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "blocked_devices_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "blocked_devices_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_blocked_devices_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -905,7 +952,15 @@ export type Database = {
           shop_name?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_branches_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brands: {
         Row: {
@@ -937,17 +992,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "brands_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "brands_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_brands_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1010,6 +1065,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_customer_ledger_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       customers: {
@@ -1057,17 +1119,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "customers_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "customers_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_customers_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1102,17 +1164,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "departments_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "departments_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_departments_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1186,7 +1248,15 @@ export type Database = {
           month?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_expense_budgets_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expense_categories: {
         Row: {
@@ -1218,17 +1288,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "expense_categories_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "expense_categories_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_expense_categories_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1293,17 +1363,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "expenses_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "expenses_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_expenses_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1369,6 +1439,13 @@ export type Database = {
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "feedback_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_feedback_form_fields_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1443,7 +1520,15 @@ export type Database = {
           updated_at?: string
           whatsapp_reply_templates?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_feedback_forms_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feedback_submissions: {
         Row: {
@@ -1514,6 +1599,13 @@ export type Database = {
             referencedRelation: "feedback_forms"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_feedback_submissions_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ingredients: {
@@ -1553,7 +1645,15 @@ export type Database = {
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_ingredients_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       item_batches: {
         Row: {
@@ -1597,6 +1697,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_item_batches_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "item_batches_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
@@ -1638,7 +1745,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "item_categories_admin_id_fkey"
+            foreignKeyName: "fk_item_categories_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1853,7 +1960,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "items_admin_id_fkey"
+            foreignKeyName: "fk_items_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1935,7 +2042,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "khata_transactions_admin_id_fkey"
+            foreignKeyName: "fk_khata_transactions_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1997,7 +2104,15 @@ export type Database = {
           total?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_online_orders_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_gateway_credentials: {
         Row: {
@@ -2051,7 +2166,15 @@ export type Database = {
           updated_at?: string
           webhook_secret?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_payment_gateway_credentials_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_mandates: {
         Row: {
@@ -2117,7 +2240,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_payment_mandates_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_platform_credentials: {
         Row: {
@@ -2282,7 +2413,15 @@ export type Database = {
           updated_at?: string
           utr?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_payment_transactions_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_webhook_events: {
         Row: {
@@ -2333,7 +2472,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_payment_webhook_events_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -2371,7 +2518,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "payments_admin_id_fkey"
+            foreignKeyName: "fk_payments_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2482,7 +2629,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_admin_id_fkey"
+            foreignKeyName: "fk_profiles_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2544,7 +2691,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "promo_banners_admin_id_fkey"
+            foreignKeyName: "fk_promo_banners_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2596,7 +2743,15 @@ export type Database = {
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_providers_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_rate_limits: {
         Row: {
@@ -2626,7 +2781,15 @@ export type Database = {
           scope?: string
           window_start?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_public_rate_limits_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_distributions: {
         Row: {
@@ -2657,6 +2820,13 @@ export type Database = {
           quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_purchase_distributions_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_distributions_purchase_item_id_fkey"
             columns: ["purchase_item_id"]
@@ -2708,6 +2878,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_purchase_items_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_items_purchase_id_fkey"
             columns: ["purchase_id"]
             isOneToOne: false
@@ -2758,6 +2935,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_purchase_payments_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_payments_purchase_id_fkey"
             columns: ["purchase_id"]
             isOneToOne: false
@@ -2807,6 +2991,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_purchase_return_items_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_return_items_return_id_fkey"
             columns: ["return_id"]
@@ -2860,6 +3051,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_purchase_returns_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_returns_purchase_id_fkey"
             columns: ["purchase_id"]
@@ -2923,6 +3121,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_purchases_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchases_supplier_id_fkey"
             columns: ["supplier_id"]
@@ -2997,6 +3202,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_recipes_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipes_ingredient_id_fkey"
             columns: ["ingredient_id"]
@@ -3163,7 +3375,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "remote_orders_admin_id_fkey"
+            foreignKeyName: "fk_remote_orders_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3215,7 +3427,15 @@ export type Database = {
           user_id?: string | null
           value_ms?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_rum_events_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_audit_log: {
         Row: {
@@ -3260,7 +3480,15 @@ export type Database = {
           target_record_id?: string | null
           target_table?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_security_audit_log_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shift_audit_log: {
         Row: {
@@ -3300,6 +3528,13 @@ export type Database = {
           shift_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_shift_audit_log_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shift_audit_log_shift_id_fkey"
             columns: ["shift_id"]
@@ -3372,6 +3607,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_shift_reconciliations_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shift_reconciliations_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -3426,7 +3668,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_shifts_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shop_settings: {
         Row: {
@@ -3487,6 +3737,7 @@ export type Database = {
           menu_slug: string | null
           menu_text_color: string | null
           native_app_unlocked: boolean | null
+          offline_grace_days: number | null
           operating_hours: Json | null
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
@@ -3588,6 +3839,7 @@ export type Database = {
           menu_slug?: string | null
           menu_text_color?: string | null
           native_app_unlocked?: boolean | null
+          offline_grace_days?: number | null
           operating_hours?: Json | null
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
@@ -3689,6 +3941,7 @@ export type Database = {
           menu_slug?: string | null
           menu_text_color?: string | null
           native_app_unlocked?: boolean | null
+          offline_grace_days?: number | null
           operating_hours?: Json | null
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
@@ -3806,7 +4059,15 @@ export type Database = {
           notes?: string | null
           reason?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_stock_adjustments_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_ledger: {
         Row: {
@@ -3851,7 +4112,15 @@ export type Database = {
           source_id?: string | null
           source_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_stock_ledger_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_transfer_items: {
         Row: {
@@ -3885,6 +4154,13 @@ export type Database = {
           transfer_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_stock_transfer_items_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stock_transfer_items_transfer_id_fkey"
             columns: ["transfer_id"]
@@ -3934,7 +4210,15 @@ export type Database = {
           transfer_no?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_stock_transfers_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_pack_pricing: {
         Row: {
@@ -3970,7 +4254,15 @@ export type Database = {
           price_per_month?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_subscription_pack_pricing_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_payments: {
         Row: {
@@ -4023,7 +4315,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "subscription_payments_admin_id_fkey"
+            foreignKeyName: "fk_subscription_payments_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4084,7 +4376,15 @@ export type Database = {
           phone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_suppliers_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       table_orders: {
         Row: {
@@ -4158,7 +4458,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "table_orders_admin_id_fkey"
+            foreignKeyName: "fk_table_orders_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4226,7 +4526,15 @@ export type Database = {
           status?: string | null
           table_number?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_table_reservations_admin_id"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       table_service_requests: {
         Row: {
@@ -4276,7 +4584,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "table_service_requests_admin_id_fkey"
+            foreignKeyName: "fk_table_service_requests_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4359,7 +4667,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "tables_admin_id_fkey"
+            foreignKeyName: "fk_tables_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4420,11 +4728,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "tax_rates_admin_id_fkey"
+            foreignKeyName: "fk_tax_rates_admin_id"
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "tax_rates_branch_id_fkey"
@@ -4802,6 +5110,7 @@ export type Database = {
           menu_slug: string | null
           menu_text_color: string | null
           native_app_unlocked: boolean | null
+          offline_grace_days: number | null
           operating_hours: Json | null
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
