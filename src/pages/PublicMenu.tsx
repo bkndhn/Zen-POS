@@ -272,7 +272,7 @@ const ItemCustomizerDialog = ({
                     </button>
                     <div className="p-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{item.name}</h2>
-                        <p className="text-sm font-semibold mt-1" style={{ color: primaryColor || '#ea580c' }}>₹{item.price.toFixed(2)} Base</p>
+                        <p className="text-sm font-semibold mt-1" style={{ color: primaryColor || '#ea580c' }}>₹{item.price.toFixed(2)} /{item.base_value && item.base_value > 1 ? item.base_value : ''}{item.unit !== 'pcs' && item.unit !== 'pc' ? getShortUnit(item.unit) : 'pc'}</p>
                     </div>
                 </div>
 
