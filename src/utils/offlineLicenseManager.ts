@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface LicenseStatus {
+    graceDays?: number;
     isValid: boolean;
     isOffline: boolean;
     graceDaysRemaining: number;
@@ -75,6 +76,7 @@ export function cacheVerifiedLicense(adminId: string, subscriptionData: {
     forceLogout?: boolean;
     forceLogoutReason?: string;
     subscriptionAmount?: number;
+    graceDays?: number;
 }): void {
     const now = new Date().toISOString();
     const payload = {
@@ -84,7 +86,7 @@ export function cacheVerifiedLicense(adminId: string, subscriptionData: {
         endDate: subscriptionData.endDate || null,
         subscriptionEndDate: subscriptionData.endDate || null,
         lastVerifiedAt: now,
-        graceDays: DEFAULT_GRACE_DAYS,
+        graceDays: subscriptionData.graceDays || DEFAULT_GRACE_DAYS,
         forceLogout: subscriptionData.forceLogout || false,
         forceLogoutReason: subscriptionData.forceLogoutReason || null,
         subscriptionAmount: subscriptionData.subscriptionAmount || 999,
@@ -307,9 +309,14 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
         // Fetch subscription data + force_logout status from profiles
         const { data: profileData, error: profileError } = await (supabase as any)
             .from('profiles')
-            .select('subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason')
+            .select('subscription_plan, subscription_status, subscription_end_date, subscription_amount, force_logout, force_logout_reason, client_permissions')
             .eq('id', adminId)
             .maybeSingle();
+            
+        let graceDays = 7;
+        if (profileData?.client_permissions?.offline_grace_days !== undefined) {
+            graceDays = profileData.client_permissions.offline_grace_days;
+        }
 
         if (profileError) throw profileError;
 
@@ -328,6 +335,7 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
             forceLogout,
             forceLogoutReason,
             subscriptionAmount,
+            graceDays,
         });
 
         return checkOfflineLicenseStatus();
@@ -336,3 +344,4 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
         return checkOfflineLicenseStatus();
     }
 }
+

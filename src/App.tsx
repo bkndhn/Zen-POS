@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
+import { AppUpdater } from "@/components/AppUpdater";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient } from "@tanstack/react-query";
@@ -376,6 +377,7 @@ const App = () => {
       >
         <TooltipProvider>
           <Toaster />
+        <AppUpdater />
           <Sonner />
           <InstallPrompt />
           <DevicePermissions />

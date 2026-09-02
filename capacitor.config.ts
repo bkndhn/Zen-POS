@@ -1,13 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Read from process.env if available (Node build time), otherwise fallback
+const isOfflineBuild = process.env.CAPACITOR_BUILD_MODE === 'offline';
+
 const config: CapacitorConfig = {
   appId: 'com.zenpos.app',
   appName: 'ZenPOS',
   webDir: 'dist',
-  server: {
-    url: 'https://zen-pos.vercel.app',
-    cleartext: false
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 5000,
@@ -41,5 +40,13 @@ const config: CapacitorConfig = {
     scrollEnabled: true,
   }
 };
+
+// Only inject the server URL if we are NOT building the true offline APK
+if (!isOfflineBuild) {
+  config.server = {
+    url: 'https://zen-pos.vercel.app',
+    cleartext: false
+  };
+}
 
 export default config;
