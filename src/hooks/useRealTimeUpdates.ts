@@ -22,7 +22,7 @@ export const useRealTimeUpdates = () => {
     console.log('Setting up real-time updates with instant broadcast...');
 
     // ============ INSTANT BROADCAST CHANNEL (Sub-100ms cross-device) ============
-    const broadcastChannel = supabase.channel(\pos-global-broadcast-\\, {
+    const broadcastChannel = supabase.channel(`pos-global-broadcast-${adminId}`, {
       config: { broadcast: { self: true } }
     })
       .on('broadcast', { event: 'bills-sync' }, (payload) => {
@@ -53,10 +53,10 @@ export const useRealTimeUpdates = () => {
     localBroadcast?.addEventListener('message', handleLocalSync);
 
     // ============ POSTGRES CHANGES (Fallback, ~2-5s latency) ============
-    const filterStr = \dmin_id=eq.\\;
+    const filterStr = `admin_id=eq.${adminId}`;
 
     const billsChannel = supabase
-      .channel(\ills-changes-\\)
+      .channel(`bills-changes-${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bills', filter: filterStr }, (payload) => {
           invalidateRelatedData('bills');
           window.dispatchEvent(new CustomEvent('bills-updated'));
@@ -65,7 +65,7 @@ export const useRealTimeUpdates = () => {
       }).subscribe();
 
     const itemsChannel = supabase
-      .channel(\items-changes-\\)
+      .channel(`items-changes=${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: filterStr }, (payload) => {
           invalidateRelatedData('items');
           window.dispatchEvent(new CustomEvent('items-updated'));
@@ -74,13 +74,13 @@ export const useRealTimeUpdates = () => {
       }).subscribe();
 
     const expensesChannel = supabase
-      .channel(\expenses-changes-\\)
+      .channel(`expenses-changes-${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: filterStr }, (payload) => {
           invalidateRelatedData('expenses');
       }).subscribe();
 
     const paymentsChannel = supabase
-      .channel(\payments-changes-\\)
+      .channel(`payments-changes-${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments', filter: filterStr }, (payload) => {
           invalidateRelatedData('payments');
           dataCache.invalidate(CACHE_KEYS.PAYMENT_METHODS);
@@ -88,7 +88,7 @@ export const useRealTimeUpdates = () => {
       }).subscribe();
 
     const categoriesChannel = supabase
-      .channel(\categories-changes-\\)
+      .channel(`categories-changes=${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_categories', filter: filterStr }, () => {
           dataCache.invalidate(CACHE_KEYS.EXPENSE_CATEGORIES);
       })
@@ -98,22 +98,22 @@ export const useRealTimeUpdates = () => {
       }).subscribe();
 
     const additionalChargesChannel = supabase
-      .channel(\dditional-charges-changes-\\)
+      .channel(`additional-charges-changes-${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'additional_charges', filter: filterStr }, () => {
           window.dispatchEvent(new CustomEvent('additional-charges-updated'));
           window.dispatchEvent(new CustomEvent('settings-updated'));
       }).subscribe();
 
     const shopSettingsChannel = supabase
-      .channel(\shop-settings-changes-\\)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_settings', filter: \user_id=eq.\\ }, () => {
+      .channel(`shop-settings-changes=${adminId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_settings', filter: `user_id=eq.${adminId}` }, () => {
           window.dispatchEvent(new CustomEvent('shop-settings-updated'));
           window.dispatchEvent(new CustomEvent('settings-updated'));
       }).subscribe();
 
     const displaySettingsChannel = supabase
-      .channel(\display-settings-changes-\\)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'display_settings', filter: \user_id=eq.\\ }, () => {
+      .channel(`display-settings-changes=${adminId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'display_settings', filter: `user_id=eq.${adminId}` }, () => {
           window.dispatchEvent(new CustomEvent('display-settings-updated'));
           window.dispatchEvent(new CustomEvent('settings-updated'));
       }).subscribe();
