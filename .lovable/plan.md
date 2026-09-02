@@ -1,71 +1,89 @@
-# ZenPOS: competitive review, ID cleanup, offline/APK truth, payments
+# Identity and Offline Reliability Hardening
 
-## Answers to your questions (verified against the code and DB)
+## Confirmed audit result
 
-### 1. Can it compete? Where it stands today
-Verified strengths (real code, not stubs): 84+ tables with per-tenant RLS, billing + KOT split printing per station, tables/KDS/waiter/service area with realtime, QR public menu + remote orders + feedback, purchases/GRN/returns, stock ledger + batches + adjustments + transfers, expenses, CRM/khata, shifts + Z-report + reconciliation history, branches, sub-users with page permissions, FCM push (web + native), AI insights + AI menu import, encrypted backups + scheduled cloud backup, super-admin console with storage quotas and licensing, and a universal offline layer that wraps every `supabase.from()` call.
+ZenPOS has a strong offline-resilient foundation, but it is not yet a fully offline application across every page and workflow.
 
-That feature depth matches or beats most ₹500–₹1,500/month Indian POS products. The gaps that stop it from being "world class" are listed in section 6.
+- The tenant key is `profiles.id`. Tenant-scoped `admin_id` fields must always use this value.
+- The login identity is `auth.users.id`, exposed as `profiles.user_id`. It belongs only in identity fields such as `user_id` and `created_by`.
+- Current sub-users correctly point to their parent admin profile, and the inspected tenant rows use profile IDs.
+- `tax_rates` currently contains a profile ID, and its access policies expect profile IDs. Several frontend call sites still use an auth UID for tax-rate reads/writes, and the live table has no foreign key enforcing the intended contract.
+- Native SQLite is installed and compiled on Android/iOS. It uses WAL and batched writes, but generic offline writes still pass through a legacy IndexedDB queue, update/delete filters are missing from the SQLite queue contract, the database is unencrypted, and queue replay is not fully serialized.
+- The selected offline policy is **7 days after the last successful server verification**. The app must not claim unlimited offline use.
+- Table CRUD has broad offline coverage. RPCs, file uploads, edge functions, cloud payments, FCM, realtime delivery, and cross-device synchronization still require connectivity or an explicit queued substitute.
 
-### 2. Can you launch now?
-Yes for a controlled pilot (20–40 outlets). Two blockers should be fixed first (both in the work plan below): the APK is not actually offline-capable, and the admin-id inconsistency will keep breaking new features.
+## Implementation
 
-### 3. The auth-id vs profile-id confusion — root cause confirmed
-Confirmed by querying the live database:
-- Almost every tenant table stores `admin_id = profiles.id` (verified on `bills`, `items`, `stock_ledger`, `purchases`, `branches`, `suppliers`, `feedback_forms`, `stock_adjustments`, …).
-- `tax_rates.admin_id` has a foreign key to `profiles(user_id)` — i.e. it stores the **auth uid** instead. It is the one true outlier.
-- ~35 tables have `admin_id` with **no foreign key at all**, so nothing stops the wrong ID being written by a future feature.
-- `profiles` and `user_permissions` mix raw `auth.uid()` policies with `get_my_profile_id()` / `get_my_admin_id()` policies on the same table.
-- The client keeps both `adminProfileId` and `adminAuthUid` in `AuthContext`, and 19+ files pick one by hand — that is where "something went wrong" comes from.
+### 1. Make the identity contract unambiguous
 
-### 4. Offline forever after one online login? — No, not today
-Two hard facts:
-- `capacitor.config.ts` sets `server.url = https://zen-pos.vercel.app`. The APK loads the UI from the internet, so with no network the app cannot even boot. The offline layer only helps once the page is already loaded.
-- `offlineLicenseManager` locks the app after `DEFAULT_GRACE_DAYS = 7` days without an online license check. So "millions of days offline" is not possible; 7 days is the current ceiling, by design.
+- Establish one typed tenant resolver used by all feature code:
+  - `adminProfileId`: tenant key for every `admin_id` and branch-scoped operation.
+  - `authUserId`: current signed-in identity for `user_id`/`created_by`.
+  - `adminAuthUid`: retained only for legacy schemas that explicitly store the owner auth UID, such as `shop_settings.user_id`.
+- Replace the confirmed incorrect tax-rate call sites in GST Settings, Billing, Table Billing, Waiter Companion, and item dialogs with `adminProfileId`.
+- Remove misleading comments and ambiguous local variables that describe tax-rate ownership as an auth UID.
+- Add a database migration that validates existing `tax_rates.admin_id` values and enforces a foreign key to `profiles.id` without changing valid data.
+- Add automated contract tests that fail when a tenant `admin_id` is populated or queried with an auth UID.
 
-Both are addressed in the work plan (bundle the web assets, make the grace window configurable per client).
+### 2. Make native SQLite the single durable queue on Capacitor
 
-### 5. `npx cap sync` — do clients reinstall?
-While `server.url` stays set: UI changes reach the APK automatically on next app open, no reinstall. A new APK is only needed for native changes (plugins, Java/Swift, icons, permissions). **After** we remove `server.url` to make the app truly offline, every release will require a new APK — that is the trade-off, and the plan adds an in-app update prompt for it.
+- Route generic queued writes through the configured `StorageBackend`; stop writing native mutations directly to the legacy IndexedDB queue.
+- Extend `WriteQueueEntry` and the SQLite schema to persist complete mutation filters for update/delete replay.
+- Add a real schema upgrade version with migration coverage instead of modifying version 1 in place.
+- Serialize queue claims and replay so two reconnect triggers cannot send the same operation concurrently.
+- Preserve retries, errors, timestamps, and idempotency identifiers in SQLite; expose exhausted entries to the existing sync diagnostics rather than silently stranding them.
+- Keep IndexedDB as the PWA backend and emergency native fallback, while preventing both stores from acting as concurrent sources of truth.
+- Never auto-delete an unsynced bill or queued mutation during retention cleanup.
 
-### 6. Capacitor SQLite vs IndexedDB — how it works here
-- Web/PWA → `IndexedDBBackend` (jeep-sqlite WASM is deliberately skipped; it fails to link in several browsers).
-- Native → `SQLiteBackend`. The `@capacitor-community/sqlite` plugin is installed and compiled into the Android project (confirmed in `capacitor.build.gradle`), so real native SQLite is used, with a WASM fallback if the bridge is missing.
-- SQLite wins on: real SQL filtering/indexes, batched transactions (`executeSet`, 500-row chunks), no browser storage eviction, and much faster large reads (reports, item lists). IndexedDB is key-value only, so bigger queries load and filter in JS.
-- Current state is solid but not yet world class: writes go through a debounced persist timer, there is no encryption at rest, and `getIndexedColumns` indexes only a few columns, so some lookups still scan and JSON-parse rows.
+### 3. Harden SQLite durability and device security
 
-### 7. Payment gateway: Cashfree vs Razorpay vs PhonePe
-I will not state Cashfree's "free up to ₹20L" as fact until it is verified — I will confirm current pricing on each provider's official pricing/docs page and give you a table (per-transaction fee, UPI vs card rates, subscriptions/e-mandate support, settlement time, onboarding/KYC, payout limits, hidden charges). The architecture point matters more: your gateway code already sits behind edge functions (`payments-create-link`, `payments-create-mandate`, `payments-webhook`), so switching or supporting multiple providers is a driver swap, not a rewrite. The plan makes that driver boundary explicit so you can run Cashfree, Razorpay or PhonePe per client.
+- Use the SQLite plugin capability API instead of error-message matching to select native mode.
+- Check connection consistency and recover stale connections during startup.
+- Apply WAL and required pragmas on every connection open.
+- Add migration row-count verification for the one-time IndexedDB-to-SQLite transfer.
+- Enable encrypted native storage through the plugin’s secure-secret flow, backed by Android Keystore/iOS Keychain, with a safe migration path for existing unencrypted databases.
+- Keep web/PWA storage unencrypted at the database layer and clearly treat browser storage as less durable than native SQLite.
 
-## Work plan
+### 4. Enforce the chosen 7-day offline policy correctly
 
-### Phase 1 — Fix the ID confusion permanently (highest value)
-1. Standardise on `profiles.id` as the tenant key everywhere. Migrate `tax_rates.admin_id` to `profiles.id` (backfill, then repoint the foreign key and its policies).
-2. Add a `FOREIGN KEY (admin_id) REFERENCES profiles(id)` to every tenant table that currently has none, so a wrong ID fails loudly at insert time instead of silently returning zero rows.
-3. Rewrite the mixed policies on `profiles` and `user_permissions` to use `get_my_profile_id()` / `get_my_admin_id()` only.
-4. Client side: expose one `useTenant()` hook returning `{ adminProfileId }`, mark `adminAuthUid` deprecated, and migrate call sites away from it.
-5. Add an authorization test that fails if any tenant table is queried with an auth uid.
+- Preserve first-online-login and cached-profile restoration for offline startup.
+- Store the signed license anchor in secure native storage rather than ordinary local storage alone; include tenant, user, device installation, last verification time, expiry, and policy version.
+- Require an online license refresh by day 7. After that, show a clear reconnect-required lock screen without deleting local business data.
+- Keep the 30-day auth-session policy separate from the 7-day license check and make their messages distinguishable.
+- Queue pending local data safely while locked and resume synchronization after successful online verification.
+- Do not market or display “unlimited offline”: seven days is the explicit operating limit.
 
-### Phase 2 — Make the APK genuinely offline
-6. Remove `server.url` from `capacitor.config.ts` and ship the built `dist` inside the APK, so cold start works with zero network.
-7. Add an in-app version check with an "Update available" prompt (only when online), since updates now require a new APK.
-8. Make the offline grace window a per-client setting in the super-admin console (7 / 30 / 90 / 365 days) instead of a hardcoded 7.
-9. Cache the login credential/session locally so a returning device signs in offline after its first successful online login.
+### 5. Define honest offline behavior page by page
 
-### Phase 3 — SQLite and speed hardening
-10. Flush SQLite synchronously after money-critical writes (bills, payments, shift close) instead of relying only on the debounced timer.
-11. Widen indexed columns in `schema.ts` (admin_id, branch_id, created_at, status) so reports filter in SQL rather than in JS.
-12. Add SQLite encryption for on-device business data.
-13. Profile and fix the slowest screens (Items, Reports, Billing cold start) with virtualised lists and narrower selects.
+- Audit each route and classify actions as:
+  - fully local: cached reads, supported CRUD, billing, Bluetooth printing;
+  - queued: supported database mutations and deferred uploads/RPC substitutes;
+  - online required: AI, FCM delivery, cloud payments, password/admin operations, and workflows that cannot safely replay.
+- Add explicit offline guards for online-only actions so users receive a precise message instead of a generic failure.
+- Add durable upload queuing for supported receipt/menu images.
+- For critical RPC workflows, add a local command/outbox representation only where replay is safe and idempotent; otherwise require internet before starting the action.
+- Label the existing BroadcastChannel helper accurately as same-device/tab synchronization; it is not cross-device LAN sync.
 
-### Phase 4 — Payments
-14. Verify current Cashfree / Razorpay / PhonePe / Paytm pricing from official sources and deliver the comparison table plus a recommendation.
-15. Refactor the payment edge functions into a provider-driver interface and add a Cashfree driver alongside the existing ones, selectable per client.
+### 6. Conflict safety and performance
 
-### Phase 5 — Feature gaps to reach "world class" (scoped after you pick)
-GST e-invoicing (IRN/QR) and e-way bill, recipe/BOM costing with live food-cost %, loyalty and coupons, employee attendance and payroll-lite, multi-outlet consolidated dashboard, customer-facing order status screen, inventory wastage tracking, day-close cash counting, and an owner mobile summary. These are listed in priority order; I will not build them until you choose.
+- Add row version/updated-at checks for replayed updates and surface conflicts rather than silently overwriting newer server data.
+- Require a device-specific bill-number prefix or durable client UUID to avoid duplicate offline numbers across devices.
+- Consolidate duplicate sync triggers and overlapping queue systems behind one coordinator.
+- Avoid double-caching the same payload where React Query persistence and the offline cache overlap.
+- Retain local-first printing so Bluetooth receipts remain independent of network availability.
 
-## Technical notes
-- All database changes in Phase 1 run as migrations with backfill-first ordering so no live data is orphaned.
-- Phase 2 changes how releases are shipped; the current auto-update behaviour disappears once `server.url` is removed.
-- No Zomato/Swiggy or Razorpay-only lock-in is introduced anywhere in this plan.
+## Validation
+
+- Database checks: every populated tenant `admin_id` resolves to `profiles.id`; tax-rate foreign key and branch policies pass for admin and sub-user roles.
+- Unit tests: identity resolver, queued filter persistence, queue claiming, retries, conflicts, retention safety, seven-day boundary, clock rollback, and locked-data preservation.
+- Native tests: install fresh, migrate existing data, kill during write, restart offline, create/edit/delete records, save and reprint a bill, reconnect, and verify one-time replay.
+- PWA tests: cached startup, IndexedDB persistence, supported offline CRUD, reconnect replay, and clear online-only messaging.
+- End-to-end roles: admin and child user first login online, seven days offline allowed, day-eight lock, reconnect verification, and tenant isolation.
+- Run authorization tests, preview build checks, Supabase linter review, Android sync/build validation, and browser smoke tests before declaring completion.
+
+## Expected outcome
+
+- Identity mistakes become difficult to introduce because tenant and auth IDs have separate names, types, database enforcement, and tests.
+- Capacitor uses native SQLite as the authoritative durable store and queue, with encryption and deterministic replay.
+- PWA remains offline-resilient through IndexedDB but carries normal browser-storage limitations.
+- ZenPOS can accurately claim: **core POS billing, local data access, and Bluetooth printing work offline for up to seven days after verification; cloud and cross-device services resume when internet returns.**
