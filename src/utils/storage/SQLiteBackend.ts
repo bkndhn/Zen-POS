@@ -43,6 +43,20 @@ export class SQLiteBackend implements StorageBackend {
       // Register schema migrations
       await this.sqlite.addUpgradeStatement(SQLITE_DB_NAME, SCHEMA_UPGRADES);
 
+      let encrypted = false;
+      let encryptionMode = 'no-encryption';
+      if (!needsWebMode) {
+        const secretStored = await this.sqlite.isSecretStored().catch(() => ({ result: false }));
+        if (!secretStored.result) {
+          const passphrase = `${crypto.randomUUID()}-${crypto.randomUUID()}`;
+          await this.sqlite.setEncryptionSecret(passphrase);
+          encryptionMode = 'encryption'; // one-time conversion of an existing plaintext database
+        } else {
+          encryptionMode = 'secret';
+        }
+        encrypted = true;
+      }
+
       // Recover a connection left open by a killed WebView before creating one.
       const consistency = await this.sqlite.checkConnectionsConsistency().catch(() => ({ result: false }));
       const existing = await this.sqlite.isConnection(SQLITE_DB_NAME, false).catch(() => ({ result: false }));
@@ -52,14 +66,31 @@ export class SQLiteBackend implements StorageBackend {
         if (existing.result) await this.sqlite.closeConnection(SQLITE_DB_NAME, false).catch(() => undefined);
         this.db = await this.sqlite.createConnection(
           SQLITE_DB_NAME,
-          false,
-          'no-encryption',
+          encrypted,
+          encryptionMode,
           SQLITE_DB_VERSION,
           false
         );
       }
 
-      await this.db.open();
+      try {
+        await this.db.open();
+      } catch (error) {
+        // A secret may exist before a legacy plaintext DB has been converted.
+        if (!needsWebMode && encryptionMode === 'secret') {
+          await this.sqlite.closeConnection(SQLITE_DB_NAME, false).catch(() => undefined);
+          this.db = await this.sqlite.createConnection(
+            SQLITE_DB_NAME,
+            true,
+            'encryption',
+            SQLITE_DB_VERSION,
+            false,
+          );
+          await this.db.open();
+        } else {
+          throw error;
+        }
+      }
       await this.db.execute('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
       if (!needsWebMode) {
         await this.db.execute('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
@@ -304,7 +335,9 @@ export class SQLiteBackend implements StorageBackend {
     if (!this.db) return [];
 
     const result = await this.db.query(
-      `SELECT * FROM writeQueue WHERE status = 'pending' ORDER BY timestamp ASC;`
+      `SELECT * FROM writeQueue
+       WHERE status = 'pending' OR (status = 'failed' AND retries < 5)
+       ORDER BY timestamp ASC;`
     );
 
     if (!result.values) return [];
