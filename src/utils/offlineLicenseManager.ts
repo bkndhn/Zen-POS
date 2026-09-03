@@ -119,7 +119,8 @@ export function cacheVerifiedLicense(adminId: string, subscriptionData: {
         endDate: subscriptionData.endDate || null,
         subscriptionEndDate: subscriptionData.endDate || null,
         lastVerifiedAt: now,
-        graceDays: subscriptionData.graceDays || DEFAULT_GRACE_DAYS,
+        // Product policy is fixed: reconnect within seven days of verification.
+        graceDays: DEFAULT_GRACE_DAYS,
         forceLogout: subscriptionData.forceLogout || false,
         forceLogoutReason: subscriptionData.forceLogoutReason || null,
         subscriptionAmount: subscriptionData.subscriptionAmount || 999,
@@ -357,11 +358,6 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
             .eq('id', adminId)
             .maybeSingle();
             
-        let graceDays = 7;
-        if (profileData?.client_permissions?.offline_grace_days !== undefined) {
-            graceDays = profileData.client_permissions.offline_grace_days;
-        }
-
         if (profileError) throw profileError;
 
         // Subscription data lives on profiles (no separate subscriptions table)
@@ -379,7 +375,7 @@ export async function syncSubscriptionLicense(adminId: string): Promise<LicenseS
             forceLogout,
             forceLogoutReason,
             subscriptionAmount,
-            graceDays,
+            graceDays: DEFAULT_GRACE_DAYS,
         });
 
         return checkOfflineLicenseStatus();

@@ -174,17 +174,19 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
     let items: any[] = [];
     let aiSuccess = false;
 
-    // 1. Try AI Edge Function first
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-menu-parse', {
-        body: { images: images.map(i => i.url), text, hint_category: hintCategory || undefined },
-      });
-      if (!error && data?.items && data.items.length > 0) {
-        items = data.items;
-        aiSuccess = true;
+    // 1. Try AI Edge Function first when online
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await supabase.functions.invoke('ai-menu-parse', {
+          body: { images: images.map(i => i.url), text, hint_category: hintCategory || undefined },
+        });
+        if (!error && data?.items && data.items.length > 0) {
+          items = data.items;
+          aiSuccess = true;
+        }
+      } catch (e: any) {
+        console.warn('[AiMenuImport] AI Edge function call failed, falling back:', e);
       }
-    } catch (e: any) {
-      console.warn('[AiMenuImport] AI Edge function call failed, falling back:', e);
     }
 
     // 2. Local text parser fallback if AI call failed or returned empty, but text is available
