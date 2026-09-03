@@ -43,16 +43,27 @@ export class SQLiteBackend implements StorageBackend {
       // Register schema migrations
       await this.sqlite.addUpgradeStatement(SQLITE_DB_NAME, SCHEMA_UPGRADES);
 
-      // Open database connection
-      this.db = await this.sqlite.createConnection(
-        SQLITE_DB_NAME,
-        false,            // encrypted
-        'no-encryption',  // encryption mode
-        SQLITE_DB_VERSION,
-        false             // read-only
-      );
+      // Recover a connection left open by a killed WebView before creating one.
+      const consistency = await this.sqlite.checkConnectionsConsistency().catch(() => ({ result: false }));
+      const existing = await this.sqlite.isConnection(SQLITE_DB_NAME, false).catch(() => ({ result: false }));
+      if (consistency.result && existing.result) {
+        this.db = await this.sqlite.retrieveConnection(SQLITE_DB_NAME, false);
+      } else {
+        if (existing.result) await this.sqlite.closeConnection(SQLITE_DB_NAME, false).catch(() => undefined);
+        this.db = await this.sqlite.createConnection(
+          SQLITE_DB_NAME,
+          false,
+          'no-encryption',
+          SQLITE_DB_VERSION,
+          false
+        );
+      }
 
       await this.db.open();
+      await this.db.execute('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+      if (!needsWebMode) {
+        await this.db.execute('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
+      }
       this.ready = true;
       this.useWebMode = needsWebMode;
 
@@ -84,21 +95,7 @@ export class SQLiteBackend implements StorageBackend {
     // Web/PWA: always use web mode
     if (platform === 'web') return true;
 
-    // Native platform: check if the native plugin is actually available
-    try {
-      // Try a lightweight native call to see if the bridge responds
-      await CapacitorSQLite.isSecretStored();
-      return false; // Native plugin works — use native mode
-    } catch (e: any) {
-      const msg = String(e?.message || e || '');
-      // Plugin not installed / bridge not available
-      if (msg.includes('not implemented') || msg.includes('not available') || msg.includes('is not defined')) {
-        console.log('[SQLiteBackend] Native plugin not compiled — falling back to WASM mode');
-        return true;
-      }
-      // Other errors (like "no secret stored") mean the plugin IS available
-      return false;
-    }
+    return !Capacitor.isPluginAvailable('CapacitorSQLite');
   }
 
   /**
@@ -290,12 +287,13 @@ export class SQLiteBackend implements StorageBackend {
     if (!this.db) return;
 
     await this.db.run(
-      `INSERT OR REPLACE INTO writeQueue (id, tbl, operation, status, timestamp, retries, error, admin_id, branch_id, data) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      `INSERT OR REPLACE INTO writeQueue (id, tbl, operation, status, timestamp, retries, error, admin_id, branch_id, filters, data) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         entry.id, entry.table, entry.operation, entry.status,
         entry.timestamp, entry.retries, entry.error,
         entry.adminId || null, entry.branchId || null,
+        entry.filters ? JSON.stringify(entry.filters) : null,
         JSON.stringify(entry.data),
       ]
     );
@@ -321,6 +319,7 @@ export class SQLiteBackend implements StorageBackend {
       error: row.error,
       adminId: row.admin_id,
       branchId: row.branch_id,
+      filters: row.filters ? (() => { try { return JSON.parse(row.filters); } catch { return null; } })() : null,
       data: (() => { try { return JSON.parse(row.data); } catch { return row.data; } })(),
     }));
   }

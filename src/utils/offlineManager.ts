@@ -87,6 +87,7 @@ class OfflineManager {
     private db: IDBDatabase | null = null;
     private isOnline: boolean = navigator.onLine;
     private syncInProgress: boolean = false;
+    private writeQueueSyncInProgress: boolean = false;
     private listeners: Set<(isOnline: boolean) => void> = new Set();
     private pendingBillListeners: Set<(count: number) => void> = new Set();
 
@@ -270,7 +271,7 @@ class OfflineManager {
                         const bills = request.result;
                         let deletedCount = 0;
                         for (const bill of bills) {
-                            if ((isGlobal || bill.branch_id === branchId) && bill.created_at && bill.created_at < cutoffString) {
+                            if (bill.synced === true && (isGlobal || bill.branch_id === branchId) && bill.created_at && bill.created_at < cutoffString) {
                                 try {
                                     store.delete(bill.id);
                                     deletedCount++;
@@ -1629,7 +1630,6 @@ class OfflineManager {
     // ──────────── Universal Write Queue ────────────
 
     async queueWrite(entry: { table: string; operation: 'INSERT' | 'UPDATE' | 'DELETE'; data: any; adminId?: string; branchId?: string; filters?: Record<string, any> }): Promise<string> {
-        if (!this.db) throw new Error('DB not initialized');
         const id = crypto.randomUUID();
         const item = {
             id,
@@ -1644,6 +1644,12 @@ class OfflineManager {
             retries: 0,
             error: null as string | null
         };
+        if (this.backend?.isReady()) {
+            await this.backend.enqueueWrite(item);
+            await this.notifyWriteQueueListeners();
+            return id;
+        }
+        if (!this.db) throw new Error('DB not initialized');
         return new Promise((resolve, reject) => {
             const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readwrite');
             const store = tx.objectStore(STORES.WRITE_QUEUE);
@@ -1657,6 +1663,7 @@ class OfflineManager {
     }
 
     async getWriteQueue(): Promise<any[]> {
+        if (this.backend?.isReady()) return this.backend.getWriteQueue();
         if (!this.db) return [];
         return new Promise((resolve) => {
             const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readonly');
@@ -1668,6 +1675,7 @@ class OfflineManager {
     }
 
     async getPendingWriteCount(): Promise<number> {
+        if (this.backend?.isReady()) return this.backend.getWriteQueueCount();
         if (!this.db) return 0;
         return new Promise((resolve) => {
             const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readonly');
@@ -1680,6 +1688,11 @@ class OfflineManager {
     }
 
     async removeFromWriteQueue(id: string): Promise<void> {
+        if (this.backend?.isReady()) {
+            await this.backend.removeFromWriteQueue(id);
+            await this.notifyWriteQueueListeners();
+            return;
+        }
         if (!this.db) return;
         const tx = this.db.transaction([STORES.WRITE_QUEUE], 'readwrite');
         const store = tx.objectStore(STORES.WRITE_QUEUE);
@@ -1688,6 +1701,7 @@ class OfflineManager {
     }
 
     async updateWriteQueueItem(id: string, updates: Partial<{ status: string; retries: number; error: string | null }>): Promise<void> {
+        if (this.backend?.isReady()) return this.backend.updateWriteQueueItem(id, updates);
         if (!this.db) return;
         return new Promise((resolve) => {
             const tx = this.db!.transaction([STORES.WRITE_QUEUE], 'readwrite');
@@ -1719,17 +1733,28 @@ class OfflineManager {
     // ──────────── Write Queue Sync Processor ────────────
 
     async processWriteQueue(): Promise<{ synced: number; failed: number }> {
-        if (!this.db || !this.isOnline) return { synced: 0, failed: 0 };
-        
-        const items = await this.getWriteQueue();
-        const pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
+        if ((!this.backend?.isReady() && !this.db) || !this.isOnline) return { synced: 0, failed: 0 };
+        if (navigator.locks) {
+            return navigator.locks.request('zenpos_generic_write_queue', { ifAvailable: true }, async (lock) => {
+                if (!lock) return { synced: 0, failed: 0 };
+                return this.executeWriteQueue();
+            });
+        }
+        return this.executeWriteQueue();
+    }
+
+    private async executeWriteQueue(): Promise<{ synced: number; failed: number }> {
+        if (this.writeQueueSyncInProgress) return { synced: 0, failed: 0 };
+        this.writeQueueSyncInProgress = true;
         let synced = 0;
         let failed = 0;
+        try {
+            const items = await this.getWriteQueue();
+            const pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
+            const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
 
-        const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
-
-        for (const item of pending) {
-            try {
+            for (const item of pending) {
+              try {
                 await this.updateWriteQueueItem(item.id, { status: 'syncing' });
 
                 // Rebuild the original filter set (generic .eq/.in support, id fallback)
@@ -1762,20 +1787,22 @@ class OfflineManager {
                 // Invalidate cache for this table so next load gets fresh data
                 await this.clearCacheForTable(item.table);
 
-                synced++;
-            } catch (err: any) {
-                console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
-                await this.updateWriteQueueItem(item.id, {
-                    status: 'failed',
-                    retries: (item.retries || 0) + 1,
-                    error: err?.message || 'Unknown error'
-                });
-                failed++;
+                  synced++;
+              } catch (err: any) {
+                  console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
+                  await this.updateWriteQueueItem(item.id, {
+                      status: 'failed',
+                      retries: (item.retries || 0) + 1,
+                      error: err?.message || 'Unknown error'
+                  });
+                  failed++;
+              }
             }
+            await this.notifyWriteQueueListeners();
+            return { synced, failed };
+        } finally {
+            this.writeQueueSyncInProgress = false;
         }
-
-        this.notifyWriteQueueListeners();
-        return { synced, failed };
     }
 }
 

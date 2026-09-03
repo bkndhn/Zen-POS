@@ -189,12 +189,13 @@ export class IndexedDBBackend implements StorageBackend {
       error: entry.error,
       adminId: entry.adminId,
       branchId: entry.branchId,
+      filters: entry.filters ?? null,
     });
   }
 
   async getWriteQueue(): Promise<WriteQueueEntry[]> {
     const all = await this.getAll<any>('writeQueue');
-    return all.filter(item => item.status === 'pending');
+    return all.filter(item => item.status === 'pending' || (item.status === 'failed' && item.retries < 5));
   }
 
   async removeFromWriteQueue(id: string): Promise<void> {
