@@ -467,6 +467,9 @@ ${payments.length ? payments.map((p: any) => `<tr><td>${esc(p.payment_date)}</td
   const totalDistributed = (l: Line) => l.distributions.reduce((s, d) => s + (Number(d.quantity) || 0), 0);
 
   const submit = async () => {
+    if (!navigator.onLine) {
+      return toast({ title: 'Internet required', description: 'Purchase posting updates stock atomically and cannot be queued offline.', variant: 'destructive' });
+    }
     if (!lines.length) return toast({ title: 'Add at least one line', variant: 'destructive' });
     for (const [i, l] of lines.entries()) {
       if (!l.item_name.trim()) return toast({ title: `Line ${i + 1}: item name required`, variant: 'destructive' });

@@ -19,6 +19,7 @@ export function useAutoBackup() {
 
   const checkAndRunBackup = async () => {
     if (isRunning.current) return;
+    if (!navigator.onLine) return;
 
     try {
       const now = new Date();
