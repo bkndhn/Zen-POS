@@ -60,7 +60,7 @@ export class SQLiteBackend implements StorageBackend {
       // Recover a connection left open by a killed WebView before creating one.
       const consistency = await this.sqlite.checkConnectionsConsistency().catch(() => ({ result: false }));
       const existing = await this.sqlite.isConnection(SQLITE_DB_NAME, false).catch(() => ({ result: false }));
-      if (consistency.result && existing.result) {
+      if (consistency.result && existing.result && encryptionMode === 'secret') {
         this.db = await this.sqlite.retrieveConnection(SQLITE_DB_NAME, false);
       } else {
         if (existing.result) await this.sqlite.closeConnection(SQLITE_DB_NAME, false).catch(() => undefined);
