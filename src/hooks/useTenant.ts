@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveAdminProfileId, resolveAuthUserId } from '@/utils/identity';
 
 /**
  * useTenant ensures that we consistently use the exact Profile UUID
@@ -10,12 +11,11 @@ export const useTenant = () => {
   
   // Golden Rule: The Tenant ID is always the Admin's Profile ID
   // If I am the admin, it's my profile.id. If I am a sub-user, it's my parent's profile.id.
-  const resolvedAdminProfileId = adminProfileId
-    ?? (profile ? (profile.role === 'admin' ? profile.id : (profile.admin_id || null)) : null);
+  const resolvedAdminProfileId = adminProfileId ?? resolveAdminProfileId(profile);
 
   return {
     adminProfileId: resolvedAdminProfileId,
-    authUserId: user?.id ?? profile?.user_id ?? null,
+    authUserId: resolveAuthUserId(user?.id, profile),
     adminAuthUid,
   };
 };
