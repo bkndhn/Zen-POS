@@ -6,7 +6,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
 export const useAutomation = () => {
-  const { profile, adminAuthUid } = useAuth();
+  const { profile, adminProfileId, adminAuthUid } = useAuth();
   const { operatingBranchId } = useBranch();
   const adminId = adminProfileId;
   

@@ -3844,7 +3844,7 @@ const Billing = () => {
       >
         {viewMode === 'grid' ? <div className={`grid gap-2 ${displaySettings.items_per_row === 1 ? 'grid-cols-1' : displaySettings.items_per_row === 2 ? 'grid-cols-2' : displaySettings.items_per_row === 3 ? 'grid-cols-3' : displaySettings.items_per_row === 4 ? 'grid-cols-4' : displaySettings.items_per_row === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
           {filteredItems.map(item => {
-            const cartQuantity = cartQtyMap.get(item.id) || 0;
+            const cartQuantity = cart.find(entry => entry.id === item.id)?.quantity || 0;
             return (
               <BillingGridItemCard
                 key={item.id}
@@ -3862,7 +3862,7 @@ const Billing = () => {
           // List View
           <div className="space-y-2">
             {filteredItems.map(item => {
-              const cartQuantity = cartQtyMap.get(item.id) || 0;
+              const cartQuantity = cart.find(entry => entry.id === item.id)?.quantity || 0;
               return (
                 <BillingListItemCard
                   key={item.id}

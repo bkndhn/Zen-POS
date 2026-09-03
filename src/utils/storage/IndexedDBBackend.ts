@@ -53,6 +53,10 @@ export class IndexedDBBackend implements StorageBackend {
     return this.ready && this.db !== null;
   }
 
+  async flush(): Promise<void> {
+    // IndexedDB transactions are committed before each public method resolves.
+  }
+
   // ─── Generic CRUD ───────────────────────────────────────────
 
   async put<T>(storeName: string, data: T): Promise<void> {
