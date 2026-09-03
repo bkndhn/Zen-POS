@@ -1,4 +1,4 @@
-import type { Profile } from '@/types/auth';
+import type { Profile } from '@/types/user';
 
 /** Database `admin_id`: always the owning admin's public profiles.id. */
 export function resolveAdminProfileId(profile: Profile | null | undefined): string | null {

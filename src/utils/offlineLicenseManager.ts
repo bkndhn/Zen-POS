@@ -26,6 +26,39 @@ const STORAGE_KEY = 'zen_pos_license_payload';
 const MAX_SEEN_KEY = 'zen_pos_max_timestamp';
 const FORCE_LOGOUT_KEY = 'zen_pos_force_logout';
 const DEFAULT_GRACE_DAYS = 7;
+const NATIVE_LICENSE_SERVER = 'com.zenpos.app.offline-license';
+
+async function mirrorNativeLicense(): Promise<void> {
+    try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { NativeBiometric } = await import('capacitor-native-biometric');
+        await NativeBiometric.setCredentials({
+            server: NATIVE_LICENSE_SERVER,
+            username: localStorage.getItem(MAX_SEEN_KEY) || String(Date.now()),
+            password: localStorage.getItem(STORAGE_KEY) || '',
+        });
+    } catch (error) {
+        console.warn('[License] Native secure mirror unavailable:', error);
+    }
+}
+
+/** Restore the signed-offline anchor before React/auth starts. */
+export async function hydrateNativeLicenseAnchor(): Promise<void> {
+    try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { NativeBiometric } = await import('capacitor-native-biometric');
+        const stored = await NativeBiometric.getCredentials({ server: NATIVE_LICENSE_SERVER });
+        const localPayload = localStorage.getItem(STORAGE_KEY);
+        const localMax = Number(localStorage.getItem(MAX_SEEN_KEY) || 0);
+        const secureMax = Number(stored.username || 0);
+        if (!localPayload && stored.password) localStorage.setItem(STORAGE_KEY, stored.password);
+        if (secureMax > localMax) localStorage.setItem(MAX_SEEN_KEY, String(secureMax));
+    } catch {
+        // First install or device without secure credentials.
+    }
+}
 
 /** Generate lightweight checksum to detect simple localStorage tampering */
 function computeChecksum(data: any): string {
@@ -95,6 +128,7 @@ export function cacheVerifiedLicense(adminId: string, subscriptionData: {
     const checksum = computeChecksum(payload);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...payload, checksum }));
     localStorage.setItem(MAX_SEEN_KEY, Date.now().toString());
+    void mirrorNativeLicense();
 
     // Also store force logout state separately for quick access
     if (subscriptionData.forceLogout) {
@@ -129,6 +163,16 @@ export function clearForceLogout(): void {
 export function clearAllLicenseData(): void {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(FORCE_LOGOUT_KEY);
+    void (async () => {
+        try {
+            const { Capacitor } = await import('@capacitor/core');
+            if (!Capacitor.isNativePlatform()) return;
+            const { NativeBiometric } = await import('capacitor-native-biometric');
+            await NativeBiometric.deleteCredentials({ server: NATIVE_LICENSE_SERVER });
+        } catch {
+            // No native secure record to clear.
+        }
+    })();
     // Don't clear MAX_SEEN_KEY — keep clock tamper protection
 }
 

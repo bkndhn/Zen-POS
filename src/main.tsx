@@ -10,6 +10,7 @@ import { syncEngine } from './utils/syncEngine'
 import { offlineManager } from './utils/offlineManager'
 import { initStorage } from './utils/storage'
 import { installErrorMonitoring } from './utils/monitoring'
+import { hydrateNativeLicenseAnchor } from './utils/offlineLicenseManager'
 
 
 Sentry.init({
@@ -56,6 +57,7 @@ initStoragePersistence().catch(() => {});
 // Initialize SQLite backend (native or WASM) and wire into offlineManager
 // This runs in the background — offlineManager falls back to IndexedDB until ready
 async function boot() {
+  await hydrateNativeLicenseAnchor();
   try {
     const backend = await initStorage();
     offlineManager.setBackend(backend);
