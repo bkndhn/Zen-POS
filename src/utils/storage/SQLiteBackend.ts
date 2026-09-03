@@ -43,16 +43,27 @@ export class SQLiteBackend implements StorageBackend {
       // Register schema migrations
       await this.sqlite.addUpgradeStatement(SQLITE_DB_NAME, SCHEMA_UPGRADES);
 
-      // Open database connection
-      this.db = await this.sqlite.createConnection(
-        SQLITE_DB_NAME,
-        false,            // encrypted
-        'no-encryption',  // encryption mode
-        SQLITE_DB_VERSION,
-        false             // read-only
-      );
+      // Recover a connection left open by a killed WebView before creating one.
+      const consistency = await this.sqlite.checkConnectionsConsistency().catch(() => ({ result: false }));
+      const existing = await this.sqlite.isConnection(SQLITE_DB_NAME, false).catch(() => ({ result: false }));
+      if (consistency.result && existing.result) {
+        this.db = await this.sqlite.retrieveConnection(SQLITE_DB_NAME, false);
+      } else {
+        if (existing.result) await this.sqlite.closeConnection(SQLITE_DB_NAME, false).catch(() => undefined);
+        this.db = await this.sqlite.createConnection(
+          SQLITE_DB_NAME,
+          false,
+          'no-encryption',
+          SQLITE_DB_VERSION,
+          false
+        );
+      }
 
       await this.db.open();
+      await this.db.execute('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+      if (!needsWebMode) {
+        await this.db.execute('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
+      }
       this.ready = true;
       this.useWebMode = needsWebMode;
 

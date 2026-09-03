@@ -57,6 +57,7 @@ export async function migrateLegacyData(backend: StorageBackend): Promise<void> 
     }
 
     let totalMigrated = 0;
+    const failures: string[] = [];
 
     for (const storeName of STORES_TO_MIGRATE) {
       try {
@@ -70,16 +71,29 @@ export async function migrateLegacyData(backend: StorageBackend): Promise<void> 
 
         // Bulk insert into new backend
         await backend.putMany(storeName, records);
+        const migratedRecords = await backend.getAll(storeName);
+        const migratedKeys = new Set(migratedRecords.map((record: any) => record?.id ?? record?.key));
+        const missing = records.filter((record: any) => {
+          const key = record?.id ?? record?.key;
+          return key !== undefined && !migratedKeys.has(key);
+        });
+        if (missing.length > 0 || migratedRecords.length < records.length) {
+          throw new Error(`validation failed: ${missing.length || records.length - migratedRecords.length} row(s) missing`);
+        }
         totalMigrated += records.length;
 
         console.log(`[Migration] Migrated ${records.length} records from '${storeName}'`);
       } catch (e) {
         console.warn(`[Migration] Failed to migrate store '${storeName}':`, e);
-        // Continue with other stores
+        failures.push(storeName);
       }
     }
 
-    // Mark migration complete
+    if (failures.length > 0) {
+      throw new Error(`Migration incomplete for: ${failures.join(', ')}`);
+    }
+
+    await backend.flush();
     localStorage.setItem(MIGRATION_FLAG, 'true');
     console.log(`[Migration] Complete! Migrated ${totalMigrated} total records.`);
 

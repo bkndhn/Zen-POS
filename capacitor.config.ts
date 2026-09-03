@@ -27,6 +27,14 @@ const config: CapacitorConfig = {
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
+    },
+    CapacitorSQLite: {
+      iosDatabaseLocation: 'Library/CapacitorDatabase',
+      iosIsEncryption: true,
+      iosKeychainPrefix: 'com.zenpos.app',
+      androidIsEncryption: true,
+      iosBiometric: { biometricAuth: false },
+      androidBiometric: { biometricAuth: false }
     }
   },
   android: {

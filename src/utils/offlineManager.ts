@@ -1734,6 +1734,16 @@ class OfflineManager {
 
     async processWriteQueue(): Promise<{ synced: number; failed: number }> {
         if ((!this.backend?.isReady() && !this.db) || !this.isOnline) return { synced: 0, failed: 0 };
+        if (navigator.locks) {
+            return navigator.locks.request('zenpos_generic_write_queue', { ifAvailable: true }, async (lock) => {
+                if (!lock) return { synced: 0, failed: 0 };
+                return this.executeWriteQueue();
+            });
+        }
+        return this.executeWriteQueue();
+    }
+
+    private async executeWriteQueue(): Promise<{ synced: number; failed: number }> {
         if (this.writeQueueSyncInProgress) return { synced: 0, failed: 0 };
         this.writeQueueSyncInProgress = true;
         let synced = 0;
