@@ -158,9 +158,8 @@ const WaiterCompanion: React.FC = () => {
                 const { data: anyss } = await supabase.from('shop_settings').select('gst_enabled, gstin').eq('user_id', targetAuthId).limit(1).maybeSingle();
                 ss = anyss;
             }
-            if (ss?.gst_enabled) {
-                // tax_rates.admin_id = Auth UID
-                let ratesQuery = (supabase as any).from('tax_rates').select('id, name, rate, cess_rate').eq('admin_id', targetAuthId).eq('is_active', true);
+            if (ss?.gst_enabled && adminProfileId) {
+                let ratesQuery = (supabase as any).from('tax_rates').select('id, name, rate, cess_rate').eq('admin_id', adminProfileId).eq('is_active', true);
                 if (operatingBranchId) ratesQuery = ratesQuery.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
                 const { data: rates } = await ratesQuery;
                 const taxRatesMap: Record<string, any> = {};
@@ -174,7 +173,7 @@ const WaiterCompanion: React.FC = () => {
         } catch (err) {
             console.warn('Could not load GST settings:', err);
         }
-    }, [profile, operatingBranchId]);
+    }, [profile, adminProfileId, operatingBranchId]);
 
     // Fetch tables
     const fetchTables = useCallback(async () => {

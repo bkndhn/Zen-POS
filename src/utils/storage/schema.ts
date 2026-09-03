@@ -8,7 +8,7 @@
  */
 
 export const SQLITE_DB_NAME = 'zenpos_offline';
-export const SQLITE_DB_VERSION = 1;
+export const SQLITE_DB_VERSION = 2;
 
 /** Primary key field for each store (must match IndexedDB keyPath) */
 export const PRIMARY_KEYS: Record<string, string> = {
@@ -178,6 +178,13 @@ export const SCHEMA_UPGRADES = [
 
       // ─── Enable WAL mode for concurrent read/write ───────
       `PRAGMA journal_mode=WAL;`,
+    ],
+  },
+  {
+    toVersion: 2,
+    statements: [
+      `ALTER TABLE writeQueue ADD COLUMN filters TEXT;`,
+      `CREATE INDEX IF NOT EXISTS idx_writeq_status_timestamp ON writeQueue(status, timestamp);`,
     ],
   },
 ];

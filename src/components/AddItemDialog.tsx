@@ -185,7 +185,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         let query = (supabase as any)
           .from('tax_rates')
           .select('id, name, rate')
-          .eq('admin_id', adminAuthId)
+          .eq('admin_id', adminProfileId)
           .eq('is_active', true);
         if (operatingBranchId) {
           query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);

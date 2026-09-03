@@ -32,7 +32,7 @@ const DEFAULT_TAX_RATES = [
 ];
 
 export const GSTSettings: React.FC = () => {
-    const { profile } = useAuth();
+    const { profile, adminProfileId, adminAuthUid } = useAuth();
     const { operatingBranchId, branches, isAllBranchesView } = useBranch();
     const mainBranchId = branches.find(b => b.is_main)?.id || null;
     const [loading, setLoading] = useState(true);
@@ -51,49 +51,28 @@ export const GSTSettings: React.FC = () => {
     const [taxRateForm, setTaxRateForm] = useState({ name: '', rate: '', cess_rate: '0', hsn_code: '' });
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-    const [adminAuthId, setAdminAuthId] = useState<string | null>(null);
-
     useEffect(() => {
-        const resolveAdminAuthId = async () => {
-            if (!profile) return;
-            if (profile.role === 'admin' || profile.role === 'super_admin') {
-                setAdminAuthId(profile.user_id);
-            } else if (profile.role === 'user' && profile.admin_id) {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('user_id')
-                    .eq('id', profile.admin_id)
-                    .maybeSingle();
-                if (data?.user_id) {
-                    setAdminAuthId(data.user_id);
-                }
-            }
-        };
-        resolveAdminAuthId();
-    }, [profile]);
-
-    useEffect(() => {
-        if (adminAuthId && operatingBranchId) {
+        if (adminAuthUid && adminProfileId && operatingBranchId) {
             setLoading(true);
             fetchSettings();
             fetchTaxRates();
         }
-    }, [adminAuthId, operatingBranchId]);
+    }, [adminAuthUid, adminProfileId, operatingBranchId]);
 
     const fetchSettings = async () => {
-        if (!adminAuthId) return;
+        if (!adminAuthUid) return;
         try {
             let { data } = await (supabase as any)
                 .from('shop_settings')
                 .select('gst_enabled, gstin, is_composition_scheme, composition_rate')
-                .eq('user_id', adminAuthId)
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
             if (!data && mainBranchId && mainBranchId !== operatingBranchId) {
                 const { data: mainRow } = await (supabase as any)
                     .from('shop_settings')
                     .select('gst_enabled, gstin, is_composition_scheme, composition_rate')
-                    .eq('user_id', adminAuthId)
+                    .eq('user_id', adminAuthUid)
                     .eq('branch_id', mainBranchId)
                     .maybeSingle();
                 data = mainRow;
@@ -113,12 +92,12 @@ export const GSTSettings: React.FC = () => {
     };
 
     const fetchTaxRates = async () => {
-        if (!adminAuthId) return;
+        if (!adminProfileId) return;
         try {
             let query = (supabase as any)
                 .from('tax_rates')
                 .select('*')
-                .eq('admin_id', adminAuthId);
+                .eq('admin_id', adminProfileId);
 
             // Scope to current branch + legacy rows (null branch_id)
             if (operatingBranchId) {
@@ -158,12 +137,12 @@ export const GSTSettings: React.FC = () => {
             const { data: existing } = await (supabase as any)
                 .from('shop_settings')
                 .select('id')
-                .eq('user_id', adminAuthId)
+                .eq('user_id', adminAuthUid)
                 .eq('branch_id', operatingBranchId)
                 .maybeSingle();
             const { error } = existing?.id
                 ? await (supabase as any).from('shop_settings').update(payload).eq('id', existing.id)
-                : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminAuthId, branch_id: operatingBranchId });
+                : await (supabase as any).from('shop_settings').insert({ ...payload, user_id: adminAuthUid, branch_id: operatingBranchId });
 
             if (error) throw error;
 
@@ -188,7 +167,7 @@ export const GSTSettings: React.FC = () => {
             }
 
             // Seed default tax rates on first enable
-            if (gstEnabled && taxRates.length === 0 && adminAuthId) {
+            if (gstEnabled && taxRates.length === 0 && adminProfileId) {
                 await seedDefaultTaxRates();
             }
 
@@ -201,10 +180,10 @@ export const GSTSettings: React.FC = () => {
     };
 
     const seedDefaultTaxRates = async () => {
-        if (!adminAuthId) return;
+        if (!adminProfileId) return;
         try {
             const rows = DEFAULT_TAX_RATES.map(r => ({
-                admin_id: adminAuthId,
+                admin_id: adminProfileId,
                 branch_id: operatingBranchId || null,
                 name: r.name,
                 rate: r.rate,
@@ -220,7 +199,7 @@ export const GSTSettings: React.FC = () => {
     };
 
     const handleSaveTaxRate = async () => {
-        if (!adminAuthId) return;
+        if (!adminProfileId) return;
         if (!taxRateForm.name.trim()) {
             toast({ title: 'Name required', variant: 'destructive' });
             return;
@@ -234,7 +213,7 @@ export const GSTSettings: React.FC = () => {
 
         try {
             const payload = {
-                admin_id: adminAuthId,
+                admin_id: adminProfileId,
                 branch_id: operatingBranchId || null,
                 name: taxRateForm.name.trim(),
                 rate,

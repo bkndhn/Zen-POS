@@ -340,23 +340,11 @@ const TableOrderBilling: React.FC = () => {
 
                 // Load GST settings
                 if ((data as any).gst_enabled) {
-                    let adminAuthId = adminAuthUid || null;
-                    if (profile?.role === 'user' && profile.admin_id) {
-                        const { data: parentProfile } = await supabase
-                            .from('profiles')
-                            .select('user_id')
-                            .eq('id', profile.admin_id)
-                            .single();
-                        if (parentProfile?.user_id) {
-                            adminAuthId = parentProfile.user_id;
-                        }
-                    }
-
-                    if (adminAuthId) {
+                    if (adminId) {
                         let query = (supabase as any)
                             .from('tax_rates')
                             .select('id, name, rate, cess_rate, hsn_code')
-                            .eq('admin_id', adminAuthId)
+                            .eq('admin_id', adminId)
                             .eq('is_active', true);
                         if (operatingBranchId) {
                             query = query.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);

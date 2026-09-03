@@ -19,6 +19,7 @@ export interface WriteQueueEntry {
   error: string | null;
   adminId?: string;
   branchId?: string;
+  filters?: Record<string, unknown> | null;
 }
 
 export interface CachedQueryResult {
