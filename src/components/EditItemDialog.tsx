@@ -116,27 +116,6 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
-  const [adminAuthId, setAdminAuthId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const resolveAdminAuthId = async () => {
-      if (!profile) return;
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        setAdminAuthId(profile.user_id);
-      } else if (profile.role === 'user' && profile.admin_id) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('id', profile.admin_id)
-          .single();
-        if (data?.user_id) {
-          setAdminAuthId(data.user_id);
-        }
-      }
-    };
-    resolveAdminAuthId();
-  }, [profile]);
-
   useEffect(() => {
     if (open) {
       fetchCategories();
@@ -182,10 +161,10 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
   }, [open, item]);
 
   useEffect(() => {
-    if (open && adminAuthId) {
+    if (open && adminAuthUid && adminProfileId) {
       fetchGstSettings();
     }
-  }, [open, adminAuthId, operatingBranchId]);
+  }, [open, adminAuthUid, adminProfileId, operatingBranchId]);
 
   const fetchCategories = async () => {
     try {
@@ -239,12 +218,12 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 
   const fetchGstSettings = async () => {
     try {
-      if (!adminAuthId) return;
+      if (!adminAuthUid || !adminProfileId) return;
 
       let settingsQuery = (supabase as any)
         .from('shop_settings')
         .select('gst_enabled')
-        .eq('user_id', adminAuthId);
+        .eq('user_id', adminAuthUid);
 
       if (operatingBranchId) {
         settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);

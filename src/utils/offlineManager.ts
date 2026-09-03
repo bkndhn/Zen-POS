@@ -87,6 +87,7 @@ class OfflineManager {
     private db: IDBDatabase | null = null;
     private isOnline: boolean = navigator.onLine;
     private syncInProgress: boolean = false;
+    private writeQueueSyncInProgress: boolean = false;
     private listeners: Set<(isOnline: boolean) => void> = new Set();
     private pendingBillListeners: Set<(count: number) => void> = new Set();
 
@@ -1735,16 +1736,15 @@ class OfflineManager {
         if ((!this.backend?.isReady() && !this.db) || !this.isOnline) return { synced: 0, failed: 0 };
         if (this.writeQueueSyncInProgress) return { synced: 0, failed: 0 };
         this.writeQueueSyncInProgress = true;
-        
-        const items = await this.getWriteQueue();
-        const pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
         let synced = 0;
         let failed = 0;
+        try {
+            const items = await this.getWriteQueue();
+            const pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
+            const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
 
-        const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
-
-        for (const item of pending) {
-            try {
+            for (const item of pending) {
+              try {
                 await this.updateWriteQueueItem(item.id, { status: 'syncing' });
 
                 // Rebuild the original filter set (generic .eq/.in support, id fallback)
@@ -1777,19 +1777,17 @@ class OfflineManager {
                 // Invalidate cache for this table so next load gets fresh data
                 await this.clearCacheForTable(item.table);
 
-                synced++;
-            } catch (err: any) {
-                console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
-                await this.updateWriteQueueItem(item.id, {
-                    status: 'failed',
-                    retries: (item.retries || 0) + 1,
-                    error: err?.message || 'Unknown error'
-                });
-                failed++;
+                  synced++;
+              } catch (err: any) {
+                  console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
+                  await this.updateWriteQueueItem(item.id, {
+                      status: 'failed',
+                      retries: (item.retries || 0) + 1,
+                      error: err?.message || 'Unknown error'
+                  });
+                  failed++;
+              }
             }
-        }
-
-        try {
             await this.notifyWriteQueueListeners();
             return { synced, failed };
         } finally {

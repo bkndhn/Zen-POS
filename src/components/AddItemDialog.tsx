@@ -61,7 +61,7 @@ interface AddItemDialogProps {
 }
 
 export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, existingItems }) => {
-  const { profile , adminProfileId } = useAuth();
+  const { profile, adminProfileId, adminAuthUid } = useAuth();
   const { operatingBranchId, isAllBranchesView } = useBranch();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -129,46 +129,25 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     checkPremiumAccess();
   }, [profile]);
 
-  const [adminAuthId, setAdminAuthId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const resolveAdminAuthId = async () => {
-      if (!profile) return;
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        setAdminAuthId(profile.user_id);
-      } else if (profile.role === 'user' && profile.admin_id) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('id', profile.admin_id)
-          .single();
-        if (data?.user_id) {
-          setAdminAuthId(data.user_id);
-        }
-      }
-    };
-    resolveAdminAuthId();
-  }, [profile]);
-
   useEffect(() => {
     if (open) {
       setChipsMode('qty');
       fetchCategories();
-      if (adminAuthId) {
+      if (adminAuthUid && adminProfileId) {
         fetchGstSettings();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, operatingBranchId, profile?.id, profile?.admin_id, adminAuthId]);
+  }, [open, operatingBranchId, profile?.id, profile?.admin_id, adminAuthUid, adminProfileId]);
 
   const fetchGstSettings = async () => {
     try {
-      if (!adminAuthId) return;
+      if (!adminAuthUid || !adminProfileId) return;
 
       let settingsQuery = (supabase as any)
         .from('shop_settings')
         .select('gst_enabled')
-        .eq('user_id', adminAuthId);
+        .eq('user_id', adminAuthUid);
 
       if (operatingBranchId) {
         settingsQuery = settingsQuery.eq('branch_id', operatingBranchId);
