@@ -605,6 +605,9 @@ const Settings = () => {
             </div>
 
             <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "preferences") ? "hidden" : "block")}>
+              {/* Offline lifecycle dashboard */}
+              <SearchableSection title="Offline Lifecycle" keywords="offline queue sync cached rows sqlite indexeddb pending writes" searchQuery={searchQuery}><OfflineLifecycleCard /></SearchableSection>
+
               {/* Local Backup Settings */}
               <SearchableSection title="Local Backup & Privacy" keywords="local backup privacy wipe self destruct storage" searchQuery={searchQuery}><LocalBackupSettings /></SearchableSection>
 
