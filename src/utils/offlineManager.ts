@@ -471,6 +471,71 @@ class OfflineManager {
         });
     }
 
+    /**
+     * Snapshot of the offline lifecycle: queued writes, last sync time and
+     * how many rows are cached locally per store. Used by the Offline
+     * Lifecycle dashboard card.
+     */
+    async getOfflineLifecycleStats(): Promise<{
+        backend: 'sqlite' | 'indexeddb';
+        writeQueue: { pending: number; failed: number; syncing: number; total: number; oldest: number | null };
+        syncQueue: number;
+        pendingBills: number;
+        cachedRows: { store: string; count: number }[];
+        totalCachedRows: number;
+        lastSyncAt: number | null;
+    }> {
+        const backend: 'sqlite' | 'indexeddb' = this.backend?.isReady() ? 'sqlite' : 'indexeddb';
+
+        const [queue, syncQueue, pendingBills] = await Promise.all([
+            this.getWriteQueue().catch(() => [] as any[]),
+            this.getSyncQueue().catch(() => [] as any[]),
+            this.getPendingBillsCount().catch(() => 0),
+        ]);
+
+        const pending = queue.filter((q: any) => q.status === 'pending').length;
+        const failed = queue.filter((q: any) => q.status === 'failed').length;
+        const syncing = queue.filter((q: any) => q.status === 'syncing').length;
+        const oldest = queue.length
+            ? queue.reduce((min: number, q: any) => Math.min(min, q.timestamp ?? Date.now()), Date.now())
+            : null;
+
+        const countedStores = [
+            STORES.ITEMS, STORES.CATEGORIES, STORES.BILLS, STORES.EXPENSES,
+            STORES.TABLES, STORES.TABLE_ORDERS, STORES.CUSTOMERS, STORES.PAYMENTS,
+            STORES.TAX_RATES, STORES.BRANCHES, STORES.OFFLINE_CACHE,
+        ];
+
+        const cachedRows: { store: string; count: number }[] = [];
+        for (const store of countedStores) {
+            try {
+                const rows = await this.getAll<any>(store);
+                cachedRows.push({ store, count: rows?.length ?? 0 });
+            } catch {
+                cachedRows.push({ store, count: 0 });
+            }
+        }
+
+        let lastSyncAt: number | null = null;
+        try {
+            const raw = localStorage.getItem('zenpos_last_sync_at');
+            lastSyncAt = raw ? Number(raw) : null;
+            if (!lastSyncAt || Number.isNaN(lastSyncAt)) lastSyncAt = null;
+        } catch { /* storage unavailable */ }
+
+        return {
+            backend,
+            writeQueue: { pending, failed, syncing, total: queue.length, oldest },
+            syncQueue: syncQueue.length,
+            pendingBills,
+            cachedRows,
+            totalCachedRows: cachedRows.reduce((s, r) => s + r.count, 0),
+            lastSyncAt,
+        };
+    }
+
+
+
     async delete(storeName: string, key: string): Promise<void> {
         // Delegate to SQLite backend if available
         if (this.backend?.isReady()) {
