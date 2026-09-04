@@ -378,6 +378,9 @@ class SyncEngine {
     const changed = (Object.keys(patch) as (keyof SyncEngineState)[]).some((k) => this.state[k] !== next[k]);
     this.state = next;
     if (!changed) return;
+    if (patch.lastSyncAt) {
+      try { localStorage.setItem('zenpos_last_sync_at', String(patch.lastSyncAt)); } catch { /* ignore */ }
+    }
     const snapshot = this.getState();
     this.listeners.forEach((l) => {
       try {
