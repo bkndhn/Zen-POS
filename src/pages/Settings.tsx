@@ -29,6 +29,7 @@ import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanne
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StorageUsageSettings } from '@/components/StorageUsageSettings';
+import { OfflineLifecycleCard } from '@/components/OfflineLifecycleCard';
 import { DevicePrefixSettings } from '@/components/DevicePrefixSettings';
 import { LocalBackupSettings } from '@/components/LocalBackupSettings';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
