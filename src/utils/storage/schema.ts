@@ -8,7 +8,7 @@
  */
 
 export const SQLITE_DB_NAME = 'zenpos_offline';
-export const SQLITE_DB_VERSION = 2;
+export const SQLITE_DB_VERSION = 3;
 
 /** Primary key field for each store (must match IndexedDB keyPath) */
 export const PRIMARY_KEYS: Record<string, string> = {
@@ -185,6 +185,14 @@ export const SCHEMA_UPGRADES = [
     statements: [
       `ALTER TABLE writeQueue ADD COLUMN filters TEXT;`,
       `CREATE INDEX IF NOT EXISTS idx_writeq_status_timestamp ON writeQueue(status, timestamp);`,
+    ],
+  },
+  {
+    toVersion: 3,
+    statements: [
+      // Atomic claim marker so two overlapping flushes can never replay the same row.
+      `ALTER TABLE writeQueue ADD COLUMN claim_id TEXT;`,
+      `CREATE INDEX IF NOT EXISTS idx_writeq_claim ON writeQueue(claim_id);`,
     ],
   },
 ];
