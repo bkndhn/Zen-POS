@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAdminProfileId, resolveAuthUserId } from '@/utils/identity';
+import { assertTenantId, resolveAdminProfileId, resolveAuthUserId } from '@/utils/identity';
 import { isOnlineRequiredError, OnlineRequiredError } from '@/utils/onlineGuard';
 
 const profile = (overrides: Record<string, unknown>) => ({
