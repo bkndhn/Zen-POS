@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { supabase } from '@/integrations/supabase/client';
 import { buildBackup } from '@/utils/backupUtils';
 
@@ -100,6 +101,7 @@ export function useAutoBackup() {
         .map(f => f.name);
 
       if (filesToDelete.length > 0) {
+        requireOnline('Cloud backup cleanup');
         await supabase.storage.from('pos_backups').remove(filesToDelete);
         console.log(`[AutoBackup] Cleaned up ${filesToDelete.length} old backups past ${daysToKeep} days.`);
       }

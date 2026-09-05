@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionBilling } from '@/components/SubscriptionBilling';
@@ -261,6 +262,7 @@ const RenewSubscription: React.FC = () => {
         ? `${activeMonths} Month(s) Custom Plan`
         : (PRESET_SUBSCRIPTION_PLANS.find(p => p.months === activeMonths)?.name || `${activeMonths} Months`);
 
+      requireOnline('Creating a payment link');
       const { data, error } = await supabase.functions.invoke('payments-create-link', {
         body: {
           amount: planAmount,
@@ -286,6 +288,7 @@ const RenewSubscription: React.FC = () => {
   const handleEnableAutoPay = async () => {
     try {
       setSettingAutoPay(true);
+      requireOnline('Setting up auto-pay');
       const { data, error } = await supabase.functions.invoke('payments-create-mandate', {
         body: {
           amount: currentPricing.monthlyRate ?? baseMonthlyPrice,

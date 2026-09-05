@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,7 @@ export const SubscriptionBilling: React.FC<Props> = ({ adminId, monthlyAmount, s
   const enableAutoPay = async () => {
     try {
       setBusy('enable');
+      requireOnline('Setting up auto-pay');
       const { data, error } = await supabase.functions.invoke('payments-create-mandate', {
         body: {
           amount: cadence === 'annual' ? monthlyAmount * 12 : monthlyAmount,
@@ -77,6 +79,7 @@ export const SubscriptionBilling: React.FC<Props> = ({ adminId, monthlyAmount, s
     if (action === 'cancel' && !confirm('Cancel auto-pay? You will need to pay manually each cycle.')) return;
     try {
       setBusy(action);
+      requireOnline('Updating auto-pay');
       const { data, error } = await supabase.functions.invoke('payments-mandate-control', {
         body: { mandate_id: mandate.id, action },
       });

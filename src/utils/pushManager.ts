@@ -13,12 +13,14 @@
  *                     ▼
  *            register_device_token()  →  public.user_devices
  *                     ▼
+ requireOnline('Sending a notification');
  *            push_queue → process-push-queue → send-push (FCM HTTP v1)
  *
  * This module is a singleton store: one registration attempt per session, with a
  * subscribable state so any UI (settings page, banners) can show exact status.
  */
 import { Capacitor } from '@capacitor/core';
+import { requireOnline } from '@/utils/onlineGuard';
 import { supabase } from '@/integrations/supabase/client';
 import {
   enableWebPush,
@@ -291,6 +293,7 @@ export async function sendTestPush(): Promise<{ ok: boolean; message: string }> 
     const userId = sessionData.user?.id;
     if (!userId) return { ok: false, message: 'Not signed in.' };
 
+    requireOnline('Sending a notification');
     const { data, error } = await supabase.functions.invoke('send-push', {
       body: {
         user_id: userId,

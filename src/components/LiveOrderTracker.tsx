@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     try {
       setPayingOnline(true);
       const deviceId = localStorage.getItem('zenpos_remote_device_id') || '';
+      requireOnline('Creating a payment link');
       const { data, error } = await supabase.functions.invoke('payments-guest-link', {
         body: { order_id: orderId, device_id: deviceId },
       });

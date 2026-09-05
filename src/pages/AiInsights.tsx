@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
@@ -54,6 +55,7 @@ const AiInsights: React.FC = () => {
         payload.days = parseInt(periodDays);
       }
 
+      requireOnline('AI insights');
       const { data, error } = await supabase.functions.invoke<Response>('ai-insights', {
         body: payload,
       });
