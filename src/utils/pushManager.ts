@@ -13,7 +13,7 @@
  *                     ▼
  *            register_device_token()  →  public.user_devices
  *                     ▼
-*            push_queue → process-push-queue → send-push (FCM HTTP v1)
+  *            push_queue → process-push-queue → send-push (FCM HTTP v1)
  *
  * This module is a singleton store: one registration attempt per session, with a
  * subscribable state so any UI (settings page, banners) can show exact status.
