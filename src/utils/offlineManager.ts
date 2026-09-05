@@ -817,6 +817,9 @@ class OfflineManager {
             console.log(`[Sync] Complete. Synced: ${synced}, Failed: ${failed}`);
             // Fire and forget pruning
             this.pruneSyncedBills(30).catch(e => console.warn('[Cloud Pruning] Failed:', e));
+            // Keep the local query cache bounded on long offline runs
+            this.backend?.pruneCache(7 * 24 * 60 * 60 * 1000, 5000)
+                .catch(e => console.warn('[Cache Pruning] Failed:', e));
         }
 
         return { synced, failed };
