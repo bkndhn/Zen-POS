@@ -91,6 +91,7 @@ export class SQLiteBackend implements StorageBackend {
           throw error;
         }
       }
+      await this.ensureIntegrity(needsWebMode, encrypted, encryptionMode);
       await this.db.execute('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
       if (!needsWebMode) {
         await this.db.execute('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;');
@@ -112,6 +113,58 @@ export class SQLiteBackend implements StorageBackend {
       console.error('[SQLiteBackend] Initialization failed:', err);
       throw err;
     }
+  }
+
+  /**
+   * Verify the database file is not corrupt. If it is, salvage any unsynced
+   * queue rows, drop the damaged database and rebuild an empty schema so the
+   * app still opens instead of crash-looping on startup.
+   */
+  private async ensureIntegrity(webMode: boolean, encrypted: boolean, encryptionMode: string): Promise<void> {
+    if (!this.db) return;
+    let ok = true;
+    try {
+      const res = await this.db.query('PRAGMA integrity_check;');
+      const verdict = res.values?.[0]?.integrity_check ?? Object.values(res.values?.[0] ?? {})[0];
+      ok = String(verdict).toLowerCase() === 'ok';
+    } catch {
+      ok = false;
+    }
+    if (ok) return;
+
+    console.error('[SQLiteBackend] Integrity check failed — rebuilding local database');
+    let salvaged: any[] = [];
+    try {
+      const rows = await this.db.query(
+        `SELECT * FROM writeQueue WHERE status != 'synced';`
+      );
+      salvaged = rows.values || [];
+    } catch { /* unreadable — nothing to salvage */ }
+
+    try { await this.db.close(); } catch { /* ignore */ }
+    await this.sqlite.closeConnection(SQLITE_DB_NAME, false).catch(() => undefined);
+    await CapacitorSQLite.deleteDatabase({ database: SQLITE_DB_NAME }).catch(() => undefined);
+
+    this.db = await this.sqlite.createConnection(
+      SQLITE_DB_NAME,
+      encrypted,
+      encryptionMode === 'secret' ? 'secret' : encryptionMode,
+      SQLITE_DB_VERSION,
+      false
+    );
+    await this.db.open();
+
+    for (const row of salvaged) {
+      try {
+        await this.db.run(
+          `INSERT OR REPLACE INTO writeQueue (id, tbl, operation, status, timestamp, retries, error, admin_id, branch_id, filters, data, claim_id)
+           VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL);`,
+          [row.id, row.tbl, row.operation, row.timestamp, row.retries || 0, row.error ?? null,
+           row.admin_id ?? null, row.branch_id ?? null, row.filters ?? null, row.data]
+        );
+      } catch { /* skip unrecoverable row */ }
+    }
+    console.warn(`[SQLiteBackend] Rebuilt database, restored ${salvaged.length} queued writes`);
   }
 
   /**
@@ -352,6 +405,7 @@ export class SQLiteBackend implements StorageBackend {
       error: row.error,
       adminId: row.admin_id,
       branchId: row.branch_id,
+      claimId: row.claim_id ?? null,
       filters: row.filters ? (() => { try { return JSON.parse(row.filters); } catch { return null; } })() : null,
       data: (() => { try { return JSON.parse(row.data); } catch { return row.data; } })(),
     }));
@@ -371,6 +425,7 @@ export class SQLiteBackend implements StorageBackend {
     if (updates.status !== undefined) { setClauses.push('status = ?'); values.push(updates.status); }
     if (updates.retries !== undefined) { setClauses.push('retries = ?'); values.push(updates.retries); }
     if (updates.error !== undefined) { setClauses.push('error = ?'); values.push(updates.error); }
+    if (updates.status !== undefined && updates.status !== 'syncing') { setClauses.push('claim_id = NULL'); }
 
     if (setClauses.length === 0) return;
     values.push(id);
@@ -378,6 +433,67 @@ export class SQLiteBackend implements StorageBackend {
     await this.db.run(
       `UPDATE writeQueue SET ${setClauses.join(', ')} WHERE id = ?;`,
       values
+    );
+    this.schedulePersist();
+  }
+
+  async claimWriteQueue(claimId: string, limit = 200): Promise<WriteQueueEntry[]> {
+    if (!this.db) return [];
+    // Single-statement claim: only rows still unclaimed become ours.
+    await this.db.run(
+      `UPDATE writeQueue
+          SET status = 'syncing', claim_id = ?
+        WHERE id IN (
+          SELECT id FROM writeQueue
+           WHERE claim_id IS NULL
+             AND (status = 'pending' OR (status = 'failed' AND retries < 5))
+           ORDER BY timestamp ASC
+           LIMIT ?
+        );`,
+      [claimId, limit]
+    );
+    const result = await this.db.query(
+      `SELECT * FROM writeQueue WHERE claim_id = ? ORDER BY timestamp ASC;`,
+      [claimId]
+    );
+    this.schedulePersist();
+    if (!result.values) return [];
+    return result.values.map(row => ({
+      id: row.id,
+      table: row.tbl,
+      operation: row.operation as 'INSERT' | 'UPDATE' | 'DELETE',
+      status: row.status,
+      timestamp: row.timestamp,
+      retries: row.retries,
+      error: row.error,
+      adminId: row.admin_id,
+      branchId: row.branch_id,
+      claimId: row.claim_id ?? null,
+      filters: row.filters ? (() => { try { return JSON.parse(row.filters); } catch { return null; } })() : null,
+      data: (() => { try { return JSON.parse(row.data); } catch { return row.data; } })(),
+    }));
+  }
+
+  async releaseStaleClaims(olderThanMs: number): Promise<void> {
+    if (!this.db) return;
+    const cutoff = Date.now() - olderThanMs;
+    await this.db.run(
+      `UPDATE writeQueue SET status = 'pending', claim_id = NULL
+        WHERE claim_id IS NOT NULL AND timestamp < ?;`,
+      [cutoff]
+    );
+    this.schedulePersist();
+  }
+
+  async pruneCache(maxAgeMs: number, maxRows: number): Promise<void> {
+    if (!this.db) return;
+    const cutoff = Date.now() - maxAgeMs;
+    await this.db.run(`DELETE FROM offlineCache WHERE updated_at < ?;`, [cutoff]);
+    await this.db.run(
+      `DELETE FROM offlineCache WHERE cache_key IN (
+         SELECT cache_key FROM offlineCache ORDER BY updated_at DESC LIMIT -1 OFFSET ?
+       );`,
+      [maxRows]
     );
     this.schedulePersist();
   }

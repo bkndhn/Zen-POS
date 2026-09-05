@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,6 +116,7 @@ export const PlatformPaymentSettings: React.FC = () => {
     setTesting(true);
     setChecks(null);
     try {
+      requireOnline('Sandbox test');
       const { data, error } = await supabase.functions.invoke('payments-sandbox-test', {
         body: { scope: 'platform', outcome },
       });
@@ -132,6 +134,7 @@ export const PlatformPaymentSettings: React.FC = () => {
   const runReconcile = async () => {
     setReconciling(true);
     try {
+      requireOnline('Reconciliation');
       const { data, error } = await supabase.functions.invoke('payments-reconcile', { body: {} });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);

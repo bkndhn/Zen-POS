@@ -194,6 +194,7 @@ export class IndexedDBBackend implements StorageBackend {
       adminId: entry.adminId,
       branchId: entry.branchId,
       filters: entry.filters ?? null,
+      claimId: entry.claimId ?? null,
     });
   }
 
@@ -209,7 +210,44 @@ export class IndexedDBBackend implements StorageBackend {
   async updateWriteQueueItem(id: string, updates: Partial<WriteQueueEntry>): Promise<void> {
     const existing = await this.get<any>('writeQueue', id);
     if (existing) {
-      await this.put('writeQueue', { ...existing, ...updates });
+      const next = { ...existing, ...updates };
+      if (updates.status !== undefined && updates.status !== 'syncing') next.claimId = null;
+      await this.put('writeQueue', next);
+    }
+  }
+
+  async claimWriteQueue(claimId: string, limit = 200): Promise<WriteQueueEntry[]> {
+    const all = await this.getAll<any>('writeQueue');
+    const candidates = all
+      .filter(i => !i.claimId && (i.status === 'pending' || (i.status === 'failed' && i.retries < 5)))
+      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+      .slice(0, limit);
+
+    for (const item of candidates) {
+      await this.put('writeQueue', { ...item, status: 'syncing', claimId });
+    }
+    // Re-read so only rows we actually own are returned.
+    const after = await this.getAll<any>('writeQueue');
+    return after.filter(i => i.claimId === claimId);
+  }
+
+  async releaseStaleClaims(olderThanMs: number): Promise<void> {
+    const cutoff = Date.now() - olderThanMs;
+    const all = await this.getAll<any>('writeQueue');
+    for (const item of all) {
+      if (item.claimId && (item.timestamp || 0) < cutoff) {
+        await this.put('writeQueue', { ...item, status: 'pending', claimId: null });
+      }
+    }
+  }
+
+  async pruneCache(maxAgeMs: number, maxRows: number): Promise<void> {
+    const all = await this.getAll<any>('offlineCache');
+    const cutoff = Date.now() - maxAgeMs;
+    const sorted = [...all].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const doomed = sorted.filter((row, index) => index >= maxRows || (row.updatedAt || 0) < cutoff);
+    for (const row of doomed) {
+      await this.remove('offlineCache', row.cacheKey);
     }
   }
 

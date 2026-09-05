@@ -9,6 +9,7 @@
  */
 
 export interface WriteQueueEntry {
+  claimId?: string | null;
   id: string;
   table: string;
   operation: 'INSERT' | 'UPDATE' | 'DELETE';
@@ -78,6 +79,19 @@ export interface StorageBackend {
 
   /** Update a write queue entry (e.g., increment retries) */
   updateWriteQueueItem(id: string, updates: Partial<WriteQueueEntry>): Promise<void>;
+
+  /**
+   * Atomically claim replayable queue entries for this flush pass.
+   * Entries are marked 'syncing' with the given claimId so a concurrent
+   * flush cannot pick up the same rows (prevents duplicate bill posts).
+   */
+  claimWriteQueue(claimId: string, limit?: number): Promise<WriteQueueEntry[]>;
+
+  /** Release a stale claim (e.g. after a crash) back to 'pending'. */
+  releaseStaleClaims(olderThanMs: number): Promise<void>;
+
+  /** Trim the offline query cache by age and row count. */
+  pruneCache(maxAgeMs: number, maxRows: number): Promise<void>;
 
   /** Get count of pending writes */
   getWriteQueueCount(): Promise<number>;

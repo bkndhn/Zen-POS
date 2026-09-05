@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveAdminProfileId, resolveAuthUserId } from '@/utils/identity';
+import { assertTenantId, resolveAdminProfileId, resolveAuthUserId } from '@/utils/identity';
 import { isOnlineRequiredError, OnlineRequiredError } from '@/utils/onlineGuard';
 
 const profile = (overrides: Record<string, unknown>) => ({
@@ -30,5 +30,21 @@ describe('online action guard', () => {
     const error = new OnlineRequiredError('Cloud backup');
     expect(isOnlineRequiredError(error)).toBe(true);
     expect(error.message).toContain('requires an internet connection');
+  });
+});
+describe('assertTenantId guardrail', () => {
+  const authUid = '11111111-1111-1111-1111-111111111111';
+  const profileId = '22222222-2222-2222-2222-222222222222';
+
+  it('passes through a valid profile tenant id', () => {
+    expect(assertTenantId(profileId, authUid, 'items.insert')).toBe(profileId);
+  });
+
+  it('rejects an auth user id used as admin_id', () => {
+    expect(() => assertTenantId(authUid, authUid, 'items.insert')).toThrow(/admin_id/);
+  });
+
+  it('ignores empty values', () => {
+    expect(assertTenantId(null, authUid, 'items.insert')).toBeNull();
   });
 });

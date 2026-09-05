@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onOpenChange, targe
     }
     setSaving(true);
     try {
+      requireOnline('Resetting a password');
       const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: { target_profile_id: targetProfileId, new_password: pwd },
       });

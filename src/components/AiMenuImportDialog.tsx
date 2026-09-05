@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -177,6 +178,7 @@ export const AiMenuImportDialog: React.FC<Props> = ({ branchId, adminId, categor
     // 1. Try AI Edge Function first when online
     if (navigator.onLine) {
       try {
+        requireOnline('Menu photo import');
         const { data, error } = await supabase.functions.invoke('ai-menu-parse', {
           body: { images: images.map(i => i.url), text, hint_category: hintCategory || undefined },
         });

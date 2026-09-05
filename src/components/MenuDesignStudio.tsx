@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -436,6 +437,7 @@ export const MenuDesignStudio = () => {
             const fileName = `cover_${adminId}_${operatingBranchId || adminId}_${Date.now()}.${fileExt}`;
             const filePath = `covers/${fileName}`;
 
+            requireOnline('Uploading an image');
             const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
             if (uploadError) throw uploadError;
 

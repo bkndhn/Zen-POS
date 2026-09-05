@@ -817,6 +817,9 @@ class OfflineManager {
             console.log(`[Sync] Complete. Synced: ${synced}, Failed: ${failed}`);
             // Fire and forget pruning
             this.pruneSyncedBills(30).catch(e => console.warn('[Cloud Pruning] Failed:', e));
+            // Keep the local query cache bounded on long offline runs
+            this.backend?.pruneCache(7 * 24 * 60 * 60 * 1000, 5000)
+                .catch(e => console.warn('[Cache Pruning] Failed:', e));
         }
 
         return { synced, failed };
@@ -1814,13 +1817,24 @@ class OfflineManager {
         let synced = 0;
         let failed = 0;
         try {
-            const items = await this.getWriteQueue();
-            const pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
+            // Atomic claim: no other flush pass (tab, worker, or retry timer)
+            // can pick up the same rows, so a bill can never post twice.
+            const claimId = `claim_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+            let pending: any[];
+            if (this.backend?.isReady()) {
+                await this.backend.releaseStaleClaims(10 * 60 * 1000).catch(() => undefined);
+                pending = await this.backend.claimWriteQueue(claimId);
+            } else {
+                const items = await this.getWriteQueue();
+                pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
+            }
             const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
 
             for (const item of pending) {
               try {
-                await this.updateWriteQueueItem(item.id, { status: 'syncing' });
+                if (!this.backend?.isReady()) {
+                    await this.updateWriteQueueItem(item.id, { status: 'syncing' });
+                }
 
                 // Rebuild the original filter set (generic .eq/.in support, id fallback)
                 const filters: Record<string, any> = item.filters

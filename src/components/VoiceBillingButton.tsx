@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { requireOnline } from '@/utils/onlineGuard';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -153,6 +154,7 @@ export const VoiceBillingButton: React.FC<Props> = ({ items, onIntent, disabled,
 
     // 2) AI fallback (best effort)
     try {
+      requireOnline('Voice billing');
       const { data, error } = await supabase.functions.invoke('voice-parse', {
         body: {
           transcript,
