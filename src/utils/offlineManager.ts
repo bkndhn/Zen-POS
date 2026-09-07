@@ -582,6 +582,9 @@ class OfflineManager {
 
         await this.store(STORES.PENDING_BILLS, pendingBill);
         
+        // Flush immediately for money-critical durability
+        await this.backend?.flush();
+        
         // Fail-safe secondary vault mirror for Android cold reboot protection
         try {
             const allPending = await this.getPendingBills();
@@ -1715,6 +1718,12 @@ class OfflineManager {
         if (this.backend?.isReady()) {
             await this.backend.enqueueWrite(item);
             await this.notifyWriteQueueListeners();
+            
+            const MONEY_CRITICAL_TABLES = ['bills', 'shifts', 'shift_reconciliations', 'payments', 'customer_ledger'];
+            if (MONEY_CRITICAL_TABLES.includes(entry.table)) {
+                await this.backend?.flush();
+            }
+            
             return id;
         }
         if (!this.db) throw new Error('DB not initialized');

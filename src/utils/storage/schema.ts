@@ -8,7 +8,7 @@
  */
 
 export const SQLITE_DB_NAME = 'zenpos_offline';
-export const SQLITE_DB_VERSION = 3;
+export const SQLITE_DB_VERSION = 4;
 
 /** Primary key field for each store (must match IndexedDB keyPath) */
 export const PRIMARY_KEYS: Record<string, string> = {
@@ -193,6 +193,22 @@ export const SCHEMA_UPGRADES = [
       // Atomic claim marker so two overlapping flushes can never replay the same row.
       `ALTER TABLE writeQueue ADD COLUMN claim_id TEXT;`,
       `CREATE INDEX IF NOT EXISTS idx_writeq_claim ON writeQueue(claim_id);`,
+    ],
+  },
+  {
+    toVersion: 4,
+    statements: [
+      `CREATE INDEX IF NOT EXISTS idx_items_admin_branch ON items(admin_id, branch_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_bills_admin_branch ON bills(admin_id, branch_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_bills_admin_date ON bills(admin_id, date);`,
+      `CREATE INDEX IF NOT EXISTS idx_bills_created ON bills(created_at);`,
+      `CREATE INDEX IF NOT EXISTS idx_pending_admin ON pendingBills(admin_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_pending_admin_synced ON pendingBills(admin_id, synced);`,
+      `CREATE INDEX IF NOT EXISTS idx_expenses_admin ON expenses(admin_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_expenses_admin_date ON expenses(admin_id, date);`,
+      `CREATE INDEX IF NOT EXISTS idx_customers_admin ON customers(admin_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_customers_admin_branch ON customers(admin_id, branch_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_writeq_admin ON writeQueue(admin_id);`
     ],
   },
 ];
