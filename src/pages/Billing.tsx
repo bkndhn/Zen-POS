@@ -1,5 +1,6 @@
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -3457,6 +3458,16 @@ const Billing = () => {
   const stableUpdateQuantity = useCallback((id: string, change: number) => updateQuantityRef.current(id, change), []);
   // ------------------------------------------
 
+  const parentRef = React.useRef<HTMLDivElement>(null);
+  const ROW_HEIGHT = 120; // approximate height of each grid row
+  const GRID_COLS = displaySettings.items_per_row || 3; // items per row in the grid
+  const virtualRows = Math.ceil(filteredItems.length / GRID_COLS);
+  const rowVirtualizer = useVirtualizer({
+      count: virtualRows,
+      getScrollElement: () => parentRef.current,
+      estimateSize: () => ROW_HEIGHT,
+      overscan: 5,
+  });
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -3836,29 +3847,51 @@ const Billing = () => {
       {/* Items Grid - Scrollable */}
       {!(calciEnabled && appBillingMode === 'calci' && isCalciStretched) && (
       <div
+        ref={parentRef}
         className="flex-1 overflow-y-auto scroll-smooth min-h-0 relative"
         style={{
           paddingBottom: cart.some(i => i.quantity > 0) && !paymentDialogOpen ? '140px' : '16px',
           WebkitOverflowScrolling: 'touch'  // Smooth scroll on iOS
         }}
       >
-        {viewMode === 'grid' ? <div className={`grid gap-2 ${displaySettings.items_per_row === 1 ? 'grid-cols-1' : displaySettings.items_per_row === 2 ? 'grid-cols-2' : displaySettings.items_per_row === 3 ? 'grid-cols-3' : displaySettings.items_per_row === 4 ? 'grid-cols-4' : displaySettings.items_per_row === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}>
-          {filteredItems.map(item => {
-            const cartQuantity = cart.find(entry => entry.id === item.id)?.quantity || 0;
-            return (
-              <BillingGridItemCard
-                key={item.id}
-                item={item}
-                cartQuantity={cartQuantity}
-                orderChannel={orderChannel}
-                onAddToCart={stableAddToCart}
-                onAddToCartWithChip={stableAddToCartWithChip}
-                onAddToCartWithAmount={stableAddToCartWithAmount}
-                onUpdateQuantity={stableUpdateQuantity}
-              />
-            );
-          })}
-        </div> :
+        {viewMode === 'grid' ? (
+          <div style={{ height: rowVirtualizer.getTotalSize() + 'px', width: '100%', position: 'relative' }}>
+            {rowVirtualizer.getVirtualItems().map(virtualRow => {
+              const startIndex = virtualRow.index * GRID_COLS;
+              const rowItems = filteredItems.slice(startIndex, startIndex + GRID_COLS);
+              return (
+                <div
+                  key={virtualRow.index}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: virtualRow.size + 'px',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  className={`grid gap-2 ${displaySettings.items_per_row === 1 ? 'grid-cols-1' : displaySettings.items_per_row === 2 ? 'grid-cols-2' : displaySettings.items_per_row === 3 ? 'grid-cols-3' : displaySettings.items_per_row === 4 ? 'grid-cols-4' : displaySettings.items_per_row === 5 ? 'grid-cols-5' : 'grid-cols-6'}`}
+                >
+                  {rowItems.map(item => {
+                    const cartQuantity = cart.find(entry => entry.id === item.id)?.quantity || 0;
+                    return (
+                      <BillingGridItemCard
+                        key={item.id}
+                        item={item}
+                        cartQuantity={cartQuantity}
+                        orderChannel={orderChannel}
+                        onAddToCart={stableAddToCart}
+                        onAddToCartWithChip={stableAddToCartWithChip}
+                        onAddToCartWithAmount={stableAddToCartWithAmount}
+                        onUpdateQuantity={stableUpdateQuantity}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ) :
           // List View
           <div className="space-y-2">
             {filteredItems.map(item => {
