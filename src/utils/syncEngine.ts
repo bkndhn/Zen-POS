@@ -253,6 +253,7 @@ class SyncEngine {
   async retryNow(): Promise<void> {
     this.attempt = 0;
     await offlineManager.resetSyncRetries();
+    await offlineManager.resetWriteQueueRetries();
     await this.probe();
     await this.flush(true);
   }
@@ -316,12 +317,13 @@ class SyncEngine {
 
   private async refreshCounts(): Promise<void> {
     try {
-      const [queue, pendingBills] = await Promise.all([
+      const [queue, pendingBills, pendingWrites] = await Promise.all([
         offlineManager.getSyncQueue(),
         offlineManager.getPendingBillsCount(),
+        offlineManager.getPendingWriteCount(),
       ]);
       const failed = queue.filter((q: any) => (q.retryCount ?? 0) >= 5).length;
-      this.emit({ pending: queue.length + pendingBills, failed });
+      this.emit({ pending: queue.length + pendingBills + pendingWrites, failed });
     } catch {
       /* IndexedDB not ready yet — counts refresh on the next tick */
     }
@@ -338,6 +340,8 @@ class SyncEngine {
     await this.refreshCounts();
     if (this.state.pending === 0) {
       this.attempt = 0;
+      // Still try writeQueue as a safety net
+      await offlineManager.processWriteQueue().catch(() => {});
       return;
     }
 

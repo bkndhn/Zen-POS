@@ -96,6 +96,9 @@ export interface StorageBackend {
   /** Get count of pending writes */
   getWriteQueueCount(): Promise<number>;
 
+  /** Reset write queue retries */
+  resetWriteQueueRetries(): Promise<void>;
+
   /** Persist any buffered writes before shutdown or migration completion. */
   flush(): Promise<void>;
 }

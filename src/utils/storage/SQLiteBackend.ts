@@ -476,13 +476,12 @@ export class SQLiteBackend implements StorageBackend {
 
   async releaseStaleClaims(olderThanMs: number): Promise<void> {
     if (!this.db) return;
-    const cutoff = Date.now() - olderThanMs;
+    // Release any items stuck in 'syncing' status (crashed mid-sync)
     await this.db.run(
-      `UPDATE writeQueue SET status = 'pending', claim_id = NULL
-        WHERE claim_id IS NOT NULL AND timestamp < ?;`,
-      [cutoff]
+        `UPDATE writeQueue SET status = 'pending', claim_id = NULL
+         WHERE status = 'syncing';`
     );
-    this.schedulePersist();
+    await this.saveToStoreIfWeb();
   }
 
   async pruneCache(maxAgeMs: number, maxRows: number): Promise<void> {
@@ -501,9 +500,18 @@ export class SQLiteBackend implements StorageBackend {
   async getWriteQueueCount(): Promise<number> {
     if (!this.db) return 0;
     const result = await this.db.query(
-      `SELECT COUNT(*) as count FROM writeQueue WHERE status = 'pending';`
+      `SELECT COUNT(*) as count FROM writeQueue WHERE status = 'pending' OR (status = 'failed' AND retries < 5);`
     );
     return result.values?.[0]?.count || 0;
+  }
+
+  async resetWriteQueueRetries(): Promise<void> {
+    if (!this.db) return;
+    await this.db.run(
+        `UPDATE writeQueue SET status = 'pending', retries = 0, claim_id = NULL, error = NULL
+         WHERE status = 'failed' OR status = 'syncing';`
+    );
+    await this.saveToStoreIfWeb();
   }
 
   // ─── Private Helpers ────────────────────────────────────────

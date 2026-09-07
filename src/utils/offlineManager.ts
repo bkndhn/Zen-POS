@@ -1820,72 +1820,85 @@ class OfflineManager {
         return this.executeWriteQueue();
     }
 
+    async resetWriteQueueRetries(): Promise<void> {
+        if (this.backend?.isReady()) {
+            await this.backend.resetWriteQueueRetries();
+        }
+    }
+
     private async executeWriteQueue(): Promise<{ synced: number; failed: number }> {
         if (this.writeQueueSyncInProgress) return { synced: 0, failed: 0 };
         this.writeQueueSyncInProgress = true;
         let synced = 0;
         let failed = 0;
+        let batchNum = 0;
+        const MAX_BATCHES = 10;
+        
         try {
-            // Atomic claim: no other flush pass (tab, worker, or retry timer)
-            // can pick up the same rows, so a bill can never post twice.
             const claimId = `claim_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-            let pending: any[];
-            if (this.backend?.isReady()) {
-                await this.backend.releaseStaleClaims(10 * 60 * 1000).catch(() => undefined);
-                pending = await this.backend.claimWriteQueue(claimId);
-            } else {
-                const items = await this.getWriteQueue();
-                pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5));
-            }
             const { withOfflineBypass } = await import('@/integrations/supabase/offlineLayer');
 
-            for (const item of pending) {
-              try {
-                if (!this.backend?.isReady()) {
-                    await this.updateWriteQueueItem(item.id, { status: 'syncing' });
+            while (batchNum < MAX_BATCHES) {
+                batchNum++;
+                let pending: any[];
+                if (this.backend?.isReady()) {
+                    await this.backend.releaseStaleClaims(10 * 60 * 1000).catch(() => undefined);
+                    pending = await this.backend.claimWriteQueue(claimId, 200);
+                } else {
+                    const items = await this.getWriteQueue();
+                    pending = items.filter(i => i.status === 'pending' || (i.status === 'failed' && i.retries < 5)).slice(0, 200);
                 }
 
-                // Rebuild the original filter set (generic .eq/.in support, id fallback)
-                const filters: Record<string, any> = item.filters
-                    || (item.data?.id ? { id: item.data.id } : {});
-                const applyFilters = (q: any) => {
-                    for (const [col, val] of Object.entries(filters)) {
-                        if (val && typeof val === 'object' && '__in' in (val as any)) q = q.in(col, (val as any).__in);
-                        else q = q.eq(col, val);
+                if (pending.length === 0) break;
+
+                for (const item of pending) {
+                    try {
+                        if (!this.backend?.isReady()) {
+                            await this.updateWriteQueueItem(item.id, { status: 'syncing' });
+                        }
+
+                        const filters: Record<string, any> = item.filters
+                            || (item.data?.id ? { id: item.data.id } : {});
+                        const applyFilters = (q: any) => {
+                            for (const [col, val] of Object.entries(filters)) {
+                                if (val && typeof val === 'object' && '__in' in (val as any)) q = q.in(col, (val as any).__in);
+                                else q = q.eq(col, val);
+                            }
+                            return q;
+                        };
+
+                        await withOfflineBypass(async () => {
+                            if (item.operation === 'INSERT') {
+                                const { __pendingSync, ...row } = item.data || {};
+                                const { error } = await supabase.from(item.table).upsert(row, { onConflict: 'id' });
+                                if (error) throw error;
+                            } else if (item.operation === 'UPDATE') {
+                                const { id: recordId, __pendingSync, ...updateData } = item.data || {};
+                                const { error } = await applyFilters(supabase.from(item.table).update(updateData));
+                                if (error) throw error;
+                            } else if (item.operation === 'DELETE') {
+                                const { error } = await applyFilters(supabase.from(item.table).delete());
+                                if (error) throw error;
+                            }
+                        });
+
+                        await this.removeFromWriteQueue(item.id);
+                        await this.clearCacheForTable(item.table);
+                        synced++;
+                    } catch (err: any) {
+                        console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
+                        await this.updateWriteQueueItem(item.id, {
+                            status: 'failed',
+                            retries: (item.retries || 0) + 1,
+                            error: err?.message || 'Unknown error'
+                        });
+                        failed++;
                     }
-                    return q;
-                };
-
-                await withOfflineBypass(async () => {
-                    if (item.operation === 'INSERT') {
-                        const { __pendingSync, ...row } = item.data || {};
-                        const { error } = await supabase.from(item.table).upsert(row, { onConflict: 'id' });
-                        if (error) throw error;
-                    } else if (item.operation === 'UPDATE') {
-                        const { id: recordId, __pendingSync, ...updateData } = item.data || {};
-                        const { error } = await applyFilters(supabase.from(item.table).update(updateData));
-                        if (error) throw error;
-                    } else if (item.operation === 'DELETE') {
-                        const { error } = await applyFilters(supabase.from(item.table).delete());
-                        if (error) throw error;
-                    }
-                });
-
-                await this.removeFromWriteQueue(item.id);
-                // Invalidate cache for this table so next load gets fresh data
-                await this.clearCacheForTable(item.table);
-
-                  synced++;
-              } catch (err: any) {
-                  console.error('[WriteQueue] Sync failed for:', item.table, item.operation, err);
-                  await this.updateWriteQueueItem(item.id, {
-                      status: 'failed',
-                      retries: (item.retries || 0) + 1,
-                      error: err?.message || 'Unknown error'
-                  });
-                  failed++;
-              }
+                }
+                
+                if (pending.length < 200) break;
             }
+            
             await this.notifyWriteQueueListeners();
             return { synced, failed };
         } finally {

@@ -256,6 +256,19 @@ export class IndexedDBBackend implements StorageBackend {
     return queue.length;
   }
 
+  async resetWriteQueueRetries(): Promise<void> {
+    const all = await this.getAll<any>('writeQueue');
+    for (const item of all) {
+      if (item.status === 'failed' || item.status === 'syncing') {
+        item.status = 'pending';
+        item.retries = 0;
+        item.claimId = null;
+        item.error = null;
+        await this.put('writeQueue', item);
+      }
+    }
+  }
+
   // ─── Private Helpers ────────────────────────────────────────
 
   private createStores(db: IDBDatabase): void {

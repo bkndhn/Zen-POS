@@ -181,6 +181,30 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
   const filters = collectFilters(chain);
 
   const queueIt = async () => {
+    const manager = await om();
+    
+    const dedupQueueWrite = async (operation: string, data: any, filters?: any) => {
+      // Before queueing, deduplicate UPDATE/UPSERT operations
+      if (operation === 'UPDATE' || operation === 'UPSERT') {
+        const existingQueue = await manager.getWriteQueue();
+        const recordId = data?.id;
+        if (recordId) {
+          const duplicate = existingQueue.find(
+            (q: any) => q.table === table && q.status === 'pending' && q.data?.id === recordId
+          );
+          if (duplicate) {
+            // Merge new data into existing entry instead of creating a duplicate
+            const mergedData = { ...duplicate.data, ...data };
+            await manager.updateWriteQueueItem(duplicate.id, { data: mergedData });
+            return; // Return early, skip creating a new entry
+          }
+        }
+      }
+      // Fallback for upsert: originally enqueued as INSERT
+      const finalOperation = operation === 'UPSERT' ? 'INSERT' : operation;
+      await manager.queueWrite({ table, operation: finalOperation, data, filters });
+    };
+
     if (op === 'insert' || op === 'upsert') {
       const payload = mutation.args[0];
       const rows = (Array.isArray(payload) ? payload : [payload]).map((r: any) => ({
@@ -189,26 +213,18 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
         ...r,
       }));
       for (const row of rows) {
-        await (await om()).queueWrite({ table, operation: 'INSERT', data: row });
+        const operation = op === 'upsert' ? 'UPSERT' : 'INSERT';
+        await dedupQueueWrite(operation, row);
       }
       return shapeResult(chain, rows);
     }
     if (op === 'update') {
-      await (await om()).queueWrite({
-        table,
-        operation: 'UPDATE',
-        data: { ...mutation.args[0], ...(filters.id ? { id: filters.id } : {}) },
-        filters,
-      });
+      const data = { ...mutation.args[0], ...(filters.id ? { id: filters.id } : {}) };
+      await dedupQueueWrite('UPDATE', data, filters);
       return shapeResult(chain, [{ ...mutation.args[0], ...filters }]);
     }
     // delete
-    await (await om()).queueWrite({
-      table,
-      operation: 'DELETE',
-      data: { ...(filters.id ? { id: filters.id } : {}) },
-      filters,
-    });
+    await dedupQueueWrite('DELETE', { ...(filters.id ? { id: filters.id } : {}) }, filters);
     return shapeResult(chain, []);
   };
 

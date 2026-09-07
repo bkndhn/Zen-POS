@@ -23,7 +23,17 @@ const OfflineStatusBanner: React.FC = () => {
     const handleRetry = async () => {
         setSyncing(true);
         try {
-            await offlineManager.processSyncQueue();
+            // Reset ALL stuck retries (both bills and writeQueue)
+            await offlineManager.resetSyncRetries();
+            await offlineManager.resetWriteQueueRetries();
+            // Release any items stuck in 'syncing' from crashed sessions
+            // @ts-ignore: backend is private but we need to access it here
+            if (offlineManager.backend?.isReady()) {
+                // @ts-ignore
+                await offlineManager.backend.releaseStaleClaims(0);
+            }
+            // Now process everything
+            await offlineManager.processSyncQueue(true);
             await offlineManager.processWriteQueue();
             setJustSynced(true);
         } catch (err) {
