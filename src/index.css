@@ -1014,3 +1014,99 @@ All colors MUST be HSL.
     animation: pulse-glow 2s infinite;
   }
 }
+/* ============================================================
+   PREMIUM POLISH LAYER
+   Purely visual refinements — spacing rhythm, layered shadows,
+   unified radius and number legibility. No layout rewrites.
+   ============================================================ */
+@layer base {
+  :root {
+    /* Layered, softer elevation instead of a single hard drop */
+    --shadow-card: 0 1px 2px hsl(222 84% 4.9% / 0.05), 0 4px 12px -4px hsl(222 84% 4.9% / 0.08);
+    --shadow-raised: 0 2px 4px hsl(222 84% 4.9% / 0.06), 0 12px 28px -12px hsl(222 84% 4.9% / 0.14);
+    --radius-premium: 1rem;
+  }
+
+  .dark {
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.4), 0 4px 12px -4px hsl(0 0% 0% / 0.45);
+    --shadow-raised: 0 2px 6px hsl(0 0% 0% / 0.45), 0 14px 30px -12px hsl(0 0% 0% / 0.55);
+  }
+}
+
+@layer utilities {
+  /* Elevated surface used for primary cards on a screen */
+  .premium-card {
+    border-radius: var(--radius-premium);
+    box-shadow: var(--shadow-card);
+    border-color: hsl(var(--border) / 0.7);
+    transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .premium-card:hover {
+    box-shadow: var(--shadow-raised);
+  }
+
+  /* Quiet inner surface (list rows, sub-panels) */
+  .premium-surface {
+    border-radius: calc(var(--radius-premium) - 0.25rem);
+    background-color: hsl(var(--muted) / 0.45);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  /* Money and quantities line up column-wise */
+  .num-tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -0.01em;
+  }
+
+  /* Large figures (totals, KPI values) */
+  .stat-value {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  /* Small uppercase label above a value */
+  .stat-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Section heading rhythm */
+  .section-title {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Consistent page padding rhythm */
+  .page-shell {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+    padding-top: 0.875rem;
+  }
+
+  @media (min-width: 768px) {
+    .page-shell {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+      padding-top: 1.25rem;
+    }
+  }
+
+  /* Empty states */
+  .empty-state {
+    border-radius: var(--radius-premium);
+    border: 1px dashed hsl(var(--border));
+    background-color: hsl(var(--muted) / 0.3);
+    text-align: center;
+    padding: 2rem 1rem;
+    color: hsl(var(--muted-foreground));
+  }
+}
