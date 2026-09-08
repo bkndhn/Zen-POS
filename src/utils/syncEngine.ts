@@ -71,6 +71,7 @@ class SyncEngine {
   private probeTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
   private recordStates = new Map<string, RecordSyncState>();
+  private autoHealed = false;
 
   start(): void {
     if (this.started) return;
@@ -346,8 +347,9 @@ class SyncEngine {
       return;
     }
 
-    // Auto-heal on first attempt: release stuck claims and reset retries
-    if (this.attempt === 0) {
+    // Auto-heal ONCE per session: release stuck claims and reset retries
+    if (!this.autoHealed) {
+      this.autoHealed = true;
       try {
         await offlineManager.resetWriteQueueRetries();
         // @ts-ignore - accessing private backend for stale claim release
@@ -375,8 +377,9 @@ class SyncEngine {
         this.emit({ lastSyncAt: Date.now(), lastError: null });
       }
 
-      // If items remain, schedule another flush automatically
-      if (this.state.pending > 0) {
+      // Only auto-continue if we made progress (some items synced).
+      // If ALL items failed, stop — don't spin forever. User can click Sync Now.
+      if (this.state.pending > 0 && result && result.synced > 0) {
         this.emit({ syncing: false });
         this.requestSync('continue-batch');
         return;

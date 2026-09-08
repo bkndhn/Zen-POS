@@ -1823,7 +1823,41 @@ class OfflineManager {
     async resetWriteQueueRetries(): Promise<void> {
         if (this.backend?.isReady()) {
             await this.backend.resetWriteQueueRetries();
+            return;
         }
+        // IndexedDB fallback
+        if (!this.db) return;
+        const items = await this.getWriteQueue();
+        for (const item of items) {
+            if (item.status === 'failed' || item.status === 'syncing') {
+                await this.updateWriteQueueItem(item.id, { status: 'pending', retries: 0, error: null });
+            }
+        }
+    }
+
+    /** Get all write queue items for diagnostics */
+    async getWriteQueueItems(): Promise<any[]> {
+        if (this.backend?.isReady()) {
+            return (this.backend as any).getWriteQueue?.() || [];
+        }
+        return this.getWriteQueue();
+    }
+
+    /** Permanently discard all stuck write queue items (items that can never sync) */
+    async clearWriteQueue(): Promise<void> {
+        if (this.backend?.isReady()) {
+            // Clear all items from the write queue
+            const items = await this.getWriteQueueItems();
+            for (const item of items) {
+                await this.removeFromWriteQueue(item.id);
+            }
+        } else if (this.db) {
+            const items = await this.getWriteQueue();
+            for (const item of items) {
+                await this.removeFromWriteQueue(item.id);
+            }
+        }
+        await this.notifyWriteQueueListeners();
     }
 
     private async executeWriteQueue(): Promise<{ synced: number; failed: number }> {

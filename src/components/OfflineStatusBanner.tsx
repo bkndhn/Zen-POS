@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { WifiOff, CloudOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { WifiOff, CloudOff, RefreshCw, CheckCircle2, Trash2 } from 'lucide-react';
 import { useNetworkStatus, usePendingSyncCount, useWriteQueueCount } from '@/hooks/useOffline';
 import { offlineManager } from '@/utils/offlineManager';
 
@@ -9,6 +9,8 @@ const OfflineStatusBanner: React.FC = () => {
     const pendingWrites = useWriteQueueCount();
     const [syncing, setSyncing] = React.useState(false);
     const [justSynced, setJustSynced] = React.useState(false);
+    const [retryCount, setRetryCount] = React.useState(0);
+    const [showDiscard, setShowDiscard] = React.useState(false);
 
     const totalPending = pendingBills + pendingWrites;
 
@@ -20,7 +22,7 @@ const OfflineStatusBanner: React.FC = () => {
         }
     }, [isOnline, totalPending, justSynced]);
 
-    // Auto-trigger sync when online with pending items (no manual click needed)
+    // Auto-trigger sync ONCE when online with pending items
     const autoSyncTriggered = React.useRef(false);
     React.useEffect(() => {
         if (isOnline && totalPending > 0 && !syncing && !autoSyncTriggered.current) {
@@ -30,31 +32,63 @@ const OfflineStatusBanner: React.FC = () => {
             }, 2000);
             return () => clearTimeout(timer);
         }
-        if (totalPending === 0) {
-            autoSyncTriggered.current = false;
-        }
-    }, [isOnline, totalPending, syncing]);
+        // Don't reset autoSyncTriggered when totalPending changes — only reset on fresh mount
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRetry = async () => {
         setSyncing(true);
         try {
-            // Reset ALL stuck retries (both bills and writeQueue)
-            await offlineManager.resetSyncRetries();
-            await offlineManager.resetWriteQueueRetries();
-            // Release any items stuck in 'syncing' from crashed sessions
-            // @ts-ignore: backend is private but we need to access it here
-            if (offlineManager.backend?.isReady()) {
+            // Only reset retries on first attempt — don't create infinite loops
+            if (retryCount === 0) {
+                await offlineManager.resetSyncRetries();
+                await offlineManager.resetWriteQueueRetries();
                 // @ts-ignore
-                await offlineManager.backend.releaseStaleClaims(0);
+                if (offlineManager.backend?.isReady()) {
+                    // @ts-ignore
+                    await offlineManager.backend.releaseStaleClaims(0);
+                }
             }
-            // Now process everything
+            // Process everything
             await offlineManager.processSyncQueue(true);
-            await offlineManager.processWriteQueue();
-            setJustSynced(true);
+            const result = await offlineManager.processWriteQueue();
+
+            if (result && result.failed > 0 && result.synced === 0) {
+                // All items failed — log what's stuck and offer discard
+                const newCount = retryCount + 1;
+                setRetryCount(newCount);
+                if (newCount >= 2) {
+                    setShowDiscard(true);
+                    // Log stuck items for diagnostics
+                    try {
+                        const items = await offlineManager.getWriteQueueItems();
+                        console.error('[SyncBanner] Permanently stuck items:', items.map((i: any) => ({
+                            table: i.table, operation: i.operation, error: i.error,
+                            data: i.data?.id, retries: i.retries
+                        })));
+                    } catch {}
+                }
+            } else {
+                setRetryCount(0);
+                setShowDiscard(false);
+                setJustSynced(true);
+            }
         } catch (err) {
             console.error('[OfflineBanner] Manual sync failed:', err);
+            setRetryCount(r => r + 1);
         } finally {
             setSyncing(false);
+        }
+    };
+
+    const handleDiscard = async () => {
+        if (!confirm('Discard stuck changes? These items failed to sync and will be removed.')) return;
+        try {
+            await offlineManager.clearWriteQueue();
+            setShowDiscard(false);
+            setRetryCount(0);
+            setJustSynced(true);
+        } catch (err) {
+            console.error('[OfflineBanner] Discard failed:', err);
         }
     };
 
@@ -79,11 +113,18 @@ const OfflineStatusBanner: React.FC = () => {
                     <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                     {syncing ? 'Syncing...' : `${totalPending} change${totalPending > 1 ? 's' : ''} pending sync`}
                 </div>
-                {!syncing && (
-                    <button onClick={handleRetry} className="bg-white/20 hover:bg-white/30 px-3 py-0.5 rounded-lg text-xs font-bold transition-colors">
-                        Sync Now
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {showDiscard && !syncing && (
+                        <button onClick={handleDiscard} className="bg-red-500/80 hover:bg-red-500 px-3 py-0.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1">
+                            <Trash2 className="w-3 h-3" /> Discard
+                        </button>
+                    )}
+                    {!syncing && (
+                        <button onClick={handleRetry} className="bg-white/20 hover:bg-white/30 px-3 py-0.5 rounded-lg text-xs font-bold transition-colors">
+                            Sync Now
+                        </button>
+                    )}
+                </div>
             </div>
         );
     }
