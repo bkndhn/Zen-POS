@@ -190,7 +190,7 @@ const Items: React.FC = () => {
       }
 
       // Branch-scoped fetch: filter by branch_id (null = All Branches view)
-      let query = supabase.from('items').select('*').eq('admin_id', adminId);
+      let query = supabase.from('items').select('id, name, price, category, is_active, unit, base_value, quantity_step, tax_rate_id, billing_type, stock_quantity, selling_unit, inventory_unit, unlimited_stock, is_loose, image_url, hsn_code, admin_id, branch_id, is_saleable, purchase_rate, description, sku, barcode, min_stock, max_stock, created_at, updated_at').eq('admin_id', adminId);
       if (branchFilterId) {
         query = query.eq('branch_id', branchFilterId);
       }

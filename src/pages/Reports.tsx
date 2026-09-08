@@ -772,7 +772,7 @@ const Reports: React.FC = () => {
           let billsQuery: any = supabase
             .from('bills')
             .select(`
-              *,
+              id, bill_no, date, created_at, total, subtotal, discount, discount_type, discount_value, tax, additional_charges_total, payment_mode, payment_details, customer_name, customer_phone, is_deleted, admin_id, branch_id, status, table_number, order_type, is_ac, pax, waiter_name, created_by, round_off,
               bill_items (
                 *,
                 items (
@@ -830,7 +830,7 @@ const Reports: React.FC = () => {
             // Fetch expenses — branch-scoped
             let expensesQ: any = supabase
               .from('expenses')
-              .select('*')
+              .select('id, amount, date, category, description, payment_mode, admin_id, branch_id, created_at')
               .eq('admin_id', adminId)
               .gte('date', start)
               .lte('date', end)
