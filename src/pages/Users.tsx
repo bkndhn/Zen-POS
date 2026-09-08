@@ -264,7 +264,7 @@ const Users: React.FC = () => {
           const [{ count: itemCount }, { count: branchCount }, { data: settingsData }] = await Promise.all([
             supabase.from('items').select('*', { count: 'exact', head: true }).eq('admin_id', admin.id),
             supabase.from('branches').select('*', { count: 'exact', head: true }).eq('admin_id', admin.id),
-            supabase.from('shop_settings').select('shift_management_unlocked, fcm_unlocked').eq('user_id', admin.id).limit(1).single(),
+            supabase.from('shop_settings').select('shift_management_unlocked, fcm_unlocked').eq('user_id', admin.user_id).limit(1).single(),
           ]);
           admin.itemCount = itemCount ?? 0;
           admin.branchCount = branchCount ?? 0;
@@ -808,7 +808,7 @@ const Users: React.FC = () => {
                                 id={`fcm-${admin.id}`}
                                 checked={(admin as any)._fcmUnlocked ?? false}
                                 onCheckedChange={async (val) => {
-                                  await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('user_id', admin.id);
+                                  await supabase.from('shop_settings').update({ fcm_unlocked: val } as any).eq('user_id', admin.user_id);
                                   setUsers(prev => prev.map(u => u.id === admin.id ? { ...u, _fcmUnlocked: val } as any : u));
                                   setFilteredUsers(prev => prev.map(u => u.id === admin.id ? { ...u, _fcmUnlocked: val } as any : u));
                                   toast({ title: val ? 'Push Notifications unlocked' : 'Push Notifications locked' });

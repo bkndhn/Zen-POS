@@ -422,6 +422,7 @@ export class SQLiteBackend implements StorageBackend {
     const setClauses: string[] = [];
     const values: any[] = [];
 
+    if (updates.data !== undefined) { setClauses.push('data = ?'); values.push(JSON.stringify(updates.data)); }
     if (updates.status !== undefined) { setClauses.push('status = ?'); values.push(updates.status); }
     if (updates.retries !== undefined) { setClauses.push('retries = ?'); values.push(updates.retries); }
     if (updates.error !== undefined) { setClauses.push('error = ?'); values.push(updates.error); }

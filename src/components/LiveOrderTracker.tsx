@@ -36,7 +36,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   const enablePush = async () => {
     if (!order?.admin_id) return;
     try {
-      const res = await enableWebPush(order.admin_id);
+      const res = await enableWebPush(true);
       if (res.status === 'registered' && res.token) {
         await supabase.from('remote_orders').update({ customer_fcm_token: res.token }).eq('id', orderId);
         setPushStatus('enabled');
