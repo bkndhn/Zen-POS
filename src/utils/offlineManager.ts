@@ -1777,7 +1777,7 @@ class OfflineManager {
         this.notifyWriteQueueListeners();
     }
 
-    async updateWriteQueueItem(id: string, updates: Partial<{ status: string; retries: number; error: string | null }>): Promise<void> {
+    async updateWriteQueueItem(id: string, updates: Partial<{ status: string; retries: number; error: string | null; data: any; filters: Record<string, unknown> | null }>): Promise<void> {
         if (this.backend?.isReady()) return this.backend.updateWriteQueueItem(id, updates);
         if (!this.db) return;
         return new Promise((resolve) => {

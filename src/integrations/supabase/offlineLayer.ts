@@ -201,7 +201,8 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
         }
       }
       // Fallback for upsert: originally enqueued as INSERT
-      const finalOperation = operation === 'UPSERT' ? 'INSERT' : operation;
+      const finalOperation: 'INSERT' | 'UPDATE' | 'DELETE' =
+        operation === 'UPSERT' ? 'INSERT' : (operation as 'INSERT' | 'UPDATE' | 'DELETE');
       await manager.queueWrite({ table, operation: finalOperation, data, filters });
     };
 
