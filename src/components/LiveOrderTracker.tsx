@@ -60,7 +60,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     }
     try {
       const { error } = await supabase
-        .from('online_orders')
+        .from('remote_orders')
         .update({ status: 'cancelled', reject_reason: cancelReason, rejection_reason: cancelReason })
         .eq('id', orderId);
       if (error) throw error;
