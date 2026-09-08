@@ -1193,7 +1193,7 @@ const Billing = () => {
       // 2. SYNC PATH: Fetch latest from network if online
       let query = supabase
         .from('items')
-        .select('id, name, price, category, is_active, unit, base_value, quantity_step, tax_rate_id, is_saleable, billing_type, stock_quantity, selling_unit, inventory_unit, unlimited_stock, is_loose, image_url, hsn_code, admin_id, branch_id')
+        .select('*')
         .eq('admin_id', adminId)
         .eq('is_active', true);
 
@@ -1255,7 +1255,7 @@ const Billing = () => {
 
       let query = (supabase as any)
         .from('payments')
-        .select('id, name, type, is_active, admin_id')
+        .select('*')
         .eq('admin_id', adminId)
         .eq('is_disabled', false);
 
@@ -1294,7 +1294,7 @@ const Billing = () => {
 
       let query = (supabase as any)
         .from('additional_charges')
-        .select('id, name, type, value, is_active, admin_id')
+        .select('*')
         .eq('admin_id', adminId)
         .eq('is_active', true);
 
@@ -1353,7 +1353,7 @@ const Billing = () => {
 
       let catQ = supabase
         .from('item_categories')
-        .select('id, name, sort_order, is_active, is_deleted, admin_id, branch_id')
+        .select('*')
         .eq('admin_id', adminId)
         .eq('is_deleted', false);
       if (branchFilterId) catQ = catQ.eq('branch_id', branchFilterId);
