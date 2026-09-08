@@ -342,7 +342,20 @@ class SyncEngine {
       this.attempt = 0;
       // Still try writeQueue as a safety net
       await offlineManager.processWriteQueue().catch(() => {});
+      await this.refreshCounts();
       return;
+    }
+
+    // Auto-heal on first attempt: release stuck claims and reset retries
+    if (this.attempt === 0) {
+      try {
+        await offlineManager.resetWriteQueueRetries();
+        // @ts-ignore - accessing private backend for stale claim release
+        if (offlineManager.backend?.isReady()) {
+          // @ts-ignore
+          await offlineManager.backend.releaseStaleClaims(0);
+        }
+      } catch { /* non-critical */ }
     }
 
     this.emit({ syncing: true });
@@ -362,8 +375,8 @@ class SyncEngine {
         this.emit({ lastSyncAt: Date.now(), lastError: null });
       }
 
-      // more waiting? continue on the next idle slice instead of blocking here
-      if (this.state.pending > 0 && before > BATCH_SIZE) {
+      // If items remain, schedule another flush automatically
+      if (this.state.pending > 0) {
         this.emit({ syncing: false });
         this.requestSync('continue-batch');
         return;

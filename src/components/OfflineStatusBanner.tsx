@@ -20,6 +20,21 @@ const OfflineStatusBanner: React.FC = () => {
         }
     }, [isOnline, totalPending, justSynced]);
 
+    // Auto-trigger sync when online with pending items (no manual click needed)
+    const autoSyncTriggered = React.useRef(false);
+    React.useEffect(() => {
+        if (isOnline && totalPending > 0 && !syncing && !autoSyncTriggered.current) {
+            autoSyncTriggered.current = true;
+            const timer = setTimeout(() => {
+                handleRetry();
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+        if (totalPending === 0) {
+            autoSyncTriggered.current = false;
+        }
+    }, [isOnline, totalPending, syncing]);
+
     const handleRetry = async () => {
         setSyncing(true);
         try {

@@ -1810,7 +1810,7 @@ class OfflineManager {
     // ──────────── Write Queue Sync Processor ────────────
 
     async processWriteQueue(): Promise<{ synced: number; failed: number }> {
-        if ((!this.backend?.isReady() && !this.db) || !this.isOnline) return { synced: 0, failed: 0 };
+        if ((!this.backend?.isReady() && !this.db) || !navigator.onLine) return { synced: 0, failed: 0 };
         if (navigator.locks) {
             return navigator.locks.request('zenpos_generic_write_queue', { ifAvailable: true }, async (lock) => {
                 if (!lock) return { synced: 0, failed: 0 };
