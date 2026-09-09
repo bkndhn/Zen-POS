@@ -122,8 +122,8 @@ const StaffRow: React.FC<{
       </td>
       <td className="px-3 py-2 text-right">{staff.bills}</td>
       <td className="px-3 py-2 text-right text-muted-foreground">{staff.items}</td>
-      <td className="px-3 py-2 text-right font-semibold text-primary">₹{staff.revenue.toFixed(0)}</td>
-      <td className="px-3 py-2 text-right">₹{(staff.revenue / staff.bills).toFixed(0)}</td>
+      <td className="num-tabular px-3 py-2 text-right font-semibold text-primary">₹{staff.revenue.toFixed(0)}</td>
+      <td className="num-tabular px-3 py-2 text-right">₹{(staff.revenue / staff.bills).toFixed(0)}</td>
       <td className="px-3 py-2 text-right">
         <div className="flex items-center justify-end gap-1.5">
           <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -1628,7 +1628,7 @@ const Reports: React.FC = () => {
   // Permission check is now handled by ProtectedRoute, so we don't need a redundant check here
 
   return (
-    <div className="p-3 sm:p-4 space-y-4 max-w-full overflow-x-hidden">
+    <div className="page-shell p-3 sm:p-4 space-y-4 max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5">
@@ -1668,7 +1668,7 @@ const Reports: React.FC = () => {
       </div>
 
       {/* Date Filter */}
-      <Card className="p-3 sm:p-4">
+      <Card className="premium-card p-3 sm:p-4">
         <CardHeader className="p-0 pb-3">
           <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
             <CalendarDays className="w-4 h-4" />

@@ -586,7 +586,7 @@ const TableManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-2 sm:p-4 w-full max-w-full overflow-x-hidden">
+    <div className="page-shell min-h-screen p-2 sm:p-4 w-full max-w-full overflow-x-hidden">
       <div className="max-w-6xl mx-auto w-full">
         <AllBranchesReadOnlyBanner message="Switch to a specific branch to add or edit tables." />
         {/* Header */}
@@ -690,7 +690,7 @@ const TableManagement: React.FC = () => {
 
         {/* Tables Content */}
         {tables.length === 0 ? (
-          <Card className="p-8 text-center">
+          <Card className="premium-card p-8 text-center">
             <LayoutGrid className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Tables Yet</h3>
             <p className="text-sm text-muted-foreground mb-4">Add your first table to get started with table management.</p>
@@ -837,7 +837,7 @@ const TableManagement: React.FC = () => {
                 <Card
                   key={table.id}
                   className={cn(
-                    "relative overflow-hidden transition-all hover:shadow-md cursor-pointer border-2",
+                    "premium-card relative overflow-hidden transition-all hover:shadow-md cursor-pointer border-2",
                     config.borderColor,
                     occInfo ? occInfo.ringClass : (isOccupiedState && cn("ring-2", config.ringColor)),
                     isOccupiedState && "animate-[pulse_3s_ease-in-out_infinite]"
