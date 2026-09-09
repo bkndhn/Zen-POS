@@ -261,7 +261,7 @@ const Dashboard = () => {
   const currentHour = new Date().getHours();
 
   return (
-    <div className="p-3 sm:p-4 pb-8 sm:pb-8 space-y-4">
+    <div className="page-shell p-3 sm:p-4 pb-8 sm:pb-8 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -284,54 +284,54 @@ const Dashboard = () => {
       {/* Main Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Today's Revenue */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20">
+        <div className="premium-card bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-lg shadow-emerald-500/20">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100">{t('dashboard.revenue')}</p>
+            <p className="stat-label text-emerald-100">{t('dashboard.revenue')}</p>
             <DollarSign className="w-4 h-4 text-emerald-200" />
           </div>
-          <p className="text-2xl font-black">{formatCurrency(stats.todaySales)}</p>
+          <p className="stat-value text-2xl font-black">{formatCurrency(stats.todaySales)}</p>
           <p className="text-[10px] text-emerald-100 mt-1">{stats.todayBills} {t('dashboard.billsToday').toLowerCase()}</p>
         </div>
 
         {/* Today's Expenses */}
-        <div className="bg-card rounded-2xl p-4 border shadow-sm">
+        <div className="premium-card bg-card p-4 border">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('nav.expenses')}</p>
+            <p className="stat-label">{t('nav.expenses')}</p>
             <Receipt className="w-4 h-4 text-rose-500" />
           </div>
-          <p className="text-xl font-bold text-rose-500">{formatCurrency(stats.todayExpenses)}</p>
+          <p className="stat-value text-xl font-bold text-rose-500">{formatCurrency(stats.todayExpenses)}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{t('dashboard.operatingCosts')}</p>
         </div>
 
         {/* Net Profit */}
-        <div className="bg-card rounded-2xl p-4 border shadow-sm">
+        <div className="premium-card bg-card p-4 border">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.profit')}</p>
+            <p className="stat-label">{t('dashboard.profit')}</p>
             {stats.todayProfit >= 0 ? <TrendingUp className="w-4 h-4 text-blue-500" /> : <TrendingDown className="w-4 h-4 text-rose-500" />}
           </div>
-          <p className={`text-xl font-bold ${stats.todayProfit >= 0 ? 'text-blue-500' : 'text-rose-500'}`}>{formatCurrency(stats.todayProfit)}</p>
+          <p className={`stat-value text-xl font-bold ${stats.todayProfit >= 0 ? 'text-blue-500' : 'text-rose-500'}`}>{formatCurrency(stats.todayProfit)}</p>
           <p className="text-[10px] text-muted-foreground mt-1">
             {stats.todaySales > 0 ? `${((stats.todayProfit / stats.todaySales) * 100).toFixed(1)}% margin` : '—'}
           </p>
         </div>
 
         {/* Avg Bill Value */}
-        <div className="bg-card rounded-2xl p-4 border shadow-sm">
+        <div className="premium-card bg-card p-4 border">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.avgBill')}</p>
+            <p className="stat-label">{t('dashboard.avgBill')}</p>
             <Users className="w-4 h-4 text-violet-500" />
           </div>
-          <p className="text-xl font-bold text-foreground">{formatCurrency(stats.avgBillValue)}</p>
+          <p className="stat-value text-xl font-bold text-foreground">{formatCurrency(stats.avgBillValue)}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{t('dashboard.perCustomer')}</p>
         </div>
 
         {/* Live Order Count */}
-        <div className="bg-card rounded-2xl p-4 border shadow-sm">
+        <div className="premium-card bg-card p-4 border">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('dashboard.itemsSold')}</p>
+            <p className="stat-label">{t('dashboard.itemsSold')}</p>
             <Package className="w-4 h-4 text-amber-500" />
           </div>
-          <p className="text-xl font-bold text-foreground">{liveOrderCount}</p>
+          <p className="stat-value text-xl font-bold text-foreground">{liveOrderCount}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{stats.totalItems} menu items</p>
         </div>
       </div>
@@ -339,7 +339,7 @@ const Dashboard = () => {
       {/* Second Row: Top Items + Peak Hours */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top 5 Selling Items */}
-        <Card className="shadow-sm">
+        <Card className="premium-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-1.5"><Flame className="w-4 h-4 text-orange-500" /> {t('dashboard.topSellingItems')}</span>
@@ -363,7 +363,7 @@ const Dashboard = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
                           <p className="text-sm font-medium truncate">{item.name}</p>
-                          <p className="text-sm font-bold text-primary ml-2">₹{item.revenue.toFixed(0)}</p>
+                          <p className="num-tabular text-sm font-bold text-primary ml-2">₹{item.revenue.toFixed(0)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -383,7 +383,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Peak Hour Chart */}
-        <Card className="shadow-sm">
+        <Card className="premium-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-500" /> {t('dashboard.salesTrend')}</span>
