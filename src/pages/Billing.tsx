@@ -220,9 +220,10 @@ const BillingGridItemCard = React.memo(({
   const lowStock = isLowStock(item);
 
   return (
-    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border-2 p-4 flex flex-col shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-primary shadow-primary/25 shadow-lg' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-zinc-200/80 dark:border-zinc-800/80 hover:border-primary/40'}`}>
+    <div className={`relative bg-card rounded-premium border p-4 flex flex-col shadow-premium-sm hover:shadow-premium hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-primary shadow-premium' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-border hover:border-primary/40'}`}>
       {/* Image container with quantity badge */}
-      <div className="relative aspect-[4/3] mb-1 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative aspect-[4/3] mb-1 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+
         {/* Media rendering - supports images, GIFs, and videos */}
         {item.media_type === 'video' ? (
           <video
@@ -262,7 +263,7 @@ const BillingGridItemCard = React.memo(({
 
       <div className="flex-1 flex flex-col min-h-0 px-0.5">
         <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0">{item.name}</h3>
-        <p className="text-primary mb-1 flex-shrink-0 font-bold text-sm">
+        <p className="text-primary mb-1 flex-shrink-0 font-bold text-sm num-tabular">
           ₹{getChannelPrice(item, orderChannel).toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
         </p>
 
@@ -345,7 +346,7 @@ const BillingListItemCard = React.memo(({
   }
   const isInCart = cartQuantity > 0;
   return (
-    <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border-zinc-200/80 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-2xl">
+    <Card className="hover:shadow-premium hover:scale-[1.01] transition-all duration-200 border-border bg-card/90 backdrop-blur-sm rounded-premium shadow-premium-sm">
       <CardContent className="p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-2 flex-1 min-w-0">

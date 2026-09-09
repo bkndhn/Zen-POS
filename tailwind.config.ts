@@ -81,7 +81,9 @@ export default {
 			boxShadow: {
 				'elegant': 'var(--shadow-elegant)',
 				'glow': 'var(--shadow-glow)',
-				'card': 'var(--shadow-card)'
+				'card': 'var(--shadow-card)',
+				'premium-sm': 'var(--shadow-card)',
+				'premium': 'var(--shadow-raised)'
 			},
 			transitionTimingFunction: {
 				'smooth': 'var(--transition-smooth)'
@@ -89,8 +91,10 @@ export default {
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+				premium: 'var(--radius-premium)'
 			},
+
 			keyframes: {
 				'accordion-down': {
 					from: {
