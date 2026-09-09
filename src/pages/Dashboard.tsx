@@ -261,7 +261,7 @@ const Dashboard = () => {
   const currentHour = new Date().getHours();
 
   return (
-    <div className="p-3 sm:p-4 pb-8 sm:pb-8 space-y-4">
+    <div className="page-shell p-3 sm:p-4 pb-8 sm:pb-8 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -284,22 +284,22 @@ const Dashboard = () => {
       {/* Main Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Today's Revenue */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20">
+        <div className="premium-card bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white shadow-lg shadow-emerald-500/20">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100">{t('dashboard.revenue')}</p>
+            <p className="stat-label text-emerald-100">{t('dashboard.revenue')}</p>
             <DollarSign className="w-4 h-4 text-emerald-200" />
           </div>
-          <p className="text-2xl font-black">{formatCurrency(stats.todaySales)}</p>
+          <p className="stat-value text-2xl font-black">{formatCurrency(stats.todaySales)}</p>
           <p className="text-[10px] text-emerald-100 mt-1">{stats.todayBills} {t('dashboard.billsToday').toLowerCase()}</p>
         </div>
 
         {/* Today's Expenses */}
-        <div className="bg-card rounded-2xl p-4 border shadow-sm">
+        <div className="premium-card bg-card p-4 border">
           <div className="flex items-start justify-between mb-2">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{t('nav.expenses')}</p>
+            <p className="stat-label">{t('nav.expenses')}</p>
             <Receipt className="w-4 h-4 text-rose-500" />
           </div>
-          <p className="text-xl font-bold text-rose-500">{formatCurrency(stats.todayExpenses)}</p>
+          <p className="stat-value text-xl font-bold text-rose-500">{formatCurrency(stats.todayExpenses)}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{t('dashboard.operatingCosts')}</p>
         </div>
 
