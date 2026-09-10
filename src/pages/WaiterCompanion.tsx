@@ -760,7 +760,7 @@ const WaiterCompanion: React.FC = () => {
                                         key={table.id}
                                         onClick={() => handleSelectTable(table)}
                                         className={cn(
-                                            "cursor-pointer hover:shadow-md transition-all border-2",
+                                            "premium-card cursor-pointer hover:shadow-md transition-all border-2",
                                             selectedTable?.id === table.id ? "border-primary bg-primary/5 shadow-md" : "border-muted",
                                             table.status === 'occupied' && "border-l-4 border-l-red-500",
                                             table.status === 'cleaning' && "border-l-4 border-l-blue-500",
@@ -933,7 +933,7 @@ const WaiterCompanion: React.FC = () => {
                                         const isOutOfStock = item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= 0;
                                         const isLowStock = !isOutOfStock && item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= Number(item.minimum_stock_alert ?? 0);
                                         return (
-                                            <Card key={item.id} className={cn("overflow-hidden border border-muted shadow-sm transition-all flex flex-col justify-between group", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
+                                            <Card key={item.id} className={cn("premium-card overflow-hidden border border-muted shadow-sm transition-all flex flex-col justify-between group", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
                                                 <div className="relative">
                                                     {/* Food image or fallback icon */}
                                                     <div className="w-full h-24 bg-muted/30 relative flex items-center justify-center overflow-hidden">
@@ -1041,7 +1041,7 @@ const WaiterCompanion: React.FC = () => {
                                         const isOutOfStock = item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= 0;
                                         const isLowStock = !isOutOfStock && item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= Number(item.minimum_stock_alert ?? 0);
                                         return (
-                                            <Card key={item.id} className={cn("overflow-hidden border border-muted shadow-sm transition-all", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
+                                            <Card key={item.id} className={cn("premium-card overflow-hidden border border-muted shadow-sm transition-all", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
                                                 <CardContent className="p-3 flex items-center justify-between">
                                                     <div className="flex items-center gap-3 min-w-0 pr-2">
                                                         <div className="w-12 h-12 rounded-xl bg-muted/40 shrink-0 overflow-hidden flex items-center justify-center">
@@ -1159,7 +1159,7 @@ const WaiterCompanion: React.FC = () => {
                         <div className="flex-1 overflow-y-auto max-h-[48vh] space-y-3 pr-1">
                             <div className="space-y-3 pr-1">
                                 {cart.map((item, idx) => (
-                                    <Card key={`${item.id}-${item.seatId}-${idx}`} className="p-3 border border-muted">
+                                    <Card key={`${item.id}-${item.seatId}-${idx}`} className="premium-card p-3 border border-muted">
                                         <div className="flex items-start justify-between">
                                             <div className="min-w-0 pr-2">
                                                 <div className="flex items-center gap-1.5 flex-wrap">
