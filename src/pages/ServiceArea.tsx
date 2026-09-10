@@ -943,7 +943,7 @@ const ServiceArea = () => {
                         <Card
                             key={`to-${order.id}`}
                             className={cn(
-                                "p-3 flex flex-col transition-all duration-300 shadow-sm hover:shadow-md border-l-4",
+                                "premium-card p-3 flex flex-col transition-all duration-300 shadow-sm hover:shadow-md border-l-4",
                                 order.status === 'ready'
                                     ? "ring-2 ring-purple-500 bg-purple-50/50 dark:bg-purple-950/20 border-l-purple-500"
                                     : "bg-orange-50/50 dark:bg-orange-950/20 border-l-orange-500"
