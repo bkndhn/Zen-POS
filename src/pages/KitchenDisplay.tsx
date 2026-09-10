@@ -1104,7 +1104,7 @@ const KitchenDisplay = () => {
             )}
 
             {/* Main Content */}
-            <div className="p-4">
+            <div className="page-shell p-3 sm:p-4">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                     {/* PENDING Column */}
@@ -1137,7 +1137,7 @@ const KitchenDisplay = () => {
                                 const urgency = getUrgencyColor(order.created_at);
                                 const elapsedMin = getElapsedMinutes(order.created_at);
                                 return (
-                                <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
+                                <Card key={`to-${order.id}`} className={cn("premium-card p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
                                     <div className="flex items-start justify-between mb-2">
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -1248,7 +1248,7 @@ const KitchenDisplay = () => {
                                 const urgency = getUrgencyColor(order.created_at);
                                 const elapsedMin = getElapsedMinutes(order.created_at);
                                 return (
-                                <Card key={`to-${order.id}`} className={cn("p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
+                                <Card key={`to-${order.id}`} className={cn("premium-card p-4 border-l-4 border-l-purple-500 border-2", urgencyBorderClass[urgency])}>
                                     <div className="flex items-start justify-between mb-2">
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -1525,7 +1525,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
     };
 
     return (
-        <Card className={cn("p-4 border-2 transition-shadow", borderClass[urgency], processing && "opacity-50")}>
+        <Card className={cn("premium-card p-4 border-2 transition-shadow", borderClass[urgency], processing && "opacity-50")}>
             {/* Bill Header */}
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
