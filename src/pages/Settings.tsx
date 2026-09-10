@@ -314,7 +314,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen p-3 sm:p-4">
+    <div className="page-shell min-h-screen p-3 sm:p-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
           <div className="flex items-center gap-2.5">
@@ -368,7 +368,7 @@ const Settings = () => {
           </ErrorBoundary>
               {profile?.role === 'admin' && <SearchableSection title='Payment Types' keywords='payment methods cash card upi g pay' searchQuery={searchQuery}><PaymentTypesManagement /></SearchableSection>}
               {/* Additional Charges Management */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center space-x-2">
@@ -502,7 +502,7 @@ const Settings = () => {
           </ErrorBoundary>
 
               {/* Bill Numbering Settings */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center space-x-2">
                 <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -570,7 +570,7 @@ const Settings = () => {
             <SearchableSection title="Bluetooth Printer" keywords="printer bluetooth print thermal esc pos paper" searchQuery={searchQuery}><BluetoothPrinterSettings /></SearchableSection>
           </ErrorBoundary>
               {/* Print Settings */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center space-x-2">
                 <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -613,7 +613,7 @@ const Settings = () => {
               <SearchableSection title="Local Backup & Privacy" keywords="local backup privacy wipe self destruct storage" searchQuery={searchQuery}><LocalBackupSettings /></SearchableSection>
 
               {/* Display Settings */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center space-x-2">
                 <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -631,7 +631,7 @@ const Settings = () => {
             <SearchableSection title="Theme Settings (Dark Mode)" keywords="theme colors dark light mode appearance" searchQuery={searchQuery}><ThemeSettings /></SearchableSection>
           </ErrorBoundary>
               {/* Accessibility Settings */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center space-x-2">
                 <Type className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -670,7 +670,7 @@ const Settings = () => {
             </CardContent>
           </Card>
               {/* Data Privacy & Storage */}
-          <Card>
+          <Card className="premium-card">
             <CardHeader className="p-4 sm:p-6 pb-2">
               <CardTitle className="flex items-center space-x-2">
                 <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />

@@ -720,7 +720,7 @@ const Items: React.FC = () => {
       onDragEnter={() => handleDragEnter(index)}
       onDragEnd={handleDragEnd}
       onDragOver={(e) => e.preventDefault()}
-      className={`overflow-hidden hover:shadow-md transition-all relative ${selectedItems.has(item.id) ? 'ring-2 ring-primary' : ''} ${isLowStock(item) ? 'border-2 border-orange-500 dark:border-orange-400' : 'border-muted'} ${profile?.role === 'admin' && !isInactive ? 'cursor-grab active:cursor-grabbing' : ''} ${isReordering ? 'opacity-50' : ''} ${isInactive ? 'bg-muted/30' : ''}`}
+      className={`premium-card overflow-hidden hover:shadow-md transition-all relative ${selectedItems.has(item.id) ? 'ring-2 ring-primary' : ''} ${isLowStock(item) ? 'border-2 border-orange-500 dark:border-orange-400' : 'border-muted'} ${profile?.role === 'admin' && !isInactive ? 'cursor-grab active:cursor-grabbing' : ''} ${isReordering ? 'opacity-50' : ''} ${isInactive ? 'bg-muted/30' : ''}`}
     >
       <div className={`flex flex-col h-full ${isInactive ? 'opacity-75' : ''}`}>
         {/* Bulk Select Checkbox */}
@@ -1013,7 +1013,7 @@ const Items: React.FC = () => {
   );
 
   return (
-    <div className="p-3 sm:p-4 max-w-full">
+    <div className="page-shell p-3 sm:p-4 max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2.5">
