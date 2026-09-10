@@ -314,7 +314,7 @@ const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen p-3 sm:p-4">
+    <div className="page-shell min-h-screen p-3 sm:p-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
           <div className="flex items-center gap-2.5">
