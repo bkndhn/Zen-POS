@@ -301,7 +301,7 @@ export function checkOfflineLicenseStatus(): LicenseStatus {
         // Hard offline expiry: more than `graceDays` (7) since the last successful
         // server verification. Applies whether or not the device *thinks* it is
         // online — only a real successful verification resets the clock.
-        if (elapsedDays > graceDays) {
+        if (elapsedDays >= graceDays) {
             return {
                 isValid: false,
                 isOffline,
