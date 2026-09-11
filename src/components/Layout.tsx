@@ -274,24 +274,34 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </p>
               </div>
 
-              {/* Subscription Expiration Details Card */}
+              {/* License/subscription details */}
               <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2 text-xs text-left">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground font-medium">Subscription Status:</span>
-                  <span className="font-bold text-red-600 dark:text-red-400 uppercase">EXPIRED</span>
+                  <span className="text-muted-foreground font-medium">Access Status:</span>
+                  <span className="font-bold text-red-600 dark:text-red-400 uppercase">
+                    {licenseState.lockReason === 'grace_expired' ? 'VERIFICATION REQUIRED' : 'LOCKED'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground font-medium">Expired Date:</span>
+                  <span className="text-muted-foreground font-medium">
+                    {licenseState.lockReason === 'grace_expired' ? 'Last Verified:' : 'Expiry Date:'}
+                  </span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
-                    {licenseState.subscriptionEndDate ? new Date(licenseState.subscriptionEndDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Expired'}
+                    {licenseState.lockReason === 'grace_expired' && licenseState.lastVerifiedAt
+                      ? new Date(licenseState.lastVerifiedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : licenseState.subscriptionEndDate
+                        ? new Date(licenseState.subscriptionEndDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        : 'Unavailable'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground font-medium">Elapsed Period:</span>
-                  <span className="font-bold text-orange-600 dark:text-orange-400">
-                    {getRelativeExpiryString(licenseState.subscriptionEndDate)}
-                  </span>
-                </div>
+                {licenseState.lockReason !== 'grace_expired' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground font-medium">Elapsed Period:</span>
+                    <span className="font-bold text-orange-600 dark:text-orange-400">
+                      {getRelativeExpiryString(licenseState.subscriptionEndDate)}
+                    </span>
+                  </div>
+                )}
                 {licenseState.planName && (
                   <div className="flex items-center justify-between pt-1 border-t">
                     <span className="text-muted-foreground font-medium">Registered Plan:</span>
