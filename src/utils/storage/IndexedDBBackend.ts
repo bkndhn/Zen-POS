@@ -195,12 +195,13 @@ export class IndexedDBBackend implements StorageBackend {
       branchId: entry.branchId,
       filters: entry.filters ?? null,
       claimId: entry.claimId ?? null,
+      claimedAt: entry.claimedAt ?? null,
     });
   }
 
   async getWriteQueue(): Promise<WriteQueueEntry[]> {
     const all = await this.getAll<any>('writeQueue');
-    return all.filter(item => item.status === 'pending' || (item.status === 'failed' && item.retries < 5));
+    return all;
   }
 
   async removeFromWriteQueue(id: string): Promise<void> {
@@ -211,7 +212,10 @@ export class IndexedDBBackend implements StorageBackend {
     const existing = await this.get<any>('writeQueue', id);
     if (existing) {
       const next = { ...existing, ...updates };
-      if (updates.status !== undefined && updates.status !== 'syncing') next.claimId = null;
+      if (updates.status !== undefined && updates.status !== 'syncing') {
+        next.claimId = null;
+        next.claimedAt = null;
+      }
       await this.put('writeQueue', next);
     }
   }
@@ -224,7 +228,7 @@ export class IndexedDBBackend implements StorageBackend {
       .slice(0, limit);
 
     for (const item of candidates) {
-      await this.put('writeQueue', { ...item, status: 'syncing', claimId });
+      await this.put('writeQueue', { ...item, status: 'syncing', claimId, claimedAt: Date.now() });
     }
     // Re-read so only rows we actually own are returned.
     const after = await this.getAll<any>('writeQueue');
@@ -235,8 +239,8 @@ export class IndexedDBBackend implements StorageBackend {
     const cutoff = Date.now() - olderThanMs;
     const all = await this.getAll<any>('writeQueue');
     for (const item of all) {
-      if (item.claimId && (item.timestamp || 0) < cutoff) {
-        await this.put('writeQueue', { ...item, status: 'pending', claimId: null });
+      if (item.claimId && (!item.claimedAt || item.claimedAt < cutoff)) {
+        await this.put('writeQueue', { ...item, status: 'pending', claimId: null, claimedAt: null });
       }
     }
   }
@@ -252,8 +256,7 @@ export class IndexedDBBackend implements StorageBackend {
   }
 
   async getWriteQueueCount(): Promise<number> {
-    const queue = await this.getWriteQueue();
-    return queue.length;
+    return (await this.getWriteQueue()).length;
   }
 
   async resetWriteQueueRetries(): Promise<void> {
@@ -263,6 +266,7 @@ export class IndexedDBBackend implements StorageBackend {
         item.status = 'pending';
         item.retries = 0;
         item.claimId = null;
+        item.claimedAt = null;
         item.error = null;
         await this.put('writeQueue', item);
       }

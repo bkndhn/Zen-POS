@@ -13,6 +13,7 @@
 
 import { offlineManager } from './offlineManager';
 import { supabase } from '@/integrations/supabase/client';
+import { Capacitor } from '@capacitor/core';
 
 export type RecordSyncState = 'pending' | 'syncing' | 'synced' | 'failed';
 
@@ -72,6 +73,7 @@ class SyncEngine {
   private started = false;
   private recordStates = new Map<string, RecordSyncState>();
   private autoHealed = false;
+  private nativeAppListener: { remove: () => Promise<void> } | null = null;
 
   start(): void {
     if (this.started) return;
@@ -80,6 +82,13 @@ class SyncEngine {
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
     document.addEventListener('visibilitychange', this.handleVisibility);
+    window.addEventListener('zenpos-sync-request', this.handleSyncRequest as EventListener);
+
+    if (Capacitor.isNativePlatform()) {
+      void import('@capacitor/app').then(({ App }) => App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) void this.probe().then(() => this.requestSync('native-resume'));
+      })).then(listener => { this.nativeAppListener = listener; }).catch(() => undefined);
+    }
 
     this.scheduleProbe(0);
     this.refreshCounts();
@@ -175,6 +184,9 @@ class SyncEngine {
     window.removeEventListener('online', this.handleOnline);
     window.removeEventListener('offline', this.handleOffline);
     document.removeEventListener('visibilitychange', this.handleVisibility);
+    window.removeEventListener('zenpos-sync-request', this.handleSyncRequest as EventListener);
+    void this.nativeAppListener?.remove();
+    this.nativeAppListener = null;
     if (this.flushTimer) clearTimeout(this.flushTimer);
     if (this.probeTimer) clearTimeout(this.probeTimer);
   }
@@ -277,6 +289,10 @@ class SyncEngine {
     }
   };
 
+  private handleSyncRequest = () => {
+    void this.refreshCounts().then(() => this.requestSync('queued-write'));
+  };
+
   private scheduleProbe(delay?: number): void {
     if (this.probeTimer) clearTimeout(this.probeTimer);
     const wait = delay ?? (this.state.reachable ? PROBE_INTERVAL_OK : PROBE_INTERVAL_DEGRADED);
@@ -323,7 +339,7 @@ class SyncEngine {
         offlineManager.getPendingBillsCount(),
         offlineManager.getPendingWriteCount(),
       ]);
-      const failed = queue.filter((q: any) => (q.retryCount ?? 0) >= 5).length;
+      const failed = queue.filter((q: any) => (q.retryCount ?? q.retries ?? 0) >= 5).length;
       this.emit({ pending: queue.length + pendingBills + pendingWrites, failed });
     } catch {
       /* IndexedDB not ready yet — counts refresh on the next tick */
@@ -347,16 +363,11 @@ class SyncEngine {
       return;
     }
 
-    // Auto-heal ONCE per session: release stuck claims and reset retries
+    // Recover only claims left by a crashed process. Never reset live claims/retries.
     if (!this.autoHealed) {
       this.autoHealed = true;
       try {
-        await offlineManager.resetWriteQueueRetries();
-        // @ts-ignore - accessing private backend for stale claim release
-        if (offlineManager.backend?.isReady()) {
-          // @ts-ignore
-          await offlineManager.backend.releaseStaleClaims(0);
-        }
+        await offlineManager.releaseStaleWriteClaims(10 * 60 * 1000);
       } catch { /* non-critical */ }
     }
 
@@ -366,10 +377,13 @@ class SyncEngine {
       const before = this.state.pending;
       const result = await offlineManager.processSyncQueue(force);
       // Also process the universal write queue (suppliers, purchases, stock, etc.)
-      await offlineManager.processWriteQueue().catch(() => {});
+      const writeResult = await offlineManager.processWriteQueue().catch(() => ({ synced: 0, failed: 0 }));
       await this.refreshCounts();
 
-      if (result && result.failed > 0 && result.synced === 0) {
+      const totalSynced = (result?.synced || 0) + writeResult.synced;
+      const totalFailed = (result?.failed || 0) + writeResult.failed;
+
+      if (totalFailed > 0 && totalSynced === 0) {
         this.attempt += 1;
         this.emit({ lastError: 'Some records could not sync yet' });
       } else {
@@ -377,11 +391,13 @@ class SyncEngine {
         this.emit({ lastSyncAt: Date.now(), lastError: null });
       }
 
-      // Only auto-continue if we made progress (some items synced).
-      // If ALL items failed, stop — don't spin forever. User can click Sync Now.
-      if (this.state.pending > 0 && result && result.synced > 0) {
+      // Drain immediately while progress is made. Otherwise retry automatically
+      // with bounded backoff; exhausted failures remain visible without hammering.
+      if (this.state.pending > this.state.failed) {
         this.emit({ syncing: false });
-        this.requestSync('continue-batch');
+        if (totalSynced > 0) this.attempt = 0;
+        else this.attempt += 1;
+        this.requestSync(totalSynced > 0 ? 'continue-drain' : 'background-retry');
         return;
       }
     } catch (err: any) {

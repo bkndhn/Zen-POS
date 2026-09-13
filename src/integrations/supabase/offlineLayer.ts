@@ -190,12 +190,19 @@ async function executeMutation(realFrom: any, table: string, chain: ChainCall[])
         const recordId = data?.id;
         if (recordId) {
           const duplicate = existingQueue.find(
-            (q: any) => q.table === table && q.status === 'pending' && q.data?.id === recordId
+            (q: any) => q.table === table && q.status !== 'synced' && q.data?.id === recordId
           );
           if (duplicate) {
             // Merge new data into existing entry instead of creating a duplicate
             const mergedData = { ...duplicate.data, ...data };
-            await manager.updateWriteQueueItem(duplicate.id, { data: mergedData });
+            await manager.updateWriteQueueItem(duplicate.id, {
+              data: mergedData,
+              status: 'pending',
+              retries: 0,
+              error: null,
+              claimId: null,
+              claimedAt: null,
+            });
             return; // Return early, skip creating a new entry
           }
         }

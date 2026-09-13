@@ -10,6 +10,7 @@
 
 export interface WriteQueueEntry {
   claimId?: string | null;
+  claimedAt?: number | null;
   id: string;
   table: string;
   operation: 'INSERT' | 'UPDATE' | 'DELETE';
@@ -71,7 +72,7 @@ export interface StorageBackend {
   /** Add an entry to the offline write queue */
   enqueueWrite(entry: WriteQueueEntry): Promise<void>;
 
-  /** Get all pending write queue entries */
+  /** Get all unresolved write queue entries, including exhausted failures. */
   getWriteQueue(): Promise<WriteQueueEntry[]>;
 
   /** Remove a completed entry from the write queue */

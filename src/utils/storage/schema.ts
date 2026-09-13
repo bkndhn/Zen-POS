@@ -8,7 +8,7 @@
  */
 
 export const SQLITE_DB_NAME = 'zenpos_offline';
-export const SQLITE_DB_VERSION = 4;
+export const SQLITE_DB_VERSION = 5;
 
 /** Primary key field for each store (must match IndexedDB keyPath) */
 export const PRIMARY_KEYS: Record<string, string> = {
@@ -209,6 +209,13 @@ export const SCHEMA_UPGRADES = [
       `CREATE INDEX IF NOT EXISTS idx_customers_admin ON customers(admin_id);`,
       `CREATE INDEX IF NOT EXISTS idx_customers_admin_branch ON customers(admin_id, branch_id);`,
       `CREATE INDEX IF NOT EXISTS idx_writeq_admin ON writeQueue(admin_id);`
+    ],
+  },
+  {
+    toVersion: 5,
+    statements: [
+      `ALTER TABLE writeQueue ADD COLUMN claimed_at INTEGER;`,
+      `CREATE INDEX IF NOT EXISTS idx_writeq_claimed_at ON writeQueue(claimed_at);`
     ],
   },
 ];

@@ -129,11 +129,7 @@ class OfflineManager {
                 // Perform cold boot vault recovery if needed
                 this.verifyAndRestoreVaultMirror().catch(err => console.warn('[Vault] Cold boot recovery check error:', err));
 
-                if (this.isOnline) {
-                    this.processSyncQueue().catch(err => {
-                        console.error('[Sync] Auto-sync on startup failed:', err);
-                    });
-                }
+                if (this.isOnline) window.dispatchEvent(new CustomEvent('zenpos-sync-request', { detail: 'storage-ready' }));
                 
                 // Run privacy auto-wipe on startup
                 this.performAutoWipe().catch(err => console.error('[Privacy] Auto-wipe failed:', err));
@@ -307,17 +303,7 @@ class OfflineManager {
             this.notifyListeners();
             console.log('Network: Online - Starting sync');
             
-            try {
-                await this.resetSyncRetries();
-            } catch (err) {
-                console.error('Failed to reset retries on network status change:', err);
-            }
-            
-            // Auto-sync with delay to ensure stable connection
-            setTimeout(() => {
-                this.processSyncQueue();
-                this.processWriteQueue();
-            }, 1000);
+            window.dispatchEvent(new CustomEvent('zenpos-sync-request', { detail: 'online' }));
         });
 
         window.addEventListener('offline', () => {
@@ -334,14 +320,8 @@ class OfflineManager {
                 console.log('[Sync] User logged out. Wiping offline cache...');
                 await this.clearCache().catch(console.error);
             } else if (session?.user) {
-                console.log(`[Sync] Auth state changed: ${event}. Resetting retries and syncing...`);
-                try {
-                    await this.resetSyncRetries();
-                    // Sync after a brief delay to let session state settle
-                    setTimeout(() => this.processSyncQueue(), 500);
-                } catch (err) {
-                    console.error('[Sync] Failed to reset retries on auth state change:', err);
-                }
+                console.log(`[Sync] Auth state changed: ${event}. Scheduling background sync...`);
+                setTimeout(() => window.dispatchEvent(new CustomEvent('zenpos-sync-request', { detail: 'auth' })), 500);
             }
         });
     }
@@ -493,7 +473,7 @@ class OfflineManager {
             this.getPendingBillsCount().catch(() => 0),
         ]);
 
-        const pending = queue.filter((q: any) => q.status === 'pending').length;
+        const pending = queue.filter((q: any) => q.status === 'pending' || (q.status === 'failed' && (q.retries || 0) < 5)).length;
         const failed = queue.filter((q: any) => q.status === 'failed').length;
         const syncing = queue.filter((q: any) => q.status === 'syncing').length;
         const oldest = queue.length
@@ -641,6 +621,7 @@ class OfflineManager {
 
         await this.store(STORES.SYNC_QUEUE, queueItem);
         console.log('Added to sync queue:', queueItem.type, queueItem.action);
+        window.dispatchEvent(new CustomEvent('zenpos-sync-request', { detail: 'legacy-write' }));
         
         // Attempt Background Sync Registration
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
@@ -1718,6 +1699,7 @@ class OfflineManager {
         if (this.backend?.isReady()) {
             await this.backend.enqueueWrite(item);
             await this.notifyWriteQueueListeners();
+            window.dispatchEvent(new CustomEvent('zenpos-sync-request', { detail: 'write' }));
             
             const MONEY_CRITICAL_TABLES = ['bills', 'shifts', 'shift_reconciliations', 'payments', 'customer_ledger'];
             if (MONEY_CRITICAL_TABLES.includes(entry.table)) {
@@ -1733,6 +1715,7 @@ class OfflineManager {
             const request = store.put(item);
             request.onsuccess = () => {
                 this.notifyWriteQueueListeners();
+                window.dispatchEvent(new CustomEvent('zenpos-sync-request', { detail: 'write' }));
                 resolve(id);
             };
             request.onerror = () => reject(request.error);

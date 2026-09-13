@@ -5,6 +5,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { printerManager } from '@/utils/printerManager';
+import { syncEngine } from '@/utils/syncEngine';
 
 export const NativeAppController = () => {
   const navigate = useNavigate();
@@ -30,7 +31,10 @@ export const NativeAppController = () => {
     if (Capacitor.isNativePlatform()) {
       import('@capacitor/app').then(({ App }) => {
         App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) ensure();
+          if (isActive) {
+            ensure();
+            syncEngine.requestSync('native-resume');
+          }
         }).then(listener => {
           appStateListener = listener;
         }).catch(() => undefined);
