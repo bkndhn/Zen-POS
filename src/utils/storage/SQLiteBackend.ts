@@ -157,8 +157,8 @@ export class SQLiteBackend implements StorageBackend {
     for (const row of salvaged) {
       try {
         await this.db.run(
-          `INSERT OR REPLACE INTO writeQueue (id, tbl, operation, status, timestamp, retries, error, admin_id, branch_id, filters, data, claim_id)
-           VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL);`,
+          `INSERT OR REPLACE INTO writeQueue (id, tbl, operation, status, timestamp, retries, error, admin_id, branch_id, filters, data, claim_id, claimed_at)
+           VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, NULL, NULL);`,
           [row.id, row.tbl, row.operation, row.timestamp, row.retries || 0, row.error ?? null,
            row.admin_id ?? null, row.branch_id ?? null, row.filters ?? null, row.data]
         );
@@ -388,9 +388,7 @@ export class SQLiteBackend implements StorageBackend {
     if (!this.db) return [];
 
     const result = await this.db.query(
-      `SELECT * FROM writeQueue
-       WHERE status = 'pending' OR (status = 'failed' AND retries < 5)
-       ORDER BY timestamp ASC;`
+      `SELECT * FROM writeQueue ORDER BY timestamp ASC;`
     );
 
     if (!result.values) return [];
@@ -406,6 +404,7 @@ export class SQLiteBackend implements StorageBackend {
       adminId: row.admin_id,
       branchId: row.branch_id,
       claimId: row.claim_id ?? null,
+      claimedAt: row.claimed_at ?? null,
       filters: row.filters ? (() => { try { return JSON.parse(row.filters); } catch { return null; } })() : null,
       data: (() => { try { return JSON.parse(row.data); } catch { return row.data; } })(),
     }));
@@ -426,7 +425,10 @@ export class SQLiteBackend implements StorageBackend {
     if (updates.status !== undefined) { setClauses.push('status = ?'); values.push(updates.status); }
     if (updates.retries !== undefined) { setClauses.push('retries = ?'); values.push(updates.retries); }
     if (updates.error !== undefined) { setClauses.push('error = ?'); values.push(updates.error); }
-    if (updates.status !== undefined && updates.status !== 'syncing') { setClauses.push('claim_id = NULL'); }
+    if (updates.status !== undefined && updates.status !== 'syncing') {
+      setClauses.push('claim_id = NULL');
+      setClauses.push('claimed_at = NULL');
+    }
 
     if (setClauses.length === 0) return;
     values.push(id);
@@ -443,7 +445,7 @@ export class SQLiteBackend implements StorageBackend {
     // Single-statement claim: only rows still unclaimed become ours.
     await this.db.run(
       `UPDATE writeQueue
-          SET status = 'syncing', claim_id = ?
+          SET status = 'syncing', claim_id = ?, claimed_at = ?
         WHERE id IN (
           SELECT id FROM writeQueue
            WHERE claim_id IS NULL
@@ -451,7 +453,7 @@ export class SQLiteBackend implements StorageBackend {
            ORDER BY timestamp ASC
            LIMIT ?
         );`,
-      [claimId, limit]
+      [claimId, Date.now(), limit]
     );
     const result = await this.db.query(
       `SELECT * FROM writeQueue WHERE claim_id = ? ORDER BY timestamp ASC;`,
@@ -470,6 +472,7 @@ export class SQLiteBackend implements StorageBackend {
       adminId: row.admin_id,
       branchId: row.branch_id,
       claimId: row.claim_id ?? null,
+      claimedAt: row.claimed_at ?? null,
       filters: row.filters ? (() => { try { return JSON.parse(row.filters); } catch { return null; } })() : null,
       data: (() => { try { return JSON.parse(row.data); } catch { return row.data; } })(),
     }));
@@ -477,10 +480,12 @@ export class SQLiteBackend implements StorageBackend {
 
   async releaseStaleClaims(olderThanMs: number): Promise<void> {
     if (!this.db) return;
-    // Release any items stuck in 'syncing' status (crashed mid-sync)
+    const cutoff = Date.now() - olderThanMs;
+    // Release only genuinely stale work. Enqueue time is not claim time.
     await this.db.run(
-        `UPDATE writeQueue SET status = 'pending', claim_id = NULL
-         WHERE status = 'syncing';`
+        `UPDATE writeQueue SET status = 'pending', claim_id = NULL, claimed_at = NULL
+         WHERE status = 'syncing' AND (claimed_at IS NULL OR claimed_at < ?);`,
+        [cutoff]
     );
     await this.saveToStoreIfWeb();
   }
@@ -501,7 +506,7 @@ export class SQLiteBackend implements StorageBackend {
   async getWriteQueueCount(): Promise<number> {
     if (!this.db) return 0;
     const result = await this.db.query(
-      `SELECT COUNT(*) as count FROM writeQueue WHERE status = 'pending' OR (status = 'failed' AND retries < 5);`
+      `SELECT COUNT(*) as count FROM writeQueue;`
     );
     return result.values?.[0]?.count || 0;
   }
@@ -509,7 +514,7 @@ export class SQLiteBackend implements StorageBackend {
   async resetWriteQueueRetries(): Promise<void> {
     if (!this.db) return;
     await this.db.run(
-        `UPDATE writeQueue SET status = 'pending', retries = 0, claim_id = NULL, error = NULL
+        `UPDATE writeQueue SET status = 'pending', retries = 0, claim_id = NULL, claimed_at = NULL, error = NULL
          WHERE status = 'failed' OR status = 'syncing';`
     );
     await this.saveToStoreIfWeb();
