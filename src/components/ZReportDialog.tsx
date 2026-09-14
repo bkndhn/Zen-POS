@@ -224,6 +224,13 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         } as any);
         checkSupabaseResult('shift_reconciliations.insert', reconResult as any);
 
+        cashSummary = {
+          openingCash,
+          expectedCash,
+          actualCash,
+          variance: Number((actualCash - expectedCash).toFixed(2)),
+        };
+
         toast({ title: 'Shift Closed', description: 'Shift closed and reconciliation recorded.' });
       } catch (err: any) {
         toast({ title: 'Error', description: err.message, variant: 'destructive' });
