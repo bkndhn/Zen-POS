@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { checkSupabaseResult } from '@/utils/monitoring';
 import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHistory';
 import { generateZReportPdf } from '@/utils/zReportPdf';
+import { printZReportThermal } from '@/utils/zReportPrinter';
 
 
 interface ZReportDialogProps {
