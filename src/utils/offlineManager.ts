@@ -1803,6 +1803,23 @@ class OfflineManager {
         return this.executeWriteQueue();
     }
 
+    /** Release claims left behind by a crashed/killed flush so work retries automatically. */
+    async releaseStaleWriteClaims(olderThanMs: number): Promise<void> {
+        if (this.backend?.isReady()) {
+            await this.backend.releaseStaleClaims(olderThanMs);
+            return;
+        }
+        if (!this.db) return;
+        const cutoff = Date.now() - olderThanMs;
+        const items = await this.getWriteQueue();
+        for (const item of items) {
+            const claimedAt = (item as any).claimedAt ?? null;
+            if (item.status === 'syncing' && (claimedAt === null || claimedAt < cutoff)) {
+                await this.updateWriteQueueItem(item.id, { status: 'pending', claimId: null, claimedAt: null });
+            }
+        }
+    }
+
     async resetWriteQueueRetries(): Promise<void> {
         if (this.backend?.isReady()) {
             await this.backend.resetWriteQueueRetries();
