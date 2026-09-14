@@ -242,6 +242,24 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
 
     
+    // Try the connected thermal printer first (native Bluetooth / USB bridge)
+    const thermalOk = await printZReportThermal({
+      branchName: reportData.branchName,
+      date: reportData.date,
+      totalBills: reportData.totalBills,
+      totalAmount: reportData.totalAmount,
+      paymentTotals: reportData.paymentTotals,
+      openingCash: cashSummary?.openingCash ?? (reportData.shift ? Number(reportData.shift.opening_cash) : null),
+      expectedCash: cashSummary?.expectedCash ?? null,
+      actualCash: cashSummary?.actualCash ?? null,
+      variance: cashSummary?.variance ?? null,
+    });
+
+    if (thermalOk) {
+      toast({ title: 'Printed', description: 'Z-Report sent to the thermal printer.' });
+      return;
+    }
+
     // Generate dynamic payment rows for HTML print
     const paymentRowsHTML = Object.entries(reportData.paymentTotals)
       .filter(([_, amount]) => amount > 0 || Object.keys(reportData.paymentTotals).length <= 5) // Show 0 only if not too many modes
