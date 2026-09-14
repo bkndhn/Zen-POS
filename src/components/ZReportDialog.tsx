@@ -179,6 +179,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const handlePrint = async () => {
     if (!reportData) return;
 
+    let cashSummary: { openingCash: number; expectedCash: number; actualCash: number; variance: number } | null = null;
+
     if (reportData.shift) {
       if (!actualClosingCash || isNaN(Number(actualClosingCash))) {
         toast({ title: 'Validation Error', description: 'Please enter the actual closing cash in drawer.', variant: 'destructive' });
