@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { checkSupabaseResult } from '@/utils/monitoring';
 import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHistory';
 import { generateZReportPdf } from '@/utils/zReportPdf';
+import { printZReportThermal } from '@/utils/zReportPrinter';
 
 
 interface ZReportDialogProps {
@@ -179,6 +180,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const handlePrint = async () => {
     if (!reportData) return;
 
+    let cashSummary: { openingCash: number; expectedCash: number; actualCash: number; variance: number } | null = null;
+
     if (reportData.shift) {
       if (!actualClosingCash || isNaN(Number(actualClosingCash))) {
         toast({ title: 'Validation Error', description: 'Please enter the actual closing cash in drawer.', variant: 'destructive' });
@@ -222,6 +225,13 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         } as any);
         checkSupabaseResult('shift_reconciliations.insert', reconResult as any);
 
+        cashSummary = {
+          openingCash,
+          expectedCash,
+          actualCash,
+          variance: Number((actualCash - expectedCash).toFixed(2)),
+        };
+
         toast({ title: 'Shift Closed', description: 'Shift closed and reconciliation recorded.' });
       } catch (err: any) {
         toast({ title: 'Error', description: err.message, variant: 'destructive' });
@@ -233,6 +243,24 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
 
 
     
+    // Try the connected thermal printer first (native Bluetooth / USB bridge)
+    const thermalOk = await printZReportThermal({
+      branchName: reportData.branchName,
+      date: reportData.date,
+      totalBills: reportData.totalBills,
+      totalAmount: reportData.totalAmount,
+      paymentTotals: reportData.paymentTotals,
+      openingCash: cashSummary?.openingCash ?? (reportData.shift ? Number(reportData.shift.opening_cash) : null),
+      expectedCash: cashSummary?.expectedCash ?? null,
+      actualCash: cashSummary?.actualCash ?? null,
+      variance: cashSummary?.variance ?? null,
+    });
+
+    if (thermalOk) {
+      toast({ title: 'Printed', description: 'Z-Report sent to the thermal printer.' });
+      return;
+    }
+
     // Generate dynamic payment rows for HTML print
     const paymentRowsHTML = Object.entries(reportData.paymentTotals)
       .filter(([_, amount]) => amount > 0 || Object.keys(reportData.paymentTotals).length <= 5) // Show 0 only if not too many modes

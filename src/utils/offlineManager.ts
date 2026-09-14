@@ -1760,7 +1760,7 @@ class OfflineManager {
         this.notifyWriteQueueListeners();
     }
 
-    async updateWriteQueueItem(id: string, updates: Partial<{ status: string; retries: number; error: string | null; data: any; filters: Record<string, unknown> | null }>): Promise<void> {
+    async updateWriteQueueItem(id: string, updates: Partial<{ status: string; retries: number; error: string | null; data: any; filters: Record<string, unknown> | null; claimId: string | null; claimedAt: number | null }>): Promise<void> {
         if (this.backend?.isReady()) return this.backend.updateWriteQueueItem(id, updates);
         if (!this.db) return;
         return new Promise((resolve) => {
@@ -1801,6 +1801,23 @@ class OfflineManager {
             });
         }
         return this.executeWriteQueue();
+    }
+
+    /** Release claims left behind by a crashed/killed flush so work retries automatically. */
+    async releaseStaleWriteClaims(olderThanMs: number): Promise<void> {
+        if (this.backend?.isReady()) {
+            await this.backend.releaseStaleClaims(olderThanMs);
+            return;
+        }
+        if (!this.db) return;
+        const cutoff = Date.now() - olderThanMs;
+        const items = await this.getWriteQueue();
+        for (const item of items) {
+            const claimedAt = (item as any).claimedAt ?? null;
+            if (item.status === 'syncing' && (claimedAt === null || claimedAt < cutoff)) {
+                await this.updateWriteQueueItem(item.id, { status: 'pending', claimId: null, claimedAt: null });
+            }
+        }
     }
 
     async resetWriteQueueRetries(): Promise<void> {
