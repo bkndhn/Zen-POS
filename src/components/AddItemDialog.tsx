@@ -688,6 +688,22 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             </p>
           </div>
 
+          <div>
+            <Label htmlFor="quantity_step">Quantity Step</Label>
+            <Input
+              id="quantity_step"
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={formData.quantity_step}
+              onChange={(e) => setFormData({ ...formData, quantity_step: e.target.value })}
+              placeholder="1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Amount to +/- when clicking buttons in the billing page.
+            </p>
+          </div>
+
           <div className="flex items-center space-x-2 py-2">
             <Checkbox
               id="unlimited_stock"
