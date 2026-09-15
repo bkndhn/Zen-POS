@@ -82,6 +82,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     selling_quantity: '1',
     inventory_unit: 'Piece (pc)',
     inventory_quantity: '1',
+    quantity_step: '1',
     is_saleable: true,
     cooking_time_mins: '',
     stock_quantity: '',
@@ -291,7 +292,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         // Legacy fallback
         unit: formData.selling_unit,
         base_value: parseFloat(formData.selling_quantity) || 1,
-        quantity_step: 1,
+        quantity_step: parseFloat(formData.quantity_step) || 1,
 
         stock_quantity: formData.unlimited_stock ? null : parseFloat(formData.stock_quantity),
         minimum_stock_alert: formData.unlimited_stock ? null : (parseFloat(formData.minimum_stock_alert) || 0),
@@ -367,6 +368,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         selling_quantity: '1',
         inventory_unit: 'Piece (pc)',
         inventory_quantity: '1',
+        quantity_step: '1',
         is_saleable: true,
         cooking_time_mins: '',
         stock_quantity: '',
