@@ -30,7 +30,7 @@ export const PullToRefresh: React.FC<{ children: React.ReactNode; onRefresh?: ()
     // Only drag down if we started at top and are moving down
     if (distance > 0 && scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 1) {
       // Damping the pull distance
-      const progress = Math.min((distance * 0.4) / 60, 1);
+      const progress = Math.min(distance / 180, 1);
       setPullProgress(progress);
       
       // Prevent default scrolling when pulling to refresh
@@ -47,16 +47,21 @@ export const PullToRefresh: React.FC<{ children: React.ReactNode; onRefresh?: ()
   const handleTouchEnd = async () => {
     if (!isPulling) return;
     
-    if (pullProgress > 0.8) {
+    if (pullProgress >= 1) {
       setIsRefreshing(true);
-      if (onRefresh) {
-        await onRefresh();
-      } else {
-        window.location.reload();
+      try {
+        if (onRefresh) {
+          await onRefresh();
+        } else {
+          // Soft refresh only — a hard page reload here caused the installed
+          // app to appear to restart itself during normal scrolling.
+          window.dispatchEvent(new CustomEvent('zenpos-soft-refresh'));
+          window.dispatchEvent(new CustomEvent('zenpos-sync-request'));
+          await new Promise((r) => setTimeout(r, 600));
+        }
+      } finally {
+        setIsRefreshing(false);
       }
-      // Assuming reload happens, the component will unmount.
-      // If it's a custom promise, we await it then stop refreshing.
-      setIsRefreshing(false);
     }
     
     setIsPulling(false);

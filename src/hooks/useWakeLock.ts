@@ -288,7 +288,7 @@ export const useWakeLock = (enabled: boolean = true) => {
         window.addEventListener('orientationchange', handleOrientationChange);
 
         // More aggressive interval check
-        const intervalTime = isMobile() ? 10000 : 30000;
+        const intervalTime = 60000;
 
         keepAliveIntervalRef.current = setInterval(() => {
             if (isActiveRef.current && document.visibilityState === 'visible') {
