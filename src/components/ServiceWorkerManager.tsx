@@ -17,9 +17,9 @@ const ServiceWorkerManager = () => {
           if (!newWorker) return;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              if (confirm('New version available! Refresh to update?')) {
-                window.location.reload();
-              }
+              // Silent update: the new version activates on the next app launch.
+              // Never prompt or force-reload mid-shift.
+              console.log('SW update installed; will apply on next launch');
             }
           });
         });
