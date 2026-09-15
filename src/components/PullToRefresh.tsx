@@ -30,7 +30,7 @@ export const PullToRefresh: React.FC<{ children: React.ReactNode; onRefresh?: ()
     // Only drag down if we started at top and are moving down
     if (distance > 0 && scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 1) {
       // Damping the pull distance
-      const progress = Math.min((distance * 0.4) / 60, 1);
+      const progress = Math.min(distance / 180, 1);
       setPullProgress(progress);
       
       // Prevent default scrolling when pulling to refresh
