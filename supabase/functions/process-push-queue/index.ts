@@ -23,6 +23,37 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Auth Guard: only the scheduler (service role bearer) or a verified super admin
+    // may drain and deliver the notification queue.
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+    if (token !== supabaseServiceKey) {
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData?.user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        });
+      }
+      const { data: callerProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+      if (callerProfile?.role !== 'super_admin') {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        });
+      }
+    }
+
     // Fetch unprocessed push notifications (batch of 50)
     const { data: queue, error: fetchError } = await supabase
       .from('push_queue')
