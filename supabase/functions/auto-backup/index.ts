@@ -15,16 +15,33 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // Auth Guard: Require Authorization header
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-  }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? "";
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? "";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Auth Guard: only the scheduler (service role bearer) or a verified super admin
+  // may trigger a full multi-tenant export.
+  const authHeader = req.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+  }
+
+  if (token !== supabaseServiceKey) {
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', userData.user.id)
+      .maybeSingle();
+    if (callerProfile?.role !== 'super_admin') {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders });
+    }
+  }
 
   let status: 'success' | 'failure' = 'failure';
   let details = '';
