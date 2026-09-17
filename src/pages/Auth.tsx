@@ -124,6 +124,17 @@ const Auth = () => {
       toast({ title: t('auth.verifyCaptcha'), description: t('auth.verifyCaptchaDescription'), variant: "destructive" });
       return;
     }
+    const resetLimit = await enforceAuthRateLimit('password_reset', formData.email);
+    if (!resetLimit.allowed) {
+      logSecurityEvent('PASSWORD_RESET_RATE_LIMITED', { email: formData.email });
+      toast({
+        title: t('auth.tooManyAttempts'),
+        description: `Please try again in ${formatRetryAfter(resetLimit.retryAfterSeconds)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
