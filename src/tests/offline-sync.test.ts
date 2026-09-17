@@ -24,7 +24,7 @@ describe('offline order merge and conflict safety', () => {
       { id: 'o1', status: 'preparing', updated_at: '2026-09-16T10:00:00Z' },
       { id: 'o2', status: 'pending', updated_at: '2026-09-16T10:00:00Z' },
     ];
-    const incoming = [{ id: 'o1', status: 'ready', updated_at: '2026-09-16T10:05:00Z' }];
+    const incoming = { id: 'o1', status: 'ready', updated_at: '2026-09-16T10:05:00Z' };
 
     const merged = mergeOrdersConflictSafe(local, incoming);
     const o1 = merged.find((o) => o.id === 'o1');
@@ -35,7 +35,7 @@ describe('offline order merge and conflict safety', () => {
 
   it('ignores a stale update that arrives late after a reconnect', () => {
     const local = [{ id: 'o1', status: 'served', updated_at: '2026-09-16T10:10:00Z' }];
-    const stale = [{ id: 'o1', status: 'preparing', updated_at: '2026-09-16T10:01:00Z' }];
+    const stale = { id: 'o1', status: 'preparing', updated_at: '2026-09-16T10:01:00Z' };
 
     const merged = mergeOrdersConflictSafe(local, stale);
     expect(merged.find((o) => o.id === 'o1')?.status).toBe('served');
