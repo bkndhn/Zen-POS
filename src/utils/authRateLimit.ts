@@ -133,7 +133,7 @@ export const enforceAuthRateLimit = async (
 
   try {
     const { supabase } = await import('@/integrations/supabase/client');
-    const result = await withTimeout(
+    const result = (await withTimeout<any>(
       (supabase as any).rpc('check_auth_rate_limit', {
         p_action: action,
         p_identifier: id,
@@ -141,7 +141,7 @@ export const enforceAuthRateLimit = async (
         p_window_seconds: policy.windowSeconds,
       }),
       4000,
-    );
+    )) as { error?: unknown; data?: unknown } | null;
 
     if (!result || result.error || !result.data) {
       return { ...local, source: 'fallback' };
