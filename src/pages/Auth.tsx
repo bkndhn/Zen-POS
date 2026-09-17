@@ -204,7 +204,7 @@ const Auth = () => {
         throw error;
       }
 
-      clearRateLimit('login_attempt');
+      void clearAuthRateLimit('sign_in', formData.email);
       
       if (rememberMe) {
         safeLocalStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
