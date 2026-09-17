@@ -167,16 +167,6 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!checkRateLimit('login_attempt', 5, 60000)) {
-      logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
-      toast({
-        title: t('auth.tooManyAttempts'),
-        description: t('auth.tooManyAttemptsDescription'),
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!isValidEmail(formData.email)) {
       toast({
         title: t('auth.invalidEmail'),
