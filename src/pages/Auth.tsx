@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Store, Clock, Loader2 } from 'lucide-react';
-import { checkRateLimit, clearRateLimit, isValidEmail, logSecurityEvent } from '@/utils/securityUtils';
+import { isValidEmail, logSecurityEvent } from '@/utils/securityUtils';
+import { clearAuthRateLimit, enforceAuthRateLimit, formatRetryAfter } from '@/utils/authRateLimit';
 import { safeLocalStorage } from '@/utils/storageUtils';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
