@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { Plus, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isStrongPassword, isValidEmail } from '@/utils/securityUtils';
+import { clearAuthRateLimit, enforceAuthRateLimit, formatRetryAfter } from '@/utils/authRateLimit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -155,6 +156,16 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({
         toast({ title: "Address Required", description: "Address is required for admin accounts.", variant: "destructive" });
         return;
       }
+    }
+
+    const createLimit = await enforceAuthRateLimit('user_create', adminId || formData.email);
+    if (!createLimit.allowed) {
+      toast({
+        title: "Too Many Attempts",
+        description: `Please try again in ${formatRetryAfter(createLimit.retryAfterSeconds)}.`,
+        variant: "destructive",
+      });
+      return;
     }
 
     setLoading(true);
