@@ -523,6 +523,36 @@ export type Database = {
           },
         ]
       }
+      auth_rate_limits: {
+        Row: {
+          action: string
+          bucket_key: string
+          created_at: string
+          hits: number
+          id: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          action: string
+          bucket_key: string
+          created_at?: string
+          hits?: number
+          id?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          action?: string
+          bucket_key?: string
+          created_at?: string
+          hits?: number
+          id?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       backup_logs: {
         Row: {
           backup_time: string
@@ -4922,6 +4952,15 @@ export type Database = {
         Args: { p_admin_id: string }
         Returns: Json
       }
+      check_auth_rate_limit: {
+        Args: {
+          p_action: string
+          p_identifier: string
+          p_max_attempts?: number
+          p_window_seconds?: number
+        }
+        Returns: Json
+      }
       check_service_request_rate_limit: {
         Args: { p_admin_id: string; p_table_number: string }
         Returns: boolean
@@ -4933,6 +4972,10 @@ export type Database = {
           p_table_number: string
         }
         Returns: boolean
+      }
+      clear_auth_rate_limit: {
+        Args: { p_action: string; p_identifier: string }
+        Returns: undefined
       }
       copy_items_to_branch: {
         Args: {
