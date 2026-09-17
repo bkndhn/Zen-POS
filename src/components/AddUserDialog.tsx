@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { Plus, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isStrongPassword, isValidEmail } from '@/utils/securityUtils';
-import { clearAuthRateLimit, enforceAuthRateLimit, formatRetryAfter } from '@/utils/authRateLimit';
+import { enforceAuthRateLimit, formatRetryAfter } from '@/utils/authRateLimit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 
