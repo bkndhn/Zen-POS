@@ -1,0 +1,66 @@
+import { describe, expect, it } from 'vitest';
+import {
+  STATUS_RANK,
+  groupOrdersByTableSeat,
+  mergeOrdersConflictSafe,
+  shouldApplyStatusUpdate,
+} from '@/utils/seatUtils';
+
+describe('offline order merge and conflict safety', () => {
+  it('never moves an order backwards in the kitchen flow', () => {
+    expect(shouldApplyStatusUpdate('pending', 'preparing')).toBe(true);
+    expect(shouldApplyStatusUpdate('ready', 'pending')).toBe(false);
+    expect(shouldApplyStatusUpdate('served', 'served')).toBe(false);
+  });
+
+  it('ranks every kitchen status in a strict order', () => {
+    expect(STATUS_RANK['pending']).toBeLessThan(STATUS_RANK['preparing']);
+    expect(STATUS_RANK['preparing']).toBeLessThan(STATUS_RANK['ready']);
+    expect(STATUS_RANK['ready']).toBeLessThan(STATUS_RANK['served']);
+  });
+
+  it('keeps the newer version when the same order arrives twice', () => {
+    const local = [
+      { id: 'o1', status: 'preparing', updated_at: '2026-09-16T10:00:00Z' },
+      { id: 'o2', status: 'pending', updated_at: '2026-09-16T10:00:00Z' },
+    ];
+    const incoming = [{ id: 'o1', status: 'ready', updated_at: '2026-09-16T10:05:00Z' }];
+
+    const merged = mergeOrdersConflictSafe(local, incoming);
+    const o1 = merged.find((o) => o.id === 'o1');
+
+    expect(merged.length).toBe(2);
+    expect(o1?.status).toBe('ready');
+  });
+
+  it('ignores a stale update that arrives late after a reconnect', () => {
+    const local = [{ id: 'o1', status: 'served', updated_at: '2026-09-16T10:10:00Z' }];
+    const stale = [{ id: 'o1', status: 'preparing', updated_at: '2026-09-16T10:01:00Z' }];
+
+    const merged = mergeOrdersConflictSafe(local, stale);
+    expect(merged.find((o) => o.id === 'o1')?.status).toBe('served');
+  });
+
+  it('groups queued orders by table and seat for the kitchen view', () => {
+    const groups = groupOrdersByTableSeat([
+      { id: '1', table_number: '5', seat_number: 1, status: 'pending' } as any,
+      { id: '2', table_number: '5', seat_number: 2, status: 'pending' } as any,
+      { id: '3', table_number: '7', status: 'pending' } as any,
+    ]);
+
+    expect(groups.length).toBe(2);
+    const table5 = groups.find((g: any) => String(g.tableNumber) === '5');
+    expect(table5).toBeTruthy();
+  });
+});
+
+describe('offline queue identifiers', () => {
+  it('creates unique ids for queued records', async () => {
+    const { newClientUuid } = await import('@/utils/syncEngine');
+    const ids = new Set(Array.from({ length: 500 }, () => newClientUuid()));
+    expect(ids.size).toBe(500);
+    for (const id of ids) {
+      expect(id).toMatch(/^[0-9a-f-]{20,}$/i);
+    }
+  });
+});

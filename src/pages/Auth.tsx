@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Store, Clock, Loader2 } from 'lucide-react';
-import { checkRateLimit, clearRateLimit, isValidEmail, logSecurityEvent } from '@/utils/securityUtils';
+import { isValidEmail, logSecurityEvent } from '@/utils/securityUtils';
+import { clearAuthRateLimit, enforceAuthRateLimit, formatRetryAfter } from '@/utils/authRateLimit';
 import { safeLocalStorage } from '@/utils/storageUtils';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
@@ -123,6 +124,17 @@ const Auth = () => {
       toast({ title: t('auth.verifyCaptcha'), description: t('auth.verifyCaptchaDescription'), variant: "destructive" });
       return;
     }
+    const resetLimit = await enforceAuthRateLimit('password_reset', formData.email);
+    if (!resetLimit.allowed) {
+      logSecurityEvent('PASSWORD_RESET_RATE_LIMITED', { email: formData.email });
+      toast({
+        title: t('auth.tooManyAttempts'),
+        description: `Please try again in ${formatRetryAfter(resetLimit.retryAfterSeconds)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -155,16 +167,6 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!checkRateLimit('login_attempt', 5, 60000)) {
-      logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
-      toast({
-        title: t('auth.tooManyAttempts'),
-        description: t('auth.tooManyAttemptsDescription'),
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!isValidEmail(formData.email)) {
       toast({
         title: t('auth.invalidEmail'),
@@ -176,6 +178,17 @@ const Auth = () => {
 
     if (HCAPTCHA_SITE_KEY && !captchaToken) {
       toast({ title: t('auth.verifyCaptcha'), description: t('auth.verifyCaptchaDescription'), variant: "destructive" });
+      return;
+    }
+
+    const loginLimit = await enforceAuthRateLimit('sign_in', formData.email);
+    if (!loginLimit.allowed) {
+      logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
+      toast({
+        title: t('auth.tooManyAttempts'),
+        description: `Please try again in ${formatRetryAfter(loginLimit.retryAfterSeconds)}.`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -191,7 +204,7 @@ const Auth = () => {
         throw error;
       }
 
-      clearRateLimit('login_attempt');
+      void clearAuthRateLimit('sign_in', formData.email);
       
       if (rememberMe) {
         safeLocalStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
