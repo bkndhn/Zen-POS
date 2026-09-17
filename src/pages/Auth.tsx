@@ -181,6 +181,17 @@ const Auth = () => {
       return;
     }
 
+    const loginLimit = await enforceAuthRateLimit('sign_in', formData.email);
+    if (!loginLimit.allowed) {
+      logSecurityEvent('LOGIN_RATE_LIMITED', { email: formData.email });
+      toast({
+        title: t('auth.tooManyAttempts'),
+        description: `Please try again in ${formatRetryAfter(loginLimit.retryAfterSeconds)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
