@@ -71,6 +71,13 @@ describe('offline queue identifiers', () => {
     if (typeof (globalThis as any).indexedDB === 'undefined') {
       (globalThis as any).indexedDB = { open: () => ({}) };
     }
+    if (typeof (globalThis as any).location === 'undefined') {
+      (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost', origin: 'http://localhost' };
+      (globalThis as any).window.location = (globalThis as any).location;
+    }
+    if (typeof (globalThis as any).navigator === 'undefined') {
+      (globalThis as any).navigator = { onLine: true, userAgent: 'node' };
+    }
     const { newClientUuid } = await import('@/utils/syncEngine');
     const ids = new Set(Array.from({ length: 500 }, () => newClientUuid()));
     expect(ids.size).toBe(500);
