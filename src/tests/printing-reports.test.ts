@@ -42,7 +42,7 @@ describe('kitchen ticket routing and layout', () => {
           { name: 'Paneer Tikka', quantity: 2 } as any,
           { name: 'Dal Fry', quantity: 1 } as any,
         ],
-        { orderNumber: 'A-12', printerWidth: '58mm', shopName: 'Zen Cafe' } as any,
+        { billNo: 'A-12', printerWidth: '58mm', shopName: 'Zen Cafe' } as any,
       ),
     );
 
