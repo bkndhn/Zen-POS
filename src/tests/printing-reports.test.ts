@@ -54,7 +54,7 @@ describe('kitchen ticket routing and layout', () => {
 
   it('keeps 80mm lines wider than 58mm lines', async () => {
     const { buildKOTBytes } = await import('@/utils/kotGenerator');
-    const meta = { orderNumber: 'A-1', shopName: 'Zen Cafe' };
+    const meta = { billNo: 'A-1', shopName: 'Zen Cafe' };
     const narrow = decode(buildKOTBytes('kitchen' as any, [{ name: 'Tea', quantity: 1 } as any], { ...meta, printerWidth: '58mm' } as any));
     const wide = decode(buildKOTBytes('kitchen' as any, [{ name: 'Tea', quantity: 1 } as any], { ...meta, printerWidth: '80mm' } as any));
 
