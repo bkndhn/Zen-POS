@@ -58,6 +58,19 @@ describe('offline order merge and conflict safety', () => {
 
 describe('offline queue identifiers', () => {
   it('creates unique ids for queued records', async () => {
+    // Minimal browser stubs so the sync engine module can be imported in Node
+    if (typeof (globalThis as any).window === 'undefined') {
+      (globalThis as any).window = {
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      };
+    }
+    if (typeof (globalThis as any).document === 'undefined') {
+      (globalThis as any).document = { addEventListener: () => {}, removeEventListener: () => {} };
+    }
+    if (typeof (globalThis as any).indexedDB === 'undefined') {
+      (globalThis as any).indexedDB = { open: () => ({}) };
+    }
     const { newClientUuid } = await import('@/utils/syncEngine');
     const ids = new Set(Array.from({ length: 500 }, () => newClientUuid()));
     expect(ids.size).toBe(500);
