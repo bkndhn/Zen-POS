@@ -78,6 +78,19 @@ describe('offline queue identifiers', () => {
     if (typeof (globalThis as any).navigator === 'undefined') {
       (globalThis as any).navigator = { onLine: true, userAgent: 'node' };
     }
+    if (typeof (globalThis as any).localStorage === 'undefined') {
+      const store = new Map<string, string>();
+      const mem = {
+        getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+        setItem: (k: string, v: string) => void store.set(k, String(v)),
+        removeItem: (k: string) => void store.delete(k),
+        clear: () => store.clear(),
+        key: (i: number) => Array.from(store.keys())[i] ?? null,
+        get length() { return store.size; },
+      };
+      (globalThis as any).localStorage = mem;
+      (globalThis as any).window.localStorage = mem;
+    }
     const { newClientUuid } = await import('@/utils/syncEngine');
     const ids = new Set(Array.from({ length: 500 }, () => newClientUuid()));
     expect(ids.size).toBe(500);
