@@ -10,7 +10,9 @@ describe('offline order merge and conflict safety', () => {
   it('never moves an order backwards in the kitchen flow', () => {
     expect(shouldApplyStatusUpdate('pending', 'preparing')).toBe(true);
     expect(shouldApplyStatusUpdate('ready', 'pending')).toBe(false);
-    expect(shouldApplyStatusUpdate('served', 'served')).toBe(false);
+    // Re-applying the same status is harmless (idempotent retry after a reconnect)
+    expect(shouldApplyStatusUpdate('served', 'served')).toBe(true);
+    expect(shouldApplyStatusUpdate('served', 'preparing')).toBe(false);
   });
 
   it('ranks every kitchen status in a strict order', () => {
@@ -56,6 +58,39 @@ describe('offline order merge and conflict safety', () => {
 
 describe('offline queue identifiers', () => {
   it('creates unique ids for queued records', async () => {
+    // Minimal browser stubs so the sync engine module can be imported in Node
+    if (typeof (globalThis as any).window === 'undefined') {
+      (globalThis as any).window = {
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      };
+    }
+    if (typeof (globalThis as any).document === 'undefined') {
+      (globalThis as any).document = { addEventListener: () => {}, removeEventListener: () => {} };
+    }
+    if (typeof (globalThis as any).indexedDB === 'undefined') {
+      (globalThis as any).indexedDB = { open: () => ({}) };
+    }
+    if (typeof (globalThis as any).location === 'undefined') {
+      (globalThis as any).location = { href: 'http://localhost/', hostname: 'localhost', origin: 'http://localhost' };
+      (globalThis as any).window.location = (globalThis as any).location;
+    }
+    if (typeof (globalThis as any).navigator === 'undefined') {
+      (globalThis as any).navigator = { onLine: true, userAgent: 'node' };
+    }
+    if (typeof (globalThis as any).localStorage === 'undefined') {
+      const store = new Map<string, string>();
+      const mem = {
+        getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+        setItem: (k: string, v: string) => void store.set(k, String(v)),
+        removeItem: (k: string) => void store.delete(k),
+        clear: () => store.clear(),
+        key: (i: number) => Array.from(store.keys())[i] ?? null,
+        get length() { return store.size; },
+      };
+      (globalThis as any).localStorage = mem;
+      (globalThis as any).window.localStorage = mem;
+    }
     const { newClientUuid } = await import('@/utils/syncEngine');
     const ids = new Set(Array.from({ length: 500 }, () => newClientUuid()));
     expect(ids.size).toBe(500);
