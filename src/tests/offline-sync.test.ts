@@ -10,7 +10,9 @@ describe('offline order merge and conflict safety', () => {
   it('never moves an order backwards in the kitchen flow', () => {
     expect(shouldApplyStatusUpdate('pending', 'preparing')).toBe(true);
     expect(shouldApplyStatusUpdate('ready', 'pending')).toBe(false);
-    expect(shouldApplyStatusUpdate('served', 'served')).toBe(false);
+    // Re-applying the same status is harmless (idempotent retry after a reconnect)
+    expect(shouldApplyStatusUpdate('served', 'served')).toBe(true);
+    expect(shouldApplyStatusUpdate('served', 'preparing')).toBe(false);
   });
 
   it('ranks every kitchen status in a strict order', () => {
