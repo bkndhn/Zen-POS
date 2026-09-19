@@ -54,3 +54,23 @@ pnpm-lock.yaml
 # OS files
 Thumbs.db
 .DS_Store
+# --- Credential safety (never commit these) ---
+.env.local
+.env.*.local
+.env.production
+.env.development.local
+*.pem
+*.key
+*.p12
+*.p8
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+service-account*.json
+serviceAccount*.json
+supabase/.temp/
+supabase/.branches/
+.secrets/
+secrets.json
+*.env.bak
