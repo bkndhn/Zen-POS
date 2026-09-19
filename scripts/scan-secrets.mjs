@@ -16,7 +16,7 @@ const PATTERNS = [
   { name: 'Stripe live secret key', re: /\bsk_live_[A-Za-z0-9]{16,}/ },
   { name: 'Stripe restricted key', re: /\brk_live_[A-Za-z0-9]{16,}/ },
   { name: 'OpenAI API key', re: /\bsk-[A-Za-z0-9]{32,}/ },
-  { name: 'Private key block', re: /-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----(\\\\n|\\s)*[A-Za-z0-9+/]{40,}/ },
+  { name: 'Private key block', re: /-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----(\\n|\s)*[A-Za-z0-9+/]{40,}/ },
   { name: 'Google service account JSON', re: /"type"\s*:\s*"service_account"/ },
   { name: 'AWS access key id', re: /\bAKIA[0-9A-Z]{16}\b/ },
   { name: 'Slack token', re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/ },
