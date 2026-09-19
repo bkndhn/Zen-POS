@@ -74,7 +74,7 @@ export const PromoWidgetManager = () => {
             
             const fileExt = file.name.split('.').pop();
             const fileName = `promo_${adminId}_${branchId}_${Date.now()}.${fileExt}`;
-            const filePath = `promo_widgets/${fileName}`;
+            const filePath = `${adminId}/promo_widgets/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('logos')

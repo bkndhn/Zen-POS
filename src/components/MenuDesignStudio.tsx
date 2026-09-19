@@ -435,7 +435,7 @@ export const MenuDesignStudio = () => {
             const compressedFile = await imageCompression(file, options);
             const fileExt = file.name.split('.').pop();
             const fileName = `cover_${adminId}_${operatingBranchId || adminId}_${Date.now()}.${fileExt}`;
-            const filePath = `covers/${fileName}`;
+            const filePath = `${adminId}/covers/${fileName}`;
 
             requireOnline('Uploading an image');
             const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, compressedFile);
