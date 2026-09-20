@@ -34,18 +34,22 @@ export async function initStorage(): Promise<StorageBackend> {
       // load it on the web.
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.getPlatform() === 'web') {
-        console.log('[Storage] Web platform → using IndexedDBBackend');
+        console.log('[Storage] Web platform → using IndexedDBBackend (encrypted at rest)');
         const { IndexedDBBackend } = await import('./IndexedDBBackend');
-        _backend = new IndexedDBBackend();
-        await _backend.initialize();
+        const raw = new IndexedDBBackend();
+        await raw.initialize();
+        _backend = await wrapWithEncryption(raw);
         return _backend;
       }
 
       // Native: SQLite (native plugin, or WASM fallback inside the WebView)
       console.log('[Storage] Initializing SQLiteBackend (auto-detects native vs WASM)...');
       const { SQLiteBackend } = await import('./SQLiteBackend');
-      _backend = new SQLiteBackend();
-      await _backend.initialize();
+      const sqlite = new SQLiteBackend();
+      await sqlite.initialize();
+      // Native SQLCipher already encrypts the file; the WASM fallback does not.
+      _backend = sqlite.isEncryptedAtRest() ? sqlite : await wrapWithEncryption(sqlite);
+
 
 
       // Run one-time migration from IndexedDB → SQLite on first use
