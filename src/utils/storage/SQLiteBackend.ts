@@ -29,6 +29,15 @@ export class SQLiteBackend implements StorageBackend {
     this.sqlite = new SQLiteConnection(CapacitorSQLite);
   }
 
+  /**
+   * True when the database file itself is encrypted (native SQLCipher build).
+   * In WASM/web mode it is not, so the caller adds the application-level
+   * encryption layer instead.
+   */
+  isEncryptedAtRest(): boolean {
+    return this.ready && !this.useWebMode;
+  }
+
   async initialize(): Promise<void> {
     if (this.ready) return;
 
