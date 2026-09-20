@@ -10,6 +10,26 @@
 
 import type { StorageBackend } from './StorageBackend';
 
+/**
+ * Adds application-level AES-GCM encryption on top of a backend whose files
+ * are not already encrypted (IndexedDB, SQLite WASM). Falls back to the plain
+ * backend when the device has no WebCrypto, so the POS never loses data.
+ */
+async function wrapWithEncryption(backend: StorageBackend): Promise<StorageBackend> {
+  try {
+    const { isEncryptionActive } = await import('@/utils/deviceCrypto');
+    if (!(await isEncryptionActive())) {
+      console.warn('[Storage] Device encryption unavailable — storing in clear');
+      return backend;
+    }
+    const { EncryptedBackend } = await import('./EncryptedBackend');
+    return new EncryptedBackend(backend);
+  } catch (err) {
+    console.warn('[Storage] Encryption layer unavailable:', err);
+    return backend;
+  }
+}
+
 let _backend: StorageBackend | null = null;
 let _initPromise: Promise<StorageBackend> | null = null;
 
@@ -34,18 +54,22 @@ export async function initStorage(): Promise<StorageBackend> {
       // load it on the web.
       const { Capacitor } = await import('@capacitor/core');
       if (Capacitor.getPlatform() === 'web') {
-        console.log('[Storage] Web platform → using IndexedDBBackend');
+        console.log('[Storage] Web platform → using IndexedDBBackend (encrypted at rest)');
         const { IndexedDBBackend } = await import('./IndexedDBBackend');
-        _backend = new IndexedDBBackend();
-        await _backend.initialize();
+        const raw = new IndexedDBBackend();
+        await raw.initialize();
+        _backend = await wrapWithEncryption(raw);
         return _backend;
       }
 
       // Native: SQLite (native plugin, or WASM fallback inside the WebView)
       console.log('[Storage] Initializing SQLiteBackend (auto-detects native vs WASM)...');
       const { SQLiteBackend } = await import('./SQLiteBackend');
-      _backend = new SQLiteBackend();
-      await _backend.initialize();
+      const sqlite = new SQLiteBackend();
+      await sqlite.initialize();
+      // Native SQLCipher already encrypts the file; the WASM fallback does not.
+      _backend = sqlite.isEncryptedAtRest() ? sqlite : await wrapWithEncryption(sqlite);
+
 
 
       // Run one-time migration from IndexedDB → SQLite on first use
@@ -61,8 +85,9 @@ export async function initStorage(): Promise<StorageBackend> {
       console.error('[Storage] SQLite initialization failed, falling back to IndexedDB:', err);
       // Fallback: always use IndexedDB if SQLite fails
       const { IndexedDBBackend } = await import('./IndexedDBBackend');
-      _backend = new IndexedDBBackend();
-      await _backend.initialize();
+      const raw = new IndexedDBBackend();
+      await raw.initialize();
+      _backend = await wrapWithEncryption(raw);
       return _backend;
     } finally {
       _initPromise = null;

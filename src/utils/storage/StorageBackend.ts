@@ -102,6 +102,9 @@ export interface StorageBackend {
 
   /** Persist any buffered writes before shutdown or migration completion. */
   flush(): Promise<void>;
+
+  /** True when the underlying store is already encrypted on disk (e.g. SQLCipher). */
+  isEncryptedAtRest?(): boolean;
 }
 
 /** Store name constants — shared between backends */

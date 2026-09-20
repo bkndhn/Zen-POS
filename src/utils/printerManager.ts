@@ -159,16 +159,8 @@ class PrinterManager {
             }, 500);
         }
 
-        // Restore print queue from persistent storage
-        try {
-            const savedQueue = localStorage.getItem('hotel_pos_print_queue');
-            if (savedQueue) {
-                this.printQueue = JSON.parse(savedQueue);
-                console.log(`[Printer] Restored ${this.printQueue.length} print jobs from storage`);
-            }
-        } catch (e) {
-            console.error('Failed to restore print queue:', e);
-        }
+        // Restore print queue from persistent storage (encrypted at rest)
+        void this.restoreQueueFromStorage();
 
         // Re-establish printer whenever the tab becomes visible or window regains focus.
         // Keeps the printer "always connected" across app close/reopen, route changes,
