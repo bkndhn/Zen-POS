@@ -11,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil, MapPin } from 'lucide-react';
+import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil, MapPin, LogOut } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 
