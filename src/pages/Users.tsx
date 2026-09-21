@@ -11,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil, MapPin } from 'lucide-react';
+import { Users as UsersIcon, Search, User, Shield, ChevronDown, ChevronRight, Crown, QrCode, Package, Save, Building2, KeyRound, Mail, Phone, Pause, Play, Trash2, AlertTriangle, Pencil, MapPin, LogOut } from 'lucide-react';
 import { AddUserDialog } from '@/components/AddUserDialog';
 import { Switch } from '@/components/ui/switch';
 
@@ -113,10 +113,53 @@ const Users: React.FC = () => {
     }
   };
 
+  /**
+   * Kill switch: signs a staff member out of every device immediately.
+   * Bumps the server-side security epoch (durable — enforced on the next
+   * watchdog tick even if the device was offline) and broadcasts a live
+   * force-logout so online devices drop instantly.
+   */
+  const handleForceSignOut = async (subUser: ExtendedUserProfile) => {
+    setActionLoading(true);
+    try {
+      const { data: current } = await supabase
+        .from('profiles')
+        .select('security_epoch')
+        .eq('id', subUser.id)
+        .maybeSingle();
+
+      const nextEpoch = Number((current as any)?.security_epoch ?? 0) + 1;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ security_epoch: nextEpoch } as any)
+        .eq('id', subUser.id);
+      if (error) throw error;
+
+      const userAuthId = subUser.user_id || subUser.id;
+      const channel = supabase.channel(`force-logout-user-${userAuthId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'force_logout',
+        payload: { force: true, reason: 'Your administrator signed this device out.' }
+      });
+      supabase.removeChannel(channel);
+
+      toast({
+        title: 'Signed out everywhere',
+        description: `"${subUser.name || subUser.email}" has been signed out on all devices.`
+      });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to sign the user out', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDeleteSubUserClick = (subUser: ExtendedUserProfile) => {
     setDeleteSubTarget(subUser);
     setDeleteSubConfirmOpen(true);
   };
+
 
   const handleConfirmDeleteSubUser = async () => {
     if (!deleteSubTarget) return;
@@ -998,6 +1041,17 @@ const Users: React.FC = () => {
                           >
                             <KeyRound className="w-3.5 h-3.5 mr-1" /> Reset Pwd
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={actionLoading}
+                            onClick={() => handleForceSignOut(user)}
+                            className="text-xs rounded-xl flex-1 sm:flex-none gap-1 border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
+                            title="Sign this user out of every device now"
+                          >
+                            <LogOut className="w-3.5 h-3.5" /> Sign Out
+                          </Button>
+
                           <Button
                             size="sm"
                             variant="destructive"

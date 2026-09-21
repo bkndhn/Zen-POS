@@ -231,13 +231,36 @@ class PrinterManager {
         return { enabled: false, prompted: false, reason: 'Bluetooth is switched off — turn it on from your device settings' };
     }
 
+    /** Persists the print queue encrypted with the device key (AES-GCM). */
     private saveQueueToStorage(): void {
+        const snapshot = JSON.parse(JSON.stringify(this.printQueue));
+        void (async () => {
+            try {
+                const { encryptValue } = await import('./deviceCrypto');
+                localStorage.setItem('hotel_pos_print_queue', await encryptValue(snapshot));
+            } catch (e) {
+                console.error('Failed to save print queue:', e);
+            }
+        })();
+    }
+
+    /** Restores the print queue, transparently reading legacy plaintext data. */
+    private async restoreQueueFromStorage(): Promise<void> {
         try {
-            localStorage.setItem('hotel_pos_print_queue', JSON.stringify(this.printQueue));
+            const raw = localStorage.getItem('hotel_pos_print_queue');
+            if (!raw) return;
+            const { decryptValue } = await import('./deviceCrypto');
+            const parsed = await decryptValue<any[]>(raw);
+            if (Array.isArray(parsed) && parsed.length) {
+                this.printQueue = parsed as typeof this.printQueue;
+            } else if (!parsed) {
+                localStorage.removeItem('hotel_pos_print_queue');
+            }
         } catch (e) {
-            console.error('Failed to save print queue:', e);
+            console.warn('Failed to restore print queue:', e);
         }
     }
+
 
     public static getInstance(): PrinterManager {
         if (!PrinterManager.instance) {
