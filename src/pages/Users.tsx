@@ -1043,6 +1043,17 @@ const Users: React.FC = () => {
                           </Button>
                           <Button
                             size="sm"
+                            variant="outline"
+                            disabled={actionLoading}
+                            onClick={() => handleForceSignOut(user)}
+                            className="text-xs rounded-xl flex-1 sm:flex-none gap-1 border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400"
+                            title="Sign this user out of every device now"
+                          >
+                            <LogOut className="w-3.5 h-3.5" /> Sign Out
+                          </Button>
+
+                          <Button
+                            size="sm"
                             variant="destructive"
                             onClick={() => handleDeleteSubUserClick(user)}
                             className="text-xs font-bold rounded-xl flex-1 sm:flex-none gap-1"
