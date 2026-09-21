@@ -209,10 +209,10 @@ const Reports: React.FC = () => {
   const fetchSettingsForBillUncached = async (bill: Bill) => {
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return null;
       // shop_settings.user_id = Auth UID (not Profile UUID)
-      let targetAuthId = user.id;
+      let targetAuthId = session.user.id;
       if (profile?.role === 'user' && profile.admin_id) {
         const { data: parentProfile } = await supabase
           .from('profiles')

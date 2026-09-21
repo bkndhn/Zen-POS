@@ -212,16 +212,16 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PendingBillsQueue } from "./components/PendingBillsQueue";
 
-// Lazy-loaded pages — each becomes its own chunk
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const DashboardAnalytics = lazy(() => import("./pages/DashboardAnalytics"));
-const Billing = lazy(() => import("./pages/Billing"));
-const Items = lazy(() => import("./pages/Items"));
-const AiMenuBuilder = lazy(() => import("./pages/AiMenuBuilder"));
-const Expenses = lazy(() => import("./pages/Expenses"));
-const Users = lazy(() => import("./pages/Users"));
-const Reports = lazy(() => import("./pages/Reports"));
-const Settings = lazy(() => import("./pages/Settings"));
+// Core pages — eager loaded for 0ms navigation
+import Dashboard from "./pages/Dashboard";
+import DashboardAnalytics from "./pages/DashboardAnalytics";
+import Billing from "./pages/Billing";
+import Items from "./pages/Items";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import Expenses from "./pages/Expenses";
+import Users from "./pages/Users";
+import AiMenuBuilder from "./pages/AiMenuBuilder";
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ServiceArea = lazy(() => import("./pages/ServiceArea"));
 const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));

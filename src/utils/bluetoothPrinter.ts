@@ -372,8 +372,10 @@ interface PrintData {
 }
 
 const textToBytes = (text: string): Uint8Array => {
+  // Replace ₹ with Rs. to prevent multi-byte UTF-8 chunks from crashing older thermal printers
+  const safeText = text.replace(/₹/g, 'Rs.');
   const encoder = new TextEncoder();
-  return encoder.encode(text);
+  return encoder.encode(safeText);
 };
 
 const padRight = (text: string, length: number): string => {
@@ -436,8 +438,11 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   // Paper saving mode flag (used throughout)
   const paperSaving = localStorage.getItem('hotel_pos_paper_saving_mode') === 'true';
 
-  // Initialize
-  commands.push(INIT);
+  // Robust Initialization Sequence
+  commands.push(new Uint8Array([0x00, 0x00, 0x00])); // Flush hanging GBK/UTF-8 bytes from previous crashed jobs
+  commands.push(INIT);                               // ESC @ (Initialize printer)
+  commands.push(new Uint8Array([0x1C, 0x2E]));       // FS . (Cancel Kanji mode to prevent swallowing standard ASCII)
+  commands.push(new Uint8Array([0x1B, 0x74, 0x00])); // ESC t 0 (Select PC437 code page)
 
   // Apply Font Styles
   if (isDoubleWidth) {

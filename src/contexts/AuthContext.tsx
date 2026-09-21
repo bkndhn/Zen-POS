@@ -355,8 +355,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (newSession?.user) {
           devLog('User found, fetching/creating profile...');
 
-          // Use setTimeout to avoid blocking the auth state change
-          setTimeout(async () => {
+          // Handle profile fetching asynchronously without artificial delay
+          void (async () => {
             if (!mounted) return;
 
             try {
@@ -396,7 +396,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 clearTimeout(failsafeTimeout);
               }
             }
-          }, 50); // Reduced from 100ms
+          })();
         } else {
           if (mounted) {
             setAdminProfileId(null);
