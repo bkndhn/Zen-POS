@@ -113,10 +113,53 @@ const Users: React.FC = () => {
     }
   };
 
+  /**
+   * Kill switch: signs a staff member out of every device immediately.
+   * Bumps the server-side security epoch (durable — enforced on the next
+   * watchdog tick even if the device was offline) and broadcasts a live
+   * force-logout so online devices drop instantly.
+   */
+  const handleForceSignOut = async (subUser: ExtendedUserProfile) => {
+    setActionLoading(true);
+    try {
+      const { data: current } = await supabase
+        .from('profiles')
+        .select('security_epoch')
+        .eq('id', subUser.id)
+        .maybeSingle();
+
+      const nextEpoch = Number((current as any)?.security_epoch ?? 0) + 1;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ security_epoch: nextEpoch } as any)
+        .eq('id', subUser.id);
+      if (error) throw error;
+
+      const userAuthId = subUser.user_id || subUser.id;
+      const channel = supabase.channel(`force-logout-user-${userAuthId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'force_logout',
+        payload: { force: true, reason: 'Your administrator signed this device out.' }
+      });
+      supabase.removeChannel(channel);
+
+      toast({
+        title: 'Signed out everywhere',
+        description: `"${subUser.name || subUser.email}" has been signed out on all devices.`
+      });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to sign the user out', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDeleteSubUserClick = (subUser: ExtendedUserProfile) => {
     setDeleteSubTarget(subUser);
     setDeleteSubConfirmOpen(true);
   };
+
 
   const handleConfirmDeleteSubUser = async () => {
     if (!deleteSubTarget) return;
