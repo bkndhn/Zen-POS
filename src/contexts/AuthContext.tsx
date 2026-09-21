@@ -501,12 +501,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     void check();
     const interval = setInterval(check, EPOCH_CHECK_INTERVAL_MS);
     document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    document.addEventListener('resume', check);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+      window.removeEventListener('online', check);
+      document.removeEventListener('resume', check);
     };
+
   }, [user]);
 
 
