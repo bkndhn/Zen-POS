@@ -1065,6 +1065,9 @@ const Items: React.FC = () => {
               <ItemCategoryManagement onCategoriesUpdated={handleCategoriesUpdated} />
               <CopyMenuToBranchDialog sourceBranchId={branchFilterId} onCopied={fetchItems} />
               <AiMenuImportDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
+              <button onClick={() => window.location.href = '/ai-menu'} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200">
+                <Sparkles className="w-3.5 h-3.5" /> AI Menu Builder
+              </button>
               <BulkAddItemDialog branchId={operatingBranchId || null} adminId={adminId} categories={categories} onItemsAdded={handleItemAdded} />
               <AddItemDialog onItemAdded={handleItemAdded} existingItems={items} />
             </>

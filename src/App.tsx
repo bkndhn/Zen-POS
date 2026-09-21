@@ -217,6 +217,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardAnalytics = lazy(() => import("./pages/DashboardAnalytics"));
 const Billing = lazy(() => import("./pages/Billing"));
 const Items = lazy(() => import("./pages/Items"));
+const AiMenuBuilder = lazy(() => import("./pages/AiMenuBuilder"));
 const Expenses = lazy(() => import("./pages/Expenses"));
 const Users = lazy(() => import("./pages/Users"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -401,6 +402,7 @@ const App = () => {
                   <Route path="/analytics" element={<Layout><ProtectedRoute requiredPermission="analytics"><DashboardAnalytics /></ProtectedRoute></Layout>} />
                   <Route path="/billing" element={<Layout><ProtectedRoute requiredPermission="billing"><Billing /></ProtectedRoute></Layout>} />
                   <Route path="/items" element={<Layout><ProtectedRoute requiredPermission="items"><Items /></ProtectedRoute></Layout>} />
+                  <Route path="/ai-menu" element={<Layout><ProtectedRoute requiredPermission="items"><AiMenuBuilder /></ProtectedRoute></Layout>} />
                   <Route path="/expenses" element={<Layout><ProtectedRoute requiredPermission="expenses"><Expenses /></ProtectedRoute></Layout>} />
                   <Route path="/reports" element={<Layout><ProtectedRoute requiredPermission="reports"><Reports /></ProtectedRoute></Layout>} />
                   <Route path="/users" element={<Layout><ProtectedRoute requiredPermission="users" adminOnly><Users /></ProtectedRoute></Layout>} />
