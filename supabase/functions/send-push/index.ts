@@ -233,12 +233,14 @@ Deno.serve(async (req) => {
 
     const { data: devices, error: deviceError } = await admin
       .from('user_devices')
-      .select('device_token, platform')
-      .eq('user_id', userId);
+      .select('device_token, platform, enabled, fcm_muted')
+      .eq('user_id', userId)
+      .eq('enabled', true)
+      .eq('fcm_muted', false);
 
     if (deviceError) return json({ error: deviceError.message }, 500);
     if (!devices || devices.length === 0) {
-      return json({ success: true, successCount: 0, failureCount: 0, message: 'No registered devices found for user.' });
+      return json({ success: true, successCount: 0, failureCount: 0, message: 'No active non-muted devices found for user.' });
     }
 
     const sa = await loadServiceAccount(admin);

@@ -1077,32 +1077,41 @@ export const ShopSettingsForm = () => {
                     <CardHeader className="p-4 pb-2 border-b">
                         <CardTitle className="text-lg flex items-center gap-2">
                             🔔 Push Notifications
-                            {!fcmUnlocked && (
+                            {!fcmUnlocked && profile?.role === 'admin' && (
                                 <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-[10px]">PRO ADD-ON</Badge>
                             )}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <Label>Enable Push Notifications</Label>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Receive alerts for new orders, service requests, low stock and more — even when the app is closed.
-                                </p>
+                        {/* Admin: global on/off toggle per branch */}
+                        {profile?.role === 'admin' && (
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label>Enable Push Notifications for this Branch</Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Turn off to stop all notifications for this branch only. Other branches are unaffected.
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <Switch
+                                        checked={fcmEnabled}
+                                        onCheckedChange={setFcmEnabled}
+                                        disabled={!fcmUnlocked}
+                                    />
+                                    {!fcmUnlocked && (
+                                        <span className="text-[10px] text-red-500 font-medium">Contact Super Admin to unlock</span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <Switch
-                                    checked={fcmEnabled}
-                                    onCheckedChange={setFcmEnabled}
-                                    disabled={!fcmUnlocked}
-                                />
-                                {!fcmUnlocked && (
-                                    <span className="text-[10px] text-red-500 font-medium">Contact Super Admin to unlock</span>
-                                )}
-                            </div>
-                        </div>
-                        {fcmEnabled && fcmUnlocked && <PushNotificationDeviceCard />}
-                        {fcmEnabled && fcmUnlocked && (
+                        )}
+
+                        {/* Device registration + mute + preferences — visible to all roles when FCM is active */}
+                        {(fcmEnabled && fcmUnlocked) || profile?.role === 'user' ? (
+                            <PushNotificationDeviceCard />
+                        ) : null}
+
+                        {/* Admin-only: daily summary and alert settings */}
+                        {profile?.role === 'admin' && fcmEnabled && fcmUnlocked && (
 
                             <div className="flex items-center justify-between pt-4 border-t">
                                 <div>
@@ -1130,7 +1139,7 @@ export const ShopSettingsForm = () => {
                         )}
 
                         {/* ── Khata Dues Alert ── */}
-                        {fcmEnabled && fcmUnlocked && (
+                        {profile?.role === 'admin' && fcmEnabled && fcmUnlocked && (
                             <div className="flex items-center justify-between pt-4 border-t">
                                 <div>
                                     <Label>Khata Dues Alert</Label>
@@ -1158,7 +1167,7 @@ export const ShopSettingsForm = () => {
                         )}
 
                         {/* ── Revenue Milestone Alert ── */}
-                        {fcmEnabled && fcmUnlocked && (
+                        {profile?.role === 'admin' && fcmEnabled && fcmUnlocked && (
                             <div className="flex items-center justify-between pt-4 border-t">
                                 <div>
                                     <Label>Revenue Milestone Alert</Label>
@@ -1186,7 +1195,7 @@ export const ShopSettingsForm = () => {
                         )}
 
                         {/* ── Slow Day Alert ── */}
-                        {fcmEnabled && fcmUnlocked && (
+                        {profile?.role === 'admin' && fcmEnabled && fcmUnlocked && (
                             <div className="flex items-center justify-between pt-4 border-t">
                                 <div>
                                     <Label>Slow Day Alert</Label>
@@ -1215,6 +1224,7 @@ export const ShopSettingsForm = () => {
                                 </div>
                             </div>
                         )}
+
                     </CardContent>
                 </Card>
 
