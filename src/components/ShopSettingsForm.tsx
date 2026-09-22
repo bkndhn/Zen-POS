@@ -110,6 +110,14 @@ export const ShopSettingsForm = () => {
     const [dailySummaryTime, setDailySummaryTime] = useState<string | null>(null);
     const [nativeAppUnlocked, setNativeAppUnlocked] = useState(false);
 
+    // New FCM alert settings
+    const [khataAlertEnabled, setKhataAlertEnabled] = useState(true);
+    const [khataThreshold, setKhataThreshold] = useState(1000);
+    const [milestoneEnabled, setMilestoneEnabled] = useState(false);
+    const [milestoneAmount, setMilestoneAmount] = useState(10000);
+    const [slowDayEnabled, setSlowDayEnabled] = useState(false);
+    const [slowDayHour, setSlowDayHour] = useState(14);
+
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>([]);
 
@@ -272,6 +280,13 @@ export const ShopSettingsForm = () => {
                 }
                 setDailySummaryTime((data as any).daily_summary_time || null);
                 setNativeAppUnlocked((data as any).native_app_unlocked ?? false);
+                // New FCM alert settings
+                setKhataAlertEnabled((data as any).khata_dues_alert_enabled ?? true);
+                setKhataThreshold((data as any).khata_dues_threshold ?? 1000);
+                setMilestoneEnabled((data as any).revenue_milestone_enabled ?? false);
+                setMilestoneAmount((data as any).revenue_milestone_amount ?? 10000);
+                setSlowDayEnabled((data as any).slow_day_alert_enabled ?? false);
+                setSlowDayHour((data as any).slow_day_alert_hour ?? 14);
                 let resolvedVisiblePages: string[] = [];
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
                     resolvedVisiblePages = (data as any).visible_nav_pages as string[];
@@ -546,6 +561,12 @@ export const ShopSettingsForm = () => {
                     remote_order_flow: remoteOrderFlow,
                     fcm_enabled: fcmEnabled,
                     daily_summary_time: dailySummaryTime,
+                    khata_dues_alert_enabled: khataAlertEnabled,
+                    khata_dues_threshold: khataThreshold,
+                    revenue_milestone_enabled: milestoneEnabled,
+                    revenue_milestone_amount: milestoneAmount,
+                    slow_day_alert_enabled: slowDayEnabled,
+                    slow_day_alert_hour: slowDayHour,
             };
 
             // Find existing row for THIS branch only
@@ -1105,6 +1126,93 @@ export const ShopSettingsForm = () => {
                                         <SelectItem value="00:00">12:00 AM</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+                        )}
+
+                        {/* ── Khata Dues Alert ── */}
+                        {fcmEnabled && fcmUnlocked && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                                <div>
+                                    <Label>Khata Dues Alert</Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Get notified when a customer's Khata balance exceeds this amount.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Switch checked={khataAlertEnabled} onCheckedChange={setKhataAlertEnabled} />
+                                    {khataAlertEnabled && (
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs text-muted-foreground">Rs.</span>
+                                            <input
+                                                type="number"
+                                                className="w-20 h-8 text-xs border rounded-md px-2 bg-background"
+                                                value={khataThreshold}
+                                                onChange={e => setKhataThreshold(Number(e.target.value))}
+                                                min={100}
+                                                step={100}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Revenue Milestone Alert ── */}
+                        {fcmEnabled && fcmUnlocked && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                                <div>
+                                    <Label>Revenue Milestone Alert</Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Get a push when daily revenue crosses a milestone (e.g. every Rs.10,000).
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Switch checked={milestoneEnabled} onCheckedChange={setMilestoneEnabled} />
+                                    {milestoneEnabled && (
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs text-muted-foreground">Rs.</span>
+                                            <input
+                                                type="number"
+                                                className="w-24 h-8 text-xs border rounded-md px-2 bg-background"
+                                                value={milestoneAmount}
+                                                onChange={e => setMilestoneAmount(Number(e.target.value))}
+                                                min={1000}
+                                                step={1000}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Slow Day Alert ── */}
+                        {fcmEnabled && fcmUnlocked && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                                <div>
+                                    <Label>Slow Day Alert</Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Alert if no bills have been created by the selected time of day.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Switch checked={slowDayEnabled} onCheckedChange={setSlowDayEnabled} />
+                                    {slowDayEnabled && (
+                                        <Select value={String(slowDayHour)} onValueChange={v => setSlowDayHour(Number(v))}>
+                                            <SelectTrigger className="w-[110px] h-8 text-xs">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="10">10:00 AM</SelectItem>
+                                                <SelectItem value="11">11:00 AM</SelectItem>
+                                                <SelectItem value="12">12:00 PM</SelectItem>
+                                                <SelectItem value="13">1:00 PM</SelectItem>
+                                                <SelectItem value="14">2:00 PM</SelectItem>
+                                                <SelectItem value="15">3:00 PM</SelectItem>
+                                                <SelectItem value="16">4:00 PM</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </CardContent>
