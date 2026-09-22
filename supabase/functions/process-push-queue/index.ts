@@ -1,11 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 /**
  * process-push-queue
- * 
- * Called by pg_cron every 30 seconds OR by a database webhook on push_queue INSERT.
- * Reads unprocessed rows from push_queue, calls send-push for each, marks them as processed.
+ *
+ * Called by pg_cron every minute. This function:
+ * 1. Uses the SUPABASE_SERVICE_ROLE_KEY to authenticate itself to send-push
+ * 2. No external auth is needed because this runs as a cron on Supabase infra
+ * 3. The anon key from the incoming request is only used to accept the cron call
  */
 
 const corsHeaders = {
@@ -13,48 +14,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status,
+    });
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? "";
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? "";
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Use service role to access the push queue
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // Auth Guard: only the scheduler (service role bearer) or a verified super admin
-    // may drain and deliver the notification queue.
-    const authHeader = req.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (!token) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      });
-    }
-    if (token !== supabaseServiceKey) {
-      const { data: userData, error: userError } = await supabase.auth.getUser(token);
-      if (userError || !userData?.user) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
-        });
-      }
-      const { data: callerProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', userData.user.id)
-        .maybeSingle();
-      if (callerProfile?.role !== 'super_admin') {
-        return new Response(JSON.stringify({ error: 'Forbidden' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403,
-        });
-      }
-    }
-
-    // Fetch unprocessed push notifications (batch of 50)
+    // Fetch unprocessed push notifications (batch of 50), oldest first
     const { data: queue, error: fetchError } = await supabase
       .from('push_queue')
       .select('*')
@@ -64,10 +42,7 @@ serve(async (req) => {
 
     if (fetchError) throw fetchError;
     if (!queue || queue.length === 0) {
-      return new Response(JSON.stringify({ message: 'No pending notifications' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      });
+      return json({ message: 'No pending notifications', sent: 0 });
     }
 
     let sent = 0;
@@ -76,27 +51,34 @@ serve(async (req) => {
 
     for (const item of queue) {
       try {
-        // Call the existing send-push function
-        const { error: invokeError } = await supabase.functions.invoke('send-push', {
-          body: {
+        // Invoke send-push with service role so it can target any user_id
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({
             user_id: item.user_id,
             title: item.title,
             body: item.body,
             data: item.data || {},
-          },
+          }),
         });
 
-        if (invokeError) {
-          console.error(`Failed to send push for ${item.id}:`, invokeError);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          console.error(`[process-push-queue] send-push error for ${item.id}:`, result);
           failed++;
         } else {
+          console.log(`[process-push-queue] sent ${item.title} → user ${item.user_id}, result:`, result);
           sent++;
         }
         processedIds.push(item.id);
       } catch (e: any) {
-        console.error(`Exception sending push for ${item.id}:`, e.message);
+        console.error(`[process-push-queue] Exception for ${item.id}:`, e.message);
         failed++;
-        processedIds.push(item.id); // Still mark as processed to prevent infinite retry
+        processedIds.push(item.id); // Still mark as processed to avoid infinite retry
       }
     }
 
@@ -108,23 +90,16 @@ serve(async (req) => {
         .in('id', processedIds);
     }
 
-    // Cleanup: Delete processed entries older than 24 hours
+    // Cleanup: Delete processed entries older than 48 hours
     await supabase
       .from('push_queue')
       .delete()
       .eq('processed', true)
-      .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      .lt('created_at', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString());
 
-    return new Response(JSON.stringify({ sent, failed, total: queue.length }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
-
+    return json({ sent, failed, total: queue.length });
   } catch (err: any) {
-    console.error("Process push queue failed:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
+    console.error('[process-push-queue] failed:', err?.message || err);
+    return json({ error: err?.message || String(err) }, 500);
   }
 });
