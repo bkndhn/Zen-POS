@@ -276,6 +276,59 @@ export type Database = {
           },
         ]
       }
+      ai_extracted_items: {
+        Row: {
+          category: string | null
+          confidence_score: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_veg: boolean | null
+          name: string
+          price: number | null
+          session_id: string | null
+          status: string | null
+          suggested_image_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_veg?: boolean | null
+          name: string
+          price?: number | null
+          session_id?: string | null
+          status?: string | null
+          suggested_image_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_veg?: boolean | null
+          name?: string
+          price?: number | null
+          session_id?: string | null
+          status?: string | null
+          suggested_image_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_extracted_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_menu_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_insights_log: {
         Row: {
           admin_id: string
@@ -310,6 +363,44 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_menu_sessions: {
+        Row: {
+          branch_id: string | null
+          created_at: string | null
+          id: string
+          raw_menu_url: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          raw_menu_url?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string | null
+          id?: string
+          raw_menu_url?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_menu_sessions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
         ]
@@ -2584,6 +2675,7 @@ export type Database = {
           multi_branch_enabled: boolean | null
           name: string
           public_ordering_enabled: boolean
+          push_preferences: Json | null
           role: Database["public"]["Enums"]["app_role"]
           security_epoch: number
           shop_name: string | null
@@ -2615,6 +2707,7 @@ export type Database = {
           multi_branch_enabled?: boolean | null
           name: string
           public_ordering_enabled?: boolean
+          push_preferences?: Json | null
           role?: Database["public"]["Enums"]["app_role"]
           security_epoch?: number
           shop_name?: string | null
@@ -2646,6 +2739,7 @@ export type Database = {
           multi_branch_enabled?: boolean | null
           name?: string
           public_ordering_enabled?: boolean
+          push_preferences?: Json | null
           role?: Database["public"]["Enums"]["app_role"]
           security_epoch?: number
           shop_name?: string | null
@@ -3747,6 +3841,8 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           khata_billing_enabled: boolean | null
+          khata_dues_alert_enabled: boolean | null
+          khata_dues_threshold: number | null
           kitchen_busy_buffer_mins: number
           kitchen_busy_until: string | null
           live_bill_push_enabled: boolean | null
@@ -3785,6 +3881,8 @@ export type Database = {
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          revenue_milestone_amount: number | null
+          revenue_milestone_enabled: boolean | null
           shift_management_enabled: boolean | null
           shift_management_unlocked: boolean | null
           shop_latitude: number | null
@@ -3794,6 +3892,8 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+          slow_day_alert_enabled: boolean | null
+          slow_day_alert_hour: number | null
           store_status_override: string | null
           surge_fee_amount: number | null
           surge_fee_enabled: boolean | null
@@ -3849,6 +3949,8 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           khata_billing_enabled?: boolean | null
+          khata_dues_alert_enabled?: boolean | null
+          khata_dues_threshold?: number | null
           kitchen_busy_buffer_mins?: number
           kitchen_busy_until?: string | null
           live_bill_push_enabled?: boolean | null
@@ -3887,6 +3989,8 @@ export type Database = {
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          revenue_milestone_amount?: number | null
+          revenue_milestone_enabled?: boolean | null
           shift_management_enabled?: boolean | null
           shift_management_unlocked?: boolean | null
           shop_latitude?: number | null
@@ -3896,6 +4000,8 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+          slow_day_alert_enabled?: boolean | null
+          slow_day_alert_hour?: number | null
           store_status_override?: string | null
           surge_fee_amount?: number | null
           surge_fee_enabled?: boolean | null
@@ -3951,6 +4057,8 @@ export type Database = {
           instagram?: string | null
           is_composition_scheme?: boolean | null
           khata_billing_enabled?: boolean | null
+          khata_dues_alert_enabled?: boolean | null
+          khata_dues_threshold?: number | null
           kitchen_busy_buffer_mins?: number
           kitchen_busy_until?: string | null
           live_bill_push_enabled?: boolean | null
@@ -3989,6 +4097,8 @@ export type Database = {
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          revenue_milestone_amount?: number | null
+          revenue_milestone_enabled?: boolean | null
           shift_management_enabled?: boolean | null
           shift_management_unlocked?: boolean | null
           shop_latitude?: number | null
@@ -3998,6 +4108,8 @@ export type Database = {
           show_instagram?: boolean | null
           show_order_type?: boolean | null
           show_whatsapp?: boolean | null
+          slow_day_alert_enabled?: boolean | null
+          slow_day_alert_hour?: number | null
           store_status_override?: string | null
           surge_fee_amount?: number | null
           surge_fee_enabled?: boolean | null
@@ -4810,6 +4922,7 @@ export type Database = {
           created_at: string
           device_token: string
           enabled: boolean
+          fcm_muted: boolean | null
           id: string
           last_seen_at: string
           platform: string
@@ -4821,6 +4934,7 @@ export type Database = {
           created_at?: string
           device_token: string
           enabled?: boolean
+          fcm_muted?: boolean | null
           id?: string
           last_seen_at?: string
           platform?: string
@@ -4832,6 +4946,7 @@ export type Database = {
           created_at?: string
           device_token?: string
           enabled?: boolean
+          fcm_muted?: boolean | null
           id?: string
           last_seen_at?: string
           platform?: string
@@ -5057,6 +5172,7 @@ export type Database = {
         Returns: Json
       }
       generate_daily_summaries: { Args: never; Returns: undefined }
+      generate_slow_day_alerts: { Args: never; Returns: undefined }
       get_active_remote_order_for_device: {
         Args: { p_admin_id: string; p_branch_id: string; p_device_id: string }
         Returns: Json
@@ -5133,6 +5249,8 @@ export type Database = {
           instagram: string | null
           is_composition_scheme: boolean | null
           khata_billing_enabled: boolean | null
+          khata_dues_alert_enabled: boolean | null
+          khata_dues_threshold: number | null
           kitchen_busy_buffer_mins: number
           kitchen_busy_until: string | null
           live_bill_push_enabled: boolean | null
@@ -5171,6 +5289,8 @@ export type Database = {
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          revenue_milestone_amount: number | null
+          revenue_milestone_enabled: boolean | null
           shift_management_enabled: boolean | null
           shift_management_unlocked: boolean | null
           shop_latitude: number | null
@@ -5180,6 +5300,8 @@ export type Database = {
           show_instagram: boolean | null
           show_order_type: boolean | null
           show_whatsapp: boolean | null
+          slow_day_alert_enabled: boolean | null
+          slow_day_alert_hour: number | null
           store_status_override: string | null
           surge_fee_amount: number | null
           surge_fee_enabled: boolean | null
@@ -5419,30 +5541,18 @@ export type Database = {
         }
         Returns: string
       }
-      notify_by_permission:
-        | {
-            Args: {
-              p_admin_id: string
-              p_body: string
-              p_branch_id: string
-              p_data?: Json
-              p_required_page: string
-              p_title: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_admin_id: string
-              p_body: string
-              p_branch_id: string
-              p_data?: Json
-              p_include_admin?: boolean
-              p_required_page: string
-              p_title: string
-            }
-            Returns: undefined
-          }
+      notify_by_permission: {
+        Args: {
+          p_admin_id: string
+          p_body: string
+          p_branch_id: string
+          p_data?: Json
+          p_include_admin?: boolean
+          p_required_page: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       process_remote_order_auto_settle: {
         Args: { p_order_id: string }
         Returns: Json
