@@ -32,13 +32,10 @@ Deno.serve(async (req) => {
     // Use service role to access the push queue
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // Fetch unprocessed push notifications (batch of 50), oldest first
+    // Atomically claim unprocessed rows (marks processed=true in one step)
+    // This prevents double-send when cron invocations overlap
     const { data: queue, error: fetchError } = await supabase
-      .from('push_queue')
-      .select('*')
-      .eq('processed', false)
-      .order('created_at', { ascending: true })
-      .limit(50);
+      .rpc('claim_push_queue', { batch_size: 50 });
 
     if (fetchError) throw fetchError;
     if (!queue || queue.length === 0) {
@@ -47,7 +44,6 @@ Deno.serve(async (req) => {
 
     let sent = 0;
     let failed = 0;
-    const processedIds: string[] = [];
 
     for (const item of queue) {
       try {
@@ -74,23 +70,13 @@ Deno.serve(async (req) => {
           console.error(`[process-push-queue] send-push error for ${item.id}:`, JSON.stringify(result));
           failed++;
         } else {
-          console.log(`[process-push-queue] sent "${item.title}" → user ${item.user_id} | result: ${JSON.stringify(result)}`);
+          console.log(`[process-push-queue] sent "${item.title}" -> user ${item.user_id} | result: ${JSON.stringify(result)}`);
           sent++;
         }
-        processedIds.push(item.id);
       } catch (e: any) {
         console.error(`[process-push-queue] Exception for ${item.id}:`, e.message);
         failed++;
-        processedIds.push(item.id); // Still mark as processed to avoid infinite retry
       }
-    }
-
-    // Mark all as processed
-    if (processedIds.length > 0) {
-      await supabase
-        .from('push_queue')
-        .update({ processed: true })
-        .in('id', processedIds);
     }
 
     // Cleanup: Delete processed entries older than 48 hours
