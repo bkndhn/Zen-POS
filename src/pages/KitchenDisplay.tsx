@@ -19,6 +19,7 @@ import TableSeatGroups from '@/components/TableSeatGroups';
 import { getOrderTargetLabel, getSeatText, shouldApplyStatusUpdate, mergeOrdersConflictSafe } from '@/utils/seatUtils';
 import { printTableOrderKOT, printSeatGroupKOT } from '@/utils/kotGenerator';
 import { triggerNewOrderPushNotification } from '@/utils/pwaPushNotifications';
+import { getPushSnapshot } from '@/utils/pushManager';
 import { OrderEtaControl } from '@/components/service/OrderEtaControl';
 import { KitchenBusyMode } from '@/components/service/KitchenBusyMode';
 import { PrepTimerChip, CookingTimeBadge } from '@/components/service/PrepTime';
@@ -361,10 +362,15 @@ const KitchenDisplay = () => {
                 if (voiceEnabled && payload?.payload?.bill_no) {
                     announce(`New order received, Bill number ${payload.payload.bill_no}`, 'new-order');
                 }
-                const billNo = payload?.payload?.bill_no || 'New';
-                const tableInfo = payload?.payload?.table_no ? `Table ${payload.payload.table_no}` : 'Takeaway / Order';
-                const amount = payload?.payload?.total_amount || 0;
-                triggerNewOrderPushNotification(billNo, tableInfo, amount);
+                // Only raise a local notification when this device is NOT already
+                // receiving the server push for the same bill — otherwise the
+                // owner sees two cards for one order.
+                if (getPushSnapshot().token == null) {
+                    const billNo = payload?.payload?.bill_no || 'New';
+                    const tableInfo = payload?.payload?.table_no ? `Table ${payload.payload.table_no}` : 'Takeaway / Order';
+                    const amount = payload?.payload?.total_amount || 0;
+                    triggerNewOrderPushNotification(billNo, tableInfo, amount);
+                }
                 fetchBills(true);
             })
             .subscribe();
