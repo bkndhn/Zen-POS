@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      _trigger_debug: {
+        Row: {
+          bill_id: string | null
+          bill_no: string | null
+          checkpoint: string | null
+          created_at: string | null
+          error_msg: string | null
+          id: number
+          total_amount: number | null
+          trigger_name: string | null
+        }
+        Insert: {
+          bill_id?: string | null
+          bill_no?: string | null
+          checkpoint?: string | null
+          created_at?: string | null
+          error_msg?: string | null
+          id?: number
+          total_amount?: number | null
+          trigger_name?: string | null
+        }
+        Update: {
+          bill_id?: string | null
+          bill_no?: string | null
+          checkpoint?: string | null
+          created_at?: string | null
+          error_msg?: string | null
+          id?: number
+          total_amount?: number | null
+          trigger_name?: string | null
+        }
+        Relationships: []
+      }
       additional_charges: {
         Row: {
           admin_id: string | null
@@ -448,6 +481,82 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      anti_theft_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          admin_id: string | null
+          alert_type: string
+          amount: number | null
+          bill_id: string | null
+          bill_no: string | null
+          branch_id: string | null
+          cashier_name: string | null
+          cashier_user_id: string | null
+          created_at: string | null
+          details: Json | null
+          id: string
+          severity: string | null
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          admin_id?: string | null
+          alert_type: string
+          amount?: number | null
+          bill_id?: string | null
+          bill_no?: string | null
+          branch_id?: string | null
+          cashier_name?: string | null
+          cashier_user_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          severity?: string | null
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          admin_id?: string | null
+          alert_type?: string
+          amount?: number | null
+          bill_id?: string | null
+          bill_no?: string | null
+          branch_id?: string | null
+          cashier_name?: string | null
+          cashier_user_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anti_theft_alerts_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_theft_alerts_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_theft_alerts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
         ]
@@ -3266,6 +3375,7 @@ export type Database = {
           body: string
           created_at: string | null
           data: Json | null
+          fcm_result: Json | null
           id: string
           processed: boolean | null
           title: string
@@ -3276,6 +3386,7 @@ export type Database = {
           body: string
           created_at?: string | null
           data?: Json | null
+          fcm_result?: Json | null
           id?: string
           processed?: boolean | null
           title: string
@@ -3286,6 +3397,7 @@ export type Database = {
           body?: string
           created_at?: string | null
           data?: Json | null
+          fcm_result?: Json | null
           id?: string
           processed?: boolean | null
           title?: string
@@ -3808,6 +3920,14 @@ export type Database = {
       shop_settings: {
         Row: {
           address: string | null
+          antitheft_bill_edit: boolean | null
+          antitheft_discount_threshold_amt: number | null
+          antitheft_discount_threshold_pct: number | null
+          antitheft_enabled: boolean | null
+          antitheft_high_discount: boolean | null
+          antitheft_shift_variance: boolean | null
+          antitheft_shift_variance_amt: number | null
+          antitheft_void_after_kot: boolean | null
           auto_cut: boolean
           auto_report_enabled: boolean | null
           auto_report_time: string | null
@@ -3916,6 +4036,14 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          antitheft_bill_edit?: boolean | null
+          antitheft_discount_threshold_amt?: number | null
+          antitheft_discount_threshold_pct?: number | null
+          antitheft_enabled?: boolean | null
+          antitheft_high_discount?: boolean | null
+          antitheft_shift_variance?: boolean | null
+          antitheft_shift_variance_amt?: number | null
+          antitheft_void_after_kot?: boolean | null
           auto_cut?: boolean
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
@@ -4024,6 +4152,14 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          antitheft_bill_edit?: boolean | null
+          antitheft_discount_threshold_amt?: number | null
+          antitheft_discount_threshold_pct?: number | null
+          antitheft_enabled?: boolean | null
+          antitheft_high_discount?: boolean | null
+          antitheft_shift_variance?: boolean | null
+          antitheft_shift_variance_amt?: number | null
+          antitheft_void_after_kot?: boolean | null
           auto_cut?: boolean
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
@@ -5088,6 +5224,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      claim_push_queue: {
+        Args: { batch_size?: number }
+        Returns: {
+          body: string
+          created_at: string | null
+          data: Json | null
+          fcm_result: Json | null
+          id: string
+          processed: boolean | null
+          title: string
+          token: string | null
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "push_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       clear_auth_rate_limit: {
         Args: { p_action: string; p_identifier: string }
         Returns: undefined
@@ -5171,6 +5327,23 @@ export type Database = {
         }
         Returns: Json
       }
+      fire_antitheft_alert: {
+        Args: {
+          p_admin_id: string
+          p_alert_type: string
+          p_amount: number
+          p_bill_id: string
+          p_bill_no: string
+          p_body: string
+          p_branch_id: string
+          p_cashier_name: string
+          p_cashier_uid: string
+          p_details?: Json
+          p_severity: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       generate_daily_summaries: { Args: never; Returns: undefined }
       generate_slow_day_alerts: { Args: never; Returns: undefined }
       get_active_remote_order_for_device: {
@@ -5216,6 +5389,14 @@ export type Database = {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {
           address: string | null
+          antitheft_bill_edit: boolean | null
+          antitheft_discount_threshold_amt: number | null
+          antitheft_discount_threshold_pct: number | null
+          antitheft_enabled: boolean | null
+          antitheft_high_discount: boolean | null
+          antitheft_shift_variance: boolean | null
+          antitheft_shift_variance_amt: number | null
+          antitheft_void_after_kot: boolean | null
           auto_cut: boolean
           auto_report_enabled: boolean | null
           auto_report_time: string | null
