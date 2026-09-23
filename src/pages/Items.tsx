@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download, Clock } from 'lucide-react';
+import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download, Clock, Sparkles } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
