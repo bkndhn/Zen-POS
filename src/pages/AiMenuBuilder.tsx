@@ -218,8 +218,7 @@ export default function AiMenuBuilder() {
           selling_quantity: it.selling_quantity,
           is_veg: it.is_veg,
           image_url: img ? img.url : null,
-          is_available: true,
-          type: 'product',
+          is_active: true,
         };
       });
 
