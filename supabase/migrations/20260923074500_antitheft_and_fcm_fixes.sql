@@ -102,58 +102,45 @@ BEGIN
   v_branch_name := COALESCE(v_branch_name, 'Main Branch');
   SELECT user_id INTO v_auth_uid FROM profiles WHERE id = v_admin_id LIMIT 1;
   IF v_auth_uid IS NULL THEN RETURN NEW; END IF;
-
   SELECT fcm_unlocked INTO v_fcm_unlocked FROM shop_settings WHERE user_id = v_auth_uid LIMIT 1;
   IF NOT COALESCE(v_fcm_unlocked, false) THEN RETURN NEW; END IF;
-
   SELECT fcm_enabled INTO v_branch_fcm_enabled
   FROM shop_settings WHERE user_id = v_auth_uid AND branch_id = v_branch_id LIMIT 1;
   IF v_branch_fcm_enabled IS NULL THEN
     SELECT fcm_enabled INTO v_branch_fcm_enabled FROM shop_settings
     WHERE user_id = v_auth_uid ORDER BY (fcm_enabled = true) DESC LIMIT 1;
   END IF;
-
-  IF COALESCE(v_branch_fcm_enabled, false) THEN
-    PERFORM public.notify_by_permission(
-      v_admin_id, v_branch_id, 'kitchen',
-      'New Order - ' || v_branch_name,
-      '#' || v_bill_no || ' | Rs.' || ROUND(v_total) || ' | ' || v_order_type || ' | ' || v_time_str,
-      jsonb_build_object('type', 'new_bill', 'bill_id', NEW.id, 'url', '/kitchen')
-    );
-  END IF;
+  IF NOT COALESCE(v_branch_fcm_enabled, false) THEN RETURN NEW; END IF;
 
   SELECT * INTO v_settings FROM shop_settings WHERE user_id = v_auth_uid AND branch_id = v_branch_id LIMIT 1;
   IF v_settings IS NULL THEN SELECT * INTO v_settings FROM shop_settings WHERE user_id = v_auth_uid LIMIT 1; END IF;
 
-  IF COALESCE(v_settings.live_bill_push_unlocked, false)
-     AND COALESCE(v_settings.live_bill_push_enabled, false)
-     AND COALESCE(v_branch_fcm_enabled, false)
-  THEN
-    v_body := v_order_type || ' | ' || v_payment_mode || ' | ' || v_time_str
-           || E'\nBill #' || v_bill_no || ' @ ' || v_branch_name;
+  v_body := v_order_type || ' | ' || v_payment_mode || ' | ' || v_time_str
+         || E'\nBill #' || v_bill_no || ' @ ' || v_branch_name;
 
-    INSERT INTO push_queue (user_id, title, body, data)
-    SELECT v_auth_uid, 'Rs.' || ROUND(v_total) || ' - ' || v_branch_name, v_body,
-      jsonb_build_object('type', 'live_bill', 'bill_id', NEW.id, 'branch_name', v_branch_name, 'url', '/reports')
-    WHERE
-      EXISTS (SELECT 1 FROM user_devices ud WHERE ud.user_id = v_auth_uid AND ud.enabled = true AND COALESCE(ud.fcm_muted, false) = false)
-      AND NOT EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = v_auth_uid AND (p.push_preferences->>'live_bill')::text = 'false');
+  -- Single notification per bill: admin
+  INSERT INTO push_queue (user_id, title, body, data)
+  SELECT v_auth_uid, 'Rs.' || ROUND(v_total) || ' - ' || v_branch_name, v_body,
+    jsonb_build_object('type', 'new_bill', 'bill_id', NEW.id, 'branch_name', v_branch_name, 'url', '/kitchen')
+  WHERE
+    EXISTS (SELECT 1 FROM user_devices ud WHERE ud.user_id = v_auth_uid AND ud.enabled = true AND COALESCE(ud.fcm_muted, false) = false)
+    AND NOT EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = v_auth_uid AND (p.push_preferences->>'new_bill')::text = 'false');
 
-    INSERT INTO push_queue (user_id, title, body, data)
-    SELECT DISTINCT p.user_id,
-      'Rs.' || ROUND(v_total) || ' - ' || v_branch_name, v_body,
-      jsonb_build_object('type', 'live_bill', 'bill_id', NEW.id, 'branch_name', v_branch_name, 'url', '/reports')
-    FROM profiles p
-    INNER JOIN user_permissions up ON up.user_id = p.user_id AND up.page_name = 'billing' AND up.has_access = true
-    INNER JOIN user_branches ub ON ub.user_id = p.user_id AND ub.branch_id = v_branch_id
-    WHERE p.admin_id = v_admin_id AND p.role = 'user' AND p.status IS DISTINCT FROM 'inactive'
-      AND EXISTS (SELECT 1 FROM user_devices ud WHERE ud.user_id = p.user_id AND ud.enabled = true AND COALESCE(ud.fcm_muted, false) = false)
-      AND COALESCE((p.push_preferences->>'live_bill')::text, 'true') != 'false';
-  END IF;
+  -- Single notification per bill: sub-users with kitchen OR billing permission
+  INSERT INTO push_queue (user_id, title, body, data)
+  SELECT DISTINCT p.user_id,
+    'Rs.' || ROUND(v_total) || ' - ' || v_branch_name, v_body,
+    jsonb_build_object('type', 'new_bill', 'bill_id', NEW.id, 'branch_name', v_branch_name, 'url', '/kitchen')
+  FROM profiles p
+  INNER JOIN user_permissions up ON up.user_id = p.user_id AND up.page_name IN ('kitchen', 'billing') AND up.has_access = true
+  INNER JOIN user_branches ub ON ub.user_id = p.user_id AND ub.branch_id = v_branch_id
+  WHERE p.admin_id = v_admin_id AND p.role = 'user' AND p.status IS DISTINCT FROM 'inactive'
+    AND EXISTS (SELECT 1 FROM user_devices ud WHERE ud.user_id = p.user_id AND ud.enabled = true AND COALESCE(ud.fcm_muted, false) = false)
+    AND COALESCE((p.push_preferences->>'new_bill')::text, 'true') != 'false';
 
   RETURN NEW;
 EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING 'trigger_push_new_bill failed: %', SQLERRM;
+  RAISE WARNING 'trigger_push_new_bill error: %', SQLERRM;
   RETURN NEW;
 END;
 $func$;
