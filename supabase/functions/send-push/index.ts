@@ -259,7 +259,11 @@ Deno.serve(async (req) => {
 
     const outcomes: SendOutcome[] = [];
     const batchSize = 20;
-    const tokens = activeDevices.map((d: any) => d.device_token).filter(Boolean);
+    // Deduplicate tokens — a re-registered device can leave several identical
+    // rows behind, which would otherwise deliver the same alert many times.
+    const tokens = Array.from(
+      new Set(activeDevices.map((d: any) => d.device_token).filter(Boolean)),
+    ) as string[];
 
     for (let i = 0; i < tokens.length; i += batchSize) {
       const batch = tokens.slice(i, i + batchSize);
