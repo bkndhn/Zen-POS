@@ -148,6 +148,13 @@ async function sendToToken(
   body: string,
   data: Record<string, string>,
 ): Promise<SendOutcome> {
+  // Collapse/dedup key: one visible notification per logical event
+  const eventKey = data.bill_id
+    ? `bill-${data.bill_id}`
+    : data.type
+      ? `zenpos-${data.type}`
+      : 'zenpos-default';
+
   const message = {
     message: {
       token,
@@ -155,19 +162,22 @@ async function sendToToken(
       ...(Object.keys(data).length ? { data } : {}),
       android: {
         priority: 'HIGH',
+        collapse_key: eventKey,
         notification: {
           channel_id: 'zenpos_default',
+          tag: eventKey,
           default_sound: true,
           default_vibrate_timings: true,
           notification_priority: 'PRIORITY_MAX',
         },
       },
       apns: {
-        headers: { 'apns-priority': '10' },
-        payload: { aps: { sound: 'default', badge: 1, 'mutable-content': 1 } },
+        headers: { 'apns-priority': '10', 'apns-collapse-id': eventKey.slice(0, 64) },
+        payload: { aps: { sound: 'default', badge: 1, 'mutable-content': 1, 'thread-id': eventKey } },
       },
       webpush: {
-        headers: { Urgency: 'high' },
+        headers: { Urgency: 'high', Topic: eventKey.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) },
+        notification: { tag: eventKey, renotify: false },
         fcm_options: { link: data.url ? `https://zen-pos.vercel.app${data.url}` : 'https://zen-pos.vercel.app/' },
       },
     },
