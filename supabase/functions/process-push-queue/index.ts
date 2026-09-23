@@ -67,11 +67,14 @@ Deno.serve(async (req) => {
         });
 
         const result = await response.json().catch(() => ({}));
+        // Write FCM result back for debugging visibility
+        await supabase.from('push_queue').update({ fcm_result: result }).eq('id', item.id);
+
         if (!response.ok) {
-          console.error(`[process-push-queue] send-push error for ${item.id}:`, result);
+          console.error(`[process-push-queue] send-push error for ${item.id}:`, JSON.stringify(result));
           failed++;
         } else {
-          console.log(`[process-push-queue] sent ${item.title} → user ${item.user_id}, result:`, result);
+          console.log(`[process-push-queue] sent "${item.title}" → user ${item.user_id} | result: ${JSON.stringify(result)}`);
           sent++;
         }
         processedIds.push(item.id);
