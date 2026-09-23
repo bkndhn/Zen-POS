@@ -235,11 +235,12 @@ Deno.serve(async (req) => {
       .from('user_devices')
       .select('device_token, platform, enabled, fcm_muted')
       .eq('user_id', userId)
-      .eq('enabled', true)
-      .eq('fcm_muted', false);
+      .eq('enabled', true);
 
     if (deviceError) return json({ error: deviceError.message }, 500);
-    if (!devices || devices.length === 0) {
+    // Filter out muted devices in JS (resilient if fcm_muted column is absent on older DB)
+    const activeDevices = (devices ?? []).filter((d: any) => !d.fcm_muted);
+    if (!activeDevices || activeDevices.length === 0) {
       return json({ success: true, successCount: 0, failureCount: 0, message: 'No active non-muted devices found for user.' });
     }
 
@@ -248,7 +249,7 @@ Deno.serve(async (req) => {
 
     const outcomes: SendOutcome[] = [];
     const batchSize = 20;
-    const tokens = devices.map((d: any) => d.device_token).filter(Boolean);
+    const tokens = activeDevices.map((d: any) => d.device_token).filter(Boolean);
 
     for (let i = 0; i < tokens.length; i += batchSize) {
       const batch = tokens.slice(i, i + batchSize);
