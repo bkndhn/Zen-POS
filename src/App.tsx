@@ -222,6 +222,7 @@ import Settings from "./pages/Settings";
 import Expenses from "./pages/Expenses";
 import Users from "./pages/Users";
 import AiMenuBuilder from "./pages/AiMenuBuilder";
+const AntiTheftAlerts = lazy(() => import("./pages/AntiTheftAlerts"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ServiceArea = lazy(() => import("./pages/ServiceArea"));
 const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));
@@ -407,6 +408,7 @@ const App = () => {
                   <Route path="/reports" element={<Layout><ProtectedRoute requiredPermission="reports"><Reports /></ProtectedRoute></Layout>} />
                   <Route path="/users" element={<Layout><ProtectedRoute requiredPermission="users" adminOnly><Users /></ProtectedRoute></Layout>} />
                   <Route path="/settings" element={<Layout><ProtectedRoute requiredPermission="settings"><Settings /></ProtectedRoute></Layout>} />
+                  <Route path="/security" element={<Layout><ProtectedRoute requiredPermission="settings" adminOnly><AntiTheftAlerts /></ProtectedRoute></Layout>} />
                   <Route path="/service-area" element={<Layout><ProtectedRoute requiredPermission="serviceArea"><ServiceArea /></ProtectedRoute></Layout>} />
                   <Route path="/kitchen" element={<Layout><ProtectedRoute requiredPermission="kitchen"><KitchenDisplay /></ProtectedRoute></Layout>} />
                   <Route path="/tables" element={<Layout><ProtectedRoute requiredPermission="tables"><TableManagement /></ProtectedRoute></Layout>} />

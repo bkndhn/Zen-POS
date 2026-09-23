@@ -34,6 +34,7 @@ export const PushNotificationDeviceCard: React.FC = () => {
     revenue_milestone: true,
     slow_day: true,
     daily_summary: true,
+    anti_theft_alert: true,
   });
   const [prefsSaving, setPrefsSaving] = useState(false);
 
@@ -130,6 +131,7 @@ export const PushNotificationDeviceCard: React.FC = () => {
     revenue_milestone: '🏆 Revenue Milestone',
     slow_day:          '😴 Slow Day Alert',
     daily_summary:     '📊 Daily Summary',
+    anti_theft_alert:  '🚨 Anti-Theft Alerts',
   };
 
   return (
