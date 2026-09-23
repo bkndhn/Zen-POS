@@ -51,7 +51,10 @@ CREATE INDEX IF NOT EXISTS idx_anti_theft_unacked ON anti_theft_alerts(admin_id,
 -- ── 3. Helper: fire_antitheft_alert ──────────────────────────
 -- (already applied live — see previous migration step)
 
--- ── 4. Duplicate FCM fix: INSERT-only trigger with dedup ─────
+-- ── 4. Bill push trigger: INSERT OR UPDATE with transition guard ─────
+-- App inserts bills with total_amount=0, then updates with real amount.
+-- Trigger fires on INSERT OR UPDATE. On UPDATE, only continues when
+-- total_amount transitions from 0 to > 0 (prevents duplicates).
 DROP TRIGGER IF EXISTS trg_push_new_bill ON bills;
 
 CREATE OR REPLACE FUNCTION public.trigger_push_new_bill()
@@ -75,12 +78,15 @@ DECLARE
   v_body TEXT;
 BEGIN
   IF COALESCE(NEW.total_amount, 0) = 0 THEN RETURN NEW; END IF;
-  IF NEW.created_at < (NOW() - INTERVAL '5 minutes') THEN RETURN NEW; END IF;
-  -- DEDUP: already sent a push for this bill_id in last 30 min?
+  -- On UPDATE: only fire when total_amount transitions from 0/null to > 0
+  IF TG_OP = 'UPDATE' THEN
+    IF COALESCE(OLD.total_amount, 0) > 0 THEN RETURN NEW; END IF;
+  END IF;
+  -- DEDUP: already sent a push for this bill_id in last 60 min?
   IF EXISTS (
     SELECT 1 FROM push_queue
     WHERE (data->>'bill_id') = NEW.id::TEXT
-      AND created_at > NOW() - INTERVAL '30 minutes'
+      AND created_at > NOW() - INTERVAL '60 minutes'
   ) THEN RETURN NEW; END IF;
 
   v_admin_id  := NEW.admin_id;
@@ -152,9 +158,9 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $func$;
 
--- INSERT ONLY (no UPDATE) — eliminates duplicates from multiple bill updates
+-- INSERT OR UPDATE: app inserts with total=0, then updates with real amount
 CREATE TRIGGER trg_push_new_bill
-  AFTER INSERT ON bills
+  AFTER INSERT OR UPDATE ON bills
   FOR EACH ROW EXECUTE FUNCTION public.trigger_push_new_bill();
 
 -- ── 5. Daily Summary fix: DISTINCT ON per admin ───────────────
