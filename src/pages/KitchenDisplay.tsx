@@ -19,6 +19,7 @@ import TableSeatGroups from '@/components/TableSeatGroups';
 import { getOrderTargetLabel, getSeatText, shouldApplyStatusUpdate, mergeOrdersConflictSafe } from '@/utils/seatUtils';
 import { printTableOrderKOT, printSeatGroupKOT } from '@/utils/kotGenerator';
 import { triggerNewOrderPushNotification } from '@/utils/pwaPushNotifications';
+import { getPushSnapshot } from '@/utils/pushManager';
 import { OrderEtaControl } from '@/components/service/OrderEtaControl';
 import { KitchenBusyMode } from '@/components/service/KitchenBusyMode';
 import { PrepTimerChip, CookingTimeBadge } from '@/components/service/PrepTime';
