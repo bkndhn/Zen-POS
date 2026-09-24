@@ -3921,10 +3921,12 @@ export type Database = {
         Row: {
           address: string | null
           antitheft_bill_edit: boolean | null
+          antitheft_cash_drawer: boolean | null
           antitheft_discount_threshold_amt: number | null
           antitheft_discount_threshold_pct: number | null
           antitheft_enabled: boolean | null
           antitheft_high_discount: boolean | null
+          antitheft_kot_item_delete: boolean | null
           antitheft_shift_variance: boolean | null
           antitheft_shift_variance_amt: number | null
           antitheft_void_after_kot: boolean | null
@@ -4037,10 +4039,12 @@ export type Database = {
         Insert: {
           address?: string | null
           antitheft_bill_edit?: boolean | null
+          antitheft_cash_drawer?: boolean | null
           antitheft_discount_threshold_amt?: number | null
           antitheft_discount_threshold_pct?: number | null
           antitheft_enabled?: boolean | null
           antitheft_high_discount?: boolean | null
+          antitheft_kot_item_delete?: boolean | null
           antitheft_shift_variance?: boolean | null
           antitheft_shift_variance_amt?: number | null
           antitheft_void_after_kot?: boolean | null
@@ -4153,10 +4157,12 @@ export type Database = {
         Update: {
           address?: string | null
           antitheft_bill_edit?: boolean | null
+          antitheft_cash_drawer?: boolean | null
           antitheft_discount_threshold_amt?: number | null
           antitheft_discount_threshold_pct?: number | null
           antitheft_enabled?: boolean | null
           antitheft_high_discount?: boolean | null
+          antitheft_kot_item_delete?: boolean | null
           antitheft_shift_variance?: boolean | null
           antitheft_shift_variance_amt?: number | null
           antitheft_void_after_kot?: boolean | null
@@ -5390,10 +5396,12 @@ export type Database = {
         Returns: {
           address: string | null
           antitheft_bill_edit: boolean | null
+          antitheft_cash_drawer: boolean | null
           antitheft_discount_threshold_amt: number | null
           antitheft_discount_threshold_pct: number | null
           antitheft_enabled: boolean | null
           antitheft_high_discount: boolean | null
+          antitheft_kot_item_delete: boolean | null
           antitheft_shift_variance: boolean | null
           antitheft_shift_variance_amt: number | null
           antitheft_void_after_kot: boolean | null
@@ -5801,6 +5809,17 @@ export type Database = {
       }
       register_device_token: {
         Args: { p_platform?: string; p_token: string; p_user_agent?: string }
+        Returns: undefined
+      }
+      report_antitheft_event: {
+        Args: {
+          p_alert_type: string
+          p_amount?: number
+          p_bill_id?: string
+          p_bill_no?: string
+          p_branch_id?: string
+          p_details?: Json
+        }
         Returns: undefined
       }
       resolve_branch_menu: {
