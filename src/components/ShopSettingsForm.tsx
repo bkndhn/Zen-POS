@@ -129,6 +129,8 @@ export const ShopSettingsForm = () => {
     const [antitheftBillEdit, setAntitheftBillEdit] = useState(true);
     const [antitheftShiftVariance, setAntitheftShiftVariance] = useState(true);
     const [antitheftVarianceAmt, setAntitheftVarianceAmt] = useState(100);
+    const [antitheftKotItemDelete, setAntitheftKotItemDelete] = useState(true);
+    const [antitheftCashDrawer, setAntitheftCashDrawer] = useState(true);
 
     // Nav Settings
     const [visiblePages, setVisiblePages] = useState<string[]>([]);
@@ -308,6 +310,8 @@ export const ShopSettingsForm = () => {
                 setAntitheftBillEdit((data as any).antitheft_bill_edit ?? true);
                 setAntitheftShiftVariance((data as any).antitheft_shift_variance ?? true);
                 setAntitheftVarianceAmt((data as any).antitheft_shift_variance_amt ?? 100);
+                setAntitheftKotItemDelete((data as any).antitheft_kot_item_delete ?? true);
+                setAntitheftCashDrawer((data as any).antitheft_cash_drawer ?? true);
 
                 let resolvedVisiblePages: string[] = [];
                 if ((data as any).visible_nav_pages && Array.isArray((data as any).visible_nav_pages) && (data as any).visible_nav_pages.length > 0) {
@@ -597,6 +601,8 @@ export const ShopSettingsForm = () => {
                     antitheft_bill_edit: antitheftBillEdit,
                     antitheft_shift_variance: antitheftShiftVariance,
                     antitheft_shift_variance_amt: antitheftVarianceAmt,
+                    antitheft_kot_item_delete: antitheftKotItemDelete,
+                    antitheft_cash_drawer: antitheftCashDrawer,
             };
 
 
@@ -1339,11 +1345,11 @@ export const ShopSettingsForm = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <CardTitle className="text-base flex items-center gap-2">
-                            🚨 Anti-Theft Watchdog
-                            <span className="text-[10px] font-normal bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Security</span>
+                            🚨 Security &amp; Alerts
+                            <span className="text-[10px] font-normal bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Anti-Theft</span>
                           </CardTitle>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Instant alerts when staff performs suspicious actions — bill voids, high discounts, cash edits.
+                            Your phone buzzes instantly when staff voids a bill, gives a big discount, removes a kitchen item, opens the cash drawer, or closes a shift short.
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1369,6 +1375,25 @@ export const ShopSettingsForm = () => {
                           </div>
                           <Switch checked={antitheftVoidAfterKot} onCheckedChange={setAntitheftVoidAfterKot} />
                         </div>
+
+                        {/* Item removed after KOT */}
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100">
+                          <div>
+                            <p className="text-sm font-medium">🍽️ Item Removed After KOT</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Alert when items are removed from a bill that was already sent to the kitchen</p>
+                          </div>
+                          <Switch checked={antitheftKotItemDelete} onCheckedChange={setAntitheftKotItemDelete} />
+                        </div>
+
+                        {/* Cash drawer */}
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100">
+                          <div>
+                            <p className="text-sm font-medium">💵 Cash Drawer Opened (No Sale)</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Alert when staff opens the drawer with the "Open Drawer" button without a bill</p>
+                          </div>
+                          <Switch checked={antitheftCashDrawer} onCheckedChange={setAntitheftCashDrawer} />
+                        </div>
+
 
                         {/* High discount */}
                         <div className="flex items-start justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100">
