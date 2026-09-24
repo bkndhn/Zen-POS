@@ -41,6 +41,7 @@ import { getStationMap } from '@/utils/stationPrinters';
 import { getKOTStatusBadgeInfo } from '@/utils/seatUtils';
 import { CustomItemDialog } from '@/components/CustomItemDialog';
 import { useWeighingScale } from '@/hooks/useWeighingScale';
+import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils/antiTheft';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -2425,6 +2426,27 @@ const Billing = () => {
         throw billError;
       }
 
+      // Anti-theft: detect items removed from a bill that already went to the kitchen
+      try {
+        const { data: oldLines } = await supabase
+          .from('bill_items')
+          .select('item_id, quantity, price, item_name_override, items(name)')
+          .eq('bill_id', editingBill.id);
+        const removed = diffRemovedItems(
+          (oldLines || []).map((l: any) => ({ item_id: l.item_id, quantity: l.quantity, price: l.price, name: l.item_name_override || l.items?.name })),
+          cart.map(c => ({ id: c.id, quantity: c.quantity })),
+        );
+        if (removed.length > 0 && (editingBill as any).kitchen_status) {
+          void reportAntiTheft('item_removed_after_kot', {
+            branchId: (editingBill as any).branch_id ?? operatingBranchId,
+            billId: editingBill.id,
+            billNo: editingBill.bill_no,
+            amount: removed.reduce((s, r) => s + r.value, 0),
+            details: { items: removed.map(r => `${r.qty}x ${r.name}`).join(', ') },
+          });
+        }
+      } catch (e) { console.warn('anti-theft diff failed', e); }
+
       // Delete existing bill items
       const {
         error: deleteError
@@ -3486,6 +3508,19 @@ const Billing = () => {
           </div>
 
           <PrinterStatusPanel inline className="shrink-0" />
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-xl gap-1"
+            title="Open cash drawer (no sale) — owner will be notified"
+            onClick={async () => {
+              const ok = await openCashDrawerNoSale(operatingBranchId);
+              toast({ title: ok ? 'Drawer opened' : 'Drawer command sent', description: 'Owner has been notified (no-sale).' });
+            }}
+          >
+            💵<span className="hidden md:inline">Open Drawer</span>
+          </Button>
 
           {isScaleSupported && (
             isScaleConnected ? (
