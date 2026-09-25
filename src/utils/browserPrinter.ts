@@ -290,7 +290,7 @@ export const printBrowserKOT = (data: BrowserKOTData) => {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>KOT Ticket - Table ${data.tableNumber}</title>
+  <title>KOT Ticket - Table ${escapeHtml(String(data.tableNumber ?? ''))}</title>
   <style>
     @page { size: ${widthValue} auto; margin: 0; }
     body {
@@ -317,10 +317,10 @@ export const printBrowserKOT = (data: BrowserKOTData) => {
 <body>
   <div class="text-center header">*** KITCHEN KOT ***</div>
   <div class="text-center" style="margin-bottom: 4px;">
-    <span class="badge">TABLE ${data.tableNumber}</span>
-    ${data.seatText ? `<span style="font-weight:bold; margin-left: 4px;">· ${data.seatText}</span>` : ''}
+    <span class="badge">TABLE ${escapeHtml(String(data.tableNumber ?? ''))}</span>
+    ${data.seatText ? `<span style="font-weight:bold; margin-left: 4px;">· ${escapeHtml(data.seatText)}</span>` : ''}
   </div>
-  ${data.orderNumber ? `<div style="font-size: 11px;"><b>Order #:</b> ${data.orderNumber}</div>` : ''}
+  ${data.orderNumber ? `<div style="font-size: 11px;"><b>Order #:</b> ${escapeHtml(String(data.orderNumber))}</div>` : ''}
   ${data.ordersCount ? `<div style="font-size: 11px;"><b>Group Tickets:</b> ${data.ordersCount}</div>` : ''}
   <div style="font-size: 10px; color: #444;">Time: ${dateStr} ${timeStr}</div>
   <hr>
@@ -332,7 +332,7 @@ export const printBrowserKOT = (data: BrowserKOTData) => {
     ${itemsHtml}
   </table>
   <hr>
-  ${data.customerNote ? `<div style="font-size: 11px; padding: 4px; border: 1px solid #000; margin-top: 4px;">💬 Note: ${data.customerNote}</div>` : ''}
+  ${data.customerNote ? `<div style="font-size: 11px; padding: 4px; border: 1px solid #000; margin-top: 4px;">💬 Note: ${escapeHtml(data.customerNote)}</div>` : ''}
   <div class="text-center" style="margin-top: 8px; font-size: 10px; text-transform: uppercase;">-- KITCHEN DISPLAY COPY --</div>
   <script>
     window.onload = function() {
