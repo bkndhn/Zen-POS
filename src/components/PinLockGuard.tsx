@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useBranch } from '@/contexts/BranchContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Lock, Fingerprint } from 'lucide-react';
@@ -9,22 +10,36 @@ import { isBiometricAvailable, authenticateWithBiometric } from '@/utils/biometr
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000; // 1 minute lockout after max attempts
 
-// SHA-256 hash for PIN storage — prevents plaintext exposure in localStorage
-const hashPin = async (pin: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`zenpos_pin_${pin}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
 export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { operatingBranchId } = useBranch();
   const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
   
+  // Device keeps only a marker; the PIN hash lives on the server and is checked there.
   const savedPin = localStorage.getItem(branchKey('hotel_pos_reports_pin'));
-  
+
   const [isLocked, setIsLocked] = useState(!!savedPin);
+  const [checking, setChecking] = useState(false);
+
+  // Ask the server whether a PIN is set (covers PINs set on another device,
+  // and drops any legacy on-device PIN hash).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await (supabase as any).rpc('has_report_pin', { p_branch_id: operatingBranchId || null });
+        if (cancelled || error) return;
+        if (data) {
+          localStorage.setItem(branchKey('hotel_pos_reports_pin'), 'server');
+          setIsLocked(true);
+        } else {
+          localStorage.removeItem(branchKey('hotel_pos_reports_pin'));
+          setIsLocked(false);
+        }
+      } catch { /* offline: keep current state */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operatingBranchId]);
   const [pinInput, setPinInput] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState(0);
@@ -73,14 +88,18 @@ export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // Compare using SHA-256 hash to prevent plaintext PIN exposure
-    const inputHash = await hashPin(pinInput);
-    if (inputHash === savedPin || pinInput === savedPin) {
-      // Accept both hashed and legacy plaintext PINs for backward compat
-      // If it was plaintext, upgrade to hashed storage
-      if (pinInput === savedPin && savedPin.length <= 10) {
-        localStorage.setItem(branchKey('hotel_pos_reports_pin'), inputHash);
-      }
+    if (!navigator.onLine) {
+      toast({ title: 'Internet needed', description: 'Connect to the internet to unlock with PIN, or use fingerprint.', variant: 'destructive' });
+      return;
+    }
+    setChecking(true);
+    let ok = false;
+    try {
+      const { data, error } = await (supabase as any).rpc('verify_report_pin', { p_branch_id: operatingBranchId || null, p_pin: pinInput });
+      ok = !error && data === true;
+    } catch { ok = false; }
+    setChecking(false);
+    if (ok) {
       setIsLocked(false);
       setAttempts(0);
     } else {
@@ -124,8 +143,8 @@ export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children
             placeholder="****"
             disabled={isLockedOut}
           />
-          <Button type="submit" size="lg" className="w-full" disabled={isLockedOut}>
-            {isLockedOut ? 'Locked' : 'Unlock'}
+          <Button type="submit" size="lg" className="w-full" disabled={isLockedOut || checking}>
+            {isLockedOut ? 'Locked' : checking ? 'Checking…' : 'Unlock'}
           </Button>
         </form>
 
