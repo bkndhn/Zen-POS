@@ -34,9 +34,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         );
     }
 
-    // Not logged in - redirect to auth
+    // Not logged in - home shows the landing page, other pages go to login
     if (!profile) {
-        return <Navigate to="/auth" replace />;
+        const onHome = typeof window !== 'undefined' && window.location.pathname === '/';
+        return <Navigate to={onHome ? '/landing' : '/auth'} replace />;
     }
 
     // SUPER ADMIN: Can only access Users / Admin Management
