@@ -758,7 +758,8 @@ const CRM: React.FC = () => {
 
       const headers = Object.keys(data[0] || {});
       const escape = (v: any) => {
-        const s = v === null || v === undefined ? '' : String(v);
+        let s = v === null || v === undefined ? '' : String(v);
+        if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; // neutralise spreadsheet formulas
         return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const csv = [headers.join(','), ...data.map(r => headers.map(h => escape((r as any)[h])).join(','))].join('\r\n');

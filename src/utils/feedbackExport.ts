@@ -1,6 +1,8 @@
 export const csvEscape = (val: any): string => {
   if (val === null || val === undefined) return '';
-  const s = typeof val === 'object' ? JSON.stringify(val) : String(val);
+  let s = typeof val === 'object' ? JSON.stringify(val) : String(val);
+  // Neutralise spreadsheet formulas (=, +, -, @, tab, CR) from untrusted input
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 };

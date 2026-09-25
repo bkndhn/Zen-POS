@@ -32,6 +32,17 @@ Deno.serve(async (req) => {
     // Use service role to access the push queue
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+    // Only our own scheduler / database trigger (internal secret) or the
+    // service role may run the queue. Everyone else is rejected.
+    const provided = req.headers.get('x-internal-secret') || '';
+    const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    let allowed = !!SERVICE_ROLE_KEY && bearer === SERVICE_ROLE_KEY;
+    if (!allowed && provided) {
+      const { data: expected } = await supabase.rpc('get_internal_secret', { p_name: 'push_queue_cron' });
+      allowed = typeof expected === 'string' && expected.length > 0 && expected === provided;
+    }
+    if (!allowed) return json({ error: 'Unauthorized' }, 401);
+
     // Atomically claim unprocessed rows (marks processed=true in one step)
     // This prevents double-send when cron invocations overlap
     const { data: queue, error: fetchError } = await supabase

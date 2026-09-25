@@ -5518,6 +5518,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_internal_secret: { Args: { p_name: string }; Returns: string }
       get_my_admin_id: { Args: never; Returns: string }
       get_my_auth_providers: {
         Args: never
@@ -5698,6 +5699,7 @@ export type Database = {
         Args: { _page_name: string; _user_id: string }
         Returns: boolean
       }
+      has_report_pin: { Args: { p_branch_id: string }; Returns: boolean }
       is_admin_or_super: { Args: never; Returns: boolean }
       is_device_blocked: {
         Args: { p_admin_id: string; p_device_id: string }
@@ -5841,6 +5843,7 @@ export type Database = {
         Args: { p_provider: string; p_provider_uid: string }
         Returns: string
       }
+      run_process_push_queue: { Args: never; Returns: undefined }
       secure_create_bill:
         | {
             Args: {
@@ -5869,6 +5872,10 @@ export type Database = {
       seed_branch_defaults: {
         Args: { p_source_branch_id?: string; p_target_branch_id: string }
         Returns: Json
+      }
+      set_report_pin: {
+        Args: { p_branch_id: string; p_pin: string }
+        Returns: boolean
       }
       submit_public_feedback: {
         Args: {
@@ -5902,6 +5909,10 @@ export type Database = {
         Returns: boolean
       }
       vault_read_secret: { Args: { secret_name: string }; Returns: string }
+      verify_report_pin: {
+        Args: { p_branch_id: string; p_pin: string }
+        Returns: boolean
+      }
       void_purchase_transaction: {
         Args: { p_purchase_id: string; p_reason?: string }
         Returns: Json

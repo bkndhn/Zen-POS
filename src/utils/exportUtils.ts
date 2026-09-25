@@ -292,7 +292,7 @@ ${data.payments.length > 0 ? `
   <h2>Payments</h2>
   <table>
     <tr><th>Method</th><th class="r">Amount</th><th class="r">Count</th><th class="r">%</th></tr>
-    ${data.payments.map(p => `<tr><td>${p.payment_method}</td><td class="r">${p.total_amount.toFixed(0)}</td><td class="r">${p.transaction_count}</td><td class="r">${p.percentage.toFixed(0)}%</td></tr>`).join('')}
+    ${data.payments.map(p => `<tr><td>${escapeHtml(p.payment_method)}</td><td class="r">${p.total_amount.toFixed(0)}</td><td class="r">${p.transaction_count}</td><td class="r">${p.percentage.toFixed(0)}%</td></tr>`).join('')}
     <tr class="b"><td>TOTAL</td><td class="r">${paymentsTotal.toFixed(0)}</td><td class="r">${data.payments.reduce((s, p) => s + p.transaction_count, 0)}</td><td class="r">100%</td></tr>
   </table>
 ` : ''}

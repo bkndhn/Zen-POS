@@ -7,6 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { format } from 'date-fns';
+
+const escapeHtml = (v: unknown): string =>
+  String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 import { Printer, X, History, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { checkSupabaseResult } from '@/utils/monitoring';
@@ -264,7 +267,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     // Generate dynamic payment rows for HTML print
     const paymentRowsHTML = Object.entries(reportData.paymentTotals)
       .filter(([_, amount]) => amount > 0 || Object.keys(reportData.paymentTotals).length <= 5) // Show 0 only if not too many modes
-      .map(([mode, amount]) => `<div class="row"><span>${mode.toUpperCase()}</span><span>Rs ${amount.toFixed(2)}</span></div>`)
+      .map(([mode, amount]) => `<div class="row"><span>${escapeHtml(mode.toUpperCase())}</span><span>Rs ${amount.toFixed(2)}</span></div>`)
       .join('');
     
     // Fallback to standard browser print
@@ -288,9 +291,9 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           </head>
           <body>
             <div class="center bold" style="font-size: 18px;">Z - REPORT</div>
-            <div class="center">${reportData.branchName}</div>
+            <div class="center">${escapeHtml(reportData.branchName)}</div>
             <br />
-            <div>Date/Time: ${reportData.date}</div>
+            <div>Date/Time: ${escapeHtml(reportData.date)}</div>
             <div>Total Bills: ${reportData.totalBills}</div>
             <div class="line"></div>
             ${reportData.shift ? `<div class="row"><span>Opening Cash</span><span>Rs ${Number(reportData.shift.opening_cash).toFixed(2)}</span></div>` : ''}

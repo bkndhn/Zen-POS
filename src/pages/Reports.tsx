@@ -762,6 +762,24 @@ const Reports: React.FC = () => {
         return;
       }
 
+      // ONLINE MODE — re-check the Reports permission on the server first, so a
+      // staff member whose access was just removed can't keep loading bills.
+      {
+        const { data: authData } = await supabase.auth.getUser();
+        const uid = authData?.user?.id;
+        const { data: allowed, error: permErr } = uid
+          ? await (supabase as any).rpc('has_page_permission', { _user_id: uid, _page_name: 'reports' })
+          : { data: false, error: null };
+        if (!uid || permErr || allowed !== true) {
+          setBills([]);
+          setExpenses([]);
+          setItemReports([]);
+          setLoading(false);
+          toast({ title: 'Access removed', description: 'You no longer have permission to view reports.', variant: 'destructive' });
+          return;
+        }
+      }
+
       // ONLINE MODE - Fetch from Supabase with caching
       const cacheKey = `${CACHE_KEYS.REPORTS}_${adminId}_${branchFilterId || 'all'}_${billFilter}_${start}_${end}_${dateRange === 'hourly' ? hourRange : ''}`;
 
