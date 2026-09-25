@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   ShoppingCart, Monitor, QrCode, Wifi, WifiOff, MessageSquare, 
   BarChart3, Users, Receipt, ChefHat, Globe, Shield, 
@@ -25,33 +26,47 @@ const features = [
 
 const pricingPlans = [
   {
-    name: 'Starter',
-    price: '999',
-    period: '/year',
-    desc: 'Tea shops, bakeries, juice bars',
-    features: ['Billing & Receipts', 'Up to 50 Items', 'Daily Reports', 'WhatsApp Bills', '1 User'],
+    name: 'Free Pilot',
+    price: '0',
+    period: ' for 7 days',
+    desc: 'Run it next to your bill book',
+    features: ['All features unlocked', 'Free menu setup from a photo', 'On-site Day 1 help', 'No card, no contract'],
     popular: false,
   },
   {
-    name: 'Standard',
-    price: '1,999',
-    period: '/year',
-    desc: 'Small restaurants & hotels',
-    features: ['Everything in Starter', 'Unlimited Items', 'Kitchen Display (KDS)', 'Staff Management', 'GST Billing', '3 Users'],
+    name: 'All-in-One',
+    price: '1,000',
+    period: '/month',
+    desc: 'Everything, for every shop size',
+    features: ['Billing, KOT & Kitchen Display', 'Tables, seats & Waiter app', 'QR ordering & WhatsApp bills', 'Recipe costing & stock', 'Anti-theft owner alerts', 'Unlimited staff & items'],
     popular: true,
   },
   {
-    name: 'Pro',
-    price: '3,999',
+    name: 'Yearly',
+    price: '10,000',
     period: '/year',
-    desc: 'Multi-counter restaurants',
-    features: ['Everything in Standard', 'QR Menu for Customers', 'Customer Display', 'Table Management', 'CRM & Loyalty', 'Unlimited Users'],
+    desc: 'Pay yearly, get 2 months free',
+    features: ['Everything in All-in-One', 'Priority phone support', 'Free printer setup visit', 'Data export anytime'],
     popular: false,
   },
 ];
 
+const trustPoints = [
+  { title: 'Your data stays yours', desc: 'Each shop has its own locked space. Nobody else — not even other shops on Zen POS — can see your sales.' },
+  { title: 'Encrypted on your device', desc: 'Offline bills are stored encrypted on your phone and sync quietly when internet returns.' },
+  { title: 'Export anytime, no lock-in', desc: 'Download your bills, customers and reports as Excel/CSV whenever you want. Cancel any month.' },
+  { title: 'Instant staff sign-out', desc: 'Remove a staff member’s access from your own phone in one tap.' },
+];
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { profile, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (!loading && profile) {
+      navigate(profile.role === 'super_admin' ? '/super-admin/users' : '/', { replace: true });
+    }
+  }, [profile, loading, navigate]);
 
   const handleTryDemo = () => {
     localStorage.setItem('hotel_pos_demo_mode', 'true');
@@ -165,6 +180,29 @@ const LandingPage: React.FC = () => {
                   <Button className="w-full" variant={plan.popular ? 'default' : 'outline'} onClick={() => navigate('/auth')}>
                     Get Started
                   </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust */}
+      <section className="py-16 sm:py-20 bg-muted/30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Where is my data? Is it safe?</h2>
+            <p className="text-muted-foreground">The question every owner asks — here’s the honest answer.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {trustPoints.map((t) => (
+              <Card key={t.title} className="border border-border/50">
+                <CardContent className="p-5 flex gap-3">
+                  <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold mb-1">{t.title}</h3>
+                    <p className="text-sm text-muted-foreground">{t.desc}</p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
