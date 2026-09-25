@@ -6,6 +6,7 @@
 // (VoiceBillingButton.tsx) has a local rule-based fallback that speaks the
 // same shape.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 interface CatalogItem { id: string; name: string; unit?: string | null }
 
@@ -74,10 +75,19 @@ Deno.serve(async (req) => {
 
   // Auth Guard: Require Authorization header to prevent abuse (AI API costs)
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  const unauthorized = () => new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+  if (!authHeader?.startsWith('Bearer ')) return unauthorized();
+  {
+    const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
     });
+    const { data, error } = await sb.auth.getClaims(authHeader.replace('Bearer ', ''));
+    const sub = data?.claims?.sub as string | undefined;
+    if (error || !sub) return unauthorized();
+    const { data: prof } = await sb.from('profiles').select('id').eq('user_id', sub).maybeSingle();
+    if (!prof) return unauthorized();
   }
 
   let body: ParseRequest;
@@ -96,8 +106,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  const catalog = Array.isArray(body.items) ? body.items.slice(0, 400) : [];
-  const lang = body.lang || 'en-IN';
+  const catalog = (Array.isArray(body.items) ? body.items.slice(0, 400) : []).map((i) => ({
+    id: String(i?.id ?? '').slice(0, 64),
+    name: String(i?.name ?? '').replace(/[\r\n]+/g, ' ').slice(0, 80),
+    unit: i?.unit ? String(i.unit).slice(0, 8) : null,
+  }));
+  const lang = String(body.lang || 'en-IN').slice(0, 10);
 
   const apiKey = Deno.env.get('LOVABLE_API_KEY');
   if (!apiKey) {
