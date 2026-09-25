@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       if (!fresh) return json({ received: true, duplicate: true });
 
       try {
-        await processRazorpayEvent(evt, adminId);
+        await processRazorpayEvent(evt, scope === 'tenant' ? adminId : null, scope);
         await markWebhookEvent(provider, eventId, 'processed');
       } catch (err) {
         await markWebhookEvent(provider, eventId, 'failed', (err as Error).message);
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
           error_message: paid ? null : code,
           paid_at: paid ? new Date().toISOString() : null,
           raw_payload: decoded,
-        });
+        }, { scope, adminId: scope === 'tenant' ? adminId : null });
       }
       await markWebhookEvent(provider, eventId, 'processed');
     } catch (err) {

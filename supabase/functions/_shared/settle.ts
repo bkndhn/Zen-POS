@@ -12,14 +12,30 @@ export async function nextInvoiceNo(): Promise<string> {
 }
 
 /** Mark a transaction paid and settle the record it belongs to. Idempotent. */
-export async function settle(txnId: string, patch: Record<string, unknown>) {
+export interface SettleOwner {
+  scope: 'platform' | 'tenant';
+  adminId: string | null;
+}
+
+/**
+ * Mark a transaction paid and settle the record it belongs to. Idempotent.
+ * `owner` is the account whose webhook secret verified the event. The
+ * transaction must belong to that same account, otherwise nothing changes —
+ * one business's signed callback can never settle another business's payment.
+ */
+export async function settle(txnId: string, patch: Record<string, unknown>, owner: SettleOwner) {
   const sb = admin();
-  const { data: txn } = await sb
-    .from('payment_transactions')
-    .select('*')
-    .eq('id', txnId)
-    .maybeSingle();
-  if (!txn) return;
+  if (!owner) throw new Error('settle: owner required');
+  let q = sb.from('payment_transactions').select('*').eq('id', txnId).eq('scope', owner.scope);
+  if (owner.scope === 'tenant') {
+    if (!owner.adminId) return;
+    q = q.eq('admin_id', owner.adminId);
+  }
+  const { data: txn } = await q.maybeSingle();
+  if (!txn) {
+    console.warn('settle: transaction not owned by verified account, ignored', txnId);
+    return;
+  }
   if (txn.status === 'paid') return;
 
   const paid = patch.status === 'paid';
@@ -30,7 +46,8 @@ export async function settle(txnId: string, patch: Record<string, unknown>) {
       reconciled_at: new Date().toISOString(),
       ...(paid && !txn.invoice_no ? { invoice_no: await nextInvoiceNo() } : {}),
     })
-    .eq('id', txnId);
+    .eq('id', txnId)
+    .eq('admin_id', txn.admin_id);
 
   if (!paid) return;
 
@@ -38,7 +55,8 @@ export async function settle(txnId: string, patch: Record<string, unknown>) {
     await sb
       .from('remote_orders')
       .update({ is_paid: true, payment_reference: txnId })
-      .eq('id', txn.reference_id);
+      .eq('id', txn.reference_id)
+      .eq('admin_id', txn.admin_id);
   }
 
   if (txn.purpose === 'subscription') {
@@ -52,7 +70,8 @@ export async function settle(txnId: string, patch: Record<string, unknown>) {
           gateway_txn_id: txnId,
           gateway_provider: txn.provider,
         })
-        .eq('id', txn.reference_id);
+        .eq('id', txn.reference_id)
+        .eq('admin_id', txn.admin_id);
     } else {
       const { data: dup } = await sb
         .from('subscription_payments')
@@ -79,6 +98,7 @@ export async function settle(txnId: string, patch: Record<string, unknown>) {
 export async function processRazorpayEvent(
   evt: Record<string, any>,
   adminId: string | null,
+  scope: 'platform' | 'tenant' = adminId ? 'tenant' : 'platform',
 ) {
   const sb = admin();
   const event: string = evt.event || '';
@@ -97,9 +117,13 @@ export async function processRazorpayEvent(
       utr: payment?.acquirer_data?.upi_transaction_id || payment?.acquirer_data?.rrn || null,
       paid_at: paid ? new Date().toISOString() : null,
       raw_payload: evt,
-    });
+    }, { scope, adminId });
     return;
   }
+
+  // Mandates (UPI Autopay) are always collected by the platform account;
+  // a tenant-signed event must never touch them.
+  if (event.startsWith('subscription.') && scope !== 'platform') return;
 
   if (event.startsWith('subscription.')) {
     const statusMap: Record<string, string> = {

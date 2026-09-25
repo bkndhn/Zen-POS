@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       result.retried++;
       try {
         if (ev.provider === 'razorpay') {
-          await processRazorpayEvent(ev.payload as Record<string, unknown>, ev.admin_id);
+          await processRazorpayEvent(ev.payload as Record<string, unknown>, ev.scope === 'platform' ? null : ev.admin_id, ev.scope === 'platform' ? 'platform' : 'tenant');
         } else {
           const decoded = ev.payload as Record<string, any>;
           const merchantTxnId = decoded?.data?.merchantTransactionId || '';
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
               provider_payment_id: decoded?.data?.transactionId || null,
               paid_at: paid ? new Date().toISOString() : null,
               raw_payload: decoded,
-            });
+            }, { scope: ev.scope === 'platform' ? 'platform' : 'tenant', adminId: ev.scope === 'platform' ? null : ev.admin_id });
           }
         }
         await sb
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
             method: payment?.method || null,
             paid_at: new Date().toISOString(),
             raw_payload: link,
-          });
+          }, { scope: txn.scope === 'platform' ? 'platform' : 'tenant', adminId: txn.scope === 'platform' ? null : txn.admin_id });
           result.reconciled++;
         } else if (status === 'expired' || status === 'cancelled') {
           await sb
