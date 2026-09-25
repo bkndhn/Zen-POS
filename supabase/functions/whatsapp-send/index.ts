@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const sb = admin();
     const { data: profile } = await sb
       .from('profiles')
-      .select('user_id, admin_id')
+      .select('id, user_id, role, admin_id')
       .eq('user_id', userId)
       .maybeSingle();
     if (!profile) return json({ error: 'Profile not found' }, 403);
@@ -68,6 +68,19 @@ Deno.serve(async (req) => {
         mode: 'link',
         wa_url: `https://api.whatsapp.com/send?phone=${target}&text=${encodeURIComponent(message)}`,
       });
+    }
+
+    // Cloud sends use the owner's paid WhatsApp account, so only allow them to
+    // people who are actually customers of this business (a stored customer or
+    // someone who placed an order), and only from staff of that business.
+    const tenantId = profile.admin_id || profile.id;
+    const last10 = target.slice(-10);
+    const [{ data: cust }, { data: ord }] = await Promise.all([
+      sb.from('customers').select('id').eq('admin_id', tenantId).like('phone', `%${last10}`).limit(1),
+      sb.from('remote_orders').select('id').eq('admin_id', tenantId).like('customer_phone', `%${last10}`).limit(1),
+    ]);
+    if (!cust?.length && !ord?.length) {
+      return json({ error: 'WhatsApp messages can only be sent to your own customers.' }, 403);
     }
 
     const { data: creds } = await sb
@@ -102,12 +115,12 @@ Deno.serve(async (req) => {
     const text = await res.text();
     if (!res.ok) {
       console.error(`WhatsApp Cloud API failed [${res.status}]: ${text}`);
-      return json({ error: 'WhatsApp send failed', status: res.status, details: text }, res.status);
+      return json({ error: 'WhatsApp send failed' }, 502);
     }
 
-    return json({ success: true, mode: 'cloud', result: JSON.parse(text) });
+    return json({ success: true, mode: 'cloud' });
   } catch (e) {
     console.error('whatsapp-send error:', e);
-    return json({ error: (e as Error).message }, 400);
+    return json({ error: 'WhatsApp send failed' }, 400);
   }
 });
