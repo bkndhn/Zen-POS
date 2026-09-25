@@ -800,15 +800,15 @@ const Settings = () => {
                     onBlur={async (e) => {
                       const pin = e.target.value.replace(/[^0-9]/g, '');
                       if (pin && pin.length === 4) {
-                        // Hash PIN with SHA-256 before storing
-                        const encoder = new TextEncoder();
-                        const data = encoder.encode(`zenpos_pin_${pin}`);
-                        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                        const hashArray = Array.from(new Uint8Array(hashBuffer));
-                        const hashedPin = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                        localStorage.setItem(branchKey('hotel_pos_reports_pin'), hashedPin);
+                        // PIN is hashed and stored on the server; the device only keeps a marker.
+                        const { error } = await (supabase as any).rpc('set_report_pin', { p_branch_id: operatingBranchId || null, p_pin: pin });
+                        if (error) { toast({ title: "Could not set PIN", description: "Please check your internet and try again.", variant: "destructive" }); return; }
+                        localStorage.setItem(branchKey('hotel_pos_reports_pin'), 'server');
+                        e.target.value = '';
                         toast({ title: "PIN Set", description: "Reports and Dashboard are now protected." });
                       } else if (!pin) {
+                        const { error } = await (supabase as any).rpc('set_report_pin', { p_branch_id: operatingBranchId || null, p_pin: '' });
+                        if (error) { toast({ title: "Could not remove PIN", variant: "destructive" }); return; }
                         localStorage.removeItem(branchKey('hotel_pos_reports_pin'));
                         toast({ title: "PIN Removed", description: "Reports are now accessible to all." });
                       } else {

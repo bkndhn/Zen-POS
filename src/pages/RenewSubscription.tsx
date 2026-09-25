@@ -265,7 +265,8 @@ const RenewSubscription: React.FC = () => {
       requireOnline('Creating a payment link');
       const { data, error } = await supabase.functions.invoke('payments-create-link', {
         body: {
-          amount: planAmount,
+          months: activeMonths,
+          branch_id: packBranchId || undefined,
           purpose: 'subscription',
           description: `ZenPOS Subscription — ${planLabel}`,
           customer_name: profile?.name || profile?.shop_name || 'Client',
