@@ -1,5 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { tenantIdOf, resolveSubscriptionPrice, type TenantProfile } from '../_shared/pricing.ts';
 import { admin, getPlatformCreds, rzpFetch } from '../_shared/pg.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -25,25 +26,27 @@ Deno.serve(async (req) => {
     const userId = claims.claims.sub as string;
 
     const body = await req.json().catch(() => ({}));
-    const amount = Number(body.amount);
-    const months = Math.max(1, Number(body.interval_months) || 1);
-    const cycles = Math.max(1, Number(body.total_count) || 12);
-    if (!Number.isFinite(amount) || amount <= 0) return json({ error: 'Invalid amount' }, 400);
+    const months = Math.min(12, Math.max(1, Math.floor(Number(body.interval_months) || 1)));
+    const cycles = Math.min(60, Math.max(1, Math.floor(Number(body.total_count) || 12)));
 
     const sb = admin();
     const { data: profile } = await sb
       .from('profiles')
-      .select('user_id, admin_id, hotel_name, shop_name, mobile_number')
+      .select('id, user_id, role, admin_id, hotel_name, shop_name, mobile_number')
       .eq('user_id', userId)
       .maybeSingle();
     if (!profile) return json({ error: 'Profile not found' }, 403);
-    const adminId: string = profile.admin_id || profile.user_id;
+    const adminId: string = tenantIdOf(profile as TenantProfile);
 
     // Mandates always charge into the PLATFORM account (subscription revenue).
     const creds = await getPlatformCreds('razorpay');
     if (creds.provider !== 'razorpay')
       return json({ error: 'UPI Autopay mandates require Razorpay.' }, 400);
     const cadence: 'monthly' | 'annual' = body.cadence === 'annual' ? 'annual' : 'monthly';
+    // Charge amount is always derived on the server from the client's plan pricing.
+    const monthlyPrice = (await resolveSubscriptionPrice(adminId, 1, null)).monthlyRate;
+    const amount = cadence === 'annual' ? monthlyPrice * 12 : monthlyPrice * months;
+    if (!(amount > 0)) return json({ error: 'Subscription price not configured' }, 400);
     const startAt: number | undefined = Number(body.start_at) || undefined;
 
     // Reuse an active mandate if one already exists
@@ -103,6 +106,6 @@ Deno.serve(async (req) => {
     return json({ success: true, short_url: subscription.short_url, mandate_id: inserted.id });
   } catch (e) {
     console.error('payments-create-mandate error:', e);
-    return json({ error: (e as Error).message }, 400);
+    return json({ error: 'Could not set up auto-pay' }, 400);
   }
 });

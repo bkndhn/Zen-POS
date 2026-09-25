@@ -1,6 +1,15 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { admin, getCreds, rzpFetch, phonepePay } from '../_shared/pg.ts';
 
+const APP_ORIGINS = [/^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i, /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i, /^http:\/\/localhost(:\d+)?$/i, /^capacitor:\/\/localhost$/i, /^https:\/\/localhost$/i];
+const DEFAULT_REDIRECT = 'https://zen-pos1.lovable.app';
+function safeRedirect(v: unknown): string {
+  try {
+    const u = new URL(String(v || ''));
+    return APP_ORIGINS.some((re) => re.test(u.origin)) ? u.toString() : DEFAULT_REDIRECT;
+  } catch { return DEFAULT_REDIRECT; }
+}
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -29,8 +38,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!order) return json({ error: 'Order not found' }, 404);
-    if (deviceId && order.device_id && order.device_id !== deviceId)
-      return json({ error: 'Order does not belong to this device' }, 403);
+    // The guest must prove the order is theirs: the device that placed it.
+    if (!deviceId || deviceId.length < 8 || !order.device_id || order.device_id !== deviceId)
+      return json({ error: 'Order not found' }, 404);
     if (order.is_paid) return json({ error: 'Order is already paid' }, 400);
     if (['cancelled', 'no_show'].includes(order.status || ''))
       return json({ error: 'Order is no longer active' }, 400);
@@ -82,7 +92,7 @@ Deno.serve(async (req) => {
         merchantTransactionId: merchantTxnId,
         merchantUserId: (phone || 'guest').slice(0, 32),
         amount: Math.round(amount * 100),
-        redirectUrl: String(body.redirect_url || 'https://hotel-zen-pos-1.lovable.app'),
+        redirectUrl: safeRedirect(body.redirect_url),
         redirectMode: 'REDIRECT',
         callbackUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payments-webhook?provider=phonepe&admin_id=${order.admin_id}`,
         mobileNumber: phone || undefined,
@@ -121,6 +131,6 @@ Deno.serve(async (req) => {
     return json({ success: true, short_url: shortUrl, provider: creds.provider, transaction_id: txnId });
   } catch (e) {
     console.error('payments-guest-link error:', e);
-    return json({ error: (e as Error).message }, 400);
+    return json({ error: 'Could not create payment link' }, 400);
   }
 });
