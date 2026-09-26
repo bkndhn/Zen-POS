@@ -593,16 +593,6 @@ export const ShopSettingsForm = () => {
                     revenue_milestone_amount: milestoneAmount,
                     slow_day_alert_enabled: slowDayEnabled,
                     slow_day_alert_hour: slowDayHour,
-                    antitheft_enabled: antitheftEnabled,
-                    antitheft_void_after_kot: antitheftVoidAfterKot,
-                    antitheft_high_discount: antitheftHighDiscount,
-                    antitheft_discount_threshold_pct: antitheftDiscountPct,
-                    antitheft_discount_threshold_amt: antitheftDiscountAmt,
-                    antitheft_bill_edit: antitheftBillEdit,
-                    antitheft_shift_variance: antitheftShiftVariance,
-                    antitheft_shift_variance_amt: antitheftVarianceAmt,
-                    antitheft_kot_item_delete: antitheftKotItemDelete,
-                    antitheft_cash_drawer: antitheftCashDrawer,
             };
 
 

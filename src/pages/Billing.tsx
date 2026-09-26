@@ -42,6 +42,7 @@ import { getKOTStatusBadgeInfo } from '@/utils/seatUtils';
 import { CustomItemDialog } from '@/components/CustomItemDialog';
 import { useWeighingScale } from '@/hooks/useWeighingScale';
 import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils/antiTheft';
+import { VoidBillDialog } from '@/components/VoidBillDialog';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -3521,6 +3522,8 @@ const Billing = () => {
           >
             💵<span className="hidden md:inline">Open Drawer</span>
           </Button>
+
+          <VoidBillDialog />
 
           {isScaleSupported && (
             isScaleConnected ? (
