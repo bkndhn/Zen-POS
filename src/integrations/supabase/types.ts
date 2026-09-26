@@ -1237,6 +1237,89 @@ export type Database = {
           },
         ]
       }
+      client_webhook_endpoints: {
+        Row: {
+          admin_id: string
+          branch_id: string | null
+          created_at: string
+          events: string[]
+          id: string
+          is_active: boolean
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          admin_id: string
+          branch_id?: string | null
+          created_at?: string
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          secret?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          admin_id?: string
+          branch_id?: string | null
+          created_at?: string
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      client_webhook_logs: {
+        Row: {
+          admin_id: string
+          created_at: string
+          duration_ms: number | null
+          endpoint_id: string | null
+          event_type: string
+          id: string
+          payload: Json
+          response_body: string | null
+          status_code: number | null
+          success: boolean
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          duration_ms?: number | null
+          endpoint_id?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          response_body?: string | null
+          status_code?: number | null
+          success?: boolean
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          endpoint_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          response_body?: string | null
+          status_code?: number | null
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_webhook_logs_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "client_webhook_endpoints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_ledger: {
         Row: {
           admin_id: string
@@ -5332,6 +5415,15 @@ export type Database = {
           p_transfer_date: string
         }
         Returns: Json
+      }
+      dispatch_client_webhook: {
+        Args: {
+          p_admin_id: string
+          p_branch_id: string
+          p_event: string
+          p_payload: Json
+        }
+        Returns: undefined
       }
       fire_antitheft_alert: {
         Args: {
