@@ -593,16 +593,6 @@ export const ShopSettingsForm = () => {
                     revenue_milestone_amount: milestoneAmount,
                     slow_day_alert_enabled: slowDayEnabled,
                     slow_day_alert_hour: slowDayHour,
-                    antitheft_enabled: antitheftEnabled,
-                    antitheft_void_after_kot: antitheftVoidAfterKot,
-                    antitheft_high_discount: antitheftHighDiscount,
-                    antitheft_discount_threshold_pct: antitheftDiscountPct,
-                    antitheft_discount_threshold_amt: antitheftDiscountAmt,
-                    antitheft_bill_edit: antitheftBillEdit,
-                    antitheft_shift_variance: antitheftShiftVariance,
-                    antitheft_shift_variance_amt: antitheftVarianceAmt,
-                    antitheft_kot_item_delete: antitheftKotItemDelete,
-                    antitheft_cash_drawer: antitheftCashDrawer,
             };
 
 
@@ -1338,114 +1328,7 @@ export const ShopSettingsForm = () => {
                   </Card>
                 )}
 
-                {/* ─── Anti-Theft Manager Alert Pushes ─── */}
-                {profile?.role === 'admin' && fcmUnlocked && (
-                  <Card className="border-red-200 dark:border-red-900/40">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            🚨 Security &amp; Alerts
-                            <span className="text-[10px] font-normal bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Anti-Theft</span>
-                          </CardTitle>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Your phone buzzes instantly when staff voids a bill, gives a big discount, removes a kitchen item, opens the cash drawer, or closes a shift short.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs text-red-700 border-red-200 gap-1"
-                            onClick={() => navigate('/security')}
-                          >
-                            <span>🔍</span> View Alerts
-                          </Button>
-                          <Switch checked={antitheftEnabled} onCheckedChange={setAntitheftEnabled} />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    {antitheftEnabled && (
-                      <CardContent className="space-y-3">
-                        {/* Void after KOT */}
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100">
-                          <div>
-                            <p className="text-sm font-medium">🗑️ Bill Voided After Service</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Alert when a bill is deleted after being sent to kitchen or printed</p>
-                          </div>
-                          <Switch checked={antitheftVoidAfterKot} onCheckedChange={setAntitheftVoidAfterKot} />
-                        </div>
-
-                        {/* Item removed after KOT */}
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100">
-                          <div>
-                            <p className="text-sm font-medium">🍽️ Item Removed After KOT</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Alert when items are removed from a bill that was already sent to the kitchen</p>
-                          </div>
-                          <Switch checked={antitheftKotItemDelete} onCheckedChange={setAntitheftKotItemDelete} />
-                        </div>
-
-                        {/* Cash drawer */}
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100">
-                          <div>
-                            <p className="text-sm font-medium">💵 Cash Drawer Opened (No Sale)</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Alert when staff opens the drawer with the "Open Drawer" button without a bill</p>
-                          </div>
-                          <Switch checked={antitheftCashDrawer} onCheckedChange={setAntitheftCashDrawer} />
-                        </div>
-
-
-                        {/* High discount */}
-                        <div className="flex items-start justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">💸 High Discount Alert</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Alert when discount exceeds threshold</p>
-                            {antitheftHighDiscount && (
-                              <div className="flex flex-wrap items-center gap-3 mt-2">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-xs text-muted-foreground">Above</span>
-                                  <input type="number" className="w-16 h-7 text-xs border rounded px-2 bg-background" value={antitheftDiscountPct} onChange={e => setAntitheftDiscountPct(Number(e.target.value))} min={5} max={80} step={5} />
-                                  <span className="text-xs text-muted-foreground">%</span>
-                                </div>
-                                <span className="text-xs text-muted-foreground">or</span>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-xs text-muted-foreground">Rs.</span>
-                                  <input type="number" className="w-20 h-7 text-xs border rounded px-2 bg-background" value={antitheftDiscountAmt} onChange={e => setAntitheftDiscountAmt(Number(e.target.value))} min={50} step={50} />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <Switch checked={antitheftHighDiscount} onCheckedChange={setAntitheftHighDiscount} />
-                        </div>
-
-                        {/* Bill edit */}
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100">
-                          <div>
-                            <p className="text-sm font-medium">✏️ Bill Edited After Billing</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Alert when a finalized bill's amount or items are changed</p>
-                          </div>
-                          <Switch checked={antitheftBillEdit} onCheckedChange={setAntitheftBillEdit} />
-                        </div>
-
-                        {/* Shift variance */}
-                        <div className="flex items-start justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-100">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">💰 End-of-Shift Cash Variance</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Alert when closing cash doesn't match expected amount</p>
-                            {antitheftShiftVariance && (
-                              <div className="flex items-center gap-1 mt-2">
-                                <span className="text-xs text-muted-foreground">Threshold: Rs.</span>
-                                <input type="number" className="w-20 h-7 text-xs border rounded px-2 bg-background" value={antitheftVarianceAmt} onChange={e => setAntitheftVarianceAmt(Number(e.target.value))} min={50} step={50} />
-                                <span className="text-xs text-muted-foreground">variance</span>
-                              </div>
-                            )}
-                          </div>
-                          <Switch checked={antitheftShiftVariance} onCheckedChange={setAntitheftShiftVariance} />
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                )}
+                {/* Anti-theft alert settings now live in Settings → Security & Alerts */}
 
                 {/* ─── Mobile App ─── */}
 

@@ -33,6 +33,8 @@ import { OfflineLifecycleCard } from '@/components/OfflineLifecycleCard';
 import { DevicePrefixSettings } from '@/components/DevicePrefixSettings';
 import { LocalBackupSettings } from '@/components/LocalBackupSettings';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
+import { SecurityAlertsSettings } from '@/components/SecurityAlertsSettings';
+import { WebhookManager } from '@/components/WebhookManager';
 import { PaymentGatewaySettings } from '@/components/PaymentGatewaySettings';
 import { CalciBillingSettings } from '@/components/CalciBillingSettings';
 import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
@@ -350,9 +352,18 @@ const Settings = () => {
               <button onClick={() => setActiveTab('hardware')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'hardware' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🖨️ Hardware & Print</button>
               <button onClick={() => setActiveTab('preferences')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'preferences' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>⚙️ App Preferences</button>
               <button onClick={() => setActiveTab('integrations')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'integrations' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🔗 Integrations</button>
+              {profile?.role === 'admin' && <button onClick={() => setActiveTab('security')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'security' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🛡️ Security & Alerts</button>}
               {profile?.role === 'admin' && <button onClick={() => setActiveTab('branches')} className={cn("flex-1 min-w-[120px] text-xs sm:text-sm inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-all", activeTab === 'branches' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:bg-muted")}>🏢 Branches</button>}
             </div>
           )}
+
+            {profile?.role === 'admin' && (
+              <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "security") ? "hidden" : "block")}>
+                <SearchableSection title="Security & Alerts (Anti-Theft)" keywords="security alert anti theft void discount drawer shift variance kot" searchQuery={searchQuery}>
+                  <SecurityAlertsSettings />
+                </SearchableSection>
+              </div>
+            )}
 
             <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "billing") ? "hidden" : "block")}>
               {/* Device Prefix Settings */}
@@ -835,6 +846,10 @@ const Settings = () => {
               {/* Food Aggregator Integrations */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Aggregator Settings failed to load. Try refreshing.</div>}>
             <SearchableSection title="Aggregators" keywords="aggregator zomato swiggy webhook" searchQuery={searchQuery}><AggregatorIntegrationSettings /></SearchableSection>
+          </ErrorBoundary>
+              {/* Outbound Webhooks */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Webhook Manager failed to load. Try refreshing.</div>}>
+            <SearchableSection title="Webhooks" keywords="webhook endpoint api bill payment event signature integration" searchQuery={searchQuery}><WebhookManager /></SearchableSection>
           </ErrorBoundary>
 
               {/* Remote Ordering Settings */}
