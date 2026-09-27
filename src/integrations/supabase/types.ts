@@ -4003,6 +4003,7 @@ export type Database = {
       shop_settings: {
         Row: {
           address: string | null
+          allow_void_bills: boolean | null
           antitheft_bill_edit: boolean | null
           antitheft_cash_drawer: boolean | null
           antitheft_discount_threshold_amt: number | null
@@ -4121,6 +4122,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          allow_void_bills?: boolean | null
           antitheft_bill_edit?: boolean | null
           antitheft_cash_drawer?: boolean | null
           antitheft_discount_threshold_amt?: number | null
@@ -4239,6 +4241,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          allow_void_bills?: boolean | null
           antitheft_bill_edit?: boolean | null
           antitheft_cash_drawer?: boolean | null
           antitheft_discount_threshold_amt?: number | null
@@ -5487,6 +5490,7 @@ export type Database = {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {
           address: string | null
+          allow_void_bills: boolean | null
           antitheft_bill_edit: boolean | null
           antitheft_cash_drawer: boolean | null
           antitheft_discount_threshold_amt: number | null
