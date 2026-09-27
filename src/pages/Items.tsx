@@ -427,7 +427,7 @@ const Items: React.FC = () => {
       item.purchase_rate?.toFixed(2) || '',
       getMargin(item) !== null ? `${getMargin(item)}%` : '',
     ]);
-    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const csvContent = [headers, ...rows].map(row => row.map(cell => { const c = String(cell ?? ''); return `"${(/^[=+\-@\t\r]/.test(c) ? `'${c}` : c).replace(/"/g, '""')}"`; }).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);

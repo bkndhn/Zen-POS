@@ -4,6 +4,11 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUP
 const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export default async function handler(request, response) {
+  const cronSecret = process.env.CRON_SECRET;
+  const auth = request.headers?.authorization || '';
+  if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+    return response.status(401).json({ status: 'unauthorized' });
+  }
   try {
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Missing Supabase credentials in serverless environment");

@@ -2474,11 +2474,12 @@ const Reports: React.FC = () => {
 
                 const exportGSTR1 = () => {
                   let csv = 'GSTIN,Invoice No,Date,Total Amount,Taxable Value,CGST,SGST,Total Tax,Customer GSTIN\n';
+                  const cell = (v: any) => { const s = String(v ?? ''); const n = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s; return /[",\n\r]/.test(n) ? `"${n.replace(/"/g, '""')}"` : n; };
                   gstBills.forEach((bill: any) => {
                     const taxSummary = bill.tax_summary ? (typeof bill.tax_summary === 'string' ? JSON.parse(bill.tax_summary) : bill.tax_summary) : {};
                     const totalTaxable = taxSummary.totalTaxableValue || (bill.total_amount - (bill.total_tax || 0));
                     const halfTax = (bill.total_tax || 0) / 2;
-                    csv += `${bill.gstin || ''},${bill.bill_no},${bill.date},${bill.total_amount},${totalTaxable.toFixed(2)},${halfTax.toFixed(2)},${halfTax.toFixed(2)},${bill.total_tax || 0},${bill.customer_gstin || ''}\n`;
+                    csv += `${cell(bill.gstin)},${cell(bill.bill_no)},${cell(bill.date)},${bill.total_amount},${totalTaxable.toFixed(2)},${halfTax.toFixed(2)},${halfTax.toFixed(2)},${bill.total_tax || 0},${cell(bill.customer_gstin)}\n`;
                   });
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
