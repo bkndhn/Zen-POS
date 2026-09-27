@@ -1159,7 +1159,7 @@ export const ShopSettingsForm = () => {
                                 <div>
                                     <Label>Daily Sales Summary</Label>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Get a summary of total sales, payment breakdown, and top items at your chosen time daily.
+                                        Get a summary of total sales, payment breakdown, and top items at your chosen time daily (India time).
                                     </p>
                                 </div>
                                 <Select value={dailySummaryTime || 'off'} onValueChange={(v) => setDailySummaryTime(v === 'off' ? null : v)}>
