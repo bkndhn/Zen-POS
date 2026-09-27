@@ -42,7 +42,31 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onOpenChange, targe
       const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: { target_profile_id: targetProfileId, new_password: pwd },
       });
-      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message || 'Failed');
+      // Cleanly terminate active sessions for the targeted user
+      try {
+        const bc = new BroadcastChannel('zenpos-session-sync');
+        bc.postMessage({
+          type: 'FORCE_LOGOUT',
+          targetProfileId,
+          reason: 'Your password was reset by an administrator. Please sign in with your new password.'
+        });
+        bc.close();
+      } catch {}
+
+      try {
+        const channel = supabase.channel(`force-logout-broadcast-${targetProfileId}`);
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({
+              type: 'broadcast',
+              event: 'force_logout',
+              payload: { force: true, reason: 'Password has been reset. Please sign in again.' }
+            });
+            supabase.removeChannel(channel);
+          }
+        });
+      } catch {}
+
       toast({
         title: 'Password updated',
         description: `New password set for ${targetLabel}. Share it securely.`,

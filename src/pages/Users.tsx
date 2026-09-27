@@ -88,13 +88,28 @@ const Users: React.FC = () => {
 
       if (isPausing) {
         const userAuthId = pauseSubTarget.user_id || pauseSubTarget.id;
+        try {
+          const localBc = new BroadcastChannel('zenpos-session-sync');
+          localBc.postMessage({
+            type: 'FORCE_LOGOUT',
+            targetProfileId: pauseSubTarget.id,
+            targetUserId: userAuthId,
+            reason: 'Your account has been paused by your administrator.'
+          });
+          localBc.close();
+        } catch {}
+
         const channel = supabase.channel(`force-logout-user-${userAuthId}`);
-        await channel.send({
-          type: 'broadcast',
-          event: 'force_logout',
-          payload: { force: true, reason: 'Your account has been paused by your administrator.' }
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({
+              type: 'broadcast',
+              event: 'force_logout',
+              payload: { force: true, reason: 'Your account has been paused by your administrator.' }
+            });
+            supabase.removeChannel(channel);
+          }
         });
-        supabase.removeChannel(channel);
       }
 
       toast({
@@ -136,13 +151,28 @@ const Users: React.FC = () => {
       if (error) throw error;
 
       const userAuthId = subUser.user_id || subUser.id;
+      try {
+        const localBc = new BroadcastChannel('zenpos-session-sync');
+        localBc.postMessage({
+          type: 'FORCE_LOGOUT',
+          targetProfileId: subUser.id,
+          targetUserId: userAuthId,
+          reason: 'Your administrator signed this device out.'
+        });
+        localBc.close();
+      } catch {}
+
       const channel = supabase.channel(`force-logout-user-${userAuthId}`);
-      await channel.send({
-        type: 'broadcast',
-        event: 'force_logout',
-        payload: { force: true, reason: 'Your administrator signed this device out.' }
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.send({
+            type: 'broadcast',
+            event: 'force_logout',
+            payload: { force: true, reason: 'Your administrator signed this device out.' }
+          });
+          supabase.removeChannel(channel);
+        }
       });
-      supabase.removeChannel(channel);
 
       toast({
         title: 'Signed out everywhere',
@@ -166,13 +196,28 @@ const Users: React.FC = () => {
     setActionLoading(true);
     try {
       const userAuthId = deleteSubTarget.user_id || deleteSubTarget.id;
+      try {
+        const localBc = new BroadcastChannel('zenpos-session-sync');
+        localBc.postMessage({
+          type: 'FORCE_LOGOUT',
+          targetProfileId: deleteSubTarget.id,
+          targetUserId: userAuthId,
+          reason: 'Your account has been deleted.'
+        });
+        localBc.close();
+      } catch {}
+
       const channel = supabase.channel(`force-logout-user-${userAuthId}`);
-      await channel.send({
-        type: 'broadcast',
-        event: 'force_logout',
-        payload: { force: true, reason: 'Your account has been deleted.' }
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.send({
+            type: 'broadcast',
+            event: 'force_logout',
+            payload: { force: true, reason: 'Your account has been deleted.' }
+          });
+          supabase.removeChannel(channel);
+        }
       });
-      supabase.removeChannel(channel);
 
       const { error } = await supabase.rpc('admin_delete_sub_user', { p_target_user_id: deleteSubTarget.id });
       if (error) throw error;

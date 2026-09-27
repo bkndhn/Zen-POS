@@ -86,6 +86,7 @@ export const ShopSettingsForm = () => {
     const [shiftManagementEnabled, setShiftManagementEnabled] = useState(false);
     const [shiftManagementUnlocked, setShiftManagementUnlocked] = useState(false);
     const [remoteOrderFlow, setRemoteOrderFlow] = useState('manual_settle');
+    const [allowVoidBills, setAllowVoidBills] = useState(true);
     const [fcmUnlocked, setFcmUnlocked] = useState(false);
     const [fcmEnabled, setFcmEnabled] = useState(false);
     const [liveBillPushUnlocked, setLiveBillPushUnlocked] = useState(false);
@@ -279,6 +280,7 @@ export const ShopSettingsForm = () => {
                 setShiftManagementEnabled((data as any).shift_management_enabled ?? false);
                 setShiftManagementUnlocked((data as any).shift_management_unlocked ?? false);
                 setRemoteOrderFlow((data as any).remote_order_flow || 'manual_settle');
+                setAllowVoidBills((data as any).allow_void_bills ?? true);
                 setFcmUnlocked((data as any).fcm_unlocked ?? false);
                 setFcmEnabled((data as any).fcm_enabled ?? false);
                 setLiveBillPushUnlocked((data as any).live_bill_push_unlocked ?? false);
@@ -585,6 +587,7 @@ export const ShopSettingsForm = () => {
                 receipt_qr_type: receiptQrType,
                     shift_management_enabled: shiftManagementEnabled,
                     remote_order_flow: remoteOrderFlow,
+                    allow_void_bills: allowVoidBills,
                     fcm_enabled: fcmEnabled,
                     daily_summary_time: dailySummaryTime,
                     khata_dues_alert_enabled: khataAlertEnabled,
@@ -1095,6 +1098,18 @@ export const ShopSettingsForm = () => {
                                     <SelectItem value="auto_settle">Auto Settle</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="flex items-center justify-between pt-4 border-t">
+                            <div>
+                                <Label>Allow Cashier to Void/Cancel Bills</Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    When disabled, staff/cashiers cannot void or cancel generated bills.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={allowVoidBills}
+                                onCheckedChange={setAllowVoidBills}
+                            />
                         </div>
                     </CardContent>
                 </Card>

@@ -43,6 +43,7 @@ import { CustomItemDialog } from '@/components/CustomItemDialog';
 import { useWeighingScale } from '@/hooks/useWeighingScale';
 import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils/antiTheft';
 import { VoidBillDialog } from '@/components/VoidBillDialog';
+import { invalidateRelatedData } from '@/utils/cacheUtils';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -887,6 +888,7 @@ const Billing = () => {
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [quickBillEnabled, setQuickBillEnabled] = useState(false);
   const [whatsappShareMode, setWhatsappShareMode] = useState<'text' | 'image'>('text');
+  const [allowVoidBills, setAllowVoidBills] = useState(true);
   const [khataEnabled, setKhataEnabled] = useState(false);
   const [showOrderType, setShowOrderType] = useState(false);
   const [defaultOrderType, setDefaultOrderType] = useState<'dine_in' | 'parcel' | undefined>(undefined);
@@ -1503,6 +1505,7 @@ const Billing = () => {
         };
         setBillSettings(settings);
         setWhatsappEnabled(data.whatsapp_bill_share_enabled || false);
+        setAllowVoidBills((data as any).allow_void_bills !== false);
         setKhataEnabled(data.khata_billing_enabled || false);
         setQuickBillEnabled(data.quick_bill_enabled || false);
         setWhatsappShareMode((data as any).whatsapp_share_mode === 'image' ? 'image' : 'text');
@@ -2597,6 +2600,9 @@ const Billing = () => {
     });
     playCompletionChime();
 
+    // Invalidate report & bill caches immediately
+    invalidateRelatedData('bills');
+
     // === INSTANT 4-LAYER SYNC ===
     // Layer 3: Window custom events - same tab (0ms)
     window.dispatchEvent(new CustomEvent('bills-updated'));
@@ -3523,7 +3529,7 @@ const Billing = () => {
             💵<span className="hidden md:inline">Open Drawer</span>
           </Button>
 
-          <VoidBillDialog />
+          {allowVoidBills && <VoidBillDialog />}
 
           {isScaleSupported && (
             isScaleConnected ? (

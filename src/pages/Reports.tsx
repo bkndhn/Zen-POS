@@ -13,11 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { CalendarDays, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, BarChart3, Edit, Trash2, Eye, Download, FileSpreadsheet, Printer, Search, MessageCircle, Phone, Image as ImageIcon, FileText, Loader2, Send } from 'lucide-react';
+import { CalendarDays, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, BarChart3, Edit, Trash2, Eye, Download, FileSpreadsheet, FileCode, Printer, Search, MessageCircle, Phone, Image as ImageIcon, FileText, Loader2, Send } from 'lucide-react';
 import { FacebookIcon, InstagramIcon, WhatsAppIcon } from '@/components/SocialIcons';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { exportAllReportsToExcel, exportAllReportsToPDF } from '@/utils/exportUtils';
+import { exportSalesToTallyXML } from '@/utils/tallyExport';
 import { cachedFetch, CACHE_KEYS, invalidateRelatedData } from '@/utils/cacheUtils';
 import { printReceipt } from '@/utils/bluetoothPrinter';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
@@ -581,7 +582,7 @@ const Reports: React.FC = () => {
     };
   }, [fetchReportsCallback]);
 
-  // Listen for custom bills-updated event (backup mechanism)
+  // Listen for custom bills-updated event and visibility change
   useEffect(() => {
     const handleBillsUpdated = () => {
       console.log('Bills updated event received, invalidating cache and refreshing...');
@@ -590,6 +591,14 @@ const Reports: React.FC = () => {
     };
 
     window.addEventListener('bills-updated', handleBillsUpdated);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        invalidateRelatedData('bills');
+        fetchReportsCallback();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Also listen for cross-tab events
     const bc = new BroadcastChannel('zenpos-events');
@@ -601,6 +610,7 @@ const Reports: React.FC = () => {
 
     return () => {
       window.removeEventListener('bills-updated', handleBillsUpdated);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       bc.close();
     };
   }, [fetchReportsCallback]);
@@ -1628,6 +1638,34 @@ const Reports: React.FC = () => {
     }
   };
 
+  const handleExportTallyXML = () => {
+    try {
+      if (activeBills.length === 0) {
+        toast({
+          title: "No Bills to Export",
+          description: "No sales bills found in the selected period.",
+          variant: "destructive"
+        });
+        return;
+      }
+      exportSalesToTallyXML(activeBills, {
+        companyName: billSettings.shopName || activeBranch?.name || 'ZenPOS Restaurant',
+        branchName: isAllBranchesView ? undefined : (activeBranch?.name || undefined),
+      });
+      toast({
+        title: "Tally XML Exported",
+        description: `Successfully exported ${activeBills.length} sales vouchers for Tally.`,
+      });
+    } catch (error: any) {
+      console.error('Error exporting Tally XML:', error);
+      toast({
+        title: "Export Failed",
+        description: error?.message || "Failed to generate Tally XML file",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Sum payment method amounts from payment_details (supports split payments)
   const paymentMethodSummary = activeBills.reduce((acc, bill) => {
     // If payment_details exists and has entries, use those (split payments)
@@ -1658,17 +1696,21 @@ const Reports: React.FC = () => {
             <p className="text-[10px] sm:text-xs text-muted-foreground">{t('reports.title')}</p>
           </div>
         </div>
-        <div className="flex flex-row gap-2">
+        <div className="flex flex-row flex-wrap gap-2">
           <Button onClick={() => setZReportOpen(true)} variant="default" size="sm" className="text-xs h-8 rounded-lg mr-2 font-bold bg-primary text-white">
-              Z-Report
-            </Button>
-            <Button onClick={handleExportAllExcel} variant="outline" size="sm" className="text-xs h-8 rounded-lg">
+            Z-Report
+          </Button>
+          <Button onClick={handleExportAllExcel} variant="outline" size="sm" className="text-xs h-8 rounded-lg">
             <FileSpreadsheet className="w-3 h-3 mr-1" />
             Excel
           </Button>
           <Button onClick={handleExportAllPDF} variant="outline" size="sm" className="text-xs h-8 rounded-lg">
             <Download className="w-3 h-3 mr-1" />
             PDF
+          </Button>
+          <Button onClick={handleExportTallyXML} variant="outline" size="sm" className="text-xs h-8 rounded-lg border-blue-200 hover:bg-blue-50 dark:border-blue-900/40 dark:hover:bg-blue-950/20">
+            <FileCode className="w-3 h-3 mr-1 text-blue-600 dark:text-blue-400" />
+            Tally XML
           </Button>
         </div>
       </div>

@@ -686,6 +686,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .subscribe();
     }
 
+    // Instant browser cross-tab session termination
+    let sessionSyncBc: BroadcastChannel | null = null;
+    try {
+      sessionSyncBc = new BroadcastChannel('zenpos-session-sync');
+      sessionSyncBc.onmessage = (event) => {
+        const data = event.data;
+        if (data?.type === 'FORCE_LOGOUT') {
+          const matchAdmin = data.adminProfileId && (data.adminProfileId === profile?.id || data.adminProfileId === profile?.admin_id);
+          const matchTarget = data.targetProfileId && (data.targetProfileId === profile?.id);
+          const matchUser = data.targetUserId && (data.targetUserId === user?.id);
+          if (matchAdmin || matchTarget || matchUser) {
+            performForceLogout(data.reason);
+          }
+        }
+      };
+    } catch (e) {
+      console.warn('[AuthContext] BroadcastChannel session sync error:', e);
+    }
+
     // Weekly background license verification (resume + online + interval)
     let schedulerStop: (() => void) | null = null;
     if (adminId && profile.role !== 'super_admin') {
@@ -713,6 +732,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       supabase.removeChannel(channel);
       if (broadcastChannel) supabase.removeChannel(broadcastChannel);
       if (userBroadcastChannel) supabase.removeChannel(userBroadcastChannel);
+      sessionSyncBc?.close();
       schedulerStop?.();
     };
 
@@ -768,8 +788,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (extras?.shopName) userData.shop_name = extras.shopName;
     if (extras?.address) userData.address = extras.address;
 
+    let authClient = supabase;
+    if (user) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ivleyttlqlqawghvfyjz.supabase.co';
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || (supabase as any).supabaseKey || '';
+        authClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        }) as any;
+      } catch (err) {
+        devLog('Error creating isolated auth client:', err);
+      }
+    }
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await authClient.auth.signUp({
       email,
       password,
       options: {

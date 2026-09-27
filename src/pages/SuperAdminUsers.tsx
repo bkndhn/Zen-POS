@@ -235,17 +235,40 @@ const SuperAdminUsers: React.FC = () => {
       if (pErr) throw pErr;
 
       if (pauseTarget.role === 'admin') {
-        await supabase.from('profiles').update({ status: newStatus }).eq('admin_id', pauseTarget.profile_id);
+        await (supabase as any).from('profiles').update({
+          status: newStatus,
+          force_logout: isPausing,
+          force_logout_reason: isPausing ? 'Organization account has been paused by Super Admin.' : null,
+        }).eq('admin_id', pauseTarget.profile_id);
       }
 
+      await (supabase as any).from('profiles').update({
+        force_logout: isPausing,
+        force_logout_reason: isPausing ? 'Organization account has been paused by Super Admin.' : null,
+      }).eq('id', pauseTarget.profile_id);
+
       if (isPausing) {
+        try {
+          const localBc = new BroadcastChannel('zenpos-session-sync');
+          localBc.postMessage({
+            type: 'FORCE_LOGOUT',
+            adminProfileId: pauseTarget.profile_id,
+            reason: 'Organization account has been paused by Super Admin.'
+          });
+          localBc.close();
+        } catch {}
+
         const channel = supabase.channel(`force-logout-broadcast-${pauseTarget.profile_id}`);
-        await channel.send({
-          type: 'broadcast',
-          event: 'force_logout',
-          payload: { force: true, reason: 'Organization account has been paused by Super Admin.' }
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({
+              type: 'broadcast',
+              event: 'force_logout',
+              payload: { force: true, reason: 'Organization account has been paused by Super Admin.' }
+            });
+            supabase.removeChannel(channel);
+          }
         });
-        supabase.removeChannel(channel);
       }
 
       toast({
@@ -273,13 +296,27 @@ const SuperAdminUsers: React.FC = () => {
     if (!deleteTarget) return;
     setActionLoading(true);
     try {
+      try {
+        const localBc = new BroadcastChannel('zenpos-session-sync');
+        localBc.postMessage({
+          type: 'FORCE_LOGOUT',
+          adminProfileId: deleteTarget.profile_id,
+          reason: 'Organization account has been deleted.'
+        });
+        localBc.close();
+      } catch {}
+
       const channel = supabase.channel(`force-logout-broadcast-${deleteTarget.profile_id}`);
-      await channel.send({
-        type: 'broadcast',
-        event: 'force_logout',
-        payload: { force: true, reason: 'Organization account has been deleted.' }
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.send({
+            type: 'broadcast',
+            event: 'force_logout',
+            payload: { force: true, reason: 'Organization account has been deleted.' }
+          });
+          supabase.removeChannel(channel);
+        }
       });
-      supabase.removeChannel(channel);
 
       const { error } = await supabase.rpc('super_admin_delete_client', { p_target_admin_id: deleteTarget.profile_id });
       if (error) throw error;
@@ -496,8 +533,35 @@ const SuperAdminUsers: React.FC = () => {
         subscription_status: force ? 'paused' : 'active',
       }).eq('id', adminProfileId);
       if (error) throw error;
-      // Broadcast force logout via realtime channel
-      const bc = supabase.channel(`force-logout-${adminProfileId}`);
+
+      // Cascade force_logout to all sub-users under this admin
+      if (force) {
+        await (supabase as any).from('profiles').update({
+          force_logout: true,
+          force_logout_reason: reason,
+        }).eq('admin_id', adminProfileId);
+      } else {
+        await (supabase as any).from('profiles').update({
+          force_logout: false,
+          force_logout_reason: null,
+        }).eq('admin_id', adminProfileId);
+      }
+
+      // Broadcast force logout locally across open tabs via BroadcastChannel
+      if (force) {
+        try {
+          const localBc = new BroadcastChannel('zenpos-session-sync');
+          localBc.postMessage({
+            type: 'FORCE_LOGOUT',
+            adminProfileId,
+            reason
+          });
+          localBc.close();
+        } catch {}
+      }
+
+      // Broadcast force logout via realtime channel matching AuthContext listener
+      const bc = supabase.channel(`force-logout-broadcast-${adminProfileId}`);
       bc.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await bc.send({ type: 'broadcast', event: 'force_logout', payload: { force, reason } });

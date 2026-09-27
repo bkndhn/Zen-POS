@@ -240,16 +240,16 @@ export function invalidateRelatedData(operation: 'items' | 'expenses' | 'bills' 
       break;
     case 'expenses':
       dataCache.invalidatePattern('expense');
-      dataCache.invalidate(CACHE_KEYS.REPORTS);
+      dataCache.invalidatePattern(CACHE_KEYS.REPORTS);
       break;
     case 'bills':
       dataCache.invalidatePattern('bills');
-      dataCache.invalidate(CACHE_KEYS.REPORTS);
+      dataCache.invalidatePattern(CACHE_KEYS.REPORTS);
       dataCache.invalidate(CACHE_KEYS.MOST_SOLD_ITEMS);
       break;
     case 'payments':
       dataCache.invalidatePattern('payment');
-      dataCache.invalidate(CACHE_KEYS.REPORTS);
+      dataCache.invalidatePattern(CACHE_KEYS.REPORTS);
       break;
   }
 }

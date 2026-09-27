@@ -19,6 +19,7 @@ interface AntiTheftState {
   antitheft_bill_edit: boolean;
   antitheft_shift_variance: boolean;
   antitheft_shift_variance_amt: number;
+  allow_void_bills: boolean;
 }
 
 const DEFAULTS: AntiTheftState = {
@@ -32,6 +33,7 @@ const DEFAULTS: AntiTheftState = {
   antitheft_bill_edit: true,
   antitheft_shift_variance: true,
   antitheft_shift_variance_amt: 100,
+  allow_void_bills: true,
 };
 
 export const SecurityAlertsSettings: React.FC = () => {
@@ -74,6 +76,7 @@ export const SecurityAlertsSettings: React.FC = () => {
           antitheft_bill_edit: row.antitheft_bill_edit ?? true,
           antitheft_shift_variance: row.antitheft_shift_variance ?? true,
           antitheft_shift_variance_amt: row.antitheft_shift_variance_amt ?? 100,
+          allow_void_bills: row.allow_void_bills ?? true,
         });
       }
       setLoading(false);
@@ -148,6 +151,14 @@ export const SecurityAlertsSettings: React.FC = () => {
 
       {state.antitheft_enabled && (
         <CardContent className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
+            <div>
+              <p className="text-sm font-medium">🚫 Allow Cashier to Void/Cancel Bills</p>
+              <p className="text-xs text-muted-foreground mt-0.5">When disabled, staff/cashiers cannot void or cancel generated bills</p>
+            </div>
+            <Switch checked={state.allow_void_bills} onCheckedChange={(v) => set('allow_void_bills', v)} />
+          </div>
+
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
             <div>
               <p className="text-sm font-medium">🗑️ Bill cancelled after printing</p>

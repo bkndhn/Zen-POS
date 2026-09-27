@@ -4014,6 +4014,7 @@ export type Database = {
           antitheft_shift_variance: boolean | null
           antitheft_shift_variance_amt: number | null
           antitheft_void_after_kot: boolean | null
+          allow_void_bills: boolean | null
           auto_cut: boolean
           auto_report_enabled: boolean | null
           auto_report_time: string | null
@@ -4133,6 +4134,7 @@ export type Database = {
           antitheft_shift_variance?: boolean | null
           antitheft_shift_variance_amt?: number | null
           antitheft_void_after_kot?: boolean | null
+          allow_void_bills?: boolean | null
           auto_cut?: boolean
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
@@ -4252,6 +4254,7 @@ export type Database = {
           antitheft_shift_variance?: boolean | null
           antitheft_shift_variance_amt?: number | null
           antitheft_void_after_kot?: boolean | null
+          allow_void_bills?: boolean | null
           auto_cut?: boolean
           auto_report_enabled?: boolean | null
           auto_report_time?: string | null
