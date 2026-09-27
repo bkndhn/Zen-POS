@@ -1159,22 +1159,29 @@ export const ShopSettingsForm = () => {
                                 <div>
                                     <Label>Daily Sales Summary</Label>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Get a summary of total sales, payment breakdown, and top items at your chosen time daily.
+                                        Get a summary of total sales, payment breakdown, and top items at your chosen time daily (India time).
                                     </p>
                                 </div>
                                 <Select value={dailySummaryTime || 'off'} onValueChange={(v) => setDailySummaryTime(v === 'off' ? null : v)}>
                                     <SelectTrigger className="w-[120px] h-8 text-xs">
                                         <SelectValue placeholder="Off" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-[260px]">
                                         <SelectItem value="off">Off</SelectItem>
                                         <SelectItem value="18:00">6:00 PM</SelectItem>
+                                        <SelectItem value="18:30">6:30 PM</SelectItem>
                                         <SelectItem value="19:00">7:00 PM</SelectItem>
+                                        <SelectItem value="19:30">7:30 PM</SelectItem>
                                         <SelectItem value="20:00">8:00 PM</SelectItem>
+                                        <SelectItem value="20:30">8:30 PM</SelectItem>
                                         <SelectItem value="21:00">9:00 PM</SelectItem>
+                                        <SelectItem value="21:30">9:30 PM</SelectItem>
                                         <SelectItem value="22:00">10:00 PM</SelectItem>
+                                        <SelectItem value="22:30">10:30 PM</SelectItem>
                                         <SelectItem value="23:00">11:00 PM</SelectItem>
+                                        <SelectItem value="23:30">11:30 PM</SelectItem>
                                         <SelectItem value="00:00">12:00 AM</SelectItem>
+                                        <SelectItem value="00:30">12:30 AM</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
