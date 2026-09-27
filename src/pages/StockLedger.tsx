@@ -28,7 +28,7 @@ const SOURCE_LABEL: Record<string, { label: string; variant: any }> = {
 const toCsv = (rows: any[]) => {
   const cols = ['Date', 'Item', 'Branch', 'Type', 'Change', 'Balance', 'Reason', 'Notes', 'User'];
   const body = rows.map(r => [r.date, r.item, r.branch, r.type, r.change, r.balance, r.reason, r.notes, r.user]
-    .map(v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')).join('\n');
+    .map(v => { const s0 = String(v ?? ''); const s = /^[=+\-@\t\r]/.test(s0) ? `'${s0}` : s0; return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')).join('\n');
   return cols.join(',') + '\n' + body;
 };
 

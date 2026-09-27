@@ -7,7 +7,8 @@ const escapeHtml = (str: string | undefined | null): string => {
 
 const csvEscape = (val: any): string => {
   if (val === null || val === undefined) return '';
-  const s = String(val);
+  let s = String(val);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; // neutralise spreadsheet formulas
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 };
@@ -15,7 +16,7 @@ const csvEscape = (val: any): string => {
 const rowsToCsv = (rows: Record<string, any>[]): string => {
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
-  const lines = [headers.join(',')];
+  const lines = [headers.map(csvEscape).join(',')];
   for (const r of rows) lines.push(headers.map((h) => csvEscape(r[h])).join(','));
   return lines.join('\r\n');
 };

@@ -20,7 +20,7 @@ const toCsv = (rows: any[], cols: { key: string; label: string }[]) => {
   const head = cols.map(c => c.label).join(',');
   const body = rows.map(r => cols.map(c => {
     const v = r[c.key] ?? '';
-    const s = String(v).replace(/"/g, '""');
+    const raw = String(v); const s = (/^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw).replace(/"/g, '""');
     return /[",\n]/.test(s) ? `"${s}"` : s;
   }).join(',')).join('\n');
   return head + '\n' + body;

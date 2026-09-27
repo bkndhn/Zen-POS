@@ -242,7 +242,7 @@ const generateBillHtml = (data: BillImageData): string => {
             taxHtml += '<tr style="border-bottom: 1px solid #fde68a;"><th style="text-align: left; padding: 2px 4px; font-size: 10px;">TaxName</th><th style="text-align: right; padding: 2px 4px; font-size: 10px;">Taxable</th><th style="text-align: right; padding: 2px 4px; font-size: 10px;">CGST</th><th style="text-align: right; padding: 2px 4px; font-size: 10px;">SGST</th></tr>';
             parseEntries.forEach((entry: any) => {
               const name = entry.taxName || `GST ${entry.taxRate}%`;
-              taxHtml += `<tr><td style="padding: 2px 4px;">${name}</td><td style="text-align: right; padding: 2px 4px;">${(entry.taxableAmount || 0).toFixed(2)}</td><td style="text-align: right; padding: 2px 4px;">${(entry.cgst || 0).toFixed(2)}</td><td style="text-align: right; padding: 2px 4px;">${(entry.sgst || 0).toFixed(2)}</td></tr>`;
+              taxHtml += `<tr><td style="padding: 2px 4px;">${escapeHtml(String(name))}</td><td style="text-align: right; padding: 2px 4px;">${(entry.taxableAmount || 0).toFixed(2)}</td><td style="text-align: right; padding: 2px 4px;">${(entry.cgst || 0).toFixed(2)}</td><td style="text-align: right; padding: 2px 4px;">${(entry.sgst || 0).toFixed(2)}</td></tr>`;
             });
             taxHtml += '</table>';
           } else {

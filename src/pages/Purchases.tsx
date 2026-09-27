@@ -295,7 +295,7 @@ const Purchases: React.FC = () => {
   const exportLedgerCsv = () => {
     const header = ['Date', 'Type', 'Party', 'Reference', 'Mode', 'Status', 'Amount'];
     const lines = filteredLedger.map(r => [r.date, r.type === 'credit' ? 'Purchase (Credit)' : 'Payment (Debit)', r.party, r.ref, r.mode, r.voided ? 'VOIDED' : 'Active', r.amount.toFixed(2)]);
-    const csv = [header, ...lines].map(row => row.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = [header, ...lines].map(row => row.map(c => { const s = String(c ?? ''); return `"${(/^[=+\-@\t\r]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`; }).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;
@@ -684,18 +684,19 @@ ${payments.length ? payments.map((p: any) => `<tr><td>${esc(p.payment_date)}</td
       });
 
       const headers = ['Date', 'Transaction Type', 'Reference', 'Invoiced Amount (Dr)', 'Paid Amount (Cr)', 'Outstanding Balance', 'Notes'];
+      const cell = (v: any) => { const s = String(v ?? ''); return `"${(/^[=+\-@\t\r]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`; };
       const rows = ledgerWithBalance.map(e => [
-        e.date,
-        e.type,
-        `"${e.ref.replace(/"/g, '""')}"`,
-        e.invoiced || '',
-        e.paid || '',
-        e.balance.toFixed(2),
-        `"${e.notes.replace(/"/g, '""')}"`
+        cell(e.date),
+        cell(e.type),
+        cell(e.ref),
+        cell(e.invoiced || ''),
+        cell(e.paid || ''),
+        cell(e.balance.toFixed(2)),
+        cell(e.notes)
       ]);
 
       const csvContent = [
-        `Supplier Statement for: ${supplier.name}`,
+        cell(`Supplier Statement for: ${supplier.name}`),
         `Outstanding Balance: INR ${runningBalance.toFixed(2)}`,
         '',
         headers.join(','),
