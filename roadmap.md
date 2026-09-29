@@ -7,3 +7,7 @@
 - [x] Harden the seven-day offline license anchor on native devices
 - [x] Add safe guards for critical online-only actions
 - [x] Add queue idempotency/locking protections and validate build/tests
+- [x] Item expiry date + fridge expiry board in Kitchen Prep
+- [ ] Live Razorpay/PhonePe payment + own-server webhook endpoint (blocked: needs gateway keys and a server URL from user)
+- [ ] Signed-in Kitchen Prep vs Reports check (blocked: preview sign-in unavailable for this backend)
+- [ ] TallyPrime import walkthrough (blocked: needs user's TallyPrime install)
