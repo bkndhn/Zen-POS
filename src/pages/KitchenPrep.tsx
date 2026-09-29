@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { toast } from 'sonner';
+import FridgeExpiryBoard from '@/components/FridgeExpiryBoard';
 
 type Slot = 'breakfast' | 'lunch' | 'snacks' | 'dinner';
 
@@ -181,6 +182,8 @@ const KitchenPrep: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      <FridgeExpiryBoard adminId={adminProfileId} branchId={branchFilterId} />
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>

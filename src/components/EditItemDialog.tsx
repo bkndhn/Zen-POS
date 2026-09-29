@@ -97,6 +97,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     inventory_quantity: item.inventory_quantity?.toString() || '1',
     is_saleable: item.is_saleable !== false,
     cooking_time_mins: (item as any).cooking_time_mins?.toString() || '',
+    expiry_date: (item as any).expiry_date || '',
     stock_quantity: item.stock_quantity?.toString() || '',
     minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
     quantity_step: item.quantity_step?.toString() || '1',
@@ -140,6 +141,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         inventory_quantity: item.inventory_quantity?.toString() || '1',
         is_saleable: item.is_saleable !== false,
         cooking_time_mins: (item as any).cooking_time_mins?.toString() || '',
+    expiry_date: (item as any).expiry_date || '',
         stock_quantity: '',
         minimum_stock_alert: item.minimum_stock_alert?.toString() || '',
         quantity_step: item.quantity_step?.toString() || '1',
@@ -313,7 +315,8 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         inventory_quantity: parseFloat(formData.inventory_quantity) || 1,
         is_saleable: formData.is_saleable,
         cooking_time_mins: formData.cooking_time_mins ? Math.max(0, Math.round(parseFloat(formData.cooking_time_mins))) : null,
-        
+        expiry_date: formData.expiry_date || null,
+                
         // Legacy fallback
         unit: formData.selling_unit,
         base_value: parseFloat(formData.selling_quantity) || 1,
@@ -847,6 +850,11 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
               <Label htmlFor="is_saleable">Item is saleable (customers can buy it)</Label>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="edit_expiry_date">Expiry / use-by date (optional)</Label>
+              <Input id="edit_expiry_date" type="date" value={formData.expiry_date} onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} />
+              <p className="text-xs text-muted-foreground">Shown on the fridge expiry board in Kitchen Prep.</p>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit_cooking_time_mins">Cooking / prep time (minutes)</Label>
               <Input

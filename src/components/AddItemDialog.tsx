@@ -85,6 +85,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     quantity_step: '1',
     is_saleable: true,
     cooking_time_mins: '',
+    expiry_date: '',
     stock_quantity: '',
     minimum_stock_alert: '',
     quick_chips: '',
@@ -288,7 +289,8 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         inventory_quantity: parseFloat(formData.inventory_quantity) || 1,
         is_saleable: formData.is_saleable,
         cooking_time_mins: formData.cooking_time_mins ? Math.max(0, Math.round(parseFloat(formData.cooking_time_mins))) : null,
-        
+        expiry_date: formData.expiry_date || null,
+                
         // Legacy fallback
         unit: formData.selling_unit,
         base_value: parseFloat(formData.selling_quantity) || 1,
@@ -371,6 +373,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         quantity_step: '1',
         is_saleable: true,
         cooking_time_mins: '',
+    expiry_date: '',
         stock_quantity: '',
         minimum_stock_alert: '',
         quick_chips: '',
@@ -844,6 +847,11 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
             <Label htmlFor="is_saleable">Item is saleable (customers can buy it)</Label>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="expiry_date">Expiry / use-by date (optional)</Label>
+            <Input id="expiry_date" type="date" value={formData.expiry_date} onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} />
+            <p className="text-xs text-muted-foreground">Shown on the fridge expiry board in Kitchen Prep.</p>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="cooking_time_mins">Cooking / prep time (minutes)</Label>
             <Input
