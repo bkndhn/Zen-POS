@@ -2150,6 +2150,7 @@ export type Database = {
           department_id: string | null
           description: string | null
           display_order: number | null
+          expiry_date: string | null
           expiry_mode: string
           has_variants: boolean | null
           hsn_code: string | null
@@ -2195,6 +2196,7 @@ export type Database = {
           department_id?: string | null
           description?: string | null
           display_order?: number | null
+          expiry_date?: string | null
           expiry_mode?: string
           has_variants?: boolean | null
           hsn_code?: string | null
@@ -2240,6 +2242,7 @@ export type Database = {
           department_id?: string | null
           description?: string | null
           display_order?: number | null
+          expiry_date?: string | null
           expiry_mode?: string
           has_variants?: boolean | null
           hsn_code?: string | null
