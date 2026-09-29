@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChefHat, Loader2, RefreshCw, TrendingDown, TrendingUp, Printer } from 'lucide-react';
+import { ChefHat, Loader2, RefreshCw, TrendingDown, TrendingUp, Printer, PackagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ const slotOf = (hour: number): Slot => {
 
 interface Forecast {
   name: string;
+  itemId: string | null;
   unit: string;
   lastWeek: number;
   avg4: number;
@@ -41,7 +42,9 @@ const KitchenPrep: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Forecast[]>([]);
   const [multiplier, setMultiplier] = useState<number[]>([100]);
-  const { branchFilterId } = useBranchScopedQuery(() => load());
+  const [shelfDays, setShelfDays] = useState<number>(1);
+  const [saving, setSaving] = useState(false);
+  const { branchFilterId, operatingBranchId, readOnly } = useBranchScopedQuery(() => load());
   const [targetDow, setTargetDow] = useState<number>(new Date().getDay());
 
   const load = useCallback(async () => {
@@ -72,18 +75,18 @@ const KitchenPrep: React.FC = () => {
       bills.forEach(b => billMeta.set(b.id, new Date(b.created_at)));
 
       const ids = bills.map(b => b.id);
-      const items: { bill_id: string; quantity: number; unit: string | null; item_name_override: string | null; items: { name: string } | null }[] = [];
+      const items: { bill_id: string; item_id: string | null; quantity: number; unit: string | null; item_name_override: string | null; items: { name: string } | null }[] = [];
       for (let i = 0; i < ids.length; i += 300) {
         const { data, error } = await supabase
           .from('bill_items')
-          .select('bill_id, quantity, unit, item_name_override, items(name)')
+          .select('bill_id, item_id, quantity, unit, item_name_override, items(name)')
           .in('bill_id', ids.slice(i, i + 300));
         if (error) throw error;
         if (data) items.push(...(data as any));
       }
 
       // Group by item name, weekday bucket and slot
-      const acc = new Map<string, { unit: string; weeks: number[]; slots: Record<Slot, number>; slotDays: number }>();
+      const acc = new Map<string, { itemId: string | null; unit: string; weeks: number[]; slots: Record<Slot, number>; slotDays: number }>();
       const now = new Date();
 
       for (const it of items) {
@@ -95,7 +98,7 @@ const KitchenPrep: React.FC = () => {
         if (weeksAgo > 3) continue;
         let entry = acc.get(name);
         if (!entry) {
-          entry = { unit: it.unit || 'pc', weeks: [0, 0, 0, 0], slots: { breakfast: 0, lunch: 0, snacks: 0, dinner: 0 }, slotDays: 0 };
+          entry = { itemId: it.item_id, unit: it.unit || 'pc', weeks: [0, 0, 0, 0], slots: { breakfast: 0, lunch: 0, snacks: 0, dinner: 0 }, slotDays: 0 };
           acc.set(name, entry);
         }
         entry.weeks[weeksAgo] += Number(it.quantity) || 0;
@@ -112,6 +115,7 @@ const KitchenPrep: React.FC = () => {
         const total = Object.values(v.slots).reduce((a, b) => a + b, 0) || 1;
         out.push({
           name,
+          itemId: v.itemId,
           unit: v.unit,
           lastWeek,
           avg4: Math.round(avg4 * 10) / 10,
@@ -136,6 +140,35 @@ const KitchenPrep: React.FC = () => {
   }, [adminProfileId, targetDow, multiplier, branchFilterId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const createBatches = async () => {
+    if (!adminProfileId) return;
+    const todo = rows.filter(r => r.itemId && r.projected > 0);
+    if (!todo.length) { toast.error('No linked items to batch'); return; }
+    setSaving(true);
+    try {
+      const today = new Date();
+      const exp = new Date(); exp.setDate(exp.getDate() + shelfDays);
+      const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const tag = ymd(today).replace(/-/g, '');
+      const payload = todo.map((r, i) => ({
+        admin_id: adminProfileId,
+        branch_id: operatingBranchId ?? null,
+        item_id: r.itemId as string,
+        batch_number: `PREP-${tag}-${String(i + 1).padStart(3, '0')}`,
+        stock_quantity: r.projected,
+        mfg_date: ymd(today),
+        expiry_date: ymd(exp),
+      }));
+      const { error } = await supabase.from('item_batches').insert(payload as any);
+      if (error) throw error;
+      toast.success(`Created ${payload.length} prep batches`, { description: `Use by ${ymd(exp)}` });
+    } catch (e: any) {
+      toast.error('Could not create batches', { description: e?.message });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fastMovers = useMemo(() => rows.slice(0, 5), [rows]);
   const slowMovers = useMemo(() => rows.filter(r => r.projected > 0).slice(-5).reverse(), [rows]);
@@ -213,7 +246,18 @@ const KitchenPrep: React.FC = () => {
           </div>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">{DAY_NAMES[targetDow]} prep sheet</CardTitle></CardHeader>
+            <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+              <CardTitle className="text-base">{DAY_NAMES[targetDow]} prep sheet</CardTitle>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Keeps for</span>
+                <select className="h-8 rounded-md border border-input bg-background px-2" value={shelfDays} onChange={e => setShelfDays(Number(e.target.value))}>
+                  {[0, 1, 2, 3, 5, 7].map(d => <option key={d} value={d}>{d === 0 ? 'Today only' : `${d} day${d > 1 ? 's' : ''}`}</option>)}
+                </select>
+                <Button size="sm" onClick={() => void createBatches()} disabled={saving || readOnly}>
+                  {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <PackagePlus className="h-4 w-4 mr-1" />} Make batches
+                </Button>
+              </div>
+            </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
