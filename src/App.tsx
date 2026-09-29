@@ -248,6 +248,7 @@ const MenuTV = lazy(() => import("./pages/MenuTV").then(m => ({ default: m.MenuT
 const ImageDiagnostics = lazy(() => import("./pages/ImageDiagnostics"));
 const OnlineOrders = lazy(() => import("./pages/OnlineOrders"));
 const AiInsights = lazy(() => import("./pages/AiInsights"));
+const KitchenPrep = lazy(() => import("./pages/KitchenPrep"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
@@ -429,6 +430,7 @@ const App = () => {
                   <Route path="/super-admin/rum" element={<Layout><ProtectedRoute requiredPermission="users"><SuperAdminRum /></ProtectedRoute></Layout>} />
                   <Route path="/diagnostics/images" element={<Layout><ProtectedRoute requiredPermission="settings"><ImageDiagnostics /></ProtectedRoute></Layout>} />
                   <Route path="/ai-insights" element={<Layout><ProtectedRoute requiredPermission="analytics"><AiInsights /></ProtectedRoute></Layout>} />
+                  <Route path="/kitchen-prep" element={<Layout><ProtectedRoute requiredPermission="kitchen"><KitchenPrep /></ProtectedRoute></Layout>} />
                   <Route path="/renew" element={<Layout><RenewSubscription /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />

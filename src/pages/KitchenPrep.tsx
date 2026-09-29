@@ -40,6 +40,7 @@ const KitchenPrep: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Forecast[]>([]);
   const [multiplier, setMultiplier] = useState<number[]>([100]);
+  const { branchFilterId } = useBranchScopedQuery(() => load());
   const [targetDow, setTargetDow] = useState<number>(new Date().getDay());
 
   const load = useCallback(async () => {
@@ -58,6 +59,7 @@ const KitchenPrep: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(5000);
 
+      if (branchFilterId) billQuery = billQuery.eq('branch_id', branchFilterId);
       const { data: bills, error: billErr } = await billQuery;
       if (billErr) throw billErr;
       if (!bills?.length) {
@@ -130,9 +132,7 @@ const KitchenPrep: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [adminProfileId, targetDow, multiplier]);
-
-  useBranchScopedQuery(() => load());
+  }, [adminProfileId, targetDow, multiplier, branchFilterId]);
 
   useEffect(() => { void load(); }, [load]);
 
