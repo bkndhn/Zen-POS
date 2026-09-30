@@ -40,8 +40,8 @@ const FridgeExpiryBoard: React.FC<BoardProps> = ({ adminId, branchId, operatingB
       if (branchId) bq = bq.eq('branch_id', branchId);
       const [iRes, bRes] = await Promise.all([iq, bq]);
       const out: Row[] = [];
-      (iRes.data || []).forEach((i: any) => out.push({ key: 'i' + i.id, name: i.name, source: 'Item', expiry: i.expiry_date, days: daysUntil(i.expiry_date) }));
-      (bRes.data || []).forEach((b: any) => out.push({ key: 'b' + b.id, name: b.items?.name || 'Item', source: `Batch ${b.batch_number}`, expiry: b.expiry_date, days: daysUntil(b.expiry_date), qty: Number(b.stock_quantity) }));
+      (iRes.data || []).forEach((i: any) => out.push({ key: 'i' + i.id, id: i.id, isBatch: false, name: i.name, source: 'Item', expiry: i.expiry_date, days: daysUntil(i.expiry_date) }));
+      (bRes.data || []).forEach((b: any) => out.push({ key: 'b' + b.id, id: b.id, isBatch: true, name: b.items?.name || 'Item', source: `Batch ${b.batch_number}`, expiry: b.expiry_date, days: daysUntil(b.expiry_date), qty: Number(b.stock_quantity) }));
       out.sort((a, b) => a.days - b.days);
       setRows(out);
     } finally {
@@ -51,15 +51,38 @@ const FridgeExpiryBoard: React.FC<BoardProps> = ({ adminId, branchId, operatingB
 
   useEffect(() => { void load(); }, [load]);
 
+  const discard = async (row: Row) => {
+    try {
+      const { error } = await supabase.from('item_batches').update({ stock_quantity: 0 }).eq('id', row.id);
+      if (error) throw error;
+      toast.success('Batch cleared from stock', { description: row.name });
+      await load();
+      onChanged?.();
+    } catch (e: any) {
+      toast.error('Could not clear the batch', { description: e?.message });
+    }
+  };
+
   const expired = rows.filter(r => r.days < 0).length;
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-base flex items-center gap-2">
           <Refrigerator className="h-4 w-4 text-primary" /> Fridge expiry board
           {expired > 0 && <Badge variant="destructive">{expired} past shelf life</Badge>}
         </CardTitle>
+        <div className="flex items-center gap-2">
+          <ManualBatchDialog
+            adminId={adminId}
+            branchId={branchId ?? operatingBranchId ?? null}
+            disabled={readOnly || (!branchId && !operatingBranchId)}
+            onCreated={() => { void load(); onChanged?.(); }}
+          />
+          <Button size="sm" variant="ghost" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="text-sm">
         {loading ? (
@@ -74,18 +97,26 @@ const FridgeExpiryBoard: React.FC<BoardProps> = ({ adminId, branchId, operatingB
                   <span className="font-medium">{r.name}</span>
                   <span className="text-xs text-muted-foreground"> · {r.source}{r.qty != null ? ` · ${r.qty} left` : ''}</span>
                 </div>
-                {r.days < 0 ? (
-                  <Badge variant="destructive">Expired {-r.days}d ago</Badge>
-                ) : r.days === 0 ? (
-                  <Badge variant="destructive">Expires today</Badge>
-                ) : (
-                  <Badge variant="secondary">In {r.days}d</Badge>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {r.days < 0 ? (
+                    <Badge variant="destructive">Expired {-r.days}d ago</Badge>
+                  ) : r.days === 0 ? (
+                    <Badge variant="destructive">Expires today</Badge>
+                  ) : (
+                    <Badge variant="secondary">In {r.days}d</Badge>
+                  )}
+                  {r.isBatch && r.days <= 0 && !readOnly && (
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive" onClick={() => void discard(r)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
       </CardContent>
+
     </Card>
   );
 };
