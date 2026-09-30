@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Refrigerator, Loader2 } from 'lucide-react';
+import { Refrigerator, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import ManualBatchDialog from '@/components/ManualBatchDialog';
 
-interface Row { key: string; name: string; source: string; expiry: string; days: number; qty?: number }
+interface Row { key: string; id: string; name: string; source: string; expiry: string; days: number; qty?: number; isBatch: boolean }
 
 const daysUntil = (d: string) => {
   const t = new Date(); t.setHours(0, 0, 0, 0);
@@ -12,9 +15,18 @@ const daysUntil = (d: string) => {
   return Math.round((e.getTime() - t.getTime()) / 86400000);
 };
 
-const FridgeExpiryBoard: React.FC<{ adminId: string | null | undefined; branchId: string | null }> = ({ adminId, branchId }) => {
+interface BoardProps {
+  adminId: string | null | undefined;
+  branchId: string | null;
+  operatingBranchId?: string | null;
+  readOnly?: boolean;
+  onChanged?: () => void;
+}
+
+const FridgeExpiryBoard: React.FC<BoardProps> = ({ adminId, branchId, operatingBranchId = null, readOnly = false, onChanged }) => {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+
 
   const load = useCallback(async () => {
     if (!adminId) return;
