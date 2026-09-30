@@ -88,12 +88,15 @@ const KitchenPrep: React.FC = () => {
       // Group by item name, weekday bucket and slot
       const acc = new Map<string, { itemId: string | null; unit: string; weeks: number[]; slots: Record<Slot, number>; slotDays: number }>();
       const now = new Date();
+      const todayKey = now.toDateString();
+      const sold: Record<string, number> = {};
 
       for (const it of items) {
         const when = billMeta.get(it.bill_id);
         if (!when) continue;
-        if (when.getDay() !== targetDow) continue;
         const name = it.item_name_override || it.items?.name || 'Unknown item';
+        if (when.toDateString() === todayKey) sold[name] = (sold[name] || 0) + (Number(it.quantity) || 0);
+        if (when.getDay() !== targetDow) continue;
         const weeksAgo = Math.floor((now.getTime() - when.getTime()) / (7 * 86400000));
         if (weeksAgo > 3) continue;
         let entry = acc.get(name);
@@ -104,6 +107,23 @@ const KitchenPrep: React.FC = () => {
         entry.weeks[weeksAgo] += Number(it.quantity) || 0;
         entry.slots[slotOf(when.getHours())] += Number(it.quantity) || 0;
       }
+      setSoldToday(sold);
+
+      // Usable batch stock already in the fridge (not expired)
+      const todayYmd = new Date().toISOString().slice(0, 10);
+      let stockQ = supabase
+        .from('item_batches')
+        .select('item_id, stock_quantity')
+        .eq('admin_id', adminProfileId)
+        .gt('stock_quantity', 0)
+        .gte('expiry_date', todayYmd)
+        .limit(2000);
+      if (branchFilterId) stockQ = stockQ.eq('branch_id', branchFilterId);
+      const { data: batchRows } = await stockQ;
+      const stockMap: Record<string, number> = {};
+      (batchRows || []).forEach((b: any) => { stockMap[b.item_id] = (stockMap[b.item_id] || 0) + Number(b.stock_quantity || 0); });
+      setBatchStock(stockMap);
+
 
       const mult = multiplier[0] / 100;
       const out: Forecast[] = [];
