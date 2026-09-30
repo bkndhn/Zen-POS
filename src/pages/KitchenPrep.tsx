@@ -41,9 +41,12 @@ const KitchenPrep: React.FC = () => {
   const { adminProfileId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Forecast[]>([]);
+  const [batchStock, setBatchStock] = useState<Record<string, number>>({});
+  const [soldToday, setSoldToday] = useState<Record<string, number>>({});
   const [multiplier, setMultiplier] = useState<number[]>([100]);
   const [shelfDays, setShelfDays] = useState<number>(1);
   const [saving, setSaving] = useState(false);
+
   const { branchFilterId, operatingBranchId, readOnly } = useBranchScopedQuery(() => load());
   const [targetDow, setTargetDow] = useState<number>(new Date().getDay());
 
