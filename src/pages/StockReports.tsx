@@ -15,6 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format, subDays } from 'date-fns';
 import { formatStoredQuantity } from '@/utils/timeUtils';
 import { offlineManager } from '@/utils/offlineManager';
+import ExpiryStockReport from '@/components/ExpiryStockReport';
 
 const toCsv = (rows: any[], cols: { key: string; label: string }[]) => {
   const head = cols.map(c => c.label).join(',');
@@ -225,7 +226,20 @@ const StockReports: React.FC = () => {
             <TabsTrigger value="stock">Stock</TabsTrigger>
             <TabsTrigger value="low">Low / Expiring</TabsTrigger>
             <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
+            <TabsTrigger value="expiry">Expiry report</TabsTrigger>
           </TabsList>
+          <TabsContent value="expiry">
+            <ExpiryStockReport
+              adminId={adminId}
+              branches={branches as any}
+              onExport={(r) => downloadCsv(`expiry-stock-${format(new Date(), 'yyyyMMdd')}.csv`, toCsv(r, [
+                { key: 'name', label: 'Item' }, { key: 'source', label: 'Source' }, { key: 'batch', label: 'Batch' },
+                { key: 'branch', label: 'Branch' }, { key: 'supplier', label: 'Supplier' }, { key: 'qty', label: 'Qty' },
+                { key: 'unit', label: 'Unit' }, { key: 'value', label: 'Value' }, { key: 'mfg', label: 'Made/Bought' },
+                { key: 'expiry', label: 'Expiry' }, { key: 'days', label: 'Days left' }, { key: 'status', label: 'Status' },
+              ]))}
+            />
+          </TabsContent>
 
           <TabsContent value="purchase" className="space-y-3">
             {purchasesBySupplier.length > 0 && (

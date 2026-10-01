@@ -164,28 +164,32 @@ const KitchenPrep: React.FC = () => {
 
   useEffect(() => { void load(); }, [load]);
 
+  const inStock = (r: Forecast) => (r.itemId ? Math.round((batchStock[r.itemId] || 0) * 10) / 10 : 0);
+  const toMake = (r: Forecast) => Math.max(0, Math.round((r.projected - inStock(r)) * 10) / 10);
+
   const createBatches = async () => {
     if (!adminProfileId) return;
-    const todo = rows.filter(r => r.itemId && r.projected > 0);
-    if (!todo.length) { toast.error('No linked items to batch'); return; }
+    const todo = rows.filter(r => r.itemId && toMake(r) > 0);
+    if (!todo.length) { toast.error('Nothing left to make — stock already covers the forecast'); return; }
     setSaving(true);
     try {
       const today = new Date();
       const exp = new Date(); exp.setDate(exp.getDate() + shelfDays);
       const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const tag = ymd(today).replace(/-/g, '');
+      const tag = ymd(today).replace(/-/g, '') + '-' + String(Date.now()).slice(-4);
       const payload = todo.map((r, i) => ({
         admin_id: adminProfileId,
         branch_id: operatingBranchId ?? null,
         item_id: r.itemId as string,
         batch_number: `PREP-${tag}-${String(i + 1).padStart(3, '0')}`,
-        stock_quantity: r.projected,
+        stock_quantity: toMake(r),
         mfg_date: ymd(today),
         expiry_date: ymd(exp),
       }));
       const { error } = await supabase.from('item_batches').insert(payload as any);
       if (error) throw error;
       toast.success(`Created ${payload.length} prep batches`, { description: `Use by ${ymd(exp)}` });
+      void load();
     } catch (e: any) {
       toast.error('Could not create batches', { description: e?.message });
     } finally {
@@ -239,7 +243,7 @@ const KitchenPrep: React.FC = () => {
         </CardContent>
       </Card>
 
-      <FridgeExpiryBoard adminId={adminProfileId} branchId={branchFilterId} />
+      <FridgeExpiryBoard adminId={adminProfileId} branchId={branchFilterId} operatingBranchId={operatingBranchId} readOnly={readOnly} onChanged={() => void load()} />
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
@@ -286,7 +290,10 @@ const KitchenPrep: React.FC = () => {
                 <thead className="bg-muted/50">
                   <tr className="text-left">
                     <th className="p-2">Item</th>
-                    <th className="p-2 text-right">Prepare</th>
+                    <th className="p-2 text-right">Forecast</th>
+                    <th className="p-2 text-right">In stock</th>
+                    <th className="p-2 text-right">Still to make</th>
+                    <th className="p-2 text-right">Sold today</th>
                     <th className="p-2 text-right">Last {DAY_NAMES[targetDow].slice(0, 3)}</th>
                     <th className="p-2 text-right">4-week avg</th>
                     <th className="p-2">Busiest time</th>
@@ -301,6 +308,9 @@ const KitchenPrep: React.FC = () => {
                       <tr key={r.name} className="border-t border-border">
                         <td className="p-2">{r.name}</td>
                         <td className="p-2 text-right font-semibold">{r.projected} {r.unit}</td>
+                        <td className="p-2 text-right text-muted-foreground">{inStock(r)}</td>
+                        <td className="p-2 text-right font-semibold text-primary">{toMake(r)}</td>
+                        <td className="p-2 text-right text-muted-foreground">{soldToday[r.name] || 0}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.lastWeek}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.avg4}</td>
                         <td className="p-2"><Badge variant="secondary">{slotLabel.split(' (')[0]} · {busiest[1]}%</Badge></td>
