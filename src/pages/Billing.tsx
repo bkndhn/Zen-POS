@@ -1,3 +1,6 @@
+import { useNearExpiryItems } from '@/hooks/useNearExpiryItems';
+import { useMostSoldItems } from '@/hooks/useMostSoldItems';
+import { expiryLabel } from '@/utils/expiryPricing';
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -200,6 +203,8 @@ interface BillingGridItemCardProps {
   onAddToCartWithChip: (item: Item, chip: string) => void;
   onAddToCartWithAmount: (item: Item, amount: number) => void;
   onUpdateQuantity: (id: string, change: number) => void;
+  expiryDays?: number | null;
+  isFastMover?: boolean;
 }
 
 const BillingGridItemCard = React.memo(({
@@ -209,7 +214,9 @@ const BillingGridItemCard = React.memo(({
   onAddToCart,
   onAddToCartWithChip,
   onAddToCartWithAmount,
-  onUpdateQuantity
+  onUpdateQuantity,
+  expiryDays,
+  isFastMover
 }: BillingGridItemCardProps) => {
   const cachedImageUrl = getCachedImageUrl(item.id);
   const imageUrl = item.image_url || cachedImageUrl;
@@ -253,6 +260,20 @@ const BillingGridItemCard = React.memo(({
         {lowStock && (
           <div className="absolute top-1 left-1 bg-orange-500 text-white text-[11px] font-bold px-1.5 py-0.5 rounded shadow-sm">
             Low: {formatStoredQuantity(item.stock_quantity!, (item as any).inventory_unit || item.unit)}
+          </div>
+        )}
+
+        {/* Sell-first / fast-mover chips (advisory only) */}
+        {(expiryDays != null || isFastMover) && (
+          <div className="absolute top-1 right-1 flex flex-col items-end gap-0.5">
+            {expiryDays != null && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm ${expiryDays <= 1 ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'}`}>
+                ⚡ {expiryLabel(expiryDays)}
+              </span>
+            )}
+            {isFastMover && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm bg-primary text-primary-foreground">🔥 Fast</span>
+            )}
           </div>
         )}
 
@@ -331,6 +352,8 @@ interface BillingListItemCardProps {
   onAddToCartWithChip: (item: Item, chip: string) => void;
   onAddToCartWithAmount: (item: Item, amount: number) => void;
   onUpdateQuantity: (id: string, change: number) => void;
+  expiryDays?: number | null;
+  isFastMover?: boolean;
 }
 
 const BillingListItemCard = React.memo(({
@@ -340,7 +363,9 @@ const BillingListItemCard = React.memo(({
   onAddToCart,
   onAddToCartWithChip,
   onAddToCartWithAmount,
-  onUpdateQuantity
+  onUpdateQuantity,
+  expiryDays,
+  isFastMover
 }: BillingListItemCardProps) => {
   const cachedImageUrl = getCachedImageUrl(item.id);
   const imageUrl = item.image_url || cachedImageUrl;
@@ -383,6 +408,15 @@ const BillingListItemCard = React.memo(({
               {/* Name and Price */}
               <div className="min-w-0">
                 <h3 className="font-semibold text-sm truncate">{item.name}</h3>
+                {(expiryDays != null || isFastMover || isLowStock(item)) && (
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {expiryDays != null && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${expiryDays <= 1 ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'}`}>⚡ {expiryLabel(expiryDays)}</span>
+                    )}
+                    {isFastMover && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary text-primary-foreground">🔥 Fast</span>}
+                    {isLowStock(item) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning text-warning-foreground">Low stock</span>}
+                  </div>
+                )}
                 <p className="text-lg font-bold text-primary">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
               </div>
             </div>
@@ -451,6 +485,9 @@ const Billing = () => {
   const { profile, adminProfileId } = useAuth();
   const { t } = useTranslation();
   const adminId = adminProfileId;
+  const nearExpiryMap = useNearExpiryItems(adminProfileId);
+  const { mostSoldItems: fastMoverList } = useMostSoldItems(8);
+  const fastMoverIds = useMemo(() => new Set(fastMoverList.map(m => m.id)), [fastMoverList]);
   const { branchFilterId, isAllBranchesView, operatingBranchId, activeBranch } = useBranchScopedQuery(() => {
     fetchItems();
   });
@@ -3903,6 +3940,8 @@ const Billing = () => {
                   onAddToCartWithChip={stableAddToCartWithChip}
                   onAddToCartWithAmount={stableAddToCartWithAmount}
                   onUpdateQuantity={stableUpdateQuantity}
+                  expiryDays={nearExpiryMap[item.id]?.days ?? null}
+                  isFastMover={fastMoverIds.has(item.id)}
                 />
               );
             })}
@@ -3922,6 +3961,8 @@ const Billing = () => {
                   onAddToCartWithChip={stableAddToCartWithChip}
                   onAddToCartWithAmount={stableAddToCartWithAmount}
                   onUpdateQuantity={stableUpdateQuantity}
+                  expiryDays={nearExpiryMap[item.id]?.days ?? null}
+                  isFastMover={fastMoverIds.has(item.id)}
                 />
               );
             })}
@@ -4208,6 +4249,7 @@ const Billing = () => {
 
     {/* Payment Dialog */}
     <CompletePaymentDialog 
+      nearExpiry={nearExpiryMap}
       open={paymentDialogOpen} 
       onOpenChange={setPaymentDialogOpen} 
       cart={cart} 
