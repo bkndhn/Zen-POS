@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, RefreshCw } from 'lucide-react';
+import { suggestedClearancePct } from '@/utils/expiryPricing';
 
 interface Props {
   adminId: string | null | undefined;
@@ -48,7 +49,7 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
       (b.data || []).forEach((r: any) => out.push({ key: 'b' + r.id, source: 'Batch', name: r.items?.name || 'Item', batch: r.batch_number, branch_id: r.branch_id, qty: Number(r.stock_quantity || 0), unit: r.items?.inventory_unit || r.items?.unit || '', rate: Number(r.items?.purchase_rate || 0), mfg: r.mfg_date, expiry: r.expiry_date, supplier: '' }));
       (p.data || []).forEach((r: any) => out.push({ key: 'p' + r.id, source: 'Purchase', name: r.item_name, batch: r.batch_no || '', branch_id: null, qty: Number(r.quantity || 0), unit: r.unit || '', rate: Number(r.rate || 0), mfg: r.purchases?.purchase_date, expiry: r.expiry_date, supplier: r.purchases?.suppliers?.name || '' }));
       (i.data || []).forEach((r: any) => out.push({ key: 'i' + r.id, source: 'Item', name: r.name, batch: '', branch_id: r.branch_id, qty: Number(r.stock_quantity || 0), unit: r.inventory_unit || r.unit || '', rate: Number(r.purchase_rate || 0), mfg: null, expiry: r.expiry_date, supplier: '' }));
-      out.forEach(r => { r.days = r.expiry ? daysUntil(r.expiry) : null; r.status = statusOf(r.days); r.value = Math.round(r.qty * r.rate * 100) / 100; });
+      out.forEach(r => { r.days = r.expiry ? daysUntil(r.expiry) : null; r.status = statusOf(r.days); r.value = Math.round(r.qty * r.rate * 100) / 100; r.discount = suggestedClearancePct(r.days); r.action = r.status === 'expired' ? 'Remove / discard' : r.discount ? `Sell first · ${r.discount}% off` : r.status === 'none' ? '' : 'Normal price'; });
       setRows(out);
     } finally { setLoading(false); }
   };
@@ -66,6 +67,7 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
   }, [rows, search, branch, status, source, hideEmpty, sortBy]);
 
   const sum = (s: Status) => filtered.filter(r => r.status === s);
+  const sellFirst = filtered.filter(r => r.qty > 0 && r.discount > 0).slice(0, 8);
   const atRisk = filtered.filter(r => r.status === 'expired' || r.status === 'today').reduce((a, r) => a + r.value, 0);
   const branchName = (id: string | null) => (id ? branches.find(b => b.id === id)?.name || '—' : '—');
 
@@ -81,6 +83,19 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
           </Card>
         ))}
       </div>
+      {sellFirst.length > 0 && (
+        <Card className="border-warning/40">
+          <CardHeader className="pb-2"><CardTitle className="text-base">⚡ Sell these first</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {sellFirst.map(r => (
+              <div key={r.key} className="rounded-lg border border-border px-2.5 py-1.5 text-xs">
+                <span className="font-semibold">{r.name}</span> · {r.qty} {r.unit} · {r.days === 0 ? 'expires today' : `${r.days}d left`}
+                <span className="ml-1 font-bold text-warning">{r.discount}% off</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base">Expiry-wise stock <span className="text-sm font-normal text-muted-foreground">· Value at risk ₹{atRisk.toFixed(2)}</span></CardTitle>
@@ -100,10 +115,10 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={hideEmpty} onChange={e => setHideEmpty(e.target.checked)} /> Hide zero stock</label>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Source</TableHead><TableHead>Batch</TableHead><TableHead>Branch</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Value</TableHead><TableHead>Made / bought</TableHead><TableHead>Expiry</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Source</TableHead><TableHead>Batch</TableHead><TableHead>Branch</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Value</TableHead><TableHead>Made / bought</TableHead><TableHead>Expiry</TableHead><TableHead>Status</TableHead><TableHead>Sell-first action</TableHead></TableRow></TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No stock matches these filters.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">No stock matches these filters.</TableCell></TableRow>
                 ) : filtered.map(r => (
                   <TableRow key={r.key}>
                     <TableCell className="font-medium">{r.name}{r.supplier && <span className="block text-xs text-muted-foreground">{r.supplier}</span>}</TableCell>
@@ -119,6 +134,7 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
                         {r.status === 'expired' ? `Expired ${-r.days}d ago` : r.days != null && r.days > 0 ? `In ${r.days}d` : LABEL[r.status as Status]}
                       </Badge>
                     </TableCell>
+                    <TableCell className={`text-xs font-semibold whitespace-nowrap ${r.status === 'expired' ? 'text-destructive' : r.discount ? 'text-warning' : 'text-muted-foreground'}`}>{r.action || '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
