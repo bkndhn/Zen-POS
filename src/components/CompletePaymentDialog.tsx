@@ -15,6 +15,7 @@ import { Plus, Minus, Trash2, Percent, ChevronDown, ChevronUp, MessageCircle } f
 import { getShortUnit, formatStoredQuantity, isWeightOrVolumeUnit, convertToInventoryUnit } from '@/utils/timeUtils';
 import { isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { toast } from '@/hooks/use-toast';
+import { suggestedClearancePct } from '@/utils/expiryPricing';
 
 
 interface CartItem {
@@ -82,6 +83,7 @@ interface CompletePaymentDialogProps {
   defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
   autoPrintEnabled?: boolean;
+  nearExpiry?: Record<string, { days: number }>;
 }
 
 // Strong name validation logic (excludes dummy words, repetitive/sequential characters)
@@ -132,6 +134,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   defaultOrderType,
   taxRatesMap = {},
   autoPrintEnabled = false,
+  nearExpiry,
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
   const [discount, setDiscount] = useState(0);
@@ -297,6 +300,23 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const total = subtotal - discountAmount;
   const totalPaymentAmount = Object.values(paymentAmounts).reduce((sum, amount) => sum + amount, 0);
   const remaining = total - totalPaymentAmount;
+
+  // Quick cash tender (display only — does not change what is recorded)
+  const [cashTendered, setCashTendered] = useState<number>(0);
+  useEffect(() => { if (!open) setCashTendered(0); }, [open]);
+  const cashDue = Object.entries(paymentAmounts).find(([k]) => k.toLowerCase() === 'cash')?.[1] || 0;
+  const changeDue = cashTendered > 0 ? cashTendered - cashDue : 0;
+
+  // Near-expiry "sell first" clearance suggestion (applies only if cashier taps it)
+  const clearance = React.useMemo(() => {
+    if (!nearExpiry) return null;
+    const hits = cart.filter(c => c.quantity > 0 && nearExpiry[c.id] && nearExpiry[c.id].days >= 0)
+      .map(c => ({ name: c.name, days: nearExpiry[c.id].days, pct: suggestedClearancePct(nearExpiry[c.id].days), line: (c.quantity / (c.base_value || 1)) * c.price }))
+      .filter(h => h.pct > 0);
+    if (!hits.length) return null;
+    const amount = Math.round(hits.reduce((a, h) => a + h.line * h.pct / 100, 0));
+    return { hits, amount };
+  }, [nearExpiry, cart]);
 
   const handlePaymentAmountChange = (paymentType: string, amount: number) => {
     setPaymentAmounts(prev => ({ ...prev, [paymentType]: amount || 0 }));
@@ -830,6 +850,15 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             )}
           </div>
 
+          {clearance && (
+            <div className="mb-2 rounded-xl border border-warning/40 bg-warning/10 p-2 text-xs">
+              <div className="font-semibold text-foreground">⚡ Sell-first items in this bill</div>
+              <div className="text-muted-foreground">{clearance.hits.map(h => `${h.name} (${h.days === 0 ? 'today' : h.days + 'd'}, ${h.pct}%)`).join(', ')}</div>
+              <Button type="button" size="sm" variant="outline" className="mt-1.5 h-7 text-xs" onClick={() => { setDiscountType('flat'); setDiscount(clearance.amount); }}>
+                Apply clearance discount ₹{clearance.amount}
+              </Button>
+            </div>
+          )}
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(paymentTypes.length + 1, 4)}, minmax(0, 1fr))` }}>
             {paymentTypes.map((payment) => (
               <div key={payment.id} className="flex flex-col items-center">
@@ -877,6 +906,24 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             )}
           </div>
           {remaining !== 0 && <div className="text-right text-xs font-bold text-destructive">Remaining: ₹{remaining.toFixed(2)}</div>}
+
+          {cashDue > 0 && (
+            <div className="mt-2 rounded-xl border border-border p-2 space-y-1.5">
+              <div className="text-xs font-semibold text-muted-foreground">Cash received</div>
+              <div className="flex flex-wrap gap-1.5">
+                {[{ l: 'Exact', v: cashDue }, ...[10, 20, 50, 100, 200, 500, 2000].filter(v => v >= cashDue || v >= 50).map(v => ({ l: `₹${v}`, v }))].map(b => (
+                  <Button key={b.l} type="button" size="sm" variant={cashTendered === b.v ? 'default' : 'outline'} className="h-8 px-2.5 text-xs font-bold rounded-lg" onClick={() => setCashTendered(b.v)}>{b.l}</Button>
+                ))}
+                <Input type="number" inputMode="decimal" placeholder="Other" value={cashTendered || ''} onChange={e => setCashTendered(Number(e.target.value) || 0)} className="h-8 w-20 text-xs text-center" min="0" />
+              </div>
+              {cashTendered > 0 && (
+                <div className={cn('flex justify-between items-center rounded-lg px-2.5 py-1.5 font-bold', changeDue >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
+                  <span className="text-xs">{changeDue >= 0 ? 'Change to return' : 'Short by'}</span>
+                  <span className="text-lg num-tabular">₹{Math.abs(changeDue).toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Summary - Fixed at bottom */}
