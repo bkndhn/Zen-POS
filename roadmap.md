@@ -8,6 +8,10 @@
 - [x] Add safe guards for critical online-only actions
 - [x] Add queue idempotency/locking protections and validate build/tests
 - [x] Item expiry date + fridge expiry board in Kitchen Prep
+- [ ] Quick cash tender buttons + change due in payment dialog (additive only)
+- [ ] Billing cards: near-expiry badge, fast-mover badge (additive only)
+- [ ] Near-expiry clearance discount suggestion (optional, cashier-applied)
+- [ ] Expiry report: sell-first priority + suggested clearance discount
 - [ ] Live Razorpay/PhonePe payment + own-server webhook endpoint (blocked: needs gateway keys and a server URL from user)
 - [ ] Signed-in Kitchen Prep vs Reports check (blocked: preview sign-in unavailable for this backend)
 - [ ] TallyPrime import walkthrough (blocked: needs user's TallyPrime install)
