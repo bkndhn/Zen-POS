@@ -178,7 +178,7 @@ async function sendToToken(
       webpush: {
         headers: { Urgency: 'high', Topic: eventKey.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) },
         notification: { tag: eventKey, renotify: false },
-        fcm_options: { link: data.url ? `https://zen-pos.vercel.app${data.url}` : 'https://zen-pos.vercel.app/' },
+        fcm_options: { link: data.url ? `${Deno.env.get('APP_URL') || 'https://zen-pos1.lovable.app'}${data.url}` : (Deno.env.get('APP_URL') || 'https://zen-pos1.lovable.app') },
       },
     },
   };

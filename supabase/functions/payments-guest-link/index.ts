@@ -1,13 +1,21 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { admin, getCreds, rzpFetch, phonepePay } from '../_shared/pg.ts';
 
-const APP_ORIGINS = [/^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i, /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i, /^http:\/\/localhost(:\d+)?$/i, /^capacitor:\/\/localhost$/i, /^https:\/\/localhost$/i];
-const DEFAULT_REDIRECT = 'https://zen-pos1.lovable.app';
+// Supported app origins — add your Vercel domain here if needed
+const APP_URL = Deno.env.get('APP_URL') || 'https://zen-pos1.lovable.app';
+const APP_ORIGINS = [
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*vercel\.app$/i,
+  /^http:\/\/localhost(:\d+)?$/i,
+  /^capacitor:\/\/localhost$/i,
+  /^https:\/\/localhost$/i,
+];
 function safeRedirect(v: unknown): string {
   try {
     const u = new URL(String(v || ''));
-    return APP_ORIGINS.some((re) => re.test(u.origin)) ? u.toString() : DEFAULT_REDIRECT;
-  } catch { return DEFAULT_REDIRECT; }
+    return APP_ORIGINS.some((re) => re.test(u.origin)) ? u.toString() : APP_URL;
+  } catch { return APP_URL; }
 }
 
 const json = (body: unknown, status = 200) =>
@@ -74,6 +82,18 @@ Deno.serve(async (req) => {
           ...(phone ? { contact: phone.length === 10 ? `+91${phone}` : `+${phone}` } : {}),
         },
         notify: { sms: false, email: false },
+        // Explicitly enable all payment methods including UPI
+        options: {
+          checkout: {
+            method: {
+              upi: 1,
+              card: 1,
+              netbanking: 1,
+              wallet: 1,
+              emi: 0,
+            },
+          },
+        },
         notes: {
           order_id: order.id,
           order_number: String(order.order_number || ''),

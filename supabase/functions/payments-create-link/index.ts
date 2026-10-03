@@ -3,8 +3,15 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { admin, getCreds, getPlatformCreds, rzpFetch, phonepePay } from '../_shared/pg.ts';
 import { tenantIdOf, ownedBranchId, resolveSubscriptionPrice, type TenantProfile } from '../_shared/pricing.ts';
 
-const APP_ORIGINS = [/^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i, /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i, /^http:\/\/localhost(:\d+)?$/i, /^capacitor:\/\/localhost$/i, /^https:\/\/localhost$/i];
-const DEFAULT_REDIRECT = 'https://zen-pos1.lovable.app';
+const APP_URL = Deno.env.get('APP_URL') || 'https://zen-pos1.lovable.app';
+const APP_ORIGINS = [
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*vercel\.app$/i,
+  /^http:\/\/localhost(:\d+)?$/i,
+  /^capacitor:\/\/localhost$/i,
+  /^https:\/\/localhost$/i,
+];
 function safeRedirect(v: unknown): string | undefined {
   try {
     const u = new URL(String(v || ''));
@@ -106,6 +113,18 @@ Deno.serve(async (req) => {
         },
         notify: { sms: false, email: false },
         reminder_enable: true,
+        // Explicitly enable all payment methods including UPI
+        options: {
+          checkout: {
+            method: {
+              upi: 1,
+              card: 1,
+              netbanking: 1,
+              wallet: 1,
+              emi: 0,
+            },
+          },
+        },
         ...(callbackUrl ? { callback_url: callbackUrl, callback_method: 'get' } : {}),
       });
       shortUrl = res.short_url;
@@ -117,7 +136,7 @@ Deno.serve(async (req) => {
         merchantTransactionId: txnId.replace(/-/g, '').slice(0, 34),
         merchantUserId: (customerPhone || 'guest').slice(0, 32),
         amount: Math.round(amount * 100),
-        redirectUrl: callbackUrl || DEFAULT_REDIRECT,
+        redirectUrl: callbackUrl || APP_URL,
         redirectMode: 'REDIRECT',
         callbackUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payments-webhook?provider=phonepe&scope=${scope}${scope === 'tenant' ? `&admin_id=${adminId}` : ''}`,
         mobileNumber: customerPhone || undefined,
