@@ -39,15 +39,17 @@ const empty = (provider: Provider): Creds => ({
 });
 
 export const PaymentGatewaySettings: React.FC = () => {
-  const { profile } = useAuth() as any;
-  const adminId: string | undefined = profile?.role === 'admin' ? profile?.user_id : profile?.admin_id;
+  const { profile, adminProfileId } = useAuth() as any;
+  // Must be the shop's profile id — matches the tenant rule on saved credentials.
+  const adminId: string | undefined =
+    profile?.role === 'super_admin' ? undefined : (profile?.role === 'admin' ? profile?.id : adminProfileId) || undefined;
 
   const [provider, setProvider] = useState<Provider>('razorpay');
   const [form, setForm] = useState<Creds>(empty('razorpay'));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const webhookUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/payments-webhook`;
+  const webhookUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/payments-webhook?provider=${provider}&admin_id=${adminId ?? ''}`;
 
   useEffect(() => {
     let cancelled = false;
