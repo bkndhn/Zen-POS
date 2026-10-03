@@ -3239,7 +3239,7 @@ const PublicMenu = () => {
             )}
 
             {/* Footer with Contact Info */}
-            {(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable) && (
+            {!showRemoteTracker && (shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable) && (
                 <footer className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
                     <div className="max-w-2xl mx-auto px-4 py-1.5">
                         <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">

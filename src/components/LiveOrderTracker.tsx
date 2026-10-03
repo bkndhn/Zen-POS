@@ -10,6 +10,7 @@ import { Phone, MessageCircle, Star, X, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { enableWebPush } from '@/utils/firebaseWeb';
 import { useTranslation } from 'react-i18next';
+import QRCode from 'qrcode';
 
 interface LiveOrderTrackerProps {
   orderId: string;
@@ -30,6 +31,14 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   const [payingOnline, setPayingOnline] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showUpi, setShowUpi] = useState(false);
+  const [upiQr, setUpiQr] = useState('');
+
+  useEffect(() => {
+    if (!showUpi || !shopSettings?.upi_id || !order) return;
+    const link = `upi://pay?pa=${encodeURIComponent(shopSettings.upi_id)}&pn=${encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant')}&am=${Number(order.total_amount || 0).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + (order.order_number || ''))}`;
+    QRCode.toDataURL(link, { width: 240, margin: 1 }).then(setUpiQr).catch(() => setUpiQr(''));
+  }, [showUpi, shopSettings, order]);
 
   const [pushStatus, setPushStatus] = useState<string | null>(null);
 
@@ -193,8 +202,14 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     setSubmittingFeedback(false);
   };
 
+  const upiLink = shopSettings?.upi_id
+    ? `upi://pay?pa=${encodeURIComponent(shopSettings.upi_id)}&pn=${encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant')}&am=${Number(order.total_amount || 0).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + (order.order_number || ''))}`
+    : '';
+
+
+
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-y-auto w-full h-full sm:p-4">
+    <div className="fixed inset-0 bg-background z-[60] flex flex-col overflow-y-auto w-full h-full sm:p-4 pb-32">
       <div className="bg-card text-card-foreground p-4 sticky top-0 z-10 border-b flex items-center justify-between shadow-sm sm:rounded-t-lg sm:border sm:border-b-0 max-w-md mx-auto w-full">
         <div>
           <h2 className="font-bold text-lg">Order #{order.order_number}</h2>
@@ -301,11 +316,14 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
                     variant="outline"
                     className="w-full h-11 gap-2 rounded-xl border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-900/20" 
                     onClick={() => {
-                      const pa = encodeURIComponent(shopSettings.upi_id);
-                      const pn = encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant');
-                      const am = order.total_amount?.toFixed(2);
-                      const tr = encodeURIComponent(order.id);
-                      window.location.href = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tr=${tr}`;
+                      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                      if (isMobile) {
+                        window.location.href = upiLink;
+                        // If no UPI app opened, show the QR / copy fallback
+                        setTimeout(() => { if (document.visibilityState === 'visible') setShowUpi(true); }, 1500);
+                      } else {
+                        setShowUpi(true);
+                      }
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5z"/></svg>{t('menu.payViaUPIApp') || 'Pay via UPI App'}</Button>
@@ -370,6 +388,26 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
           </div>
         )}
       </div>
+      <Dialog open={showUpi} onOpenChange={setShowUpi}>
+        <DialogContent className="max-w-sm z-[70]">
+          <DialogHeader>
+            <DialogTitle>Pay ₹{Number(order.total_amount || 0).toFixed(2)} by UPI</DialogTitle>
+            <DialogDescription>Scan with GPay, PhonePe, Paytm or any UPI app.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {upiQr && <img src={upiQr} alt="UPI QR code" className="w-56 h-56 rounded-lg border" />}
+            <div className="text-sm text-center">
+              <div className="text-muted-foreground">UPI ID</div>
+              <div className="font-mono font-semibold break-all">{shopSettings?.upi_id}</div>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard?.writeText(shopSettings?.upi_id || ''); toast({ title: 'UPI ID copied' }); }}>Copy UPI ID</Button>
+              <Button className="flex-1" onClick={() => { window.location.href = upiLink; }}>Open UPI app</Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">After paying, show the payment screen at the counter.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
     return json({ success: true, short_url: shortUrl, provider: creds.provider, transaction_id: txnId });
   } catch (e) {
     console.error('payments-guest-link error:', e);
-    return json({ error: 'Could not create payment link' }, 400);
+    // 200 so the customer app can show a readable reason instead of a generic failure
+    return json({ error: 'Online payment is not set up correctly for this shop yet. Please pay by UPI or at the counter.' });
   }
 });
