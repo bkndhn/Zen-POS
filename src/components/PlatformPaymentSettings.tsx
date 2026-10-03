@@ -76,7 +76,18 @@ export const PlatformPaymentSettings: React.FC = () => {
         .eq('mode', mode)
         .maybeSingle();
       if (cancelled) return;
-      setForm(data ? { ...empty(provider, mode), ...data } : empty(provider, mode));
+      setForm(data ? {
+        id: data.id,
+        provider: data.provider || provider,
+        mode: data.mode || mode,
+        key_id: data.key_id || '',
+        key_secret: data.key_secret || '',
+        webhook_secret: data.webhook_secret || '',
+        merchant_id: data.merchant_id || '',
+        salt_key: data.salt_key || '',
+        salt_index: data.salt_index || '1',
+        is_active: data.is_active ?? true,
+      } : empty(provider, mode));
       setLoading(false);
     })();
     loadEvents();
@@ -86,30 +97,42 @@ export const PlatformPaymentSettings: React.FC = () => {
   const set = (k: keyof PlatformCreds, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    if (provider === 'razorpay' && (!form.key_id.trim() || !form.key_secret.trim())) {
+    const keyId = (form.key_id || '').trim();
+    const keySecret = (form.key_secret || '').trim();
+    const merchantId = (form.merchant_id || '').trim();
+    const saltKey = (form.salt_key || '').trim();
+    const webhookSecret = (form.webhook_secret || '').trim();
+    const saltIndex = (form.salt_index || '1').trim();
+
+    if (provider === 'razorpay' && (!keyId || !keySecret)) {
       return toast({ title: 'Key ID and Key Secret are required', variant: 'destructive' });
     }
-    if (provider === 'phonepe' && (!form.merchant_id.trim() || !form.salt_key.trim())) {
+    if (provider === 'phonepe' && (!merchantId || !saltKey)) {
       return toast({ title: 'Merchant ID and Salt Key are required', variant: 'destructive' });
     }
     setSaving(true);
-    const payload = {
-      provider,
-      mode,
-      key_id: form.key_id.trim() || null,
-      key_secret: form.key_secret.trim() || null,
-      webhook_secret: form.webhook_secret.trim() || null,
-      merchant_id: form.merchant_id.trim() || null,
-      salt_key: form.salt_key.trim() || null,
-      salt_index: form.salt_index.trim() || '1',
-      is_active: form.is_active,
-    };
-    const { error } = form.id
-      ? await (supabase as any).from('payment_platform_credentials').update(payload).eq('id', form.id)
-      : await (supabase as any).from('payment_platform_credentials').insert(payload);
-    setSaving(false);
-    if (error) return toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
-    toast({ title: `Platform ${provider} (${mode}) saved` });
+    try {
+      const payload = {
+        provider,
+        mode,
+        key_id: keyId || null,
+        key_secret: keySecret || null,
+        webhook_secret: webhookSecret || null,
+        merchant_id: merchantId || null,
+        salt_key: saltKey || null,
+        salt_index: saltIndex || '1',
+        is_active: form.is_active,
+      };
+      const { error } = form.id
+        ? await (supabase as any).from('payment_platform_credentials').update(payload).eq('id', form.id)
+        : await (supabase as any).from('payment_platform_credentials').insert(payload);
+      if (error) return toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+      toast({ title: `Platform ${provider} (${mode}) saved` });
+    } catch (e: any) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const runSandbox = async (outcome: 'success' | 'failure' | 'duplicate') => {

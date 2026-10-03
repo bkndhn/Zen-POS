@@ -299,7 +299,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
               {order.tip_amount > 0 && <div className="flex justify-between"><span>{t('menu.tip') || 'Tip'}</span><span>₹{order.tip_amount?.toFixed(2)}</span></div>}
             </div>
             <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
-              <span>{t('menu.total') || 'Total'}</span>
+              <span>{t('menu.total', 'Total')}</span>
               <span>₹{order.total_amount?.toFixed(2)}</span>
             </div>
 

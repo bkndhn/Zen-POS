@@ -372,30 +372,30 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
             <CardContent className="p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>{t('menu.subtotal') || 'Subtotal'}</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span>â‚¹{subtotal.toFixed(2)}</span>
               </div>
               {tax > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>{t('menu.tax') || 'Tax'}</span>
-                  <span>₹{tax.toFixed(2)}</span>
+                  <span>â‚¹{tax.toFixed(2)}</span>
                 </div>
               )}
               {orderType === 'delivery' && deliveryFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>{t('menu.deliveryFee') || 'Delivery Fee'}</span>
-                  <span>₹{deliveryFee.toFixed(2)}</span>
+                  <span>â‚¹{deliveryFee.toFixed(2)}</span>
                 </div>
               )}
               {packagingFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>{t('menu.packaging') || 'Packaging'}</span>
-                  <span>₹{packagingFee.toFixed(2)}</span>
+                  <span>â‚¹{packagingFee.toFixed(2)}</span>
                 </div>
               )}
               {surgeFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>{t('menu.surgeFee') || 'Surge Fee'}</span>
-                  <span>₹{surgeFee.toFixed(2)}</span>
+                  <span>â‚¹{surgeFee.toFixed(2)}</span>
                 </div>
               )}
               
@@ -405,7 +405,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
                   <div className="flex flex-wrap gap-2">
                     {[0, 20, 50].map((amt) => (
                       <Badge key={amt} variant={tipAmount === amt ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setTipAmount(amt)} style={tipAmount === amt ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
-                        ₹{amt}
+                        â‚¹{amt}
                       </Badge>
                     ))}
                     <Badge variant={tipAmount === -1 ? 'default' : 'outline'} className="cursor-pointer" onClick={() => setTipAmount(-1)} style={tipAmount === -1 ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}>
@@ -424,17 +424,24 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
               )}
 
               <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
-                <span>{t('menu.total') || 'Total'}</span>
-                <span>₹{grandTotal.toFixed(2)}</span>
+                <span>{t('menu.total', 'Total')}</span>
+                <span>â‚¹{grandTotal.toFixed(2)}</span>
               </div>
             </CardContent>
           </Card>
 
           <div className="space-y-2 pt-2">
-            <Button className="w-full hover:opacity-90 transition-opacity" onClick={() => handlePlaceOrder('pay_on_pickup')} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
-              <Banknote className="w-4 h-4 mr-2" />
-              {t('menu.payAt', 'Pay at')} {orderType === 'delivery' ? (t('menu.delivery') || 'Delivery') : (t('menu.pickup') || 'Pickup')}
-            </Button>
+            {shopSettings?.require_payment_before_order && (
+              <p className="text-xs text-amber-600 font-medium text-center py-1">
+                ⚡ Payment required to confirm your order
+              </p>
+            )}
+            {!shopSettings?.require_payment_before_order && (
+              <Button className="w-full hover:opacity-90 transition-opacity" onClick={() => handlePlaceOrder('pay_on_pickup')} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
+                <Banknote className="w-4 h-4 mr-2" />
+                {t('menu.payAt', 'Pay at')} {orderType === 'delivery' ? (t('menu.delivery') || 'Delivery') : (t('menu.pickup') || 'Pickup')}
+              </Button>
+            )}
             
             {shopSettings.upi_id && (
               <Button 
