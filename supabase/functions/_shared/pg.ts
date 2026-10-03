@@ -39,12 +39,16 @@ export async function getCreds(
   if (error) throw new Error(`Credential lookup failed: ${error.message}`);
   if (!data?.length) throw new Error('No active payment gateway configured for this account.');
 
-  const scored = (data as GatewayCreds[]).sort((a, b) => {
+  const scored = (data as (GatewayCreds & { updated_at?: string })[]).sort((a, b) => {
     const s = (c: GatewayCreds) =>
-      (branchId && c.branch_id === branchId ? 4 : 0) + (c.branch_id === null ? 2 : 0);
-    return s(b) - s(a);
+      (branchId && c.branch_id === branchId ? 4 : 0) + (c.branch_id === null ? 2 : 0) + (c.webhook_secret ? 1 : 0);
+    const d = s(b) - s(a);
+    if (d) return d;
+    return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
   });
-  return scored[0];
+  const c = scored[0];
+  const clean = (v: string | null) => (v == null ? v : v.trim());
+  return { ...c, key_id: clean(c.key_id), key_secret: clean(c.key_secret), webhook_secret: clean(c.webhook_secret), salt_key: clean(c.salt_key) };
 }
 
 /** Resolve the PLATFORM (super admin) gateway credentials used to collect subscription money. */
@@ -144,7 +148,11 @@ export function timingSafeEqual(a: string, b: string): boolean {
 
 export function rzpAuth(c: GatewayCreds): string {
   if (!c.key_id || !c.key_secret) throw new Error('Razorpay Key ID / Secret missing.');
-  return 'Basic ' + btoa(`${c.key_id}:${c.key_secret}`);
+  const pair = `${c.key_id}:${c.key_secret}`;
+  if (/[^\x21-\x7E]/.test(pair)) {
+    throw new Error('Shop payment keys are invalid (the saved Key Secret contains hidden dots). The shop owner must paste the real Razorpay Key Secret in Settings.');
+  }
+  return 'Basic ' + btoa(pair);
 }
 
 export async function rzpFetch(

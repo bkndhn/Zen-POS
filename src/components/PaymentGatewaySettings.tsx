@@ -56,14 +56,15 @@ export const PaymentGatewaySettings: React.FC = () => {
     const load = async () => {
       if (!adminId) return setLoading(false);
       setLoading(true);
-      const { data } = await (supabase as any)
+      const { data: rows } = await (supabase as any)
         .from('payment_gateway_credentials')
         .select('*')
         .eq('admin_id', adminId)
         .eq('provider', provider)
         .is('branch_id', null)
-        .maybeSingle();
+        .order('updated_at', { ascending: false });
       if (cancelled) return;
+      const data = (rows || [])[0];
       setForm(data ? { ...empty(provider), ...data } : empty(provider));
       setLoading(false);
     };
@@ -73,6 +74,9 @@ export const PaymentGatewaySettings: React.FC = () => {
 
   const set = (k: keyof Creds, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Keys must be plain text (copied, not the masked dots shown by the gateway)
+  const badChars = (v: string) => /[^\x21-\x7E]/.test(v.trim());
+
   const handleSave = async () => {
     if (!adminId) return;
     if (provider === 'razorpay' && (!form.key_id.trim() || !form.key_secret.trim())) {
@@ -80,6 +84,15 @@ export const PaymentGatewaySettings: React.FC = () => {
     }
     if (provider === 'phonepe' && (!form.merchant_id.trim() || !form.salt_key.trim())) {
       return toast({ title: 'Merchant ID and Salt Key are required', variant: 'destructive' });
+    }
+    for (const [label, v] of [['Key ID', form.key_id], ['Key Secret', form.key_secret], ['Webhook Secret', form.webhook_secret], ['Salt Key', form.salt_key]] as const) {
+      if (v && badChars(v)) {
+        return toast({
+          title: `${label} looks wrong`,
+          description: 'It contains dots or spaces. Copy the real text from Razorpay (use Regenerate to see it), not the hidden ••• dots.',
+          variant: 'destructive',
+        });
+      }
     }
     setSaving(true);
     const payload = {
@@ -96,11 +109,18 @@ export const PaymentGatewaySettings: React.FC = () => {
       is_active: form.is_active,
       is_default: true,
     };
-    const { error } = form.id
-      ? await (supabase as any).from('payment_gateway_credentials').update(payload).eq('id', form.id)
-      : await (supabase as any).from('payment_gateway_credentials').insert(payload);
+    const res = form.id
+      ? await (supabase as any).from('payment_gateway_credentials').update(payload).eq('id', form.id).select('id').maybeSingle()
+      : await (supabase as any).from('payment_gateway_credentials').insert(payload).select('id').maybeSingle();
+    if (res.error) { setSaving(false); return toast({ title: 'Save failed', description: res.error.message, variant: 'destructive' }); }
+    const savedId = res.data?.id || form.id;
+    if (savedId) {
+      setForm((f) => ({ ...f, id: savedId }));
+      // Remove older duplicate rows so only one active key set exists
+      await (supabase as any).from('payment_gateway_credentials').delete()
+        .eq('admin_id', adminId).eq('provider', provider).is('branch_id', null).neq('id', savedId);
+    }
     setSaving(false);
-    if (error) return toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
     toast({ title: 'Payment gateway saved' });
   };
 
