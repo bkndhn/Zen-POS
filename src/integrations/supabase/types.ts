@@ -4090,6 +4090,8 @@ export type Database = {
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          require_payment_before_order: boolean | null
+          require_payment_before_table_order: boolean | null
           revenue_milestone_amount: number | null
           revenue_milestone_enabled: boolean | null
           shift_management_enabled: boolean | null
@@ -4209,6 +4211,8 @@ export type Database = {
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          require_payment_before_order?: boolean | null
+          require_payment_before_table_order?: boolean | null
           revenue_milestone_amount?: number | null
           revenue_milestone_enabled?: boolean | null
           shift_management_enabled?: boolean | null
@@ -4328,6 +4332,8 @@ export type Database = {
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          require_payment_before_order?: boolean | null
+          require_payment_before_table_order?: boolean | null
           revenue_milestone_amount?: number | null
           revenue_milestone_enabled?: boolean | null
           shift_management_enabled?: boolean | null
@@ -5577,6 +5583,8 @@ export type Database = {
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          require_payment_before_order: boolean | null
+          require_payment_before_table_order: boolean | null
           revenue_milestone_amount: number | null
           revenue_milestone_enabled: boolean | null
           shift_management_enabled: boolean | null
