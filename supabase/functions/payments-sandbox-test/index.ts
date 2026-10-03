@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       return json({ error: 'Forbidden' }, 403);
 
     const adminId: string | null =
-      scope === 'tenant' ? (profile?.admin_id || profile?.user_id || null) : null;
+      scope === 'tenant' ? (profile?.admin_id || profile?.id || null) : null;
 
     const creds = scope === 'platform'
       ? await getPlatformCreds('razorpay')
