@@ -65,7 +65,18 @@ export const PaymentGatewaySettings: React.FC = () => {
         .order('updated_at', { ascending: false });
       if (cancelled) return;
       const data = (rows || [])[0];
-      setForm(data ? { ...empty(provider), ...data } : empty(provider));
+      setForm(data ? {
+        id: data.id,
+        provider: data.provider || provider,
+        mode: data.mode || 'test',
+        key_id: data.key_id || '',
+        key_secret: data.key_secret || '',
+        webhook_secret: data.webhook_secret || '',
+        merchant_id: data.merchant_id || '',
+        salt_key: data.salt_key || '',
+        salt_index: data.salt_index || '1',
+        is_active: data.is_active ?? true,
+      } : empty(provider));
       setLoading(false);
     };
     load();
@@ -75,17 +86,25 @@ export const PaymentGatewaySettings: React.FC = () => {
   const set = (k: keyof Creds, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
   // Keys must be plain text (copied, not the masked dots shown by the gateway)
-  const badChars = (v: string) => /[^\x21-\x7E]/.test(v.trim());
+  const badChars = (v?: string | null) => (v ? /[^\x21-\x7E]/.test(v.trim()) : false);
 
   const handleSave = async () => {
     if (!adminId) return;
-    if (provider === 'razorpay' && (!form.key_id.trim() || !form.key_secret.trim())) {
+
+    const keyId = (form.key_id || '').trim();
+    const keySecret = (form.key_secret || '').trim();
+    const merchantId = (form.merchant_id || '').trim();
+    const saltKey = (form.salt_key || '').trim();
+    const webhookSecret = (form.webhook_secret || '').trim();
+    const saltIndex = (form.salt_index || '1').trim();
+
+    if (provider === 'razorpay' && (!keyId || !keySecret)) {
       return toast({ title: 'Key ID and Key Secret are required', variant: 'destructive' });
     }
-    if (provider === 'phonepe' && (!form.merchant_id.trim() || !form.salt_key.trim())) {
+    if (provider === 'phonepe' && (!merchantId || !saltKey)) {
       return toast({ title: 'Merchant ID and Salt Key are required', variant: 'destructive' });
     }
-    for (const [label, v] of [['Key ID', form.key_id], ['Key Secret', form.key_secret], ['Webhook Secret', form.webhook_secret], ['Salt Key', form.salt_key]] as const) {
+    for (const [label, v] of [['Key ID', keyId], ['Key Secret', keySecret], ['Webhook Secret', webhookSecret], ['Salt Key', saltKey]] as const) {
       if (v && badChars(v)) {
         return toast({
           title: `${label} looks wrong`,
@@ -103,12 +122,12 @@ export const PaymentGatewaySettings: React.FC = () => {
         branch_id: null,
         provider,
         mode: form.mode,
-        key_id: form.key_id.trim() || null,
-        key_secret: form.key_secret.trim() || null,
-        webhook_secret: form.webhook_secret.trim() || null,
-        merchant_id: form.merchant_id.trim() || null,
-        salt_key: form.salt_key.trim() || null,
-        salt_index: form.salt_index.trim() || '1',
+        key_id: keyId || null,
+        key_secret: keySecret || null,
+        webhook_secret: webhookSecret || null,
+        merchant_id: merchantId || null,
+        salt_key: saltKey || null,
+        salt_index: saltIndex || '1',
         is_active: form.is_active,
         is_default: true,
       };
