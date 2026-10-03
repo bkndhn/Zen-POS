@@ -17,8 +17,9 @@ export const RemoteOrderSettings = () => {
   const { isAllBranchesView } = useBranch();
   
   const { data, loading, saving, save } = useBranchSettings<any>('shop_settings', 
-    'remote_ordering_enabled, remote_ordering_paused, remote_order_modes, table_qr_protection, delivery_fee_mode, delivery_fee_flat, delivery_fee_base, delivery_fee_per_km, delivery_fee_free_km, max_delivery_radius_km, packaging_fee_mode, packaging_fee_value, surge_fee_enabled, surge_fee_amount, tipping_enabled, require_payment_before_order'
+    'remote_ordering_enabled, remote_ordering_paused, remote_order_modes, table_qr_protection, delivery_fee_mode, delivery_fee_flat, delivery_fee_base, delivery_fee_per_km, delivery_fee_free_km, max_delivery_radius_km, packaging_fee_mode, packaging_fee_value, surge_fee_enabled, surge_fee_amount, tipping_enabled, require_payment_before_order, require_payment_before_table_order'
   );
+
 
   const [localSettings, setLocalSettings] = useState<any>({
     remote_ordering_enabled: false,
@@ -37,6 +38,7 @@ export const RemoteOrderSettings = () => {
     surge_fee_amount: 0,
     tipping_enabled: false,
     require_payment_before_order: false,
+    require_payment_before_table_order: false,
   });
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export const RemoteOrderSettings = () => {
         surge_fee_amount: data.surge_fee_amount || 0,
         tipping_enabled: data.tipping_enabled || false,
         require_payment_before_order: data.require_payment_before_order ?? false,
+        require_payment_before_table_order: data.require_payment_before_table_order ?? false,
       });
     }
   }, [data]);
@@ -422,6 +425,19 @@ export const RemoteOrderSettings = () => {
             <Switch
               checked={localSettings.require_payment_before_order}
               onCheckedChange={(checked) => updateSetting('require_payment_before_order', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Require Payment Before Table/Dine-In Order</Label>
+              <p className="text-xs text-muted-foreground">
+                Customers scanning a table QR must pay via UPI before the kitchen receives their order. Ideal for QSR / food courts.
+              </p>
+            </div>
+            <Switch
+              checked={localSettings.require_payment_before_table_order}
+              onCheckedChange={(checked) => updateSetting('require_payment_before_table_order', checked)}
             />
           </div>
         </div>

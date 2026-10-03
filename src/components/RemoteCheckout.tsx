@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { MapPin, Clock, Banknote, ShoppingBag, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
+import { UpiPrePaymentDialog } from '@/components/UpiPrePaymentDialog';
+
 
 interface RemoteCheckoutProps {
   isOpen: boolean;
@@ -58,6 +60,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showUpiDialog, setShowUpiDialog] = useState(false);
 
   useEffect(() => {
     if (shopSettings.remote_order_modes === 'delivery') setOrderType('delivery');
@@ -144,17 +147,23 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
 
   const validatePhone = (p: string) => /^[6-9]\d{9}$/.test(p);
 
-  const handlePlaceOrder = async (payMethod: 'pay_on_pickup' | 'upi') => {
+  const validateCheckoutForm = () => {
     if (!name.trim()) {
-      return toast({ title: t('menu.nameRequired') || 'Name is required', variant: "destructive" });
+      toast({ title: t('menu.nameRequired') || 'Name is required', variant: 'destructive' });
+      return false;
     }
     if (!validatePhone(phone)) {
-      return toast({ title: t('menu.phoneRequired') || 'Valid 10-digit phone number starting with 6-9 is required', variant: "destructive" });
+      toast({ title: t('menu.phoneRequired') || 'Valid 10-digit phone required (starts with 6-9)', variant: 'destructive' });
+      return false;
     }
     if (orderType === 'delivery' && !address.trim()) {
-      return toast({ title: "Delivery address is required", variant: "destructive" });
+      toast({ title: 'Delivery address is required', variant: 'destructive' });
+      return false;
     }
+    return true;
+  };
 
+  const handlePlaceOrder = async (payMethod: 'pay_on_pickup' | 'upi', utr = '') => {
     setIsSubmitting(true);
     try {
       let deviceId = localStorage.getItem('zenpos_remote_device_id');
@@ -162,147 +171,71 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         deviceId = crypto.randomUUID();
         localStorage.setItem('zenpos_remote_device_id', deviceId);
       }
-
-      const { data: blocked } = await (supabase as any).rpc('is_device_blocked', {
-        p_admin_id: adminId,
-        p_device_id: deviceId,
-      });
-
-      if (blocked) {
-        throw new Error("Device is blocked from placing orders.");
-      }
-
-      const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', {
-        p_admin_id: adminId,
-        p_branch_id: branchId ?? null,
-        p_device_id: deviceId,
-      });
-
-      if (activeOrder) {
-        throw new Error("You already have an active order.");
-      }
-
+      const { data: blocked } = await (supabase as any).rpc('is_device_blocked', { p_admin_id: adminId, p_device_id: deviceId });
+      if (blocked) throw new Error('Device is blocked from placing orders.');
+      const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', { p_admin_id: adminId, p_branch_id: branchId ?? null, p_device_id: deviceId });
+      if (activeOrder) throw new Error('You already have an active order.');
       let orderNumber = 1;
       let insertedOrderId = '';
-
-      // Try dedicated SECURITY DEFINER RPC first (immune to anon RLS select restrictions)
-      const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('public_place_remote_order', {
-        p_order: {
-          admin_id: adminId,
-          branch_id: branchId,
-          device_id: deviceId,
-          customer_name: name,
-          customer_phone: phone,
-          order_type: orderType,
-          customer_address: orderType === 'delivery' ? address : null,
-          delivery_address: orderType === 'delivery' ? address : null,
-          delivery_distance_km: distanceKm,
-          is_scheduled: isScheduled,
-          scheduled_for: isScheduled && scheduledTime ? scheduledTime : null,
-          subtotal,
-          tax_total: tax,
-          delivery_fee: deliveryFee,
-          packaging_fee: packagingFee,
-          surge_fee: surgeFee,
-          tip_amount: tip,
-          total_amount: grandTotal,
-          payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
-          payment_method: payMethod,
-          pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
-          items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
-        }
-      });
-
+      const orderPayload: any = {
+        admin_id: adminId, branch_id: branchId, device_id: deviceId,
+        customer_name: name, customer_phone: phone, order_type: orderType,
+        customer_address: orderType === 'delivery' ? address : null,
+        delivery_address: orderType === 'delivery' ? address : null,
+        delivery_distance_km: distanceKm, is_scheduled: isScheduled,
+        scheduled_for: isScheduled && scheduledTime ? scheduledTime : null,
+        subtotal, tax_total: tax, delivery_fee: deliveryFee, packaging_fee: packagingFee,
+        surge_fee: surgeFee, tip_amount: tip, total_amount: grandTotal,
+        payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup', payment_method: payMethod,
+        pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
+        items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
+      };
+      if (utr) orderPayload.payment_reference = utr;
+      const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('public_place_remote_order', { p_order: orderPayload });
       if (!rpcErr && rpcRes?.id) {
         insertedOrderId = rpcRes.id;
         orderNumber = rpcRes.order_number || 1;
       } else {
-        // Fallback to direct insert with safe handling
-        const { data: orderNumberRes } = await supabase.rpc('get_next_remote_order_number', {
-          p_admin_id: adminId,
-          p_branch_id: branchId
-        });
+        const { data: orderNumberRes } = await supabase.rpc('get_next_remote_order_number', { p_admin_id: adminId, p_branch_id: branchId });
         orderNumber = Number(orderNumberRes) || 1;
-
-        const orderData = {
-          admin_id: adminId,
-          branch_id: branchId,
-          device_id: deviceId,
-          order_number: orderNumber,
-          customer_name: name,
-          customer_phone: phone,
-          order_type: orderType,
-          customer_address: orderType === 'delivery' ? address : null,
-          delivery_address: orderType === 'delivery' ? address : null,
-          delivery_distance_km: distanceKm,
-          is_scheduled: isScheduled,
-          scheduled_for: isScheduled && scheduledTime ? scheduledTime : null,
-          subtotal,
-          tax_total: tax,
-          delivery_fee: deliveryFee,
-          packaging_fee: packagingFee,
-          surge_fee: surgeFee,
-          tip_amount: tip,
-          total_amount: grandTotal,
-          payment_mode: payMethod === 'upi' ? 'upi' : 'pay_on_pickup',
-          payment_method: payMethod,
-          status: 'pending',
-          pickup_pin: Math.floor(1000 + Math.random() * 9000).toString(),
-          items: cart.map(item => ({ ...item, qty: getDisplayQty(item) })),
-          is_paid: false
-        };
-
-        // Guests have INSERT but no SELECT on remote_orders (anon reads are blocked for
-        // privacy), so the chained .select() returns no row. Always resolve the new order
-        // id via the device-scoped secure RPC.
         const { data: insertedOrder, error: insertErr } = await (supabase as any)
           .from('remote_orders')
-          .insert(orderData)
-          .select('id, order_number')
-          .maybeSingle();
-
+          .insert({ ...orderPayload, order_number: orderNumber, status: 'pending', is_paid: false })
+          .select('id, order_number').maybeSingle();
         if (insertErr) throw insertErr;
         insertedOrderId = insertedOrder?.id;
         if (!insertedOrderId) {
-          const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', {
-            p_admin_id: adminId,
-            p_branch_id: branchId,
-            p_device_id: deviceId
-          });
-          if (activeOrder?.id) {
-            insertedOrderId = activeOrder.id;
-          } else {
-            throw new Error('Order was placed but could not be retrieved. Please check with the shop.');
-          }
+          const { data: aO } = await (supabase as any).rpc('get_active_remote_order_for_device', { p_admin_id: adminId, p_branch_id: branchId, p_device_id: deviceId });
+          if (aO?.id) insertedOrderId = aO.id;
+          else throw new Error('Order was placed but could not be retrieved. Please check with the shop.');
         }
       }
-
-      
-      // Upsert customer via safe SECURITY DEFINER RPC (no public write access to customers)
       try {
-        await (supabase as any).rpc('public_upsert_customer', {
-          p_admin_id: adminId,
-          p_branch_id: branchId,
-          p_phone: phone.trim(),
-          p_name: name.trim()
-        });
-      } catch (custErr) {
-        console.warn('[RemoteCheckout] Customer upsert notice:', custErr);
-      }
-
-      toast({ title: "Order Placed successfully!" });
+        await (supabase as any).rpc('public_upsert_customer', { p_admin_id: adminId, p_branch_id: branchId, p_phone: phone.trim(), p_name: name.trim() });
+      } catch (custErr) { console.warn('[RemoteCheckout] Customer upsert notice:', custErr); }
+      toast({ title: 'Order Placed!', description: utr ? `Payment ref: ${utr}` : "We'll notify you when it's ready." });
       onOrderPlaced(insertedOrderId);
-      
-      if (payMethod === 'upi' && shopSettings.upi_id) {
-        const upiUrl = `upi://pay?pa=${shopSettings.upi_id}&pn=${encodeURIComponent(shopSettings.upi_name || 'Store')}&am=${grandTotal.toFixed(2)}&tn=Order+${orderNumber}`;
-        window.location.href = upiUrl;
-      }
-      
     } catch (e: any) {
-      toast({ title: "Failed to place order", description: e.message, variant: "destructive" });
+      toast({ title: 'Failed to place order', description: e.message, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleUpiClick = () => {
+    if (!validateCheckoutForm()) return;
+    if (shopSettings.upi_id) { setShowUpiDialog(true); }
+    else { handlePlaceOrder('pay_on_pickup'); }
+  };
+
+  const handlePayOnPickupClick = () => {
+    if (!validateCheckoutForm()) return;
+    handlePlaceOrder('pay_on_pickup');
+  };
+
+  const handleUpiConfirm = (utr: string) => {
+    setShowUpiDialog(false);
+    handlePlaceOrder('upi', utr);
   };
 
   return (
@@ -437,25 +370,41 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
               </p>
             )}
             {!shopSettings?.require_payment_before_order && (
-              <Button className="w-full hover:opacity-90 transition-opacity" onClick={() => handlePlaceOrder('pay_on_pickup')} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
+              <Button className="w-full hover:opacity-90 transition-opacity" onClick={handlePayOnPickupClick} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
                 <Banknote className="w-4 h-4 mr-2" />
                 {t('menu.payAt', 'Pay at')} {orderType === 'delivery' ? (t('menu.delivery') || 'Delivery') : (t('menu.pickup') || 'Pickup')}
               </Button>
             )}
-            
+
             {shopSettings.upi_id && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant={shopSettings?.require_payment_before_order ? 'default' : 'outline'}
                 className="w-full"
-                onClick={() => handlePlaceOrder('upi')}
+                onClick={handleUpiClick}
                 disabled={isSubmitting}
+                style={shopSettings?.require_payment_before_order ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}
               >
-                <CreditCard className="w-4 h-4 mr-2" />{t('menu.payViaUPI') || 'Pay via UPI'}</Button>
+                <CreditCard className="w-4 h-4 mr-2" />{t('menu.payViaUPI') || 'Pay via UPI'}
+              </Button>
             )}
           </div>
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* UPI Pre-Payment Dialog */}
+    {shopSettings.upi_id && (
+      <UpiPrePaymentDialog
+        isOpen={showUpiDialog}
+        onClose={() => setShowUpiDialog(false)}
+        onConfirm={handleUpiConfirm}
+        amount={grandTotal}
+        upiId={shopSettings.upi_id}
+        upiName={shopSettings.upi_name || shopSettings.shop_name || 'Store'}
+        orderLabel={`${orderType === 'delivery' ? 'Delivery' : 'Pickup'} Order`}
+        requirePayment={!!shopSettings?.require_payment_before_order}
+        shopPrimaryColor={shopSettings?.menu_primary_color || '#ea580c'}
+      />
+    )}
   );
 };
-

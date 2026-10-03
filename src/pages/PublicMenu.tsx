@@ -8,7 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe , Instagram } from 'lucide-react';
+import { Play, Utensils, Phone, MapPin, Wifi, WifiOff, Search, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageCircle, ShoppingCart, Plus, Minus, Send, Clock, CheckCircle2, Loader2, ChefHat, Trash2, MessageSquare, RefreshCw, Bell, Droplets, Receipt, BookOpen, HelpCircle, Share2, QrCode, Sparkles, Languages, Sun, Moon, Power, Globe, Instagram, CreditCard } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { CookingTimeBadge, PrepProgressBar } from '@/components/service/PrepTime';
 import {
@@ -30,6 +31,8 @@ import { OperatingHours } from '@/types/operatingHours';
 import { RemoteCheckout } from '@/components/RemoteCheckout';
 import { LiveOrderTracker } from '@/components/LiveOrderTracker';
 import { enableWebPush } from '@/utils/firebaseWeb';
+import { UpiPrePaymentDialog } from '@/components/UpiPrePaymentDialog';
+
 
 // Types
 interface MenuItem {
@@ -551,6 +554,10 @@ const PublicMenu = () => {
     const [showRemoteCheckout, setShowRemoteCheckout] = useState(false);
     const [activeRemoteOrderId, setActiveRemoteOrderId] = useState<string | null>(null);
     const [showRemoteTracker, setShowRemoteTracker] = useState(false);
+    // Table UPI pre-payment gate state
+    const [showTableUpiDialog, setShowTableUpiDialog] = useState(false);
+    const requireTablePayment = !!(rawShopSettings as any)?.require_payment_before_table_order;
+
 
     // Check for active remote order on mount
     useEffect(() => {
@@ -2863,7 +2870,12 @@ const PublicMenu = () => {
                                     <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{cartTotal.toFixed(2)}</span>
                                 </div>
                                 <Button
-                                    onClick={isRemoteMode ? () => { setShowCart(false); setShowRemoteCheckout(true); } : placeOrder}
+                                    onClick={isRemoteMode
+                                      ? () => { setShowCart(false); setShowRemoteCheckout(true); }
+                                      : (isTableMode && requireTablePayment && shopSettings?.upi_id)
+                                        ? () => { setShowCart(false); setShowTableUpiDialog(true); }
+                                        : placeOrder
+                                    }
                                     disabled={isPlacingOrder || cart.length === 0}
                                     className="w-full h-12 text-base font-bold rounded-xl text-white"
                                     style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})` : 'linear-gradient(135deg, #ea580c, #dc2626)' }}
@@ -2872,10 +2884,13 @@ const PublicMenu = () => {
                                         <><Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('menu.placingOrder') || 'Placing Order...'}</>
                                     ) : isRemoteMode ? (
                                         <><Send className="w-5 h-5 mr-2" /> Proceed to Checkout ₹{cartTotal.toFixed(2)}</>
+                                    ) : (isTableMode && requireTablePayment) ? (
+                                        <><CreditCard className="w-5 h-5 mr-2" /> Pay & Place Order ₹{cartTotal.toFixed(2)}</>
                                     ) : (
                                         <><Send className="w-5 h-5 mr-2" /> {t('menu.placeOrder') || 'Place Order'} ₹{cartTotal.toFixed(2)}</>
                                     )}
                                 </Button>
+
                             </div>
                         </div>
                     </div>
@@ -3619,6 +3634,25 @@ const PublicMenu = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+        {/* Table Order UPI Pre-Payment Dialog */}
+        {isTableMode && shopSettings?.upi_id && (
+            <UpiPrePaymentDialog
+                isOpen={showTableUpiDialog}
+                onClose={() => setShowTableUpiDialog(false)}
+                onConfirm={async (utr) => {
+                    setShowTableUpiDialog(false);
+                    if (utr) setOrderNote(prev => prev ? `${prev} | UPI Ref: ${utr}` : `UPI Ref: ${utr}`);
+                    await placeOrder();
+                }}
+                amount={cartTotal}
+                upiId={shopSettings.upi_id}
+                upiName={shopSettings.upi_name || shopSettings.shop_name || 'Store'}
+                orderLabel={`Table ${tableNo} Order`}
+                requirePayment={requireTablePayment}
+                shopPrimaryColor={shopSettings?.menu_primary_color || '#ea580c'}
+            />
+        )}
         </div>
     );
 };
