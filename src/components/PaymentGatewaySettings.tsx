@@ -94,34 +94,82 @@ export const PaymentGatewaySettings: React.FC = () => {
         });
       }
     }
+
     setSaving(true);
-    const payload = {
-      admin_id: adminId,
-      branch_id: null,
-      provider,
-      mode: form.mode,
-      key_id: form.key_id.trim() || null,
-      key_secret: form.key_secret.trim() || null,
-      webhook_secret: form.webhook_secret.trim() || null,
-      merchant_id: form.merchant_id.trim() || null,
-      salt_key: form.salt_key.trim() || null,
-      salt_index: form.salt_index.trim() || '1',
-      is_active: form.is_active,
-      is_default: true,
-    };
-    const res = form.id
-      ? await (supabase as any).from('payment_gateway_credentials').update(payload).eq('id', form.id).select('id').maybeSingle()
-      : await (supabase as any).from('payment_gateway_credentials').insert(payload).select('id').maybeSingle();
-    if (res.error) { setSaving(false); return toast({ title: 'Save failed', description: res.error.message, variant: 'destructive' }); }
-    const savedId = res.data?.id || form.id;
-    if (savedId) {
-      setForm((f) => ({ ...f, id: savedId }));
-      // Remove older duplicate rows so only one active key set exists
-      await (supabase as any).from('payment_gateway_credentials').delete()
-        .eq('admin_id', adminId).eq('provider', provider).is('branch_id', null).neq('id', savedId);
+
+    try {
+      const payload = {
+        admin_id: adminId,
+        branch_id: null,
+        provider,
+        mode: form.mode,
+        key_id: form.key_id.trim() || null,
+        key_secret: form.key_secret.trim() || null,
+        webhook_secret: form.webhook_secret.trim() || null,
+        merchant_id: form.merchant_id.trim() || null,
+        salt_key: form.salt_key.trim() || null,
+        salt_index: form.salt_index.trim() || '1',
+        is_active: form.is_active,
+        is_default: true,
+      };
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out after 8 seconds. Please check your network connection.')), 8000)
+      );
+
+      const saveOperation = async (): Promise<string | undefined> => {
+        // Check if an existing row exists for (admin_id, provider, branch_id is null)
+        let existingId = form.id;
+        if (!existingId) {
+          const { data: existing, error: checkError } = await (supabase as any)
+            .from('payment_gateway_credentials')
+            .select('id')
+            .eq('admin_id', adminId)
+            .eq('provider', provider)
+            .is('branch_id', null)
+            .maybeSingle();
+
+          if (checkError) throw checkError;
+          if (existing?.id) {
+            existingId = existing.id;
+          }
+        }
+
+        let res;
+        if (existingId) {
+          res = await (supabase as any)
+            .from('payment_gateway_credentials')
+            .update(payload)
+            .eq('id', existingId)
+            .select('id')
+            .maybeSingle();
+        } else {
+          res = await (supabase as any)
+            .from('payment_gateway_credentials')
+            .insert(payload)
+            .select('id')
+            .maybeSingle();
+        }
+
+        if (res.error) throw res.error;
+        return res.data?.id || existingId;
+      };
+
+      const savedId = await Promise.race([saveOperation(), timeoutPromise]);
+      if (savedId) {
+        setForm((f) => ({ ...f, id: savedId }));
+      }
+      toast({ title: 'Payment gateway saved' });
+    } catch (err: any) {
+      console.error('[PaymentGatewaySettings] handleSave error:', err);
+      toast({
+        title: 'Save failed',
+        description: err?.message || 'Failed to save payment gateway settings',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    toast({ title: 'Payment gateway saved' });
   };
 
   if (!adminId) {
