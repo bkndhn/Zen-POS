@@ -194,7 +194,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   };
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-y-auto w-full h-full sm:p-4">
+    <div className="fixed inset-0 bg-background z-[60] flex flex-col overflow-y-auto w-full h-full sm:p-4 pb-32">
       <div className="bg-card text-card-foreground p-4 sticky top-0 z-10 border-b flex items-center justify-between shadow-sm sm:rounded-t-lg sm:border sm:border-b-0 max-w-md mx-auto w-full">
         <div>
           <h2 className="font-bold text-lg">Order #{order.order_number}</h2>
@@ -301,11 +301,14 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
                     variant="outline"
                     className="w-full h-11 gap-2 rounded-xl border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-900/20" 
                     onClick={() => {
-                      const pa = encodeURIComponent(shopSettings.upi_id);
-                      const pn = encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant');
-                      const am = order.total_amount?.toFixed(2);
-                      const tr = encodeURIComponent(order.id);
-                      window.location.href = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tr=${tr}`;
+                      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                      if (isMobile) {
+                        window.location.href = upiLink;
+                        // If no UPI app opened, show the QR / copy fallback
+                        setTimeout(() => { if (document.visibilityState === 'visible') setShowUpi(true); }, 1500);
+                      } else {
+                        setShowUpi(true);
+                      }
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5z"/></svg>{t('menu.payViaUPIApp') || 'Pay via UPI App'}</Button>
