@@ -388,6 +388,26 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
           </div>
         )}
       </div>
+      <Dialog open={showUpi} onOpenChange={setShowUpi}>
+        <DialogContent className="max-w-sm z-[70]">
+          <DialogHeader>
+            <DialogTitle>Pay ₹{Number(order.total_amount || 0).toFixed(2)} by UPI</DialogTitle>
+            <DialogDescription>Scan with GPay, PhonePe, Paytm or any UPI app.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {upiQr && <img src={upiQr} alt="UPI QR code" className="w-56 h-56 rounded-lg border" />}
+            <div className="text-sm text-center">
+              <div className="text-muted-foreground">UPI ID</div>
+              <div className="font-mono font-semibold break-all">{shopSettings?.upi_id}</div>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard?.writeText(shopSettings?.upi_id || ''); toast({ title: 'UPI ID copied' }); }}>Copy UPI ID</Button>
+              <Button className="flex-1" onClick={() => { window.location.href = upiLink; }}>Open UPI app</Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">After paying, show the payment screen at the counter.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
