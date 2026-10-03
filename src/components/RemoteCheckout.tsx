@@ -400,7 +400,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           amount={grandTotal}
           upiId={shopSettings.upi_id}
           upiName={shopSettings.upi_name || shopSettings.shop_name || 'Store'}
-          orderLabel={${orderType === 'delivery' ? 'Delivery' : 'Pickup'} Order}
+          orderLabel={orderType === 'delivery' ? 'Delivery Order' : 'Pickup Order'}
           requirePayment={!!shopSettings?.require_payment_before_order}
           shopPrimaryColor={shopSettings?.menu_primary_color || '#ea580c'}
         />
