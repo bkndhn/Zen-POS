@@ -10,6 +10,7 @@ import { Phone, MessageCircle, Star, X, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { enableWebPush } from '@/utils/firebaseWeb';
 import { useTranslation } from 'react-i18next';
+import QRCode from 'qrcode';
 
 interface LiveOrderTrackerProps {
   orderId: string;
@@ -30,6 +31,14 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
   const [payingOnline, setPayingOnline] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showUpi, setShowUpi] = useState(false);
+  const [upiQr, setUpiQr] = useState('');
+
+  useEffect(() => {
+    if (!showUpi || !shopSettings?.upi_id || !order) return;
+    const link = `upi://pay?pa=${encodeURIComponent(shopSettings.upi_id)}&pn=${encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant')}&am=${Number(order.total_amount || 0).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + (order.order_number || ''))}`;
+    QRCode.toDataURL(link, { width: 240, margin: 1 }).then(setUpiQr).catch(() => setUpiQr(''));
+  }, [showUpi, shopSettings, order]);
 
   const [pushStatus, setPushStatus] = useState<string | null>(null);
 
@@ -192,6 +201,12 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     }
     setSubmittingFeedback(false);
   };
+
+  const upiLink = shopSettings?.upi_id
+    ? `upi://pay?pa=${encodeURIComponent(shopSettings.upi_id)}&pn=${encodeURIComponent(shopSettings.upi_name || shopSettings.shop_name || 'Restaurant')}&am=${Number(order.total_amount || 0).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + (order.order_number || ''))}`
+    : '';
+
+
 
   return (
     <div className="fixed inset-0 bg-background z-[60] flex flex-col overflow-y-auto w-full h-full sm:p-4 pb-32">
