@@ -116,7 +116,7 @@ const CustomerDisplay = () => {
                     filter: filterString,
                 },
                 (payload) => {
-                    console.log('Customer Display: Realtime change detected!', payload);
+                    console.debug('Customer Display: realtime change', payload.eventType);
                     fetchBills();
                 }
             )
