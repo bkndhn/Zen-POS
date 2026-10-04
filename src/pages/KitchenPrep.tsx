@@ -46,6 +46,7 @@ const KitchenPrep: React.FC = () => {
   const [multiplier, setMultiplier] = useState<number[]>([100]);
   const [shelfDays, setShelfDays] = useState<number>(1);
   const [saving, setSaving] = useState(false);
+  const [rates, setRates] = useState<Record<string, number>>({});
 
   const { branchFilterId, operatingBranchId, readOnly } = useBranchScopedQuery(() => load());
   const [targetDow, setTargetDow] = useState<number>(new Date().getDay());
@@ -93,12 +94,16 @@ const KitchenPrep: React.FC = () => {
       const now = new Date();
       const todayKey = now.toDateString();
       const sold: Record<string, number> = {};
+      const soldMeta: Record<string, { itemId: string | null; unit: string }> = {};
 
       for (const it of items) {
         const when = billMeta.get(it.bill_id);
         if (!when) continue;
         const name = it.item_name_override || it.items?.name || 'Unknown item';
-        if (when.toDateString() === todayKey) sold[name] = (sold[name] || 0) + (Number(it.quantity) || 0);
+        if (when.toDateString() === todayKey) {
+          sold[name] = (sold[name] || 0) + (Number(it.quantity) || 0);
+          soldMeta[name] = { itemId: it.item_id, unit: it.unit || 'pc' };
+        }
         if (when.getDay() !== targetDow) continue;
         const weeksAgo = Math.floor((now.getTime() - when.getTime()) / (7 * 86400000));
         if (weeksAgo > 3) continue;
@@ -153,6 +158,28 @@ const KitchenPrep: React.FC = () => {
         });
       });
 
+      // Every item sold today gets a prep line, even without past history
+      if (targetDow === now.getDay()) {
+        Object.entries(sold).forEach(([name, qty]) => {
+          const existing = out.find(o => o.name === name);
+          if (existing) { existing.projected = Math.max(existing.projected, qty); return; }
+          out.push({
+            name, itemId: soldMeta[name]?.itemId ?? null, unit: soldMeta[name]?.unit || 'pc',
+            lastWeek: 0, avg4: 0, projected: Math.round(qty * mult * 10) / 10,
+            slots: { breakfast: 0, lunch: 0, snacks: 0, dinner: 0 }, trend: 0,
+          });
+        });
+      }
+
+      // Today's rate from Items (Daily Rates board)
+      const itemIds = Array.from(new Set(out.map(o => o.itemId).filter(Boolean))) as string[];
+      if (itemIds.length) {
+        const { data: priceRows } = await supabase.from('items').select('id, price').in('id', itemIds);
+        const pm: Record<string, number> = {};
+        (priceRows || []).forEach((p: any) => { pm[p.id] = Number(p.price) || 0; });
+        setRates(pm);
+      }
+
       out.sort((a, b) => b.projected - a.projected);
       setRows(out);
     } catch (e: any) {
@@ -163,6 +190,19 @@ const KitchenPrep: React.FC = () => {
   }, [adminProfileId, targetDow, multiplier, branchFilterId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Live: every new sale or price change refreshes the prep sheet
+  useEffect(() => {
+    if (!adminProfileId) return;
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => { if (t) clearTimeout(t); t = setTimeout(() => void load(), 1500); };
+    const ch = supabase
+      .channel(`kitchen-prep-${adminProfileId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bills', filter: `admin_id=eq.${adminProfileId}` }, bump)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'items', filter: `admin_id=eq.${adminProfileId}` }, bump)
+      .subscribe();
+    return () => { if (t) clearTimeout(t); void supabase.removeChannel(ch); };
+  }, [adminProfileId, load]);
 
   const inStock = (r: Forecast) => (r.itemId ? Math.round((batchStock[r.itemId] || 0) * 10) / 10 : 0);
   const toMake = (r: Forecast) => Math.max(0, Math.round((r.projected - inStock(r)) * 10) / 10);
@@ -249,7 +289,7 @@ const KitchenPrep: React.FC = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : rows.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
-          Not enough past sales for {DAY_NAMES[targetDow]} yet. Keep billing — suggestions appear after a few weeks.
+          No sales yet for {DAY_NAMES[targetDow]}. Keep billing — suggestions appear after a few weeks.
         </CardContent></Card>
       ) : (
         <>
@@ -294,6 +334,7 @@ const KitchenPrep: React.FC = () => {
                     <th className="p-2 text-right">In stock</th>
                     <th className="p-2 text-right">Still to make</th>
                     <th className="p-2 text-right">Sold today</th>
+                    <th className="p-2 text-right">Today's rate</th>
                     <th className="p-2 text-right">Last {DAY_NAMES[targetDow].slice(0, 3)}</th>
                     <th className="p-2 text-right">4-week avg</th>
                     <th className="p-2">Busiest time</th>
@@ -311,6 +352,7 @@ const KitchenPrep: React.FC = () => {
                         <td className="p-2 text-right text-muted-foreground">{inStock(r)}</td>
                         <td className="p-2 text-right font-semibold text-primary">{toMake(r)}</td>
                         <td className="p-2 text-right text-muted-foreground">{soldToday[r.name] || 0}</td>
+                        <td className="p-2 text-right">{r.itemId && rates[r.itemId] != null ? `₹${rates[r.itemId]}` : '—'}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.lastWeek}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.avg4}</td>
                         <td className="p-2"><Badge variant="secondary">{slotLabel.split(' (')[0]} · {busiest[1]}%</Badge></td>

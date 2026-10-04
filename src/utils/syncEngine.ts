@@ -317,7 +317,7 @@ class SyncEngine {
     // Slow mobile networks / cold starts can exceed 4s; be tolerant.
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const apikey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const apikey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
       await fetch(`${base}/auth/v1/health`, {
         method: 'GET',
         signal: controller.signal,
