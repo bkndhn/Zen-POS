@@ -34,6 +34,9 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .maybeSingle();
     if (!profile) return json({ error: 'Profile not found' }, 403);
+    if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+      return json({ error: 'Only the shop owner can change auto-pay' }, 403);
+    }
     const adminId: string = profile.admin_id || profile.user_id;
 
     const { data: mandate } = await sb

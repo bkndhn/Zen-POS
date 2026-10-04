@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
   // Resolve admin_id (own if admin, else parent)
   const { data: prof } = await svc.from('profiles').select('id, role, admin_id').eq('user_id', userId).maybeSingle();
   if (!prof) return json({ error: 'no_profile' }, 403);
+  if (prof.role !== 'admin') return json({ error: 'forbidden', message: 'Only the shop owner can run AI Insights.' }, 403);
   const adminId = prof.role === 'admin' ? prof.id : prof.admin_id;
   if (!adminId) return json({ error: 'no_admin' }, 403);
 
