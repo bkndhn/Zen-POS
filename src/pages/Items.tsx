@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import DailyRatesBoard from '@/components/DailyRatesBoard';
 import { toast } from '@/hooks/use-toast';
 import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download, Clock, Sparkles } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
@@ -1190,7 +1191,7 @@ const Items: React.FC = () => {
 
       {/* Items Tabs */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-9 mb-4">
+        <TabsList className="grid w-full grid-cols-3 h-9 mb-4">
           <TabsTrigger value="active" className="text-xs flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
             Active ({activeItems.length})
@@ -1199,7 +1200,17 @@ const Items: React.FC = () => {
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
             Inactive ({inactiveItems.length})
           </TabsTrigger>
+          <TabsTrigger value="daily-rates" className="text-xs">Daily Rates 🌅</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="daily-rates" className="mt-0">
+          <DailyRatesBoard
+            items={activeItems as any}
+            canEdit={profile?.role === 'admin' && !isAllBranchesView}
+            onItemsUpdated={() => { void fetchItems(); }}
+          />
+        </TabsContent>
+
 
         <TabsContent value="active" className="mt-0">
           <Card className="border-0 shadow-none">
