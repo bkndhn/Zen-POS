@@ -36,6 +36,9 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .maybeSingle();
     if (!profile) return json({ error: 'Profile not found' }, 403);
+    if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+      return json({ error: 'Only the shop owner can set up auto-pay' }, 403);
+    }
     const adminId: string = tenantIdOf(profile as TenantProfile);
 
     // Mandates always charge into the PLATFORM account (subscription revenue).
