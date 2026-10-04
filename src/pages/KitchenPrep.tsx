@@ -289,7 +289,7 @@ const KitchenPrep: React.FC = () => {
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : rows.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
-          Not enough past sales for {DAY_NAMES[targetDow]} yet. Keep billing — suggestions appear after a few weeks.
+          No sales yet for {DAY_NAMES[targetDow]}. Keep billing — suggestions appear after a few weeks.
         </CardContent></Card>
       ) : (
         <>
@@ -334,6 +334,7 @@ const KitchenPrep: React.FC = () => {
                     <th className="p-2 text-right">In stock</th>
                     <th className="p-2 text-right">Still to make</th>
                     <th className="p-2 text-right">Sold today</th>
+                    <th className="p-2 text-right">Today's rate</th>
                     <th className="p-2 text-right">Last {DAY_NAMES[targetDow].slice(0, 3)}</th>
                     <th className="p-2 text-right">4-week avg</th>
                     <th className="p-2">Busiest time</th>
@@ -351,6 +352,7 @@ const KitchenPrep: React.FC = () => {
                         <td className="p-2 text-right text-muted-foreground">{inStock(r)}</td>
                         <td className="p-2 text-right font-semibold text-primary">{toMake(r)}</td>
                         <td className="p-2 text-right text-muted-foreground">{soldToday[r.name] || 0}</td>
+                        <td className="p-2 text-right">{r.itemId && rates[r.itemId] != null ? `₹${rates[r.itemId]}` : '—'}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.lastWeek}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.avg4}</td>
                         <td className="p-2"><Badge variant="secondary">{slotLabel.split(' (')[0]} · {busiest[1]}%</Badge></td>
