@@ -18,12 +18,13 @@ export const useMostSoldItems = (limit: number = 10) => {
   const [loading, setLoading] = useState(true);
 
   const fetchMostSoldItems = async (): Promise<MostSoldItem[]> => {
+    // Inner join drops rows whose item was deleted; filter on the real FK column.
     const { data, error } = await supabase
       .from('bill_items')
       .select(`
         quantity,
         total,
-        items (
+        items!inner (
           id,
           name,
           category,
@@ -31,7 +32,8 @@ export const useMostSoldItems = (limit: number = 10) => {
           image_url
         )
       `)
-      .not('items', 'is', null);
+      .not('item_id', 'is', null)
+      .limit(5000);
 
     if (error) throw error;
 

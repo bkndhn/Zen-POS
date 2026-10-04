@@ -73,6 +73,7 @@ class SyncEngine {
   private started = false;
   private recordStates = new Map<string, RecordSyncState>();
   private autoHealed = false;
+  private probeFailures = 0;
   private nativeAppListener: { remove: () => Promise<void> } | null = null;
 
   start(): void {
@@ -313,7 +314,8 @@ class SyncEngine {
       return true;
     }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
+    // Slow mobile networks / cold starts can exceed 4s; be tolerant.
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const apikey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
       await fetch(`${base}/auth/v1/health`, {
@@ -322,11 +324,18 @@ class SyncEngine {
         cache: 'no-store',
         headers: apikey ? { apikey } : undefined,
       });
+      this.probeFailures = 0;
       this.emit({ online: true, reachable: true });
       return true;
     } catch {
-      this.emit({ online: true, reachable: false });
-      return false;
+      this.probeFailures += 1;
+      // Only flag "no connection" after 2 consecutive failures to avoid flicker.
+      if (this.probeFailures >= 2) {
+        this.emit({ online: true, reachable: false });
+        return false;
+      }
+      this.scheduleProbe(3000);
+      return this.state.reachable;
     } finally {
       clearTimeout(timer);
     }
