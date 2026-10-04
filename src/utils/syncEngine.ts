@@ -296,7 +296,7 @@ class SyncEngine {
 
   private scheduleProbe(delay?: number): void {
     if (this.probeTimer) clearTimeout(this.probeTimer);
-    const wait = delay ?? (this.state.reachable ? PROBE_INTERVAL_OK : PROBE_INTERVAL_DEGRADED);
+    const wait = delay ?? (this.probeFailures > 0 && this.state.reachable ? 3000 : this.state.reachable ? PROBE_INTERVAL_OK : PROBE_INTERVAL_DEGRADED);
     this.probeTimer = setTimeout(() => {
       void this.probe().finally(() => this.scheduleProbe());
     }, wait);
@@ -334,7 +334,6 @@ class SyncEngine {
         this.emit({ online: true, reachable: false });
         return false;
       }
-      this.scheduleProbe(3000);
       return this.state.reachable;
     } finally {
       clearTimeout(timer);
