@@ -14,6 +14,7 @@ export interface RateItem {
   purchase_rate?: number | null;
   stock_quantity?: number | null;
   unlimited_stock?: boolean | null;
+  branch_id?: string | null;
 }
 
 interface Props {
@@ -73,21 +74,34 @@ const DailyRatesBoard: React.FC<Props> = ({ items, canEdit, onItemsUpdated }) =>
     setSavingIds(new Set(ids));
     try {
       for (const id of ids) {
-        const patch: { price?: number; stock_quantity?: number } = {};
+        const it = items.find(i => i.id === id);
         if (priceDirty.includes(id)) {
           const price = Number(drafts[id]);
           if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid rate');
-          patch.price = price;
+          const { error } = await supabase.from('items').update({ price }).eq('id', id);
+          if (error) throw error;
         }
-        if (stockDirty.includes(id)) {
-          const qty = Number(stockDirty.includes(id) ? stockDrafts[id] : 0);
+        if (stockDirty.includes(id) && it) {
+          const qty = Number(stockDrafts[id]);
           if (!Number.isFinite(qty) || qty < 0) throw new Error('Enter a valid stock quantity');
-          patch.stock_quantity = Math.round(qty * 100) / 100;
+          const target = Math.round(qty * 100) / 100;
+          const delta = Math.round((target - Number(it.stock_quantity ?? 0)) * 100) / 100;
+          if (delta !== 0) {
+            if (it.branch_id) {
+              // Goes through the stock table + stock ledger so the change is audited
+              const { error } = await (supabase as any).rpc('apply_stock_adjustment', {
+                p_item_id: id, p_branch_id: it.branch_id, p_change_qty: delta,
+                p_reason: delta > 0 ? 'received' : 'other', p_notes: 'Daily Rates board stock count',
+              });
+              if (error) throw error;
+            } else {
+              const { error } = await supabase.from('items').update({ stock_quantity: target }).eq('id', id);
+              if (error) throw error;
+            }
+          }
         }
-        if (!Object.keys(patch).length) continue;
-        const { error } = await supabase.from('items').update(patch).eq('id', id);
-        if (error) throw error;
       }
+      window.dispatchEvent(new CustomEvent('items-updated'));
       setStockDrafts(d => { const n = { ...d }; ids.forEach(i => delete n[i]); return n; });
       setSaved(new Set(ids));
       setTimeout(() => setSaved(new Set()), 1500);
