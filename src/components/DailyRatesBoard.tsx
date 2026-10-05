@@ -12,6 +12,8 @@ export interface RateItem {
   price: number;
   category: string | null;
   purchase_rate?: number | null;
+  stock_quantity?: number | null;
+  unlimited_stock?: boolean | null;
 }
 
 interface Props {
@@ -37,6 +39,7 @@ const DailyRatesBoard: React.FC<Props> = ({ items, canEdit, onItemsUpdated }) =>
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState('');
+  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
   const refs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const cats = useMemo(() => Array.from(new Set(items.map(i => i.category || 'Other'))).sort(), [items]);
@@ -55,21 +58,37 @@ const DailyRatesBoard: React.FC<Props> = ({ items, canEdit, onItemsUpdated }) =>
   }, [items]);
 
   const valueOf = (it: RateItem) => drafts[it.id] ?? String(it.price ?? 0);
-  const dirtyIds = Object.keys(drafts).filter(id => {
+  const priceDirty = Object.keys(drafts).filter(id => {
     const it = items.find(i => i.id === id);
     return it && Number(drafts[id]) !== Number(it.price) && drafts[id] !== '';
   });
+  const stockDirty = Object.keys(stockDrafts).filter(id => {
+    const it = items.find(i => i.id === id);
+    return it && stockDrafts[id] !== '' && Number(stockDrafts[id]) !== Number(it.stock_quantity ?? 0);
+  });
+  const dirtyIds = Array.from(new Set([...priceDirty, ...stockDirty]));
 
   const saveIds = async (ids: string[]) => {
     if (!ids.length) return;
     setSavingIds(new Set(ids));
     try {
       for (const id of ids) {
-        const price = Number(drafts[id]);
-        if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid rate');
-        const { error } = await supabase.from('items').update({ price }).eq('id', id);
+        const patch: { price?: number; stock_quantity?: number } = {};
+        if (priceDirty.includes(id)) {
+          const price = Number(drafts[id]);
+          if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid rate');
+          patch.price = price;
+        }
+        if (stockDirty.includes(id)) {
+          const qty = Number(stockDirty.includes(id) ? stockDrafts[id] : 0);
+          if (!Number.isFinite(qty) || qty < 0) throw new Error('Enter a valid stock quantity');
+          patch.stock_quantity = Math.round(qty * 100) / 100;
+        }
+        if (!Object.keys(patch).length) continue;
+        const { error } = await supabase.from('items').update(patch).eq('id', id);
         if (error) throw error;
       }
+      setStockDrafts(d => { const n = { ...d }; ids.forEach(i => delete n[i]); return n; });
       setSaved(new Set(ids));
       setTimeout(() => setSaved(new Set()), 1500);
       toast.success(ids.length === 1 ? 'Rate saved' : `${ids.length} rates saved`);
@@ -121,7 +140,7 @@ const DailyRatesBoard: React.FC<Props> = ({ items, canEdit, onItemsUpdated }) =>
         <Input className="h-8 w-40" placeholder="Bulk: 5, -3, 10%" value={bulk} onChange={e => setBulk(e.target.value)} />
         <Button size="sm" variant="outline" onClick={applyBulk}>Apply to shown</Button>
         <div className="flex-1" />
-        <Button size="sm" variant="ghost" disabled={!dirtyIds.length} onClick={() => setDrafts({})}>
+        <Button size="sm" variant="ghost" disabled={!dirtyIds.length} onClick={() => { setDrafts({}); setStockDrafts({}); }}>
           <RotateCcw className="h-4 w-4 mr-1" /> Reset
         </Button>
         <Button size="sm" disabled={!dirtyIds.length || savingIds.size > 0} onClick={() => void saveIds(dirtyIds)}>
@@ -129,7 +148,7 @@ const DailyRatesBoard: React.FC<Props> = ({ items, canEdit, onItemsUpdated }) =>
           Save all rates ({dirtyIds.length})
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Type today's rate and press Enter — it saves and jumps to the next item.</p>
+      <p className="text-xs text-muted-foreground">Type today's rate (and stock in hand, optional) and press Enter — it saves and jumps to the next item.</p>
 
       <div className="border rounded-lg divide-y">
         {shown.map((it, idx) => {
@@ -156,6 +175,15 @@ const DailyRatesBoard: React.FC<Props> = ({ items, canEdit, onItemsUpdated }) =>
                 onChange={e => setDrafts(d => ({ ...d, [it.id]: e.target.value }))}
                 onKeyDown={e => onKey(e, idx)}
               />
+              {!it.unlimited_stock && (
+                <Input
+                  type="number" inputMode="decimal" className="h-8 w-20 text-right" aria-label={`Stock for ${it.name}`}
+                  placeholder="Stock"
+                  value={stockDrafts[it.id] ?? String(it.stock_quantity ?? 0)}
+                  onChange={e => setStockDrafts(d => ({ ...d, [it.id]: e.target.value }))}
+                  onKeyDown={e => onKey(e, idx)}
+                />
+              )}
               {m !== null && <Badge variant={m >= 20 ? 'secondary' : 'destructive'} className="w-14 justify-center">{m}%</Badge>}
               {savingIds.has(it.id) && <Loader2 className="h-4 w-4 animate-spin" />}
             </div>
