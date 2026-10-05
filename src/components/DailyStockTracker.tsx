@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, RefreshCw, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,8 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState('');
+  const updRef = useRef(onUpdated);
+  updRef.current = onUpdated;
 
   const loadSold = useCallback(async () => {
     if (!adminId) return;
@@ -63,10 +65,10 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
   useEffect(() => {
     if (!adminId) return;
     const ch = supabase.channel(`stock-tracker-${adminId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bills', filter: `admin_id=eq.${adminId}` }, () => { void loadSold(); onUpdated(); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bills', filter: `admin_id=eq.${adminId}` }, () => { void loadSold(); updRef.current(); })
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
-  }, [adminId, loadSold, onUpdated]);
+  }, [adminId, loadSold]);
 
   const rows = useMemo(() => items
     .filter(i => !i.unlimited_stock && (!branchId || i.branch_id === branchId))

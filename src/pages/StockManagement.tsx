@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { triggerLowStockPushNotification } from '@/utils/pwaPushNotifications';
 import { offlineManager } from '@/utils/offlineManager';
+import DailyStockTracker from '@/components/DailyStockTracker';
 
 interface ItemRow {
   id: string;
@@ -617,8 +618,9 @@ const StockManagement: React.FC = () => {
 
         {/* Tab Selection */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 max-w-lg bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+          <TabsList className="grid grid-cols-5 max-w-2xl bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
             <TabsTrigger value="stock" className="rounded-lg">Item Stock</TabsTrigger>
+            <TabsTrigger value="today" className="rounded-lg">Today</TabsTrigger>
             <TabsTrigger value="ingredients" className="rounded-lg">Ingredients</TabsTrigger>
             <TabsTrigger value="recipes" className="rounded-lg">Recipes</TabsTrigger>
             <TabsTrigger value="ai" className="rounded-lg flex items-center gap-1 font-semibold"><Sparkles className="w-3 h-3 text-primary" /> AI Predictions</TabsTrigger>
@@ -728,6 +730,10 @@ const StockManagement: React.FC = () => {
           </TabsContent>
 
           {/* TAB 2: INGREDIENTS */}
+          <TabsContent value="today" className="space-y-4 outline-none">
+            <DailyStockTracker items={items} adminId={adminId} branchId={branchFilter !== 'all' ? branchFilter : null} onUpdated={() => { void load(); }} />
+          </TabsContent>
+
           <TabsContent value="ingredients" className="space-y-4 outline-none">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold">Raw Ingredients & Replenishment Alert</h3>
