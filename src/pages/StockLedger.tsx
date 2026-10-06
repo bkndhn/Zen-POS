@@ -24,6 +24,8 @@ const SOURCE_LABEL: Record<string, { label: string; variant: any }> = {
   transfer_out: { label: 'Transfer out', variant: 'secondary' },
   purchase_return: { label: 'Return', variant: 'destructive' },
 };
+// Reason-based filters (stored on adjustment rows)
+const REASON_FILTERS: Record<string, string> = { opening_stock: 'Opening stock', wastage: 'Wastage', received: 'Received' };
 
 const toCsv = (rows: any[]) => {
   const cols = ['Date', 'Item', 'Branch', 'Type', 'Change', 'Balance', 'Reason', 'Notes', 'User'];
@@ -96,7 +98,7 @@ const StockLedger: React.FC = () => {
   const filtered = useMemo(() => rows.filter(r =>
     (branchFilter === 'all' || r.branch_id === branchFilter) &&
     (itemFilter === 'all' || r.item_id === itemFilter) &&
-    (sourceFilter === 'all' || r.source_type === sourceFilter)
+    (sourceFilter === 'all' || r.source_type === sourceFilter || (REASON_FILTERS[sourceFilter] && String(r.reason || '').toLowerCase().includes(sourceFilter)))
   ), [rows, branchFilter, itemFilter, sourceFilter]);
 
   const itemOptions = useMemo(() => {
@@ -158,6 +160,7 @@ const StockLedger: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="all">All types</SelectItem>
                   {Object.entries(SOURCE_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  {Object.entries(REASON_FILTERS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
