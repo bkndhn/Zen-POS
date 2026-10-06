@@ -132,6 +132,21 @@ const KitchenPrep: React.FC = () => {
       (batchRows || []).forEach((b: any) => { stockMap[b.item_id] = (stockMap[b.item_id] || 0) + Number(b.stock_quantity || 0); });
       setBatchStock(stockMap);
 
+      // Shop inventory on hand + today's wastage (from stock table)
+      const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+      let invQ = supabase.from('items').select('id, stock_quantity, unlimited_stock').eq('admin_id', adminProfileId).limit(5000);
+      if (branchFilterId) invQ = invQ.eq('branch_id', branchFilterId);
+      let wQ = (supabase as any).from('stock_adjustments').select('item_id, change_qty, reason').eq('admin_id', adminProfileId)
+        .eq('reason', 'wastage').gte('created_at', dayStart.toISOString()).limit(5000);
+      if (branchFilterId) wQ = wQ.eq('branch_id', branchFilterId);
+      const [{ data: invRows }, { data: wRows }] = await Promise.all([invQ, wQ]);
+      const inv: Record<string, number | null> = {};
+      (invRows || []).forEach((r: any) => { inv[r.id] = r.unlimited_stock ? null : Number(r.stock_quantity || 0); });
+      setShopStock(inv);
+      const wm: Record<string, number> = {};
+      (wRows || []).forEach((r: any) => { if (r.item_id) wm[r.item_id] = (wm[r.item_id] || 0) + Math.abs(Number(r.change_qty || 0)); });
+      setWasteToday(wm);
+
 
       const mult = multiplier[0] / 100;
       const out: Forecast[] = [];
@@ -200,6 +215,7 @@ const KitchenPrep: React.FC = () => {
       .channel(`kitchen-prep-${adminProfileId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bills', filter: `admin_id=eq.${adminProfileId}` }, bump)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'items', filter: `admin_id=eq.${adminProfileId}` }, bump)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stock_adjustments', filter: `admin_id=eq.${adminProfileId}` }, bump)
       .subscribe();
     return () => { if (t) clearTimeout(t); void supabase.removeChannel(ch); };
   }, [adminProfileId, load]);
@@ -333,6 +349,8 @@ const KitchenPrep: React.FC = () => {
                     <th className="p-2 text-right">Forecast</th>
                     <th className="p-2 text-right">In stock</th>
                     <th className="p-2 text-right">Still to make</th>
+                    <th className="p-2 text-right">Shop stock</th>
+                    <th className="p-2 text-right">Wasted today</th>
                     <th className="p-2 text-right">Sold today</th>
                     <th className="p-2 text-right">Today's rate</th>
                     <th className="p-2 text-right">Last {DAY_NAMES[targetDow].slice(0, 3)}</th>
