@@ -85,7 +85,13 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
         const opening = Number(drafts[id]);
         if (opening < 0) throw new Error('Opening stock cannot be negative');
         const onHand = toStoredQuantity2(Math.max(0, opening - (sold[id] || 0)));
-        const { error } = await supabase.from('items').update({ stock_quantity: onHand }).eq('id', id);
+        const it = items.find(i => i.id === id);
+        const delta = toStoredQuantity2(onHand - Number(it?.stock_quantity || 0));
+        if (delta === 0) continue;
+        // Audited: writes stock_adjustments + stock_ledger
+        const { error } = await (supabase as any).rpc('apply_stock_adjustment', {
+          p_item_id: id, p_branch_id: branchId, p_change_qty: delta, p_reason: 'opening_stock', p_notes: 'Today tab opening stock',
+        });
         if (error) throw error;
       }
       toast({ title: `${dirty.length} opening stock saved` });
@@ -96,6 +102,22 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
     } finally { setSaving(false); }
   };
 
+  const [waste, setWaste] = useState<Record<string, string>>({});
+  const saveWaste = async (id: string) => {
+    const qty = Number(waste[id]);
+    const it = items.find(i => i.id === id);
+    if (!it || !branchId || !Number.isFinite(qty) || qty <= 0) return toast({ title: 'Enter a wastage quantity above 0', variant: 'destructive' });
+    if (qty > Number(it.stock_quantity || 0)) return toast({ title: 'Wastage is more than stock on hand', variant: 'destructive' });
+    const { error } = await (supabase as any).rpc('apply_stock_adjustment', {
+      p_item_id: id, p_branch_id: branchId, p_change_qty: -toStoredQuantity2(qty), p_reason: 'wastage', p_notes: 'Today tab wastage',
+    });
+    if (error) return toast({ title: 'Could not save wastage', description: error.message, variant: 'destructive' });
+    setWaste(w => { const n = { ...w }; delete n[id]; return n; });
+    toast({ title: `Wastage saved for ${it.name}` });
+    onUpdated();
+  };
+
+  const lowItems = rows.filter(i => i.minimum_stock_alert != null && Number(i.stock_quantity || 0) <= Number(i.minimum_stock_alert));
   const readOnly = !branchId;
 
   return (
@@ -113,8 +135,14 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        {readOnly ? 'Pick a single branch above to set opening stock.' : 'Type the morning opening stock — on-hand is worked out as opening minus today’s sales. Updates live with each sale.'}
+        {readOnly ? 'Pick a single branch above to set opening stock.' : 'Type the morning opening stock, log spoiled items under Wastage — on-hand is worked out as opening minus today’s sales. Updates live with each sale.'}
       </p>
+      {lowItems.length > 0 && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          <span className="font-semibold text-destructive">Low stock ({lowItems.length}): </span>
+          {lowItems.slice(0, 12).map(i => `${i.name} (${toStoredQuantity2(Number(i.stock_quantity || 0))})`).join(', ')}
+        </div>
+      )}
       <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
@@ -124,11 +152,12 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
               <TableHead className="text-right">Sold today</TableHead>
               <TableHead className="text-right">On hand</TableHead>
               <TableHead>Status</TableHead>
+              {!readOnly && <TableHead>Wastage</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No stock-tracked items</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No stock-tracked items</TableCell></TableRow>
             )}
             {rows.map(it => {
               const cur = Number(it.stock_quantity || 0);
@@ -152,6 +181,16 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
                   <TableCell>
                     {cur <= 0 ? <Badge variant="destructive">Out</Badge> : low ? <Badge variant="destructive">Low</Badge> : <Badge variant="secondary">OK</Badge>}
                   </TableCell>
+                  {!readOnly && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Input type="number" inputMode="decimal" className="h-8 w-20 text-right" placeholder="Qty" aria-label={`Wastage for ${it.name}`}
+                          value={waste[it.id] ?? ''} onChange={e => setWaste(w => ({ ...w, [it.id]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') void saveWaste(it.id); }} />
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => void saveWaste(it.id)}>Waste</Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
