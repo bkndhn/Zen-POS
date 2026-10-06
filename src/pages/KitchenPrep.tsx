@@ -47,6 +47,8 @@ const KitchenPrep: React.FC = () => {
   const [shelfDays, setShelfDays] = useState<number>(1);
   const [saving, setSaving] = useState(false);
   const [rates, setRates] = useState<Record<string, number>>({});
+  const [shopStock, setShopStock] = useState<Record<string, number | null>>({});
+  const [wasteToday, setWasteToday] = useState<Record<string, number>>({});
 
   const { branchFilterId, operatingBranchId, readOnly } = useBranchScopedQuery(() => load());
   const [targetDow, setTargetDow] = useState<number>(new Date().getDay());
@@ -369,6 +371,8 @@ const KitchenPrep: React.FC = () => {
                         <td className="p-2 text-right font-semibold">{r.projected} {r.unit}</td>
                         <td className="p-2 text-right text-muted-foreground">{inStock(r)}</td>
                         <td className="p-2 text-right font-semibold text-primary">{toMake(r)}</td>
+                        <td className="p-2 text-right text-muted-foreground">{r.itemId && shopStock[r.itemId] != null ? Math.round((shopStock[r.itemId] as number) * 10) / 10 : '—'}</td>
+                        <td className={`p-2 text-right ${r.itemId && wasteToday[r.itemId] ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>{r.itemId ? Math.round((wasteToday[r.itemId] || 0) * 10) / 10 : 0}</td>
                         <td className="p-2 text-right text-muted-foreground">{soldToday[r.name] || 0}</td>
                         <td className="p-2 text-right">{r.itemId && rates[r.itemId] != null ? `₹${rates[r.itemId]}` : '—'}</td>
                         <td className="p-2 text-right text-muted-foreground">{r.lastWeek}</td>
