@@ -434,6 +434,7 @@ const App = () => {
                   <Route path="/kitchen-prep" element={<Layout><ProtectedRoute requiredPermission="kitchen"><KitchenPrep /></ProtectedRoute></Layout>} />
                   <Route path="/renew" element={<Layout><RenewSubscription /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
+                  <Route path="/tokens/:adminId" element={<TokenDisplay />} />
                   <Route path="/tokens" element={<ProtectedRoute requiredPermission="kitchen"><TokenDisplay /></ProtectedRoute>} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
                   <Route path="/feedback/:slug" element={<PublicFeedback />} />

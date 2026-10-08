@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
@@ -53,8 +54,10 @@ const announce = (token: string) => {
 };
 
 const TokenDisplay = () => {
+  const { adminId: publicAdminId } = useParams<{ adminId: string }>();
   const { adminProfileId, profile } = useAuth() as any;
-  const adminId = adminProfileId;
+  const isPublic = !!publicAdminId;
+  const adminId = publicAdminId || adminProfileId;
   const [bills, setBills] = useState<TokenBill[]>([]);
   const [now, setNow] = useState(new Date());
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem(SOUND_KEY) !== 'false');
@@ -68,6 +71,12 @@ const TokenDisplay = () => {
     if (!adminId) return;
     const today = new Date().toISOString().split('T')[0];
     try {
+      if (isPublic) {
+        const { data, error } = await (supabase as any).rpc('get_public_tokens', { p_admin_id: adminId });
+        if (error) throw error;
+        setBills(Array.isArray(data) ? data : []);
+        return;
+      }
       let q: any = (supabase as any)
         .from('bills')
         .select('id, bill_no, table_no, order_type, kitchen_status, created_at')
@@ -86,7 +95,7 @@ const TokenDisplay = () => {
     } catch {
       /* keep last known list when offline */
     }
-  }, [adminId, branchFilterId]);
+  }, [adminId, branchFilterId, isPublic]);
 
   fetchRef.current = fetchBills;
 
@@ -94,6 +103,10 @@ const TokenDisplay = () => {
 
   useEffect(() => {
     if (!adminId) return;
+    if (isPublic) {
+      const poll = setInterval(fetchBills, 5000);
+      return () => clearInterval(poll);
+    }
     const channel = supabase
       .channel(`tokens-${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bills', filter: `admin_id=eq.${adminId}` }, () => fetchBills())
@@ -106,7 +119,7 @@ const TokenDisplay = () => {
       clearInterval(poll);
       window.removeEventListener('bills-updated', onLocal);
     };
-  }, [adminId, fetchBills]);
+  }, [adminId, fetchBills, isPublic]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -158,9 +171,15 @@ const TokenDisplay = () => {
       )}
 
       <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
-        <h1 className="text-2xl md:text-3xl font-bold">{profile?.hotel_name || profile?.shop_name || 'ZenPOS'} · Order Status</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">{isPublic ? 'ZenPOS' : (profile?.hotel_name || profile?.shop_name || 'ZenPOS')} · Order Status</h1>
         <div className="flex items-center gap-3">
           <span className="text-xl md:text-2xl font-mono tabular-nums">{now.toLocaleTimeString()}</span>
+          {!isPublic && adminId && (
+            <Button variant="outline" size="sm" onClick={() => {
+              const url = `${window.location.origin}/tokens/${adminId}`;
+              navigator.clipboard?.writeText(url).then(() => alert(`TV link copied:\n${url}`)).catch(() => prompt('TV link', url));
+            }}>Copy TV link</Button>
+          )}
           <Button variant="outline" size="icon" onClick={toggleSound} aria-label="Toggle sound">
             {soundOn ? <Volume2 /> : <VolumeX />}
           </Button>
