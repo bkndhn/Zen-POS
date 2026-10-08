@@ -1937,6 +1937,51 @@ export type Database = {
           },
         ]
       }
+      happy_hours: {
+        Row: {
+          admin_id: string
+          applies_to: string | null
+          branch_id: string | null
+          category: string | null
+          created_at: string | null
+          days_of_week: number[]
+          discount_percent: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          name: string
+          start_time: string
+        }
+        Insert: {
+          admin_id: string
+          applies_to?: string | null
+          branch_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          days_of_week?: number[]
+          discount_percent?: number
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          start_time: string
+        }
+        Update: {
+          admin_id?: string
+          applies_to?: string | null
+          branch_id?: string | null
+          category?: string | null
+          created_at?: string | null
+          days_of_week?: number[]
+          discount_percent?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           admin_id: string
@@ -2154,6 +2199,7 @@ export type Database = {
       items: {
         Row: {
           admin_id: string | null
+          allergen_warning: string | null
           available_from: string | null
           available_until: string | null
           barcode: string | null
@@ -2168,6 +2214,7 @@ export type Database = {
           display_order: number | null
           expiry_date: string | null
           expiry_mode: string
+          food_type: string | null
           has_variants: boolean | null
           hsn_code: string | null
           id: string
@@ -2200,6 +2247,7 @@ export type Database = {
         }
         Insert: {
           admin_id?: string | null
+          allergen_warning?: string | null
           available_from?: string | null
           available_until?: string | null
           barcode?: string | null
@@ -2214,6 +2262,7 @@ export type Database = {
           display_order?: number | null
           expiry_date?: string | null
           expiry_mode?: string
+          food_type?: string | null
           has_variants?: boolean | null
           hsn_code?: string | null
           id?: string
@@ -2246,6 +2295,7 @@ export type Database = {
         }
         Update: {
           admin_id?: string | null
+          allergen_warning?: string | null
           available_from?: string | null
           available_until?: string | null
           barcode?: string | null
@@ -2260,6 +2310,7 @@ export type Database = {
           display_order?: number | null
           expiry_date?: string | null
           expiry_mode?: string
+          food_type?: string | null
           has_variants?: boolean | null
           hsn_code?: string | null
           id?: string
