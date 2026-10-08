@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { PinLockGuard } from '@/components/PinLockGuard';
@@ -14,7 +14,8 @@ import { formatQuantityWithUnit, toLocalDateString } from '@/utils/timeUtils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { Building2 } from 'lucide-react';
 import { offlineManager } from '@/utils/offlineManager';
-
+import { buildHeatmap, findTopItemPairs, DAY_NAMES, HOUR_LABELS } from '@/utils/popularTimesUtils';
+import type { HeatmapCell, ItemPair } from '@/utils/popularTimesUtils';
 
 interface SalesData {
   date: string;
@@ -41,8 +42,66 @@ interface PeriodStat {
   endDate?: string;
 }
 
-type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly' | 'custom';
+type Period = 'today' | 'yesterday' | 'daily' | 'weekly' | 'monthly' | 'custom' | 'heatmap' | 'combos';
 type ComparisonMode = 'day' | 'week' | 'month' | 'year';
+
+const HeatmapGrid: React.FC<{ data: HeatmapCell[][] }> = ({ data }) => {
+  const [tooltip, setTooltip] = useState<HeatmapCell | null>(null);
+  // Display hours 8 AM (8) to 11 PM (23)
+  const displayHours = Array.from({ length: 16 }, (_, i) => i + 8);
+  const shortHours = displayHours.map(h => h <= 12 ? `${h}` : `${h-12}${h < 12 ? 'A' : 'P'}`);
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[540px]">
+        {/* Hour labels row */}
+        <div className="flex ml-12 mb-1">
+          {shortHours.map((h, i) => (
+            <div key={i} className="flex-1 text-center text-[9px] text-muted-foreground">{h}</div>
+          ))}
+        </div>
+        {/* Day rows */}
+        {data.map((dayRow, dayIdx) => (
+          <div key={dayIdx} className="flex items-center mb-0.5">
+            <div className="w-10 text-[10px] text-muted-foreground text-right pr-2 shrink-0">
+              {DAY_NAMES[dayIdx]}
+            </div>
+            {displayHours.map(hour => {
+              const cell = dayRow[hour];
+              const intensity = cell.normalized;
+              // Map intensity to opacity of primary color
+              const opacity = intensity === 0 ? 0.05 : 0.1 + intensity * 0.9;
+              return (
+                <div
+                  key={hour}
+                  className="flex-1 h-6 mx-0.5 rounded-sm cursor-pointer relative transition-transform hover:scale-110"
+                  style={{ background: `hsl(var(--primary) / ${opacity.toFixed(2)})` }}
+                  onMouseEnter={() => setTooltip(cell)}
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              );
+            })}
+          </div>
+        ))}
+        {/* Legend */}
+        <div className="flex items-center gap-2 mt-2 ml-12">
+          <span className="text-[9px] text-muted-foreground">Quiet</span>
+          {[0.1, 0.3, 0.5, 0.7, 0.9].map(o => (
+            <div key={o} className="w-4 h-3 rounded-sm" style={{ background: `hsl(var(--primary) / ${o})` }} />
+          ))}
+          <span className="text-[9px] text-muted-foreground">Peak</span>
+        </div>
+        {/* Tooltip */}
+        {tooltip && tooltip.count > 0 && (
+          <div className="mt-2 p-2 bg-card border border-border rounded-lg text-xs">
+            <span className="font-semibold">{DAY_NAMES[tooltip.day]} {HOUR_LABELS[tooltip.hour]}</span>
+            {' — '}{tooltip.count} bills · ₹{tooltip.revenue.toLocaleString('en-IN')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const DashboardAnalytics = () => {
   const { profile , adminProfileId } = useAuth();
@@ -107,6 +166,51 @@ const DashboardAnalytics = () => {
   const [insightsRevenue, setInsightsRevenue] = useState(0);
   const [insightsBills, setInsightsBills] = useState(0);
 
+  // Heatmap & Combos state
+  const [heatmapBills, setHeatmapBills] = useState<any[]>([]);
+  const [basketItems, setBasketItems] = useState<any[]>([]);
+  const [heatmapLoading, setHeatmapLoading] = useState(true);
+
+  useEffect(() => {
+    if (!adminId) return;
+    const fetchHeatmapData = async () => {
+      setHeatmapLoading(true);
+      const eightWeeksAgo = new Date();
+      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      let billsQ = supabase
+        .from('bills')
+        .select('created_at, total_amount, id')
+        .eq('admin_id', adminId)
+        .eq('is_deleted', false)
+        .gte('created_at', eightWeeksAgo.toISOString());
+      if (branchFilterId) billsQ = billsQ.eq('branch_id', branchFilterId);
+      const { data: billsData } = await billsQ;
+      setHeatmapBills(billsData || []);
+
+      // For basket affinity: bill_items with item_name
+      let itemsQ = supabase
+        .from('bill_items')
+        .select('bill_id, item_name')
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      // Filter by admin via bills join is too expensive; use the bills we already have
+      const billIds = (billsData || []).slice(0, 500).map((b: any) => b.id);
+      if (billIds.length > 0) {
+        const { data: itemsData } = await supabase
+          .from('bill_items')
+          .select('bill_id, item_name')
+          .in('bill_id', billIds);
+        setBasketItems(itemsData || []);
+      }
+      setHeatmapLoading(false);
+    };
+    fetchHeatmapData();
+  }, [adminId, branchFilterId]);
+
+  const heatmapData = useMemo(() => buildHeatmap(heatmapBills), [heatmapBills]);
+  const topPairs = useMemo(() => findTopItemPairs(basketItems), [basketItems]);
   const { branchFilterId, isAllBranchesView, activeBranch } = useBranchScopedQuery(() => {
     if (adminId) { fetchAnalyticsData(); fetchComparisonData(); }
   });
@@ -732,6 +836,8 @@ const DashboardAnalytics = () => {
               </TabsTrigger>
             );
           })}
+          <TabsTrigger value="heatmap" className="flex-1 min-w-fit text-xs sm:text-sm py-2 px-2 sm:px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">Heatmap</TabsTrigger>
+          <TabsTrigger value="combos" className="flex-1 min-w-fit text-xs sm:text-sm py-2 px-2 sm:px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">Smart Combos</TabsTrigger>
         </TabsList>
 
         {period === 'custom' && (
@@ -821,6 +927,90 @@ const DashboardAnalytics = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* 7x24 Heatmap Tab */}
+        <TabsContent value="heatmap" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Day × Hour Revenue Intensity</CardTitle>
+              <CardDescription>Color intensity = bill volume. 8 weeks of data.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {heatmapLoading ? (
+                <div className="h-40 bg-muted/20 rounded animate-pulse" />
+              ) : (
+                <HeatmapGrid data={heatmapData} />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Smart Insight Cards */}
+          {!heatmapLoading && heatmapBills.length > 0 && (() => {
+            // Find best and worst cells
+            let best = heatmapData[0][8];
+            let worst = heatmapData[0][8];
+            for (const row of heatmapData) {
+              for (const cell of row) {
+                if (cell.hour < 8 || cell.hour > 23) continue;
+                if (cell.revenue > best.revenue) best = cell;
+                if (cell.count > 0 && cell.count < worst.count) worst = cell;
+                if (worst.count === 0 && cell.count > 0) worst = cell;
+              }
+            }
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-muted-foreground mb-1">🏆 Peak Window</div>
+                    <div className="font-semibold text-sm">{DAY_NAMES[best.day]} {HOUR_LABELS[best.hour]}</div>
+                    <div className="text-xs text-muted-foreground">₹{best.revenue.toLocaleString('en-IN')} avg · {best.count} bills</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-muted bg-muted/20">
+                  <CardContent className="pt-4">
+                    <div className="text-xs text-muted-foreground mb-1">💤 Slowest Period</div>
+                    <div className="font-semibold text-sm">{DAY_NAMES[worst.day]} {HOUR_LABELS[worst.hour]}</div>
+                    <div className="text-xs text-muted-foreground">Ideal for prep, stock audits, or happy hours</div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+        </TabsContent>
+
+        {/* Basket Affinity / Smart Combos Tab */}
+        <TabsContent value="combos" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">🤝 Frequently Bought Together</CardTitle>
+              <CardDescription>Top item pairs co-ordered in the last 30 days. Great for combo offers.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {heatmapLoading ? (
+                <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-muted/20 rounded animate-pulse" />)}</div>
+              ) : topPairs.length === 0 ? (
+                <div className="text-center text-muted-foreground text-sm py-8">Not enough multi-item bills to detect pairs yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {topPairs.map((pair, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">{i+1}</span>
+                        <span className="font-medium">{pair.item1}</span>
+                        <span className="text-muted-foreground text-xs">+</span>
+                        <span className="font-medium">{pair.item2}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-primary">{pair.coOccurrenceRate}% of bills</div>
+                        <div className="text-[10px] text-muted-foreground">{pair.coOccurrences}x co-ordered</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

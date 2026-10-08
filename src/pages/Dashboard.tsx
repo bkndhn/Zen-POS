@@ -10,6 +10,7 @@ import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { formatQuantityWithUnit } from '@/utils/timeUtils';
+import PopularTimesWidget from '@/components/PopularTimesWidget';
 
 interface DashboardStats {
   todaySales: number;
@@ -18,6 +19,9 @@ interface DashboardStats {
   totalItems: number;
   todayBills: number;
   avgBillValue: number;
+  repeatRatio: number;
+  repeatCount: number;
+  uniqueCustomerCount: number;
 }
 
 interface TopItem {
@@ -48,6 +52,9 @@ const Dashboard = () => {
     totalItems: 0,
     todayBills: 0,
     avgBillValue: 0,
+    repeatRatio: 0,
+    repeatCount: 0,
+    uniqueCustomerCount: 0,
   });
   const [topItems, setTopItems] = useState<TopItem[]>([]);
   const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
@@ -96,6 +103,33 @@ const Dashboard = () => {
       const todaySales = todayBills.reduce((sum: number, bill: any) => sum + Number(bill.total_amount || 0), 0);
       const todayBillCount = todayBills.length;
       setLiveOrderCount(todayBillCount);
+
+      // After existing bills fetch, compute:
+      const uniqueCustomerPhones = todayBills
+        .map((b: any) => b.customer_phone)
+        .filter(Boolean);
+
+      // Fetch historical bills for the same phones to determine repeat customers
+      let repeatCount = 0;
+      if (uniqueCustomerPhones.length > 0) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const { data: historicalBills } = await supabase
+          .from('bills')
+          .select('customer_phone')
+          .eq('admin_id', adminId)
+          .eq('is_deleted', false)
+          .lt('created_at', today + 'T00:00:00') // before today
+          .gte('created_at', thirtyDaysAgo.toISOString())
+          .in('customer_phone', uniqueCustomerPhones);
+        
+        const repeatPhones = new Set((historicalBills || []).map((b: any) => b.customer_phone));
+        repeatCount = uniqueCustomerPhones.filter((p: any) => repeatPhones.has(p)).length;
+      }
+
+      const repeatRatio = uniqueCustomerPhones.length > 0
+        ? Math.round((repeatCount / uniqueCustomerPhones.length) * 100)
+        : 0;
 
       // Fetch today's expenses — with offline fallback
       let todayExpenses = 0;
@@ -169,6 +203,9 @@ const Dashboard = () => {
         totalItems,
         todayBills: todayBillCount,
         avgBillValue: todayBillCount > 0 ? todaySales / todayBillCount : 0,
+        repeatRatio,
+        repeatCount,
+        uniqueCustomerCount: uniqueCustomerPhones.length,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -334,6 +371,20 @@ const Dashboard = () => {
           <p className="stat-value text-xl font-bold text-foreground">{liveOrderCount}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{stats.totalItems} menu items</p>
         </div>
+
+        {/* Regulars */}
+        <Card className="bg-card border-border">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">Repeat Customers</div>
+              <Users className="w-4 h-4 text-primary" />
+            </div>
+            <div className="text-2xl font-bold mt-1">{stats.repeatRatio}%</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {stats.repeatCount} of {stats.uniqueCustomerCount || 0} tracked today
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Second Row: Top Items + Peak Hours */}
@@ -454,6 +505,13 @@ const Dashboard = () => {
           </button>
         ))}
       </div>
+
+      {/* Popular Times Widget */}
+      {adminId && (
+        <React.Suspense fallback={<div className="h-48 bg-muted/20 rounded-lg animate-pulse" />}>
+          <PopularTimesWidget adminId={adminId} branchFilterId={branchFilterId} />
+        </React.Suspense>
+      )}
     </div>
   );
 };
