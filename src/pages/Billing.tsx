@@ -4246,7 +4246,9 @@ const Billing = () => {
         </div>
       </DialogContent>
     </Dialog>
-
+    {/* TODO: Add LoyaltyBadge here to show points when customer is selected */}
+    {/* TODO: Add Loyalty points redeem toggle here */}
+    {/* TODO: Add Petty Cash / Quick Drawer Expense button in the billing actions area */}
     {/* Payment Dialog */}
     <CompletePaymentDialog 
       nearExpiry={nearExpiryMap}

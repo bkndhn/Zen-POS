@@ -7,7 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { MessageCircle, Settings2, Zap, Info, Image as ImageIcon, FileText } from 'lucide-react';
 
@@ -44,6 +45,9 @@ export const WhatsAppSettings: React.FC = () => {
   const [whatsappBusinessApiToken, setWhatsappBusinessApiToken] = useState('');
   const [whatsappBusinessPhoneId, setWhatsappBusinessPhoneId] = useState('');
   const [canManageCredentials, setCanManageCredentials] = useState(false);
+  const [whatsappNightlySummary, setWhatsappNightlySummary] = useState(false);
+  const [whatsappNightlyPhone, setWhatsappNightlyPhone] = useState('');
+  const [whatsappNightlyTime, setWhatsappNightlyTime] = useState('23:00');
 
   useEffect(() => {
     if (adminAuthUid && operatingBranchId) {
@@ -53,7 +57,7 @@ export const WhatsAppSettings: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const cols = 'whatsapp_bill_share_enabled, whatsapp_share_mode, whatsapp_business_api_enabled';
+      const cols = 'whatsapp_bill_share_enabled, whatsapp_share_mode, whatsapp_business_api_enabled, whatsapp_nightly_summary, whatsapp_nightly_phone, whatsapp_nightly_time';
       let { data, error } = await (supabase as any)
         .from('shop_settings')
         .select(cols)
@@ -77,6 +81,9 @@ export const WhatsAppSettings: React.FC = () => {
         setWhatsappBillShareEnabled(data.whatsapp_bill_share_enabled || false);
         setWhatsappShareMode(data.whatsapp_share_mode === 'image' ? 'image' : 'text');
         setWhatsappBusinessApiEnabled(data.whatsapp_business_api_enabled || false);
+        setWhatsappNightlySummary(data.whatsapp_nightly_summary || false);
+        setWhatsappNightlyPhone(data.whatsapp_nightly_phone || '');
+        setWhatsappNightlyTime(data.whatsapp_nightly_time || '23:00');
       }
 
       // Credentials live in an owner-only table (never readable by sub-users)
@@ -107,6 +114,9 @@ export const WhatsAppSettings: React.FC = () => {
         whatsapp_bill_share_enabled: whatsappBillShareEnabled,
         whatsapp_share_mode: whatsappShareMode,
         whatsapp_business_api_enabled: whatsappBusinessApiEnabled,
+        whatsapp_nightly_summary: whatsappNightlySummary,
+        whatsapp_nightly_phone: whatsappNightlyPhone,
+        whatsapp_nightly_time: whatsappNightlyTime,
         updated_at: new Date().toISOString()
       };
       const { data: existing } = await (supabase as any)
@@ -354,3 +364,4 @@ export const WhatsAppSettings: React.FC = () => {
     </Card>
   );
 };
+

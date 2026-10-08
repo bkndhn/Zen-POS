@@ -70,7 +70,7 @@ const CRM: React.FC = () => {
   const [billSettings, setBillSettings] = useState<any>(null);
 
   // Customer Segmentation & Marketing Campaign states
-  const [segmentFilter, setSegmentFilter] = useState<'all' | 'khata' | 'vip' | 'regular' | 'at_risk' | 'dormant'>('all');
+  const [segmentFilter, setSegmentFilter] = useState<'all' | 'khata' | 'vip' | 'regular' | 'at_risk' | 'dormant' | 'settled' | 'advance'>('all');
   const [campaignOpen, setCampaignOpen] = useState(false);
   const [campaignType, setCampaignType] = useState<'promo' | 'birthday' | 'reengage' | 'voucher'>('promo');
   const [campaignTarget, setCampaignTarget] = useState<'all' | 'vip' | 'at_risk' | 'dormant'>('all');
@@ -350,6 +350,10 @@ const CRM: React.FC = () => {
     if (segmentFilter !== 'all') {
       if (segmentFilter === 'khata') {
         if (Number(customer.current_balance) <= 0) return false;
+      } else if (segmentFilter === 'settled') {
+        if (Number(customer.current_balance) !== 0) return false;
+      } else if (segmentFilter === 'advance') {
+        if (Number(customer.current_balance) >= 0) return false;
       } else {
         const seg = getCustomerSegment(customer);
         if (seg.key !== segmentFilter) return false;
@@ -970,6 +974,8 @@ const CRM: React.FC = () => {
         {[
           { key: 'all', label: 'All Customers', count: customers.length },
           { key: 'khata', label: 'Khata Due 💸', count: customers.filter(c => Number(c.current_balance) > 0).length },
+          { key: 'settled', label: 'Settled ✅', count: customers.filter(c => Number(c.current_balance) === 0).length },
+          { key: 'advance', label: 'Advance Paid 💳', count: customers.filter(c => Number(c.current_balance) < 0).length },
           { key: 'vip', label: 'VIP 🌟', count: customers.filter(c => getCustomerSegment(c).key === 'vip').length },
           { key: 'regular', label: 'Regular ⚡', count: customers.filter(c => getCustomerSegment(c).key === 'regular').length },
           { key: 'at_risk', label: 'At-Risk ⚠️', count: customers.filter(c => getCustomerSegment(c).key === 'at_risk').length },
@@ -986,6 +992,46 @@ const CRM: React.FC = () => {
           </Button>
         ))}
       </div>
+
+      {/* Khata Metrics (Only show in Khata or All) */}
+      {(segmentFilter === 'khata' || segmentFilter === 'all') && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {(() => {
+            const totalOutstandingDues = customers.filter(c => Number(c.current_balance) > 0).reduce((s, c) => s + Number(c.current_balance), 0);
+            const overdueCustomersCount = customers.filter(c => Number(c.current_balance) > 0).length;
+            const advanceHeld = customers.filter(c => Number(c.current_balance) < 0).reduce((s, c) => s + Math.abs(Number(c.current_balance)), 0);
+
+            return (
+              <>
+                <Card className="p-3 bg-red-50 border-red-200">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-red-600 font-bold uppercase tracking-wider">Total Outstanding Dues</span>
+                    <span className="text-lg font-black text-red-700">₹{totalOutstandingDues.toLocaleString('en-IN')}</span>
+                  </div>
+                </Card>
+                <Card className="p-3 bg-orange-50 border-orange-200">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-orange-600 font-bold uppercase tracking-wider">Overdue Customers</span>
+                    <span className="text-lg font-black text-orange-700">{overdueCustomersCount} customers</span>
+                  </div>
+                </Card>
+                <Card className="p-3 bg-green-50 border-green-200">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-green-600 font-bold uppercase tracking-wider">Advance Held</span>
+                    <span className="text-lg font-black text-green-700">₹{advanceHeld.toLocaleString('en-IN')}</span>
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Net Receivable</span>
+                    <span className="text-lg font-black">₹{(totalOutstandingDues - advanceHeld).toLocaleString('en-IN')}</span>
+                  </div>
+                </Card>
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -1040,8 +1086,18 @@ const CRM: React.FC = () => {
                         <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">LTV</p>
                       </div>
                       {Number(customer.current_balance) > 0 && (
-                        <div className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shadow-sm mt-0.5">
-                          DUE: ₹{Number(customer.current_balance).toFixed(0)}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <div className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shadow-sm">
+                            DUE: ₹{Number(customer.current_balance).toFixed(0)}
+                          </div>
+                          {/* NOTE: Using last_visit as proxy for last bill date for ageing calculation to avoid heavy joins */}
+                          {(() => {
+                            if (!customer.last_visit) return null;
+                            const days = Math.floor((Date.now() - new Date(customer.last_visit).getTime()) / (1000 * 60 * 60 * 24));
+                            if (days < 7) return <span className="bg-green-100 text-green-700 px-1 py-0.5 rounded text-[9px] font-bold">Fresh</span>;
+                            if (days <= 30) return <span className="bg-amber-100 text-amber-700 px-1 py-0.5 rounded text-[9px] font-bold">7–30d</span>;
+                            return <span className="bg-red-100 text-red-700 px-1 py-0.5 rounded text-[9px] font-bold">Overdue &gt;30d</span>;
+                          })()}
                         </div>
                       )}
                     </div>
