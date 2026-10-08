@@ -433,6 +433,37 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
               </div>
             </div>
 
+            {/* Dietary Type */}
+<div className="space-y-1.5">
+  <label className="text-xs font-medium text-muted-foreground">Dietary Type</label>
+  <div className="flex gap-2 flex-wrap">
+    {[{v:'veg',l:'?? Veg'},{v:'non_veg',l:'?? Non-Veg'},{v:'vegan',l:'?? Vegan'},{v:'jain',l:'?? Jain'}].map(opt => (
+      <button
+        key={opt.v}
+        type="button"
+        onClick={() => setFormData(prev => ({ ...prev, food_type: opt.v }))}
+        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+          (formData.food_type || 'veg') === opt.v
+            ? 'bg-primary text-primary-foreground border-primary'
+            : 'bg-card border-border text-muted-foreground hover:bg-muted'
+        }`}
+      >
+        {opt.l}
+      </button>
+    ))}
+  </div>
+</div>
+{/* Allergen Warning */}
+<div className="space-y-1.5">
+  <label className="text-xs font-medium text-muted-foreground">Allergen Warning (optional)</label>
+  <input
+    type="text"
+    placeholder="e.g. nuts, dairy, gluten"
+    value={formData.allergen_warning || ''}
+    onChange={e => setFormData(prev => ({ ...prev, allergen_warning: e.target.value }))}
+    className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+  />
+</div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Availability Schedule (optional)</Label>
               <div className="flex gap-2">
@@ -886,4 +917,5 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     </>
   );
 };
+
 

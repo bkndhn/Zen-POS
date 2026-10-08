@@ -1728,3 +1728,4 @@ const KitchenAnalytics = ({ bills, tableOrders, onClose }: { bills: any[], table
 };
 
 export default KitchenDisplay;
+

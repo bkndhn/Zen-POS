@@ -32,6 +32,7 @@ interface Customer {
   last_visit: string;
   created_at: string;
   current_balance?: number;
+  loyalty_points?: number;
 }
 
 const CRM: React.FC = () => {
@@ -992,6 +993,30 @@ const CRM: React.FC = () => {
             {pill.label} ({pill.count})
           </Button>
         ))}
+        {(segmentFilter === 'at_risk' || segmentFilter === 'dormant') && (
+          <button
+            type="button"
+            onClick={() => {
+              // Build personalized WhatsApp messages for all at-risk/lost customers
+              const targets = filteredCustomers.slice(0, 20); // max 20 at once
+              if (targets.length === 0) return;
+              // Open WhatsApp for first customer (in a real app, bulk via Cloud API)
+              const customer = targets[0];
+              const daysSince = customer.last_visit
+                ? Math.floor((Date.now() - new Date(customer.last_visit).getTime()) / 86400000)
+                : 30;
+              const message = `Hi *${customer.name || 'Valued Customer'}*, we miss you at *ZenPOS*! It's been ${daysSince} days since your last visit. Come back and enjoy *15% off* your next order! Show this message at the counter. 🙏`;
+              const phone = (customer.phone || '').replace(/\D/g, '');
+              const target = phone.length === 10 ? `91${phone}` : phone;
+              if (target.length >= 10) {
+                window.open(`https://wa.me/${target}?text=${encodeURIComponent(message)}`, '_blank');
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors shrink-0"
+          >
+            📲 Send Win-Back WhatsApp
+          </button>
+        )}
       </div>
 
       {/* Khata Metrics (Only show in Khata or All) */}
@@ -1102,6 +1127,24 @@ const CRM: React.FC = () => {
                         </div>
                       )}
                     </div>
+                    {(segmentFilter === 'at_risk' || segmentFilter === 'dormant') && customer.phone && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const daysSince = customer.last_visit
+                            ? Math.floor((Date.now() - new Date(customer.last_visit).getTime()) / 86400000)
+                            : 30;
+                          const msg = `Hi *${customer.name || 'Valued Customer'}*, we miss you! It's been ${daysSince} days. Enjoy *15% off* your next order at ZenPOS! 🙏`;
+                          const phone = customer.phone.replace(/\D/g, '');
+                          const to = phone.length === 10 ? `91${phone}` : phone;
+                          window.open(`https://wa.me/${to}?text=${encodeURIComponent(msg)}`, '_blank');
+                        }}
+                        className="text-green-600 hover:text-green-700 text-xs font-medium px-2 py-0.5 rounded border border-green-300 hover:bg-green-50 transition-colors"
+                      >
+                        📲 Win-Back
+                      </button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -1247,6 +1290,53 @@ const CRM: React.FC = () => {
                   )}
                 </div>
               ) : null}
+              
+              {/* Loyalty Stamp Card */}
+              {historyCustomer && (
+                <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 bg-amber-50 dark:bg-amber-950/20 mt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs font-semibold text-amber-700 dark:text-amber-400">⭐ Loyalty Stamp Card</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const googleReviewUrl = `https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID`;
+                        const phone = (historyCustomer.phone || '').replace(/\D/g, '');
+                        const to = phone.length === 10 ? `91${phone}` : phone;
+                        const msg = `Hi ${historyCustomer.name || 'Valued Customer'}! Thank you for visiting us today! If you enjoyed your experience, we'd love a Google review: ${googleReviewUrl} 🌟`;
+                        if (to.length >= 10) window.open(`https://wa.me/${to}?text=${encodeURIComponent(msg)}`, '_blank');
+                      }}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded border border-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 text-[10px] font-bold hover:bg-yellow-200 transition-colors"
+                    >
+                      ⭐ Request Google Review
+                    </button>
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-2">
+                    {Number(historyCustomer.loyalty_points || 0)} pts — Earn 1 stamp per ₹150 · 5 stamps = ₹100 credit
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {Array.from({ length: 10 }).map((_, i) => {
+                      const stamps = Math.floor(Number(historyCustomer.loyalty_points || 0) / 30); // rough: 30pts = 1 stamp
+                      const filled = i < (stamps % 10);
+                      return (
+                        <div
+                          key={i}
+                          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm ${
+                            filled
+                              ? 'bg-amber-400 border-amber-500 text-white'
+                              : 'bg-white dark:bg-amber-900/10 border-amber-300 text-muted-foreground'
+                          }`}
+                        >
+                          {filled ? '⭐' : '○'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1.5">
+                    {5 - (Math.floor(Number(historyCustomer.loyalty_points || 0) / 30) % 5)} more stamps until ₹100 free credit
+                  </div>
+                </div>
+              )}
+
             </div>
             
             {/* Tab Swapper */}

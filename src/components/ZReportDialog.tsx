@@ -16,6 +16,7 @@ import { checkSupabaseResult } from '@/utils/monitoring';
 import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHistory';
 import { generateZReportPdf } from '@/utils/zReportPdf';
 import { printZReportThermal } from '@/utils/zReportPrinter';
+import { BlindShiftClose } from '@/components/BlindShiftClose';
 
 
 interface ZReportDialogProps {
@@ -32,6 +33,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
   const [reconNotes, setReconNotes] = useState<string>("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isClosingShift, setIsClosingShift] = useState(false);
+  const [blindCloseOpen, setBlindCloseOpen] = useState(false);
 
   const [reportData, setReportData] = useState<{
     date: string;
@@ -384,8 +386,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           <Button variant="outline" onClick={handleDownloadPdf} disabled={loading || !reportData}>
             <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            <X className="w-4 h-4 mr-2" /> Cancel
+          <Button variant="outline" onClick={() => setBlindCloseOpen(true)} disabled={loading || !reportData?.shift}>
+            🔒 Blind Count
           </Button>
           <Button onClick={handlePrint} disabled={loading || isClosingShift || !reportData || reportData.totalBills === 0}>
             {isClosingShift ? "Closing Shift..." : "Close Shift & Print"}
@@ -393,6 +395,15 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         </DialogFooter>
 
         <ShiftReconciliationHistory open={historyOpen} onOpenChange={setHistoryOpen} />
+        {reportData?.shift && adminProfileId && (
+          <BlindShiftClose
+            open={blindCloseOpen}
+            onOpenChange={setBlindCloseOpen}
+            adminId={adminProfileId}
+            shiftId={reportData.shift.id}
+            expectedCash={Number(reportData.shift.opening_cash) + (reportData.paymentTotals['cash'] || 0)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

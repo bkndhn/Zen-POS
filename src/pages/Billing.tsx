@@ -495,6 +495,9 @@ const Billing = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Item[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  type SavedCart = { id: number; label: string; items: CartItem[]; customerName: string; customerPhone: string; };
+  const [savedCarts, setSavedCarts] = useState<SavedCart[]>([]);
+  const [activeCartId, setActiveCartId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
@@ -4454,4 +4457,5 @@ const Billing = () => {
   </div>;
 };
 export default Billing;
+
 

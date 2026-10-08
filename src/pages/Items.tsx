@@ -9,10 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DailyRatesBoard from '@/components/DailyRatesBoard';
 import { toast } from '@/hooks/use-toast';
-import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download, Clock, Sparkles } from 'lucide-react';
+import { Package, Search, Plus, Minus, GripVertical, Eye, EyeOff, LayoutGrid, List, CheckSquare, Square, Trash2, Tag, ToggleLeft, Flame, ArrowUpDown, Copy, Download, Clock, Sparkles, Printer } from 'lucide-react';
 import { AddItemDialog } from '@/components/AddItemDialog';
 import { BulkAddItemDialog } from '@/components/BulkAddItemDialog';
 import { AiMenuImportDialog } from '@/components/AiMenuImportDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EditItemDialog } from '@/components/EditItemDialog';
 import { ItemCategoryManagement } from '@/components/ItemCategoryManagement';
@@ -54,9 +55,78 @@ interface Item {
   price_zomato?: number;
   price_swiggy?: number;
   is_veg?: boolean;
+  food_type?: string;
+  allergen_warning?: string;
+  barcode?: string;
+  sku?: string;
   available_from?: string | null;
   available_until?: string | null;
 }
+
+const DietaryBadge: React.FC<{ foodType?: string; allergen?: string }> = ({ foodType, allergen }) => {
+  const badges = [];
+  if (foodType === 'veg' || !foodType) {
+    badges.push(
+      <span key="veg" title="Pure Vegetarian" className="inline-flex items-center">
+        <span className="w-4 h-4 rounded-sm border-2 border-green-600 flex items-center justify-center">
+          <span className="w-2 h-2 rounded-full bg-green-600" />
+        </span>
+      </span>
+    );
+  }
+  if (foodType === 'non_veg') {
+    badges.push(
+      <span key="nonveg" title="Non-Vegetarian" className="inline-flex items-center">
+        <span className="w-4 h-4 rounded-sm border-2 border-red-600 flex items-center justify-center">
+          <span className="w-2 h-2 rounded-full bg-red-600" />
+        </span>
+      </span>
+    );
+  }
+  if (foodType === 'vegan') {
+    badges.push(<span key="vegan" className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-300 rounded px-1">?? Vegan</span>);
+  }
+  if (foodType === 'jain') {
+    badges.push(<span key="jain" className="text-[9px] font-bold text-orange-700 bg-orange-50 border border-orange-300 rounded px-1">?? Jain</span>);
+  }
+  if (allergen) {
+    badges.push(<span key="allergen" className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 rounded px-1">?? {allergen}</span>);
+  }
+  return <div className="flex gap-1 flex-wrap">{badges}</div>;
+};
+
+const HappyHourForm: React.FC<{ adminId: string; onSave: (hh: any) => void }> = ({ adminId, onSave }) => {
+  const [name, setName] = useState('');
+  const [start, setStart] = useState('15:00');
+  const [end, setEnd] = useState('18:00');
+  const [discount, setDiscount] = useState('20');
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="space-y-2 text-sm">
+      <input placeholder="Rule Name" value={name} onChange={e=>setName(e.target.value)} className="w-full border rounded px-2 py-1" />
+      <div className="flex gap-2">
+        <input type="time" value={start} onChange={e=>setStart(e.target.value)} className="flex-1 border rounded px-2 py-1" />
+        <input type="time" value={end} onChange={e=>setEnd(e.target.value)} className="flex-1 border rounded px-2 py-1" />
+      </div>
+      <input type="number" placeholder="Discount %" value={discount} onChange={e=>setDiscount(e.target.value)} className="w-full border rounded px-2 py-1" />
+      <button 
+        disabled={saving || !name} 
+        onClick={async () => {
+          setSaving(true);
+          const hh = { admin_id: adminId, name, start_time: start, end_time: end, discount_percent: Number(discount) };
+          const { data, error } = await supabase.from('happy_hours').insert(hh).select().single();
+          if (data) onSave(data);
+          setSaving(false);
+          setName('');
+        }}
+        className="w-full bg-primary text-primary-foreground py-1 rounded"
+      >
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+    </div>
+  );
+};
 
 const Items: React.FC = () => {
   const { profile , adminProfileId } = useAuth();
@@ -71,6 +141,20 @@ const Items: React.FC = () => {
   
 
   const [items, setItems] = useState<Item[]>([]);
+  const [labelPrintItem, setLabelPrintItem] = useState<any>(null);
+  const [labelSize, setLabelSize] = useState<'50x25' | '38x25'>('50x25');
+  const [labelExpiry, setLabelExpiry] = useState('');
+  const [labelMrp, setLabelMrp] = useState('');
+
+  const [showHappyHour, setShowHappyHour] = useState(false);
+  const [happyHours, setHappyHours] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!adminId) return;
+    supabase.from('happy_hours').select('*').eq('admin_id', adminId).then(({ data }) => {
+      setHappyHours(data || []);
+    });
+  }, [adminId]);
 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -799,7 +883,7 @@ const Items: React.FC = () => {
         <div className="p-2 sm:p-3 flex flex-col flex-1 gap-1.5">
           <div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-3 h-3 rounded-sm border-2 flex-shrink-0 ${item.is_veg !== false ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} title={item.is_veg !== false ? 'Vegetarian' : 'Non-Vegetarian'} />
+              <DietaryBadge foodType={item.food_type} allergen={item.allergen_warning} />
               <h4 className="font-semibold text-sm leading-tight line-clamp-1" title={item.name}>{item.name}</h4>
               {topSellerIds.has(item.id) && !item.image_url && !item.video_url && (
                 <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] px-1 py-0 h-3.5 flex-shrink-0 flex items-center gap-0.5">
@@ -902,7 +986,7 @@ const Items: React.FC = () => {
                     <Copy className="w-3.5 h-3.5" />
                   </Button>
                 )}
-                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Print Label" onClick={(e) => { e.stopPropagation(); setLabelPrintItem(item); }}><Printer className="w-3.5 h-3.5" /></Button>`n                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
               </div>
             )}
           </div>
@@ -925,7 +1009,7 @@ const Items: React.FC = () => {
           {selectedItems.has(item.id) ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
         </button>
       )}
-      <span className={`w-2.5 h-2.5 rounded-sm border-2 flex-shrink-0 ${item.is_veg !== false ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} title={item.is_veg !== false ? 'Vegetarian' : 'Non-Vegetarian'} />
+      <DietaryBadge foodType={item.food_type} allergen={item.allergen_warning} />
       {item.image_url && (
         <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" loading="lazy" onError={(e) => handleImageError(e, item.image_url)} />
       )}
@@ -1007,7 +1091,7 @@ const Items: React.FC = () => {
               <Copy className="w-3.5 h-3.5" />
             </Button>
           )}
-          <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Print Label" onClick={(e) => { e.stopPropagation(); setLabelPrintItem(item); }}><Printer className="w-3.5 h-3.5" /></Button>`n                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
         </div>
       )}
     </div>
@@ -1031,7 +1115,7 @@ const Items: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          {/* List/Grid Toggle */}
+          <button type="button" onClick={() => setShowHappyHour(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/20 text-xs font-semibold hover:bg-amber-100 transition-colors">? Happy Hour</button>`n          {/* List/Grid Toggle */}
           <div className="flex bg-muted rounded-lg p-0.5">
             <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
               <LayoutGrid className="w-4 h-4" />
@@ -1314,8 +1398,111 @@ const Items: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+            <Dialog open={!!labelPrintItem} onOpenChange={() => setLabelPrintItem(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Print Barcode Label</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Label Size</div>
+              <div className="flex gap-2">
+                {(['50x25', '38x25'] as const).map(sz => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => setLabelSize(sz)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${
+                      labelSize === sz ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground'
+                    }`}
+                  >{sz} mm</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">MRP (?)</div>
+              <input
+                type="number"
+                value={labelMrp || labelPrintItem?.price || ''}
+                onChange={e => setLabelMrp(e.target.value)}
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+              />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Expiry Date (optional)</div>
+              <input
+                type="date"
+                value={labelExpiry}
+                onChange={e => setLabelExpiry(e.target.value)}
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
+              />
+            </div>
+            <div className="border border-dashed border-border rounded-lg p-3 text-center bg-white dark:bg-white text-black" id="label-preview">
+              <div className="text-[10px] font-bold truncate">{labelPrintItem?.name}</div>
+              <div className="text-[16px] font-extrabold">?{labelMrp || labelPrintItem?.price}</div>
+              {labelPrintItem?.unit && <div className="text-[9px]">{labelPrintItem.unit}</div>}
+              {labelExpiry && <div className="text-[9px]">Exp: {labelExpiry}</div>}
+              <div className="font-mono text-[8px] mt-1 tracking-widest">{labelPrintItem?.barcode || labelPrintItem?.sku || labelPrintItem?.id?.slice(-8).toUpperCase()}</div>
+              <div className="text-[7px] text-gray-500">|||||||||||||||||||||||||||</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const printWin = window.open('', '_blank', 'width=400,height=300');
+                if (!printWin) return;
+                const preview = document.getElementById('label-preview');
+                printWin.document.write(`<html><body style="margin:0;padding:4px;font-family:sans-serif;">${preview?.innerHTML || ''}</body></html>`);
+                printWin.document.close();
+                printWin.print();
+                printWin.close();
+              }}
+              className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold"
+            >
+              ??? Print Label
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showHappyHour} onOpenChange={setShowHappyHour}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>? Happy Hour Pricing</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            {happyHours.length === 0 && (
+              <div className="text-xs text-muted-foreground text-center py-4">No happy hour rules yet</div>
+            )}
+            {happyHours.map(hh => (
+              <div key={hh.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border">
+                <div>
+                  <div className="text-sm font-medium">{hh.name}</div>
+                  <div className="text-xs text-muted-foreground">{hh.start_time} – {hh.end_time} · {hh.discount_percent}% off</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await supabase.from('happy_hours').delete().eq('id', hh.id);
+                    setHappyHours(prev => prev.filter(h => h.id !== hh.id));
+                  }}
+                  className="text-destructive text-xs hover:underline"
+                >Remove</button>
+              </div>
+            ))}
+            <div className="border-t border-border pt-3 space-y-2">
+              <div className="text-xs font-semibold text-muted-foreground">Add New Rule</div>
+              {adminId && <HappyHourForm adminId={adminId} onSave={(hh) => setHappyHours(prev => [...prev, hh])} />}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default Items;
+
+
+
+
+
+

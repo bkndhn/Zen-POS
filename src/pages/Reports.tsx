@@ -1496,6 +1496,25 @@ const Reports: React.FC = () => {
   const netCashFlow = totalSales - totalPurchasePayments - totalExpenses;
   const profit = netProfit;
 
+  // Menu Engineering: compute per-item popularity and profitability
+  const menuMatrixData = useMemo(() => {
+    if (!itemReports || itemReports.length === 0) return [];
+    const avgRevenue = itemReports.reduce((s: number, i: any) => s + (i.total_revenue || 0), 0) / itemReports.length;
+    const avgQty = itemReports.reduce((s: number, i: any) => s + (i.total_quantity || 0), 0) / itemReports.length;
+    return itemReports.map((item: any) => {
+      const revenue = item.total_revenue || 0;
+      const qty = item.total_quantity || 0;
+      const isHighRevenue = revenue > avgRevenue;
+      const isHighPopularity = qty > avgQty;
+      let quadrant: 'Star' | 'Plowhorse' | 'Puzzle' | 'Dog';
+      if (isHighRevenue && isHighPopularity) quadrant = 'Star';
+      else if (!isHighRevenue && isHighPopularity) quadrant = 'Plowhorse';
+      else if (isHighRevenue && !isHighPopularity) quadrant = 'Puzzle';
+      else quadrant = 'Dog';
+      return { name: item.item_name, quadrant, revenue, qty };
+    });
+  }, [itemReports]);
+
   const handleExportAllExcel = () => {
     try {
       const billsForExport = activeBills.map(bill => ({
@@ -1712,6 +1731,38 @@ const Reports: React.FC = () => {
             <FileCode className="w-3 h-3 mr-1 text-blue-600 dark:text-blue-400" />
             Tally XML
           </Button>
+          <button
+            type="button"
+            onClick={() => {
+              const headers = ['Invoice No','Date','Customer','GSTIN','Taxable Value','CGST%','CGST Amt','SGST%','SGST Amt','IGST%','IGST Amt','Total','HSN','Status'];
+              const rows = (bills || []).map((bill: any) => [
+                bill.bill_no || bill.id?.slice(-6).toUpperCase(),
+                bill.date || bill.created_at?.split('T')[0],
+                bill.customer_name || 'Consumer',
+                bill.customer_gstin || '',
+                (Number(bill.subtotal || bill.total_amount) - Number(bill.tax || 0)).toFixed(2),
+                '9', // CGST rate
+                (Number(bill.tax || 0) / 2).toFixed(2),
+                '9', // SGST rate
+                (Number(bill.tax || 0) / 2).toFixed(2),
+                '0','0',
+                Number(bill.total_amount || 0).toFixed(2),
+                bill.hsn_code || '',
+                bill.is_deleted ? 'Cancelled' : 'Active',
+              ]);
+              const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `GSTR1_${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted transition-colors h-8"
+          >
+            📄 GSTR-1
+          </button>
         </div>
       </div>
 
@@ -1864,6 +1915,36 @@ const Reports: React.FC = () => {
             <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1">{activeBills.length}</p>
             <p className="text-xs text-muted-foreground">Avg: ₹{activeBills.length > 0 ? Math.round(totalSales / activeBills.length).toLocaleString('en-IN') : 0}</p>
           </div>
+
+          {/* Estimated Net Operating Profit */}
+          <Card className="border-border bg-card rounded-2xl shadow-lg dark:shadow-none">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Est. Net Operating Profit</div>
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Today</span>
+              </div>
+              <div className={`text-2xl sm:text-3xl font-bold mb-1 mt-2 ${
+                (totalSales - totalExpenses) >= 0 ? 'text-green-500 dark:text-green-400' : 'text-rose-500'
+              }`}>
+                ₹{Math.abs(totalSales - totalExpenses).toLocaleString('en-IN')}
+                {(totalSales - totalExpenses) < 0 && <span className="text-sm ml-1">loss</span>}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                Revenue ₹{totalSales.toLocaleString('en-IN')} − Expenses ₹{totalExpenses.toLocaleString('en-IN')}
+              </div>
+              {totalSales > 0 && (
+                <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${totalSales - totalExpenses >= 0 ? 'bg-green-500' : 'bg-rose-500'}`}
+                    style={{ width: `${Math.min(100, Math.max(0, ((totalSales - totalExpenses) / totalSales) * 100)).toFixed(1)}%` }}
+                  />
+                </div>
+              )}
+              <div className="text-[10px] text-muted-foreground mt-1">
+                {totalSales > 0 ? `${Math.round(((totalSales - totalExpenses) / totalSales) * 100)}% net margin` : 'No sales yet'}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1900,7 +1981,7 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-8 min-w-[640px] h-10">
+          <TabsList className="grid w-full grid-cols-9 min-w-[720px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
@@ -1909,8 +1990,73 @@ const Reports: React.FC = () => {
             <TabsTrigger value="channels" disabled={billFilter === 'deleted'} className="text-sm font-medium">Channels</TabsTrigger>
             <TabsTrigger value="staff" disabled={billFilter === 'deleted'} className="text-sm font-medium">Staff</TabsTrigger>
             <TabsTrigger value="tables" disabled={billFilter === 'deleted'} className="text-sm font-medium">Tables</TabsTrigger>
+            <TabsTrigger value="menu_matrix" disabled={billFilter === 'deleted'} className="text-sm font-medium">Menu Matrix</TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="menu_matrix" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">📊 Menu Engineering Matrix</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Stars */}
+                <div className="rounded-xl border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20 p-3">
+                  <div className="font-bold text-sm text-yellow-700 dark:text-yellow-400 mb-2">⭐ Stars <span className="text-xs font-normal">(High Revenue + High Popularity)</span></div>
+                  {menuMatrixData.filter((i: any) => i.quadrant === 'Star').length === 0
+                    ? <div className="text-xs text-muted-foreground">None yet</div>
+                    : menuMatrixData.filter((i: any) => i.quadrant === 'Star').slice(0, 6).map((item: any) => (
+                      <div key={item.name} className="flex justify-between text-xs py-0.5">
+                        <span>{item.name}</span>
+                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')} · {item.qty}x</span>
+                      </div>
+                    ))}
+                  <div className="text-[10px] text-yellow-600 mt-1">✅ Promote heavily — your best sellers</div>
+                </div>
+                {/* Plowhorses */}
+                <div className="rounded-xl border border-blue-300 bg-blue-50 dark:bg-blue-950/20 p-3">
+                  <div className="font-bold text-sm text-blue-700 dark:text-blue-400 mb-2">🐎 Plowhorses <span className="text-xs font-normal">(Low Revenue + High Popularity)</span></div>
+                  {menuMatrixData.filter((i: any) => i.quadrant === 'Plowhorse').length === 0
+                    ? <div className="text-xs text-muted-foreground">None yet</div>
+                    : menuMatrixData.filter((i: any) => i.quadrant === 'Plowhorse').slice(0, 6).map((item: any) => (
+                      <div key={item.name} className="flex justify-between text-xs py-0.5">
+                        <span>{item.name}</span>
+                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                  <div className="text-[10px] text-blue-600 mt-1">💡 Raise price slightly or optimize ingredients</div>
+                </div>
+                {/* Puzzles */}
+                <div className="rounded-xl border border-purple-300 bg-purple-50 dark:bg-purple-950/20 p-3">
+                  <div className="font-bold text-sm text-purple-700 dark:text-purple-400 mb-2">🔮 Puzzles <span className="text-xs font-normal">(High Revenue + Low Popularity)</span></div>
+                  {menuMatrixData.filter((i: any) => i.quadrant === 'Puzzle').length === 0
+                    ? <div className="text-xs text-muted-foreground">None yet</div>
+                    : menuMatrixData.filter((i: any) => i.quadrant === 'Puzzle').slice(0, 6).map((item: any) => (
+                      <div key={item.name} className="flex justify-between text-xs py-0.5">
+                        <span>{item.name}</span>
+                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                  <div className="text-[10px] text-purple-600 mt-1">📢 Feature in combos or redesign menu placement</div>
+                </div>
+                {/* Dogs */}
+                <div className="rounded-xl border border-muted bg-muted/20 p-3">
+                  <div className="font-bold text-sm text-muted-foreground mb-2">🐕 Dogs <span className="text-xs font-normal">(Low Revenue + Low Popularity)</span></div>
+                  {menuMatrixData.filter((i: any) => i.quadrant === 'Dog').length === 0
+                    ? <div className="text-xs text-muted-foreground">None yet</div>
+                    : menuMatrixData.filter((i: any) => i.quadrant === 'Dog').slice(0, 6).map((item: any) => (
+                      <div key={item.name} className="flex justify-between text-xs py-0.5">
+                        <span>{item.name}</span>
+                        <span className="text-muted-foreground">{item.qty}x sold</span>
+                      </div>
+                    ))}
+                  <div className="text-[10px] text-muted-foreground mt-1">🗑️ Consider dropping or deep discounting</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="bills" className="mt-4">
           <Card>

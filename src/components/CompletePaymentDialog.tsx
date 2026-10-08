@@ -909,17 +909,35 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
 
           {cashDue > 0 && (
             <div className="mt-2 rounded-xl border border-border p-2 space-y-1.5">
-              <div className="text-xs font-semibold text-muted-foreground">Cash received</div>
+              <div className="text-xs text-muted-foreground font-medium">Quick Tender</div>
               <div className="flex flex-wrap gap-1.5">
-                {[{ l: 'Exact', v: cashDue }, ...[10, 20, 50, 100, 200, 500, 2000].filter(v => v >= cashDue || v >= 50).map(v => ({ l: `₹${v}`, v }))].map(b => (
-                  <Button key={b.l} type="button" size="sm" variant={cashTendered === b.v ? 'default' : 'outline'} className="h-8 px-2.5 text-xs font-bold rounded-lg" onClick={() => setCashTendered(b.v)}>{b.l}</Button>
+                {[
+                  { label: 'Exact', value: Math.ceil(cashDue) },
+                  { label: '+₹50', value: Math.ceil(cashDue) + 50 },
+                  { label: '+₹100', value: Math.ceil(cashDue) + 100 },
+                  { label: '₹200', value: 200 },
+                  { label: '₹500', value: 500 },
+                  { label: '₹2000', value: 2000 },
+                ].map(chip => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => setCashTendered(chip.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                      cashTendered === chip.value
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card border-border text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
                 ))}
-                <Input type="number" inputMode="decimal" placeholder="Other" value={cashTendered || ''} onChange={e => setCashTendered(Number(e.target.value) || 0)} className="h-8 w-20 text-xs text-center" min="0" />
               </div>
               {cashTendered > 0 && (
-                <div className={cn('flex justify-between items-center rounded-lg px-2.5 py-1.5 font-bold', changeDue >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
-                  <span className="text-xs">{changeDue >= 0 ? 'Change to return' : 'Short by'}</span>
-                  <span className="text-lg num-tabular">₹{Math.abs(changeDue).toFixed(2)}</span>
+                <div className={`text-center py-2 rounded-lg font-bold text-lg ${
+                  changeDue > 0 ? 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {changeDue > 0 ? `Change to return: ₹${changeDue.toFixed(2)}` : 'Exact amount ✓'}
                 </div>
               )}
             </div>
@@ -1013,5 +1031,8 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     </Dialog>
   );
 };
+
+
+
 
 

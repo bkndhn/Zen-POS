@@ -21,6 +21,7 @@ import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { ServiceHeader, ServiceLoading, StatTile, SectionHeading, EmptyState } from '@/components/service/ServiceUI';
 import ExpenseAnalytics from '@/components/expenses/ExpenseAnalytics';
+import AntiTheftMonitor from '@/components/AntiTheftMonitor';
 
 
 interface Expense {
@@ -283,6 +284,7 @@ const Expenses: React.FC = () => {
 
   return (
     <div className="p-3 sm:p-4 max-w-full overflow-x-hidden space-y-3 animate-fade-in">
+      <AntiTheftMonitor adminId={adminId} adminUserId={profile?.id || ''} />
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to add expenses." />
 
       {/* Sticky frosted header */}

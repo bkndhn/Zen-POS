@@ -1,0 +1,1 @@
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS food_type TEXT DEFAULT 'veg' CHECK (food_type IN ('veg','non_veg','vegan','jain')), ADD COLUMN IF NOT EXISTS allergen_warning TEXT;
