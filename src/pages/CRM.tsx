@@ -158,7 +158,7 @@ const CRM: React.FC = () => {
         try {
           const { data } = await (supabase as any)
             .from('shop_settings')
-            .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url, bill_font_family, bill_font_scale, bill_bottom_text, google_review_url')
+            .select('whatsapp_bill_share_enabled, gstin, printer_width, shop_name, address, contact_number, logo_url, bill_font_family, bill_font_scale, bill_bottom_text, google_review_url, upi_id')
             .eq('admin_id', adminId)
             .maybeSingle();
           if (data) {
@@ -173,7 +173,8 @@ const CRM: React.FC = () => {
               billFontFamily: data.bill_font_family || '',
               billFontScale: data.bill_font_scale || 1,
               billBottomText: data.bill_bottom_text || '',
-              googleReviewUrl: data.google_review_url || ''
+              googleReviewUrl: data.google_review_url || '',
+              upi_id: data.upi_id || ''
             });
           }
         } catch (err) {
@@ -1236,10 +1237,9 @@ const CRM: React.FC = () => {
                         Collect Payment
                       </Button>
                       <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => {
-                        const msg = encodeURIComponent(`Hi ${historyCustomer.name || 'Customer'},
-This is a gentle reminder that you have a pending due of Rs.${historyCustomer.current_balance} with us. Please clear it at your earliest convenience.
-Thank you!`);
-                        window.open(`https://wa.me/91${historyCustomer.phone}?text=${msg}`, '_blank');
+                        const upiLink = billSettings?.upi_id ? `\n\nPay via UPI: upi://pay?pa=${billSettings.upi_id}&pn=${encodeURIComponent(billSettings.shopName || 'Store')}&am=${historyCustomer.current_balance}` : '';
+                        const message = `Hi *${historyCustomer.name || 'Customer'}*,\n\nThis is a gentle reminder from *${billSettings?.shopName || 'our store'}*.\n\nYou have an outstanding balance of *₹${historyCustomer.current_balance}* with us.\n\nPlease clear it at your earliest convenience. 🙏${upiLink}\n\nThank you!`;
+                        window.open(`https://wa.me/91${historyCustomer.phone}?text=${encodeURIComponent(message)}`, '_blank');
                       }}>
                         Reminder
                       </Button>
@@ -1634,14 +1634,21 @@ Thank you!`);
             <div className="space-y-2">
               <Label>Amount to Collect</Label>
               <Input type="number" placeholder="Enter amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+              <div className="flex gap-2 mt-2">
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPaymentAmount(String(historyCustomer?.current_balance || 0))}>Full Due</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPaymentAmount('500')}>₹500</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPaymentAmount('1000')}>₹1000</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPaymentAmount(String(Math.round((historyCustomer?.current_balance || 0) / 2)))}>50%</Button>
+              </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               <Label>Payment Mode</Label>
               <Select value={paymentMode} onValueChange={setPaymentMode}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="upi">UPI / QR</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="card">Card / Swipe</SelectItem>
                 </SelectContent>
               </Select>
