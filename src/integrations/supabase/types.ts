@@ -1396,6 +1396,7 @@ export type Database = {
           id: string
           khata_balance: number | null
           last_visit: string | null
+          loyalty_points: number | null
           name: string | null
           phone: string
           total_spent: number | null
@@ -1410,6 +1411,7 @@ export type Database = {
           id?: string
           khata_balance?: number | null
           last_visit?: string | null
+          loyalty_points?: number | null
           name?: string | null
           phone: string
           total_spent?: number | null
@@ -1424,6 +1426,7 @@ export type Database = {
           id?: string
           khata_balance?: number | null
           last_visit?: string | null
+          loyalty_points?: number | null
           name?: string | null
           phone?: string
           total_spent?: number | null
@@ -1629,11 +1632,13 @@ export type Database = {
           date: string
           expense_name: string | null
           id: string
+          is_petty_cash: boolean | null
           is_recurring: boolean
           note: string | null
           paid_to: string | null
           payment_mode: string | null
           recurrence: string | null
+          shift_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1648,11 +1653,13 @@ export type Database = {
           date?: string
           expense_name?: string | null
           id?: string
+          is_petty_cash?: boolean | null
           is_recurring?: boolean
           note?: string | null
           paid_to?: string | null
           payment_mode?: string | null
           recurrence?: string | null
+          shift_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1667,11 +1674,13 @@ export type Database = {
           date?: string
           expense_name?: string | null
           id?: string
+          is_petty_cash?: boolean | null
           is_recurring?: boolean
           note?: string | null
           paid_to?: string | null
           payment_mode?: string | null
           recurrence?: string | null
+          shift_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1680,6 +1689,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
           {
@@ -2373,6 +2389,56 @@ export type Database = {
           },
           {
             foreignKeyName: "khata_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          admin_id: string
+          amount_redeemed: number | null
+          amount_spent: number | null
+          bill_id: string | null
+          branch_id: string | null
+          created_at: string | null
+          customer_id: string | null
+          id: string
+          notes: string | null
+          points: number
+          type: string
+        }
+        Insert: {
+          admin_id: string
+          amount_redeemed?: number | null
+          amount_spent?: number | null
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          points: number
+          type: string
+        }
+        Update: {
+          admin_id?: string
+          amount_redeemed?: number | null
+          amount_spent?: number | null
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          points?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -4058,6 +4124,9 @@ export type Database = {
           live_bill_push_unlocked: boolean | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
+          loyalty_earn_per_rupee: number | null
+          loyalty_enabled: boolean | null
+          loyalty_redeem_rate: number | null
           max_delivery_radius_km: number | null
           menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
@@ -4120,6 +4189,9 @@ export type Database = {
           whatsapp_auto_send_payment_link: boolean
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
+          whatsapp_nightly_phone: string | null
+          whatsapp_nightly_summary: boolean | null
+          whatsapp_nightly_time: string | null
           whatsapp_order_number: string | null
           whatsapp_ordering_enabled: boolean
           whatsapp_ordering_mode: string
@@ -4179,6 +4251,9 @@ export type Database = {
           live_bill_push_unlocked?: boolean | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
+          loyalty_earn_per_rupee?: number | null
+          loyalty_enabled?: boolean | null
+          loyalty_redeem_rate?: number | null
           max_delivery_radius_km?: number | null
           menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
@@ -4241,6 +4316,9 @@ export type Database = {
           whatsapp_auto_send_payment_link?: boolean
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
+          whatsapp_nightly_phone?: string | null
+          whatsapp_nightly_summary?: boolean | null
+          whatsapp_nightly_time?: string | null
           whatsapp_order_number?: string | null
           whatsapp_ordering_enabled?: boolean
           whatsapp_ordering_mode?: string
@@ -4300,6 +4378,9 @@ export type Database = {
           live_bill_push_unlocked?: boolean | null
           logo_url?: string | null
           low_stock_notification_enabled?: boolean | null
+          loyalty_earn_per_rupee?: number | null
+          loyalty_enabled?: boolean | null
+          loyalty_redeem_rate?: number | null
           max_delivery_radius_km?: number | null
           menu_ai_features_enabled?: boolean | null
           menu_background_color?: string | null
@@ -4362,6 +4443,9 @@ export type Database = {
           whatsapp_auto_send_payment_link?: boolean
           whatsapp_bill_share_enabled?: boolean | null
           whatsapp_business_api_enabled?: boolean | null
+          whatsapp_nightly_phone?: string | null
+          whatsapp_nightly_summary?: boolean | null
+          whatsapp_nightly_time?: string | null
           whatsapp_order_number?: string | null
           whatsapp_ordering_enabled?: boolean
           whatsapp_ordering_mode?: string
@@ -5551,6 +5635,9 @@ export type Database = {
           live_bill_push_unlocked: boolean | null
           logo_url: string | null
           low_stock_notification_enabled: boolean | null
+          loyalty_earn_per_rupee: number | null
+          loyalty_enabled: boolean | null
+          loyalty_redeem_rate: number | null
           max_delivery_radius_km: number | null
           menu_ai_features_enabled: boolean | null
           menu_background_color: string | null
@@ -5613,6 +5700,9 @@ export type Database = {
           whatsapp_auto_send_payment_link: boolean
           whatsapp_bill_share_enabled: boolean | null
           whatsapp_business_api_enabled: boolean | null
+          whatsapp_nightly_phone: string | null
+          whatsapp_nightly_summary: boolean | null
+          whatsapp_nightly_time: string | null
           whatsapp_order_number: string | null
           whatsapp_ordering_enabled: boolean
           whatsapp_ordering_mode: string
