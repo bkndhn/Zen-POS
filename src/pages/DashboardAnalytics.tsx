@@ -106,6 +106,9 @@ const HeatmapGrid: React.FC<{ data: HeatmapCell[][] }> = ({ data }) => {
 const DashboardAnalytics = () => {
   const { profile , adminProfileId } = useAuth();
   const adminId = adminProfileId;
+  const { branchFilterId, isAllBranchesView, activeBranch } = useBranchScopedQuery(() => {
+    if (adminId) { fetchAnalyticsData(); fetchComparisonData(); }
+  });
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('today');
   const [salesData, setSalesData] = useState<SalesData[]>([]);
@@ -190,19 +193,18 @@ const DashboardAnalytics = () => {
       const { data: billsData } = await billsQ;
       setHeatmapBills(billsData || []);
 
-      // For basket affinity: bill_items with item_name
-      let itemsQ = supabase
-        .from('bill_items')
-        .select('bill_id, item_name')
-        .gte('created_at', thirtyDaysAgo.toISOString());
-      // Filter by admin via bills join is too expensive; use the bills we already have
+      // For basket affinity: use item_name_override with items(name) join fallback
       const billIds = (billsData || []).slice(0, 500).map((b: any) => b.id);
       if (billIds.length > 0) {
         const { data: itemsData } = await supabase
           .from('bill_items')
-          .select('bill_id, item_name')
+          .select('bill_id, item_name_override, items(name)')
           .in('bill_id', billIds);
-        setBasketItems(itemsData || []);
+        const formatted = (itemsData || []).map((bi: any) => ({
+          bill_id: bi.bill_id,
+          item_name: bi.item_name_override || bi.items?.name || 'Item',
+        }));
+        setBasketItems(formatted);
       }
       setHeatmapLoading(false);
     };
@@ -211,9 +213,6 @@ const DashboardAnalytics = () => {
 
   const heatmapData = useMemo(() => buildHeatmap(heatmapBills), [heatmapBills]);
   const topPairs = useMemo(() => findTopItemPairs(basketItems), [basketItems]);
-  const { branchFilterId, isAllBranchesView, activeBranch } = useBranchScopedQuery(() => {
-    if (adminId) { fetchAnalyticsData(); fetchComparisonData(); }
-  });
 
   useEffect(() => {
     if (adminId) {
@@ -948,8 +947,9 @@ const DashboardAnalytics = () => {
           {/* Smart Insight Cards */}
           {!heatmapLoading && heatmapBills.length > 0 && (() => {
             // Find best and worst cells
-            let best = heatmapData[0][8];
-            let worst = heatmapData[0][8];
+            const _defaultCell = { day: 0, hour: 8, count: 0, revenue: 0, normalized: 0 };
+            let best = heatmapData[0]?.[8] ?? _defaultCell;
+            let worst = heatmapData[0]?.[8] ?? _defaultCell;
             for (const row of heatmapData) {
               for (const cell of row) {
                 if (cell.hour < 8 || cell.hour > 23) continue;

@@ -23,29 +23,39 @@ export const PopularTimesWidget: React.FC<Props> = ({ adminId, branchFilterId })
   const [selectedDay, setSelectedDay] = useState(today);
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'parcel' | 'online'>('all');
 
   useEffect(() => {
     if (!adminId) return;
     const fetch = async () => {
-      setLoading(true);
-      const eightWeeksAgo = new Date();
-      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-      let q = supabase
-        .from('bills')
-        .select('created_at, total_amount, order_type, customer_id, customer_phone')
-        .eq('admin_id', adminId)
-        .eq('is_deleted', false)
-        .gte('created_at', eightWeeksAgo.toISOString());
-      if (branchFilterId) q = q.eq('branch_id', branchFilterId);
-      const { data } = await q;
-      let merged = data || [];
       try {
-        const { offlineManager } = await import('@/utils/offlineManager');
-        merged = offlineManager.mergeOfflineBills ? offlineManager.mergeOfflineBills(merged) : merged;
-      } catch { /* offline not available */ }
-      setBills(merged);
-      setLoading(false);
+        setLoading(true);
+        const eightWeeksAgo = new Date();
+        eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+        let q = supabase
+          .from('bills')
+          .select('created_at, total_amount, order_type, customer_id, customer_phone')
+          .eq('admin_id', adminId)
+          .eq('is_deleted', false)
+          .gte('created_at', eightWeeksAgo.toISOString());
+        if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+        const { data } = await q;
+        let merged: any[] = data || [];
+        try {
+          const { offlineManager } = await import('@/utils/offlineManager');
+          if (offlineManager?.mergeOfflineBills) {
+            const result = await offlineManager.mergeOfflineBills(merged, adminId, branchFilterId);
+            merged = Array.isArray(result) ? result : merged;
+          }
+        } catch { /* offline not available */ }
+        setBills(Array.isArray(merged) ? merged : []);
+      } catch (err) {
+        console.error('[PopularTimesWidget] fetch error:', err);
+        setHasError(true);
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, [adminId, branchFilterId]);
@@ -79,6 +89,12 @@ export const PopularTimesWidget: React.FC<Props> = ({ adminId, branchFilterId })
   const isLive = selectedDay === today;
   const liveColor = liveBusyness.includes('busy as it gets') ? 'bg-destructive' :
     liveBusyness.includes('Less busy') ? 'bg-muted-foreground' : 'bg-primary';
+
+  if (hasError) return (
+    <Card><CardContent className="flex items-center justify-center h-24">
+      <div className="text-muted-foreground text-xs text-center">Popular times unavailable — data will appear once bills are recorded.</div>
+    </CardContent></Card>
+  );
 
   if (loading) return (
     <Card><CardContent className="flex items-center justify-center h-48">
