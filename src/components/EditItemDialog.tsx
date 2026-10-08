@@ -113,7 +113,9 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
     hsn_code: (item as any).hsn_code || '',
     is_veg: (item as any).is_veg !== false,
     available_from: (item as any).available_from || '',
-    available_until: (item as any).available_until || ''
+    available_until: (item as any).available_until || '',
+    food_type: (item as any).food_type || 'veg',
+    allergen_warning: (item as any).allergen_warning || ''
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
@@ -157,7 +159,9 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
         hsn_code: (item as any).hsn_code || '',
         is_veg: (item as any).is_veg !== false,
         available_from: (item as any).available_from || '',
-        available_until: (item as any).available_until || ''
+        available_until: (item as any).available_until || '',
+        food_type: (item as any).food_type || 'veg',
+        allergen_warning: (item as any).allergen_warning || ''
       });
     }
   }, [open, item]);

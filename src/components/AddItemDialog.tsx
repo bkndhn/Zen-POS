@@ -100,7 +100,9 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
     hsn_code: '',
     is_veg: true,
     available_from: '',
-    available_until: ''
+    available_until: '',
+    food_type: 'veg',
+    allergen_warning: ''
   });
   const [loading, setLoading] = useState(false);
   const [chipsMode, setChipsMode] = useState<'qty' | 'amount'>('qty');
@@ -388,7 +390,9 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
         hsn_code: '',
         is_veg: true,
         available_from: '',
-        available_until: ''
+        available_until: '',
+        food_type: 'veg',
+        allergen_warning: ''
       });
       setOpen(false);
       setCurrentItemCount(prev => prev + 1);

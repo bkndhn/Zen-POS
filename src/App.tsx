@@ -252,6 +252,7 @@ const KitchenPrep = lazy(() => import("./pages/KitchenPrep"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
+const TokenDisplay = lazy(() => import("./pages/TokenDisplay"));
 import { TermsAndConditions } from "./pages/TermsAndConditions";
 import { GlobalSettingsSync } from '@/components/GlobalSettingsSync';
 import { useAutoBackup } from '@/hooks/useAutoBackup';
@@ -433,6 +434,7 @@ const App = () => {
                   <Route path="/kitchen-prep" element={<Layout><ProtectedRoute requiredPermission="kitchen"><KitchenPrep /></ProtectedRoute></Layout>} />
                   <Route path="/renew" element={<Layout><RenewSubscription /></Layout>} />
                   <Route path="/display" element={<CustomerDisplay />} />
+                  <Route path="/tokens" element={<ProtectedRoute requiredPermission="kitchen"><TokenDisplay /></ProtectedRoute>} />
                   <Route path="/menu/:adminId" element={<PublicMenu />} />
                   <Route path="/feedback/:slug" element={<PublicFeedback />} />
                   <Route path="/landing" element={<LandingPage />} />
