@@ -5915,6 +5915,17 @@ export type Database = {
           rate: number
         }[]
       }
+      get_public_tokens: {
+        Args: { p_admin_id: string }
+        Returns: {
+          bill_no: string
+          created_at: string
+          id: string
+          kitchen_status: string
+          order_type: string
+          table_no: string
+        }[]
+      }
       get_public_watermark_info: {
         Args: never
         Returns: {
