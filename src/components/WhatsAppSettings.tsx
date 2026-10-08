@@ -357,6 +357,40 @@ export const WhatsAppSettings: React.FC = () => {
           </>
         )}
 
+        {/* Nightly Business Summary */}
+        <div className="space-y-3 pt-4 border-t mt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Nightly Business Summary</p>
+              <p className="text-xs text-muted-foreground">Get daily sales brief on WhatsApp at closing time</p>
+            </div>
+            <Switch
+              checked={whatsappNightlySummary}
+              onCheckedChange={setWhatsappNightlySummary}
+            />
+          </div>
+          {whatsappNightlySummary && (
+            <div className="space-y-2">
+              <Input
+                placeholder="Owner's WhatsApp number (10 digits)"
+                value={whatsappNightlyPhone}
+                onChange={(e) => setWhatsappNightlyPhone(e.target.value)}
+              />
+              <Select
+                value={whatsappNightlyTime}
+                onValueChange={setWhatsappNightlyTime}
+              >
+                <SelectTrigger><SelectValue placeholder="Send time" /></SelectTrigger>
+                <SelectContent>
+                  {['20:00','21:00','22:00','23:00','00:00'].map(t => (
+                    <SelectItem key={t} value={t}>{t} IST</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
         <Button onClick={handleSave} disabled={saving || isAllBranchesView} className="w-full md:w-auto">
           {saving ? 'Saving...' : 'Save Settings'}
         </Button>
