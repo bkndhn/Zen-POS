@@ -49,6 +49,26 @@ const StockReports: React.FC = () => {
   const [items, setItems] = useState<any[]>([]);
   const [adjustments, setAdjustments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [recipeCost, setRecipeCost] = useState<Record<string, number>>({});
+  const [soldQty, setSoldQty] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!adminId) return;
+    (async () => {
+      try {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const [rec, bi] = await Promise.all([
+          (supabase as any).from('recipes').select('item_id,quantity,ingredients(cost_per_unit)').eq('admin_id', adminId),
+          (supabase as any).from('bill_items').select('item_id,quantity,bills!inner(admin_id,date,is_deleted)').eq('bills.admin_id', adminId).eq('bills.date', today).limit(5000),
+        ]);
+        const rc: Record<string, number> = {};
+        (rec.data || []).forEach((r: any) => { rc[r.item_id] = (rc[r.item_id] || 0) + Number(r.quantity || 0) * Number(r.ingredients?.cost_per_unit || 0); });
+        const sq: Record<string, number> = {};
+        (bi.data || []).forEach((b: any) => { if (b.bills?.is_deleted) return; sq[b.item_id] = (sq[b.item_id] || 0) + Number(b.quantity || 0); });
+        setRecipeCost(rc); setSoldQty(sq);
+      } catch (e) { console.warn('recipe cost load failed', e); }
+    })();
+  }, [adminId]);
 
   const load = async () => {
     if (!adminId) return;
@@ -111,6 +131,11 @@ const StockReports: React.FC = () => {
   const lowStock = stockFiltered.filter(i => !i.unlimited_stock && i.minimum_stock_alert != null && Number(i.stock_quantity) <= Number(i.minimum_stock_alert));
   const outOfStock = stockFiltered.filter(i => !i.unlimited_stock && Number(i.stock_quantity || 0) <= 0);
   const stockValue = stockFiltered.reduce((s, i) => s + (Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)), 0);
+
+  const unitCost = (i: any) => recipeCost[i.id] ?? Number(i.purchase_rate || 0);
+  const todayFoodCost = stockFiltered.reduce((s, i) => s + (soldQty[i.id] || 0) * unitCost(i), 0);
+  const todaySales = stockFiltered.reduce((s, i) => s + (soldQty[i.id] || 0) * Number(i.price || 0), 0);
+  const todayGross = todaySales - todayFoodCost;
 
   // Expiring soon (next 30 days) from purchase lines
   const today = new Date();
@@ -319,6 +344,11 @@ const StockReports: React.FC = () => {
                 </CardContent>
               </Card>
             )}
+            <div className="grid grid-cols-3 gap-2">
+              <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Today's sales</p><p className="font-bold">₹{todaySales.toFixed(0)}</p></CardContent></Card>
+              <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Today's food cost</p><p className="font-bold text-destructive">₹{todayFoodCost.toFixed(0)}</p></CardContent></Card>
+              <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Gross profit</p><p className="font-bold text-success">₹{todayGross.toFixed(0)}</p></CardContent></Card>
+            </div>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Stock valuation · ₹{stockValue.toFixed(2)}</CardTitle>
@@ -330,7 +360,7 @@ const StockReports: React.FC = () => {
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Branch</TableHead><TableHead className="text-right">Stock</TableHead><TableHead className="text-right">Cost</TableHead><TableHead className="text-right">Value</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Branch</TableHead><TableHead className="text-right">Stock</TableHead><TableHead className="text-right">Cost</TableHead><TableHead className="text-right">Value</TableHead><TableHead className="text-right">Recipe cost</TableHead><TableHead className="text-right">Margin</TableHead><TableHead className="text-right">Sold today</TableHead><TableHead className="text-right">Gross profit</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {stockFiltered.map(i => (
                       <TableRow key={i.id}>
@@ -339,6 +369,10 @@ const StockReports: React.FC = () => {
                         <TableCell className="text-right">{i.unlimited_stock ? '∞' : formatStoredQuantity(i.stock_quantity ?? 0, i.inventory_unit || i.unit || '')}</TableCell>
                         <TableCell className="text-right">₹{Number(i.purchase_rate || 0).toFixed(2)}</TableCell>
                         <TableCell className="text-right">₹{(Number(i.stock_quantity || 0) * Number(i.purchase_rate || 0)).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{recipeCost[i.id] != null ? `₹${recipeCost[i.id].toFixed(2)}` : '—'}</TableCell>
+                        <TableCell className="text-right">{Number(i.price) > 0 ? `${(((Number(i.price) - unitCost(i)) / Number(i.price)) * 100).toFixed(0)}%` : '—'}</TableCell>
+                        <TableCell className="text-right">{soldQty[i.id] || 0}</TableCell>
+                        <TableCell className="text-right">₹{((soldQty[i.id] || 0) * (Number(i.price || 0) - unitCost(i))).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
