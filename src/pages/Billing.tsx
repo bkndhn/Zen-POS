@@ -1,4 +1,5 @@
 import { useNearExpiryItems } from '@/hooks/useNearExpiryItems';
+import { buildItemTrie } from '@/utils/searchTrie';
 import { useMostSoldItems } from '@/hooks/useMostSoldItems';
 import { expiryLabel } from '@/utils/expiryPricing';
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
