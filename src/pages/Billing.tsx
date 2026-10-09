@@ -1818,17 +1818,19 @@ const Billing = () => {
     }
   }, [items]);
 
+  const itemTrie = useMemo(() => buildItemTrie(items as any[]), [items]);
   const filteredItems = useMemo(() => {
+    const hits = itemTrie.search(searchQuery);
     const query = searchQuery.toLowerCase();
     return items.filter(item => {
-      const matchesSearch = (item.name || '').toLowerCase().includes(query);
+      const matchesSearch = !hits || hits.has(String(item.id)) || (item.name || '').toLowerCase().includes(query);
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       // Hide out-of-stock items (items with stock_quantity of 0 or less)
       // Items without stock tracking (null/undefined) are still shown
       const isInStock = item.stock_quantity === null || item.stock_quantity === undefined || item.stock_quantity > 0;
       return matchesSearch && matchesCategory && isInStock;
     });
-  }, [items, searchQuery, selectedCategory]);
+  }, [items, itemTrie, searchQuery, selectedCategory]);
   const addToCart = (item: Item) => {
     if (calciEnabled && appBillingMode === 'calci') {
       const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
