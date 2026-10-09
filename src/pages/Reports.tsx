@@ -1,3 +1,4 @@
+import RecipeCostReport from '@/components/RecipeCostReport';
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1981,7 +1982,7 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-9 min-w-[720px] h-10">
+          <TabsList className="grid w-full grid-cols-10 min-w-[800px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
@@ -1991,8 +1992,13 @@ const Reports: React.FC = () => {
             <TabsTrigger value="staff" disabled={billFilter === 'deleted'} className="text-sm font-medium">Staff</TabsTrigger>
             <TabsTrigger value="tables" disabled={billFilter === 'deleted'} className="text-sm font-medium">Tables</TabsTrigger>
             <TabsTrigger value="menu_matrix" disabled={billFilter === 'deleted'} className="text-sm font-medium">Menu Matrix</TabsTrigger>
+            <TabsTrigger value="food_cost" className="text-sm font-medium">Food Cost</TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="food_cost" className="mt-4">
+          <RecipeCostReport />
+        </TabsContent>
 
         <TabsContent value="menu_matrix" className="mt-4">
           <Card>
