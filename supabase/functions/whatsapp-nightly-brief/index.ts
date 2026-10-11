@@ -19,6 +19,17 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
+  // Only the scheduler (service role or internal secret) may run this job.
+  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  const provided = req.headers.get('x-internal-secret') || '';
+  let allowed = !!SERVICE_ROLE_KEY && bearer === SERVICE_ROLE_KEY;
+  if (!allowed && provided) {
+    const { data: expected } = await supabaseAdmin.rpc('get_internal_secret', { p_name: 'push_queue_cron' });
+    allowed = typeof expected === 'string' && expected.length > 0 && expected === provided;
+  }
+  if (!allowed) return json({ error: 'Unauthorized' }, 401);
+
   const today = new Date().toISOString().split('T')[0];
   const currentISTHour = new Date(
     new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })

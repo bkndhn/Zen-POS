@@ -156,10 +156,10 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
             <tbody>
               ${filtered.map(r => `
                 <tr>
-                  <td>${r.name}</td>
-                  <td>${r.batch || '-'}</td>
-                  <td>${r.expiry || '-'}</td>
-                  <td>${r.qty} ${r.unit}</td>
+                  <td>${esc(r.name)}</td>
+                  <td>${esc(r.batch || '-')}</td>
+                  <td>${esc(r.expiry || '-')}</td>
+                  <td>${esc(r.qty)} ${esc(r.unit)}</td>
                   <td style="text-align:center;"><div class="checkbox"></div></td>
                   <td style="text-align:center;"><div class="checkbox"></div></td>
                 </tr>
@@ -358,5 +358,7 @@ const ExpiryStockReport: React.FC<Props> = ({ adminId, branches, onExport }) => 
     </div>
   );
 };
+
+const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c]);
 
 export default ExpiryStockReport;
