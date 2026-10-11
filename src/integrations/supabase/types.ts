@@ -4874,6 +4874,24 @@ export type Database = {
           },
         ]
       }
+      super_admin_settings: {
+        Row: {
+          id: number
+          landing_page_config: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: number
+          landing_page_config?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: number
+          landing_page_config?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           address: string | null
