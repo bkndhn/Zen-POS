@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
 import { getAppBaseUrl } from '@/utils/urlUtils';
 import { StoreTimingsModal } from '@/components/StoreTimingsModal';
-import { ContactSupportDialog } from '@/components/ContactSupportDialog';
+import { ZenPosPromoModal } from '@/components/ZenPosPromoModal';
 import { OperatingHours } from '@/types/operatingHours';
 import { RemoteCheckout } from '@/components/RemoteCheckout';
 import { LiveOrderTracker } from '@/components/LiveOrderTracker';
@@ -2284,37 +2284,37 @@ const PublicMenu = () => {
                             })}
                         </div>
                     </div>
+
+                    {/* Dietary Filter Pills — sticky row 2 */}
+                    <div className="max-w-2xl mx-auto px-4 pb-2">
+                        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+                            {[
+                                { key: 'all', label: 'All Items' },
+                                { key: 'veg', label: '🌱 Pure Veg' },
+                                { key: 'nonveg', label: '🍗 Non-Veg' },
+                                { key: 'vegan', label: '🥗 Vegan' },
+                                { key: 'jain', label: '🌿 Jain' },
+                                { key: 'spicy', label: '🌶️ Spicy' },
+                                { key: 'bestseller', label: '🔥 Bestsellers' },
+                            ].map(f => (
+                                <button
+                                    key={f.key}
+                                    onClick={() => setDietaryFilter(f.key)}
+                                    className={cn(
+                                        'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap',
+                                        dietaryFilter === f.key
+                                            ? 'text-white border-transparent shadow-sm'
+                                            : 'bg-white/70 dark:bg-slate-800/70 text-gray-600 dark:text-gray-300 border-gray-200/80 dark:border-slate-700 hover:border-gray-300'
+                                    )}
+                                    style={dietaryFilter === f.key ? { background: shopSettings?.menu_primary_color || '#ea580c' } : {}}
+                                >
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
-
-            {/* Dietary Filter Pills */}
-            <div className="max-w-2xl mx-auto px-4 pt-2 pb-1">
-                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                    {[
-                        { key: 'all', label: 'All Items' },
-                        { key: 'veg', label: '?? Pure Veg' },
-                        { key: 'nonveg', label: '?? Non-Veg' },
-                        { key: 'vegan', label: '?? Vegan' },
-                        { key: 'jain', label: '?? Jain' },
-                        { key: 'spicy', label: '??? Spicy' },
-                        { key: 'bestseller', label: '?? Bestsellers' },
-                    ].map(f => (
-                        <button
-                            key={f.key}
-                            onClick={() => setDietaryFilter(f.key)}
-                            className={cn(
-                                'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap',
-                                dietaryFilter === f.key
-                                    ? 'text-white border-transparent shadow-sm'
-                                    : 'bg-white/70 dark:bg-slate-800/70 text-gray-600 dark:text-gray-300 border-gray-200/80 dark:border-slate-700 hover:border-gray-300'
-                            )}
-                            style={dietaryFilter === f.key ? { background: shopSettings?.menu_primary_color || '#ea580c' } : {}}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
 
             {/* Search Results Info */}
             {searchQuery && (
@@ -3506,7 +3506,7 @@ const PublicMenu = () => {
             )}
 
             {/* Powered by ZenPOS Promo Modal */}
-            <ContactSupportDialog open={showPromoModal} onOpenChange={setShowPromoModal} />
+            <ZenPosPromoModal open={showPromoModal} onOpenChange={setShowPromoModal} />
 
 
             {/* Smart AI Waiter Floating Button */}
