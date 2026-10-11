@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  ShoppingCart, Monitor, QrCode, Wifi, WifiOff, MessageSquare, 
-  BarChart3, Users, Receipt, ChefHat, Globe, Shield, 
-  Check, Star, ArrowRight, Smartphone
+import {
+  ShoppingCart, Monitor, QrCode, Wifi, WifiOff, MessageSquare,
+  BarChart3, Users, Receipt, ChefHat, Globe, Shield,
+  Check, Star, ArrowRight, Smartphone, Database, FileDown
 } from 'lucide-react';
+import { RoiCalculator } from '@/components/landing/RoiCalculator';
+import { FeatureShowcaseTabs } from '@/components/landing/FeatureShowcaseTabs';
+import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
+import { PilotModal } from '@/components/landing/PilotModal';
 
 const features = [
   { icon: ShoppingCart, title: 'Smart Billing', desc: 'Fast touch-based billing with category filters and search' },
@@ -32,6 +36,7 @@ const pricingPlans = [
     desc: 'Run it next to your bill book',
     features: ['All features unlocked', 'Free menu setup from a photo', 'On-site Day 1 help', 'No card, no contract'],
     popular: false,
+    cta: 'Start Free Pilot',
   },
   {
     name: 'All-in-One',
@@ -40,6 +45,7 @@ const pricingPlans = [
     desc: 'Everything, for every shop size',
     features: ['Billing, KOT & Kitchen Display', 'Tables, seats & Waiter app', 'QR ordering & WhatsApp bills', 'Recipe costing & stock', 'Anti-theft owner alerts', 'Unlimited staff & items'],
     popular: true,
+    cta: 'Get Started',
   },
   {
     name: 'Yearly',
@@ -48,19 +54,32 @@ const pricingPlans = [
     desc: 'Pay yearly, get 2 months free',
     features: ['Everything in All-in-One', 'Priority phone support', 'Free printer setup visit', 'Data export anytime'],
     popular: false,
+    cta: 'Get Started',
   },
 ];
 
-const trustPoints = [
-  { title: 'Your data stays yours', desc: 'Each shop has its own locked space. Nobody else — not even other shops on Zen POS — can see your sales.' },
-  { title: 'Encrypted on your device', desc: 'Offline bills are stored encrypted on your phone and sync quietly when internet returns.' },
-  { title: 'Export anytime, no lock-in', desc: 'Download your bills, customers and reports as Excel/CSV whenever you want. Cancel any month.' },
-  { title: 'Instant staff sign-out', desc: 'Remove a staff member’s access from your own phone in one tap.' },
+const trustBannerItems = [
+  {
+    icon: FileDown,
+    title: 'Your Data Stays Yours',
+    desc: 'Export full bills, inventory, and customer databases to CSV/Excel anytime — one tap, no restrictions.',
+  },
+  {
+    icon: Shield,
+    title: 'Single-Tenant RLS Isolation',
+    desc: 'Every shop's data is strictly isolated with Supabase Row-Level Security. No cross-contamination, ever.',
+  },
+  {
+    icon: Database,
+    title: 'GST & FSSAI Compliant',
+    desc: 'Indian tax-ready invoices, HSN codes, and 58mm / 80mm thermal printer formats built-in.',
+  },
 ];
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, loading } = useAuth();
+  const [showPilotModal, setShowPilotModal] = useState(false);
 
   React.useEffect(() => {
     if (!loading && profile) {
@@ -82,15 +101,12 @@ const LandingPage: React.FC = () => {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <ShoppingCart className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">Zen POS</span>
+            <span className="font-bold text-lg">ZenPOS</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleTryDemo}>
-              Try Demo
-            </Button>
-            <Button size="sm" onClick={() => navigate('/auth')}>
-              Login
-            </Button>
+            <Button variant="ghost" size="sm" onClick={handleTryDemo}>Try Demo</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowPilotModal(true)}>Free Pilot</Button>
+            <Button size="sm" onClick={() => navigate('/auth')}>Login</Button>
           </div>
         </div>
       </header>
@@ -107,22 +123,28 @@ const LandingPage: React.FC = () => {
             <span className="text-primary">Small Restaurants</span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            No hardware needed. Works offline. Tamil & English. 
+            No hardware needed. Works offline. Tamil & English.
             Start billing in 2 minutes — from your phone or tablet.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" className="text-base px-8" onClick={handleTryDemo}>
-              Try Free Demo <ArrowRight className="ml-2 h-4 w-4" />
+            <Button size="lg" className="text-base px-8" onClick={() => setShowPilotModal(true)}>
+              Start Free Pilot <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button variant="outline" size="lg" className="text-base px-8" onClick={() => navigate('/auth')}>
-              Start Free Trial
+            <Button variant="outline" size="lg" className="text-base px-8" onClick={handleTryDemo}>
+              Try Interactive Demo
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">No credit card required • 14-day free trial</p>
+          <p className="text-sm text-muted-foreground mt-4">No credit card required • 7-day free pilot</p>
         </div>
       </section>
 
-      {/* Features */}
+      {/* ROI Calculator */}
+      <RoiCalculator onStartTrial={() => setShowPilotModal(true)} />
+
+      {/* Feature Showcase Tabs */}
+      <FeatureShowcaseTabs />
+
+      {/* Features Grid */}
       <section className="py-16 sm:py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
@@ -147,8 +169,11 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Competitor Comparison */}
+      <CompetitorComparison />
+
       {/* Pricing */}
-      <section className="py-16 sm:py-20">
+      <section className="py-16 sm:py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold mb-3">Simple, Affordable Pricing</h2>
@@ -177,8 +202,8 @@ const LandingPage: React.FC = () => {
                       </li>
                     ))}
                   </ul>
-                  <Button className="w-full" variant={plan.popular ? 'default' : 'outline'} onClick={() => navigate('/auth')}>
-                    Get Started
+                  <Button className="w-full" variant={plan.popular ? 'default' : 'outline'} onClick={() => setShowPilotModal(true)}>
+                    {plan.cta}
                   </Button>
                 </CardContent>
               </Card>
@@ -187,22 +212,22 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Trust */}
-      <section className="py-16 sm:py-20 bg-muted/30">
+      {/* Trust & Zero Lock-in Banner */}
+      <section className="py-16 sm:py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Where is my data? Is it safe?</h2>
-            <p className="text-muted-foreground">The question every owner asks — here’s the honest answer.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Zero Lock-in. Full Transparency.</h2>
+            <p className="text-muted-foreground">Your business data is yours — always.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {trustPoints.map((t) => (
-              <Card key={t.title} className="border border-border/50">
-                <CardContent className="p-5 flex gap-3">
-                  <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold mb-1">{t.title}</h3>
-                    <p className="text-sm text-muted-foreground">{t.desc}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {trustBannerItems.map((t) => (
+              <Card key={t.title} className="border border-border/50 text-center">
+                <CardContent className="p-6">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <t.icon className="h-6 w-6 text-primary" />
                   </div>
+                  <h3 className="font-bold mb-2">{t.title}</h3>
+                  <p className="text-sm text-muted-foreground">{t.desc}</p>
                 </CardContent>
               </Card>
             ))}
@@ -215,21 +240,30 @@ const LandingPage: React.FC = () => {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4">Try It Right Now — No Signup Needed</h2>
           <p className="text-muted-foreground mb-8">
-            Explore the full POS with sample menu items, create bills, and see reports. 
+            Explore the full POS with sample menu items, create bills, and see reports.
             All in demo mode, completely free.
           </p>
-          <Button size="lg" className="text-base px-8" onClick={handleTryDemo}>
-            Launch Demo <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button size="lg" className="text-base px-8" onClick={() => setShowPilotModal(true)}>
+              Start Free Pilot <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="lg" className="text-base px-8" onClick={handleTryDemo}>
+              Launch Demo
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-8 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Zen POS. Made with ❤️ for Tamil Nadu restaurants.</p>
+          <p>© {new Date().getFullYear()} ZenPOS. Made with ❤️ for Tamil Nadu restaurants.</p>
+          <p className="mt-1 text-xs">GST & FSSAI Ready • Offline First • RLS Isolated • No Lock-in</p>
         </div>
       </footer>
+
+      {/* Pilot Modal */}
+      <PilotModal open={showPilotModal} onOpenChange={setShowPilotModal} />
     </div>
   );
 };

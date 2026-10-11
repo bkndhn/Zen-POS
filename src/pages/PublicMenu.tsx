@@ -178,6 +178,77 @@ interface ModifierGroup {
     options: ModifierOption[];
 }
 
+
+/** Item Media Preview Modal — shows full dish photo/GIF with add-to-cart controls */
+const ItemMediaPreviewModal: React.FC<{
+    item: MenuItem | null;
+    onClose: () => void;
+    onAddToCart: (item: MenuItem, e?: React.MouseEvent) => void;
+    getCartQuantity: (id: string) => number;
+    onIncrease: (id: string) => void;
+    onDecrease: (id: string) => void;
+    primaryColor?: string;
+    isOrderingMode?: boolean;
+}> = ({ item, onClose, onAddToCart, getCartQuantity, onIncrease, onDecrease, primaryColor, isOrderingMode }) => {
+    const [qty, setQty] = useState(1);
+    const [imgError, setImgError] = useState(false);
+    useEffect(() => { setQty(1); setImgError(false); }, [item?.id]);
+    if (!item) return null;
+    const i = item as any;
+    const foodDot = i.food_type === 'veg' || i.is_veg === true
+        ? <span title="Pure Veg" className="inline-block w-3.5 h-3.5 rounded-sm border-2 border-green-600 flex items-center justify-center"><span className="w-1.5 h-1.5 rounded-full bg-green-600 block" /></span>
+        : i.food_type === 'non_veg' || i.food_type === 'nonveg' || i.is_veg === false
+            ? <span title="Non-Veg" className="inline-block w-3.5 h-3.5 rounded-sm border-2 border-red-600 flex items-center justify-center"><span className="w-1.5 h-1.5 rounded-full bg-red-600 block" /></span>
+            : null;
+    const accentStyle = { background: primaryColor || '#ea580c' };
+    const cartQty = getCartQuantity(item.id);
+    return (
+        <Dialog open={!!item} onOpenChange={onClose}>
+            <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl">
+                {/* Media */}
+                {!imgError && (item.video_url || item.image_url) ? (
+                    item.media_type === 'gif' && item.video_url
+                        ? <img src={item.video_url} alt={item.name} className="w-full h-52 object-cover" onError={() => setImgError(true)} />
+                        : <img src={item.image_url || item.video_url} crossOrigin="anonymous" alt={item.name} className="w-full h-52 object-cover" onError={() => setImgError(true)} />
+                ) : (
+                    <div className="w-full h-52 bg-muted flex items-center justify-center text-4xl">🍽️</div>
+                )}
+                <div className="p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                        {foodDot && <span className="mt-1">{foodDot}</span>}
+                        <h2 className="font-bold text-base flex-1 text-foreground">{item.name}</h2>
+                        <span className="font-extrabold text-lg" style={{ color: primaryColor || '#ea580c' }}>₹{item.price}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-xs">
+                        {(i.is_popular || i.bestseller) && <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">🔥 Bestseller</span>}
+                        {(i.food_type === 'vegan' || i.is_vegan) && <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">🥗 Vegan</span>}
+                        {(i.food_type === 'jain' || i.is_jain) && <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">🌿 Jain</span>}
+                        {(i.spice_level > 0 || i.is_spicy) && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-semibold">🌶️ Spicy</span>}
+                        {item.cooking_time_mins && <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold">⏱ {item.cooking_time_mins} min</span>}
+                    </div>
+                    {(item.notes || (i as any).description) && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">{item.notes || (i as any).description}</p>
+                    )}
+                    {isOrderingMode && (
+                        cartQty > 0 ? (
+                            <div className="flex items-center gap-3 pt-1">
+                                <button onClick={() => onDecrease(item.id)} className="w-9 h-9 rounded-full border-2 border-gray-300 flex items-center justify-center text-lg font-bold text-gray-700 hover:bg-gray-100 active:scale-95">−</button>
+                                <span className="font-bold text-base w-6 text-center">{cartQty}</span>
+                                <button onClick={() => onIncrease(item.id)} className="flex-1 h-9 rounded-full text-white text-sm font-bold flex items-center justify-center gap-1 active:scale-95" style={accentStyle}>+ Add More</button>
+                            </div>
+                        ) : (
+                            <button onClick={(e) => { onAddToCart(item, e); onClose(); }} className="w-full h-11 rounded-xl text-white font-bold flex items-center justify-center gap-2 active:scale-95 shadow-md" style={accentStyle}>
+                                <Plus className="w-4 h-4" /> Add to Cart
+                            </button>
+                        )
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 const ItemCustomizerDialog = ({ 
     isOpen, 
     onClose, 
@@ -408,6 +479,15 @@ const PublicMenu = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    // Dietary filter pill: 'all' | 'veg' | 'nonveg' | 'vegan' | 'jain' | 'spicy' | 'bestseller'
+    const [dietaryFilter, setDietaryFilter] = useState<string>('all');
+    // Item media preview modal
+    const [previewItem, setPreviewItem] = useState<MenuItem | null>(null);
+    // Recent orders reorder card
+    const [recentOrderItemIds, setRecentOrderItemIds] = useState<string[]>(() => {
+        try { return JSON.parse(localStorage.getItem(zenpos_recent_orders_ + urlParam) || '[]'); } catch { return []; }
+    });
+    const [showReorderCard, setShowReorderCard] = useState(true);
 
     // Scrolled state for glassmorphic header
     const [scrolled, setScrolled] = useState(false);
@@ -1059,8 +1139,22 @@ const PublicMenu = () => {
             );
         }
 
+        // Dietary filter
+        if (dietaryFilter !== 'all') {
+            result = result.filter(item => {
+                const i = item as any;
+                if (dietaryFilter === 'veg') return i.food_type === 'veg' || i.is_veg === true;
+                if (dietaryFilter === 'nonveg') return i.food_type === 'non_veg' || i.food_type === 'nonveg' || i.is_veg === false;
+                if (dietaryFilter === 'vegan') return i.food_type === 'vegan' || i.is_vegan === true;
+                if (dietaryFilter === 'jain') return i.food_type === 'jain' || i.is_jain === true;
+                if (dietaryFilter === 'spicy') return i.spice_level > 0 || i.is_spicy === true || (i.notes || '').toLowerCase().includes('spicy');
+                if (dietaryFilter === 'bestseller') return i.is_popular === true || i.bestseller === true || i.popular === true || i.is_bestseller === true;
+                return true;
+            });
+        }
+
         return result;
-    }, [items, selectedCategory, searchQuery]);
+    }, [items, selectedCategory, searchQuery, dietaryFilter]);
 
     // Group items by category
     const categoryTotals = useMemo(() => {
@@ -1428,6 +1522,13 @@ const PublicMenu = () => {
                 customer_note: orderNote || undefined,
                 created_at: data.created_at
             }]);
+
+            // Save to recent orders (for Order Again feature)
+            try {
+                const allIds = [...new Set([...cart.map(c => c.item_id || c.id), ...recentOrderItemIds])].slice(0, 20);
+                localStorage.setItem(zenpos_recent_orders_ + urlParam, JSON.stringify(allIds));
+                setRecentOrderItemIds(allIds);
+            } catch { /* ignore */ }
 
             // Clear cart
             setCart([]);
@@ -2186,6 +2287,35 @@ const PublicMenu = () => {
                 </div>
             )}
 
+            {/* Dietary Filter Pills */}
+            <div className="max-w-2xl mx-auto px-4 pt-2 pb-1">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                    {[
+                        { key: 'all', label: 'All Items' },
+                        { key: 'veg', label: '?? Pure Veg' },
+                        { key: 'nonveg', label: '?? Non-Veg' },
+                        { key: 'vegan', label: '?? Vegan' },
+                        { key: 'jain', label: '?? Jain' },
+                        { key: 'spicy', label: '??? Spicy' },
+                        { key: 'bestseller', label: '?? Bestsellers' },
+                    ].map(f => (
+                        <button
+                            key={f.key}
+                            onClick={() => setDietaryFilter(f.key)}
+                            className={cn(
+                                'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap',
+                                dietaryFilter === f.key
+                                    ? 'text-white border-transparent shadow-sm'
+                                    : 'bg-white/70 dark:bg-slate-800/70 text-gray-600 dark:text-gray-300 border-gray-200/80 dark:border-slate-700 hover:border-gray-300'
+                            )}
+                            style={dietaryFilter === f.key ? { background: shopSettings?.menu_primary_color || '#ea580c' } : {}}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Search Results Info */}
             {searchQuery && (
                 <div className="max-w-2xl mx-auto px-4 pt-4">
@@ -2337,6 +2467,40 @@ const PublicMenu = () => {
 
             {/* Menu Items */}
             <main className="max-w-2xl mx-auto px-4 py-4 pb-36">
+
+                {/* Order Again Card */}
+                {showReorderCard && recentOrderItemIds.length > 0 && isOrderingMode && (() => {
+                    const recentMenuItems = items.filter(it => recentOrderItemIds.includes(it.id)).slice(0, 6);
+                    if (recentMenuItems.length === 0) return null;
+                    return (
+                        <div className="mb-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 overflow-hidden">
+                            <button
+                                onClick={() => setShowReorderCard(false)}
+                                className="w-full flex items-center justify-between px-4 py-3 font-bold text-sm text-amber-800 dark:text-amber-300"
+                            >
+                                <span>⚡ Order Again</span>
+                                <span className="text-xs font-normal text-amber-600 dark:text-amber-400">✕ Dismiss</span>
+                            </button>
+                            <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
+                                {recentMenuItems.map(it => (
+                                    <div key={it.id} className="flex-shrink-0 w-36 rounded-xl border border-amber-100 dark:border-amber-800 bg-white dark:bg-slate-900 p-2.5 shadow-sm">
+                                        {it.image_url && <img src={it.image_url} alt={it.name} className="w-full h-16 object-cover rounded-lg mb-1.5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
+                                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate mb-1">{it.name}</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{it.price}</span>
+                                            <button
+                                                onClick={() => addToCart(it)}
+                                                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-sm active:scale-95"
+                                                style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}
+                                            >+</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 {filteredItems.length === 0 ? (
                     <div className="text-center py-12">
                         <Search className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
@@ -2489,7 +2653,7 @@ const PublicMenu = () => {
                                                 {useHorizontalLayout ? (
                                                     // Single column: Classic Horizontal Layout
                                                     <>
-                                                        <ItemMedia item={item} />
+                                                        <button onClick={() => setPreviewItem(item)} className="focus:outline-none" aria-label="View dish details" tabIndex={0}><ItemMedia item={item} /></button>
                                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                                             <div>
                                                                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -3436,6 +3600,18 @@ const PublicMenu = () => {
                     </div>
                 </div>
             )}
+
+            {/* Item Media Preview Modal */}
+            <ItemMediaPreviewModal
+                item={previewItem}
+                onClose={() => setPreviewItem(null)}
+                onAddToCart={addToCart}
+                getCartQuantity={getCartQuantity}
+                onIncrease={(id) => updateQuantity(id, 1)}
+                onDecrease={(id) => updateQuantity(id, -1)}
+                primaryColor={shopSettings?.menu_primary_color}
+                isOrderingMode={isOrderingMode}
+            />
 
             {/* AI Dish Pairing Modal */}
             {showPairingModal && lastPairedItem && pairedSuggestions.length > 0 && (
