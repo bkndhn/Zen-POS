@@ -9,21 +9,26 @@ import { ShieldAlert, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import type { UserPermissions } from '@/contexts/PermissionsContext';
+import { useClientPermissions } from '@/contexts/PermissionsContext';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
     requiredPermission: keyof UserPermissions;
     adminOnly?: boolean;
+    /** Optional feature flag key (e.g. 'allow_ai_media') checked against Super Admin client_permissions */
+    requiredClientPermission?: string;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
     requiredPermission,
-    adminOnly = false
+    adminOnly = false,
+    requiredClientPermission,
 }) => {
     const { profile, loading: authLoading } = useAuth();
     const { hasAccess, loading: permLoading } = useUserPermissions();
     const { settings, loading: settingsLoading } = useBranchSettings('shop_settings');
+    const { isFeatureEnabled } = useClientPermissions();
 
     // Show loading while auth, permissions or settings are loading
     if (authLoading || permLoading || settingsLoading) {
@@ -51,6 +56,26 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Admin-only page (like Users page) - super_admin already returned above
     if (adminOnly && profile.role !== 'admin') {
         return <Navigate to="/billing" replace />;
+    }
+
+    // Check if Super Admin has disabled this feature for the client shop
+    if (requiredClientPermission && !isFeatureEnabled(requiredClientPermission)) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="max-w-md w-full text-center space-y-4">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Store className="w-8 h-8 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold">Feature Not Enabled for this Shop</h2>
+                    <p className="text-muted-foreground">
+                        This feature has not been enabled by your administrator. Please contact your Super Admin to activate it.
+                    </p>
+                    <div className="flex gap-4 justify-center mt-6">
+                        <Button onClick={() => window.location.href = '/dashboard'}>Go to Dashboard</Button>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     const allowedNavItems = getFilteredNavItems();

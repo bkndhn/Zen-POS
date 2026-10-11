@@ -126,6 +126,27 @@ const TokenDisplay = () => {
     return () => clearInterval(t);
   }, []);
 
+  // Screen WakeLock — prevents TV display from sleeping
+  useEffect(() => {
+    let wakeLock: any = null;
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+        }
+      } catch { /* not supported or denied */ }
+    };
+    requestWakeLock();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      wakeLock?.release?.();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
   const preparing = bills.filter(b => b.kitchen_status !== 'ready');
   const ready = bills.filter(b => b.kitchen_status === 'ready');
 

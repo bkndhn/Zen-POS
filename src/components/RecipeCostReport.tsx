@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, Printer } from 'lucide-react';
 
@@ -21,6 +22,9 @@ const RecipeCostReport: React.FC = () => {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
+  const [targetPct, setTargetPct] = useState<number>(() =>
+    Number(localStorage.getItem('zenpos_target_food_cost_pct') || '30')
+  );
 
   useEffect(() => {
     if (!adminProfileId) return;
@@ -84,14 +88,44 @@ const RecipeCostReport: React.FC = () => {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-auto" />
+        {/* 🎯 Target Food Cost % input */}
+        <div className="flex items-center gap-1.5 border border-border rounded-lg px-3 py-1.5 bg-card">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">🎯 Target %</span>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={targetPct}
+            onChange={e => {
+              const v = Number(e.target.value);
+              setTargetPct(v);
+              localStorage.setItem('zenpos_target_food_cost_pct', String(v));
+            }}
+            className="w-14 text-sm bg-transparent border-none outline-none font-semibold"
+          />
+        </div>
         <Button size="sm" variant="outline" onClick={exportCsv} disabled={!rows.length}><Download className="w-3 h-3 mr-1" /> CSV</Button>
         <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="w-3 h-3 mr-1" /> Print</Button>
       </div>
+
+      {/* Food Cost Alert Banner */}
+      {rows.length > 0 && (
+        totals.pct <= targetPct ? (
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
+            ✅ Optimal Margin: {totals.pct.toFixed(1)}% (Target ≤ {targetPct}%)
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive">
+            ⚠️ Food Cost Alert: {totals.pct.toFixed(1)}% exceeds target {targetPct}% by +{(totals.pct - targetPct).toFixed(1)}%
+          </div>
+        )
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total sales</p><p className="text-lg font-bold">₹{totals.sales.toFixed(0)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total food cost</p><p className="text-lg font-bold text-destructive">₹{totals.cost.toFixed(0)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Gross profit</p><p className="text-lg font-bold text-success">₹{totals.profit.toFixed(0)}</p></CardContent></Card>
-        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Food cost %</p><p className="text-lg font-bold">{totals.pct.toFixed(1)}%</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Food cost %</p><p className={`text-lg font-bold ${totals.pct > targetPct ? 'text-destructive' : ''}`}>{totals.pct.toFixed(1)}%</p></CardContent></Card>
       </div>
       <Card>
         <CardHeader><CardTitle className="text-base">Dish-wise food cost · {format(new Date(date), 'dd MMM yyyy')}</CardTitle></CardHeader>
@@ -105,16 +139,30 @@ const RecipeCostReport: React.FC = () => {
                 <TableHead className="text-right">Food cost</TableHead><TableHead className="text-right">Profit</TableHead><TableHead className="text-right">Margin</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {rows.map(r => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.name}{!r.hasRecipe && <span className="block text-[10px] text-muted-foreground">no recipe – purchase rate used</span>}</TableCell>
-                    <TableCell className="text-right">{r.qty}</TableCell>
-                    <TableCell className="text-right">₹{r.sales.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{r.cost.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₹{r.profit.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{r.sales > 0 ? ((r.profit / r.sales) * 100).toFixed(0) : 0}%</TableCell>
-                  </TableRow>
-                ))}
+                {rows.map(r => {
+                  const itemPct = r.sales > 0 ? (r.cost / r.sales) * 100 : 0;
+                  const highCost = itemPct > targetPct;
+                  return (
+                    <TableRow key={r.id} className={highCost ? 'bg-destructive/5' : ''}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {r.name}
+                          {highCost && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              High Cost: {itemPct.toFixed(0)}%
+                            </Badge>
+                          )}
+                        </div>
+                        {!r.hasRecipe && <span className="block text-[10px] text-muted-foreground">no recipe – purchase rate used</span>}
+                      </TableCell>
+                      <TableCell className="text-right">{r.qty}</TableCell>
+                      <TableCell className="text-right">₹{r.sales.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{r.cost.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{r.profit.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{r.sales > 0 ? ((r.profit / r.sales) * 100).toFixed(0) : 0}%</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -125,3 +173,4 @@ const RecipeCostReport: React.FC = () => {
 };
 
 export default RecipeCostReport;
+

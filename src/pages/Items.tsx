@@ -145,6 +145,7 @@ const Items: React.FC = () => {
   const [labelSize, setLabelSize] = useState<'50x25' | '38x25'>('50x25');
   const [labelExpiry, setLabelExpiry] = useState('');
   const [labelMrp, setLabelMrp] = useState('');
+  const [labelShowPhoto, setLabelShowPhoto] = useState(false);
 
   const [showHappyHour, setShowHappyHour] = useState(false);
   const [happyHours, setHappyHours] = useState<any[]>([]);
@@ -1441,7 +1442,29 @@ const Items: React.FC = () => {
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background"
               />
             </div>
+            {/* Include Dish Photo toggle */}
+            {labelPrintItem?.image_url && (
+              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <span className="text-xs text-muted-foreground">Include Dish Photo</span>
+                <button
+                  type="button"
+                  onClick={() => setLabelShowPhoto(p => !p)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${labelShowPhoto ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${labelShowPhoto ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            )}
             <div className="border border-dashed border-border rounded-lg p-3 text-center bg-white dark:bg-white text-black" id="label-preview">
+              {labelShowPhoto && labelPrintItem?.image_url && (
+                <img
+                  src={labelPrintItem.image_url}
+                  crossOrigin="anonymous"
+                  alt={labelPrintItem.name}
+                  onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
+                  className="w-14 h-14 object-cover rounded mx-auto mb-1"
+                />
+              )}
               <div className="text-[10px] font-bold truncate">{labelPrintItem?.name}</div>
               <div className="text-[16px] font-extrabold">₹{labelMrp || labelPrintItem?.price}</div>
               {labelPrintItem?.unit && <div className="text-[9px]">{labelPrintItem.unit}</div>}

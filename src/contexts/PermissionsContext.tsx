@@ -82,7 +82,19 @@ interface PermissionsContextType {
     loading: boolean;
     hasAccess: (page: keyof UserPermissions) => boolean;
     refetch: () => void;
+    /** Raw client_permissions JSONB from Super Admin (keyed by feature flag like allow_ai_media, allow_kitchen, etc.) */
+    clientPermissions: Record<string, boolean>;
 }
+
+/** Hook to access raw client-level feature flags set by Super Admin */
+export const useClientPermissions = (): { clientPermissions: Record<string, boolean>; isFeatureEnabled: (key: string) => boolean } => {
+    const ctx = useContext(PermissionsContext);
+    const clientPermissions = ctx?.clientPermissions ?? {};
+    return {
+        clientPermissions,
+        isFeatureEnabled: (key: string) => clientPermissions[key] !== false,
+    };
+};
 
 // Build a reverse mapping from route path → page key (e.g. '/billing' → 'billing')
 // Used to translate client_permissions (keyed by route) into UserPermissions (keyed by page name)
@@ -124,6 +136,7 @@ const PermissionsContext = createContext<PermissionsContextType | undefined>(und
 export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { profile, loading: authLoading } = useAuth();
     const [permissions, setPermissions] = useState<UserPermissions>(DEFAULT_PERMISSIONS);
+    const [clientPermissions, setClientPermissions] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const fetchedForUserRef = useRef<string | null>(null);
 
@@ -193,6 +206,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                 // Apply Super Admin client_permissions (stored by route path, e.g. '/billing')
                 // This enforces page-level blocking set by Super Admin
                 if (profile.client_permissions) {
+                    setClientPermissions(profile.client_permissions as Record<string, boolean>);
                     for (const [routePath, allowed] of Object.entries(profile.client_permissions)) {
                         if (allowed === false) {
                             // Find the page key for this route path
@@ -216,7 +230,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
                 // First, get parent admin's user_id and has_qr_menu_access
                 const { data: adminData } = await supabase
                     .from('profiles')
-                    .select('user_id, has_qr_menu_access')
+                    .select('user_id, has_qr_menu_access, client_permissions')
                     .eq('id', profile.admin_id)
                     .single();
 
@@ -224,6 +238,10 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
 
                 if (adminData?.user_id) {
                     adminHasQrMenuAccess = (adminData as any).has_qr_menu_access ?? false;
+                    // Propagate parent admin's feature flags to child
+                    if ((adminData as any).client_permissions) {
+                        setClientPermissions((adminData as any).client_permissions as Record<string, boolean>);
+                    }
 
                     const { data: adminPermsData } = await supabase
                         .from('user_permissions')
@@ -526,7 +544,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
     }, [fetchPermissions]);
 
     return (
-        <PermissionsContext.Provider value={{ permissions, loading, hasAccess, refetch }}>
+        <PermissionsContext.Provider value={{ permissions, loading, hasAccess, refetch, clientPermissions }}>
             {children}
         </PermissionsContext.Provider>
     );
