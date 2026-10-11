@@ -5855,6 +5855,7 @@ export type Database = {
           name: string
         }[]
       }
+      get_public_landing_config: { Args: never; Returns: Json }
       get_public_legal_content: {
         Args: never
         Returns: {
