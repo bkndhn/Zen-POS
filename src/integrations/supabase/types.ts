@@ -2497,6 +2497,33 @@ export type Database = {
           },
         ]
       }
+      marketing_leads: {
+        Row: {
+          created_at: string | null
+          id: string
+          phone: string
+          shop_name: string | null
+          shop_type: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          phone: string
+          shop_name?: string | null
+          shop_type?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          phone?: string
+          shop_name?: string | null
+          shop_type?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       online_orders: {
         Row: {
           admin_id: string
