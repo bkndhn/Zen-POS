@@ -862,6 +862,15 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
               itemId={`new-item-${Date.now()}`}
               hasPremiumAccess={hasPremiumAccess}
             />
+            <div className="mt-2">
+              <AiMediaGenerator
+                itemName={formData.name}
+                category={(formData as any).category}
+                onImage={(url) => setFormData(prev => ({ ...prev, media_type: 'image', video_url: '', image_url: url }))}
+                onGif={(url) => setFormData(prev => ({ ...prev, media_type: 'gif', image_url: '', video_url: url }))}
+              />
+            </div>
+
           </div>
 
           <div className="flex items-center space-x-2">

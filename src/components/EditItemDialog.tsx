@@ -865,6 +865,16 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                 itemId={item.id}
                 hasPremiumAccess={hasPremiumAccess}
               />
+              <div className="mt-2">
+                <AiMediaGenerator
+                  itemName={formData.name}
+                  category={(formData as any).category}
+                  itemId={item.id}
+                  onImage={(url) => setFormData(prev => ({ ...prev, media_type: 'image', video_url: '', image_url: url }))}
+                  onGif={(url) => setFormData(prev => ({ ...prev, media_type: 'gif', image_url: '', video_url: url }))}
+                />
+              </div>
+
             </div>
 
             <div className="flex items-center space-x-2">

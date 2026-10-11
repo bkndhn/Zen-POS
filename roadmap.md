@@ -15,3 +15,6 @@
 - [ ] Live Razorpay/PhonePe payment + own-server webhook endpoint (blocked: needs gateway keys and a server URL from user)
 - [ ] Signed-in Kitchen Prep vs Reports check (blocked: preview sign-in unavailable for this backend)
 - [ ] TallyPrime import walkthrough (blocked: needs user's TallyPrime install)
+- [x] Remove stray 'n / ? marks on Items page
+- [x] Map newer pages (Kitchen Prep, Tokens, AI pages, Stock Adjustment) into permissions
+- [x] Free AI item photo + 360° GIF, gated by Super Admin "allow_ai_media"
