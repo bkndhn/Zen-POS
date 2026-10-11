@@ -51,7 +51,7 @@ export const PilotModal: React.FC<Props> = ({ open, onOpenChange }) => {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            {submitted ? '🎉 You're all set!' : 'Start Your Free 7-Day Pilot'}
+            {submitted ? "🎉 You're all set!" : 'Start Your Free 7-Day Pilot'}
           </DialogTitle>
         </DialogHeader>
 

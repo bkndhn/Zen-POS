@@ -485,7 +485,7 @@ const PublicMenu = () => {
     const [previewItem, setPreviewItem] = useState<MenuItem | null>(null);
     // Recent orders reorder card
     const [recentOrderItemIds, setRecentOrderItemIds] = useState<string[]>(() => {
-        try { return JSON.parse(localStorage.getItem(zenpos_recent_orders_ + urlParam) || '[]'); } catch { return []; }
+        try { return JSON.parse(localStorage.getItem('zenpos_recent_orders_' + urlParam) || '[]'); } catch { return []; }
     });
     const [showReorderCard, setShowReorderCard] = useState(true);
 
@@ -1526,7 +1526,7 @@ const PublicMenu = () => {
             // Save to recent orders (for Order Again feature)
             try {
                 const allIds = [...new Set([...cart.map(c => c.item_id || c.id), ...recentOrderItemIds])].slice(0, 20);
-                localStorage.setItem(zenpos_recent_orders_ + urlParam, JSON.stringify(allIds));
+                localStorage.setItem('zenpos_recent_orders_' + urlParam, JSON.stringify(allIds));
                 setRecentOrderItemIds(allIds);
             } catch { /* ignore */ }
 

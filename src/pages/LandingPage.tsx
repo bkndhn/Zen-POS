@@ -67,7 +67,7 @@ const trustBannerItems = [
   {
     icon: Shield,
     title: 'Single-Tenant RLS Isolation',
-    desc: 'Every shop's data is strictly isolated with Supabase Row-Level Security. No cross-contamination, ever.',
+    desc: "Every shop's data is strictly isolated with Supabase Row-Level Security. No cross-contamination, ever.",
   },
   {
     icon: Database,
