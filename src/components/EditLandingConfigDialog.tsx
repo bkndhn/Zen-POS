@@ -44,11 +44,11 @@ export const EditLandingConfigDialog: React.FC<EditLandingConfigDialogProps> = (
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    supabase
+    Promise.resolve(supabase
       .from('super_admin_settings')
       .select('landing_page_config')
       .eq('id', 1)
-      .maybeSingle()
+      .maybeSingle())
       .then(({ data, error }) => {
         if (!error && data?.landing_page_config) {
           setConfig({

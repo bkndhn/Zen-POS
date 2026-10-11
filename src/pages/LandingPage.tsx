@@ -98,7 +98,7 @@ const LandingPage: React.FC = () => {
 
   // Fetch dynamic landing config from super_admin_settings
   useEffect(() => {
-    (supabase.rpc as any)('get_public_landing_config')
+    Promise.resolve((supabase.rpc as any)('get_public_landing_config'))
       .then(({ data }: { data: unknown }) => {
         if (data && typeof data === 'object') {
           setConfig({ ...DEFAULT_CONFIG, ...(data as Partial<LandingConfig>) });
