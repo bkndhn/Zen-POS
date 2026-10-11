@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
+import { AiMediaGenerator } from '@/components/AiMediaGenerator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Switch } from '@/components/ui/switch';
