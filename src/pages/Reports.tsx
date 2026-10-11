@@ -1751,7 +1751,11 @@ const Reports: React.FC = () => {
                 bill.hsn_code || '',
                 bill.is_deleted ? 'Cancelled' : 'Active',
               ]);
-              const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+              const csvContent = [headers, ...rows].map(r => r.map((v: unknown) => {
+                let c = String(v ?? '');
+                if (/^[=+\-@\t\r]/.test(c)) c = "'" + c;
+                return /[",\n\r]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c;
+              }).join(',')).join('\n');
               const blob = new Blob([csvContent], { type: 'text/csv' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');

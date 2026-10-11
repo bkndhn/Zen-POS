@@ -98,14 +98,10 @@ const LandingPage: React.FC = () => {
 
   // Fetch dynamic landing config from super_admin_settings
   useEffect(() => {
-    supabase
-      .from('super_admin_settings')
-      .select('landing_page_config')
-      .eq('id', 1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.landing_page_config) {
-          setConfig({ ...DEFAULT_CONFIG, ...(data.landing_page_config as Partial<LandingConfig>) });
+    (supabase.rpc as any)('get_public_landing_config')
+      .then(({ data }: { data: unknown }) => {
+        if (data && typeof data === 'object') {
+          setConfig({ ...DEFAULT_CONFIG, ...(data as Partial<LandingConfig>) });
         }
       })
       .catch(() => {/* silently use defaults */});
