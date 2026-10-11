@@ -2092,7 +2092,7 @@ const PublicMenu = () => {
             {/* Header with Shop Name */}
             <header
                 className={cn(
-                    "sticky top-0 z-50 text-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 border-b border-white/20 dark:border-white/5",
+                    "relative z-10 text-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 border-b border-white/20 dark:border-white/5",
                     (scrolled || shopSettings?.menu_glassmorphism) ? "backdrop-blur-2xl bg-opacity-70 supports-[backdrop-filter]:bg-opacity-60" : "backdrop-blur-xl"
                 )}
                 style={{
@@ -2219,7 +2219,7 @@ const PublicMenu = () => {
             {/* Store Status Banner */}
             {storeStatus && storeStatus.status !== 'open' && (
                 <div className={cn(
-                    "w-full px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold shadow-sm sticky top-[72px] z-40 transition-colors",
+                    "w-full px-4 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold shadow-sm relative z-10 transition-colors",
                     storeStatus.status === 'break' ? "bg-amber-500 text-white" : "bg-red-500 text-white"
                 )}>
                     {storeStatus.status === 'break' ? <Clock className="w-4 h-4 animate-pulse" /> : <Power className="w-4 h-4" />}
@@ -2237,9 +2237,8 @@ const PublicMenu = () => {
 
             {/* Main Content */}
             {itemCategories.length > 0 && (
-                <div className="sticky z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b dark:border-slate-800 shadow-sm transition-all duration-300"
+                <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b dark:border-slate-800 shadow-sm transition-all duration-200"
                     style={{ 
-                        top: `${64 + (storeStatus && storeStatus.status !== 'open' ? 40 : 0) + (showSearch ? 48 : 0)}px`,
                         borderColor: isDarkMode ? undefined : (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa') 
                     }}
                 >

@@ -73,10 +73,19 @@ const trustBannerItems = [
 ];
 
 // ── Landing Page ──────────────────────────────────────────────────────────────
+const navLinks = [
+  { label: 'Features', href: '#features' },
+  { label: 'ROI Calculator', href: '#roi-calculator' },
+  { label: 'Live Showcase', href: '#showcase' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'Trust & Security', href: '#trust' },
+];
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, loading } = useAuth();
   const [showPilotModal, setShowPilotModal] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [config, setConfig] = useState<LandingConfig>(DEFAULT_CONFIG);
 
@@ -144,7 +153,7 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground scroll-smooth">
 
       {/* Promo Banner (dynamic) */}
       {config.promoBannerText && (
@@ -162,6 +171,19 @@ const LandingPage: React.FC = () => {
             </div>
             <span className="font-bold text-lg tracking-tight">ZenPOS</span>
           </div>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={handleTryDemo} className="hidden sm:flex">
               🚀 Try Demo
@@ -175,6 +197,46 @@ const LandingPage: React.FC = () => {
               <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
             </a>
             <Button size="sm" onClick={() => navigate('/auth')}>Login</Button>
+
+            {/* Mobile Nav Hamburger */}
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden h-9 w-9">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle navigation</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[80vw] max-w-xs p-6 flex flex-col justify-between">
+                <SheetHeader className="text-left">
+                  <SheetTitle className="flex items-center gap-2 text-lg">
+                    <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                      <Zap className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <span>ZenPOS</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-2 my-8">
+                  {navLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileNavOpen(false)}
+                      className="px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+                <div className="space-y-2 pt-4 border-t border-border">
+                  <Button className="w-full" size="sm" onClick={() => { setMobileNavOpen(false); handleTryDemo(); }}>
+                    🚀 Try Live Demo
+                  </Button>
+                  <Button variant="outline" className="w-full" size="sm" onClick={() => { setMobileNavOpen(false); setShowPilotModal(true); }}>
+                    Start Free Pilot
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
@@ -197,7 +259,7 @@ const LandingPage: React.FC = () => {
             ⚡ {config.heroTitle}
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight break-words">
             Simple POS for{' '}
             <span className="relative">
               <span className="text-primary">Small Restaurants</span>
@@ -208,11 +270,11 @@ const LandingPage: React.FC = () => {
             {config.heroSubtitle}
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
-            <Button size="lg" className="text-base px-8 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" onClick={() => setShowPilotModal(true)}>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8 w-full max-w-md mx-auto sm:max-w-none">
+            <Button size="lg" className="w-full sm:w-auto text-base px-8 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" onClick={() => setShowPilotModal(true)}>
               🚀 Start Free {config.pilotDays}-Day Pilot <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button variant="outline" size="lg" className="text-base px-8" onClick={handleTryDemo}>
+            <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8" onClick={handleTryDemo}>
               Try Interactive Demo
             </Button>
           </div>
@@ -228,13 +290,13 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* ROI Calculator */}
-      <RoiCalculator onStartTrial={() => setShowPilotModal(true)} />
+      <div id="roi-calculator" className="scroll-mt-16"><RoiCalculator onStartTrial={() => setShowPilotModal(true)} /></div>
 
       {/* Feature Showcase Tabs */}
-      <FeatureShowcaseTabs />
+      <div id="showcase" className="scroll-mt-16"><FeatureShowcaseTabs /></div>
 
       {/* Features Grid */}
-      <section className="py-16 sm:py-20 bg-muted/30">
+      <section id="features" className="py-16 sm:py-20 bg-muted/30 scroll-mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold mb-3">Everything Your Restaurant Needs</h2>
@@ -262,7 +324,7 @@ const LandingPage: React.FC = () => {
       <CompetitorComparison />
 
       {/* Pricing */}
-      <section className="py-16 sm:py-20 bg-muted/30">
+      <section id="pricing" className="py-16 sm:py-20 bg-muted/30 scroll-mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold mb-3">Simple, Affordable Pricing</h2>
@@ -341,7 +403,7 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Trust & Zero Lock-in Banner */}
-      <section className="py-16 sm:py-20">
+      <section id="trust" className="py-16 sm:py-20 scroll-mt-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold mb-3">Zero Lock-in. Full Transparency.</h2>

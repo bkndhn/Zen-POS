@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
 import {
   ShoppingCart, Search, Plus, Minus, Trash2, Receipt,
@@ -74,7 +75,7 @@ const ReceiptModal: React.FC<{
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl">
+      <DialogContent className="max-w-[92vw] sm:max-w-md max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
         <DialogHeader className="sr-only"><DialogTitle>Receipt</DialogTitle></DialogHeader>
         {/* Thermal receipt — 58mm style */}
         <div className="bg-white dark:bg-gray-50 text-gray-900 font-mono text-xs p-4 space-y-1.5 max-h-[80vh] overflow-y-auto">
@@ -193,7 +194,7 @@ const SplitPaymentModal: React.FC<{
 
   return (
     <Dialog open={open} onOpenChange={() => { onClose(); reset(); }}>
-      <DialogContent className="max-w-sm rounded-2xl">
+      <DialogContent className="max-w-[92vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5 text-primary" /> Collect Payment
@@ -284,6 +285,7 @@ const DemoBilling: React.FC = () => {
   // Modals
   const [showPayment, setShowPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [lastSplit, setLastSplit] = useState({ cash: 0, upi: 0, card: 0 });
 
   const filteredItems = useMemo(() =>
@@ -352,48 +354,48 @@ const DemoBilling: React.FC = () => {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* ── LEFT: Items panel ── */}
-        <div className="flex-1 flex flex-col p-3 sm:p-4 overflow-hidden min-h-0">
-          {/* Order Type */}
-          <div className="flex gap-2 mb-3">
+        <div className="flex-1 flex flex-col p-3 sm:p-4 overflow-hidden min-h-0 pb-20 lg:pb-4">
+          {/* Order Type Bar */}
+          <div className="flex items-center gap-2 mb-3 overflow-x-auto scrollbar-hide flex-nowrap pb-1">
             <button
               onClick={() => setOrderType('dine')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${orderType === 'dine' ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}
+              className={`shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold border transition-all ${orderType === 'dine' ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}
             >
               <UtensilsCrossed className="h-4 w-4" /> Dine In
             </button>
             <button
               onClick={() => setOrderType('parcel')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${orderType === 'parcel' ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}
+              className={`shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold border transition-all ${orderType === 'parcel' ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}
             >
-              <Package className="h-4 w-4" /> Takeaway / Parcel
+              <Package className="h-4 w-4" /> Parcel
             </button>
             {orderType === 'dine' && (
-              <div className="flex gap-1.5 ml-2 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-nowrap pl-1">
                 {TABLES.map(t => (
                   <button key={t} onClick={() => setTableNo(t)}
-                    className={`shrink-0 w-9 h-9 rounded-lg text-xs font-bold border transition-all ${tableNo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/40'}`}>
+                    className={`shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-xs font-bold border transition-all ${tableNo === t ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-background border-border hover:border-primary/40'}`}>
                     {t}
                   </button>
                 ))}
               </div>
             )}
             {orderType === 'parcel' && (
-              <label className="flex items-center gap-1.5 ml-2 text-xs text-muted-foreground cursor-pointer select-none">
+              <label className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap bg-muted/60 px-2.5 py-1.5 rounded-lg border">
                 <input type="checkbox" checked={packagingCharge} onChange={e => setPackagingCharge(e.target.checked)} className="accent-primary" />
                 +₹10 Packing
               </label>
             )}
           </div>
 
-          {/* Customer phone */}
-          <div className="flex gap-2 mb-3">
-            <div className="relative flex-1 max-w-xs">
+          {/* Search & Customer Phone */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+              <Input placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 w-full" />
             </div>
             <Input placeholder="Customer mobile (optional)" value={customerPhone}
               onChange={e => setCustomerPhone(e.target.value)}
-              className="h-9 text-sm max-w-[180px] hidden sm:block" />
+              className="h-9 text-sm w-full sm:w-48" />
           </div>
 
           {/* Categories */}
@@ -415,9 +417,9 @@ const DemoBilling: React.FC = () => {
                 <button key={item.id} onClick={() => addToCart(item)}
                   className={`relative p-3 rounded-xl border text-left transition-all hover:shadow-md active:scale-95 ${inCart ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card hover:border-primary/40'}`}>
                   {inCart && (
-                    <Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                    <span className="absolute top-2 right-2 min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground font-bold text-[11px] flex items-center justify-center shadow-sm pointer-events-none ring-2 ring-background">
                       {inCart.quantity}
-                    </Badge>
+                    </span>
                   )}
                   <div className="flex items-center gap-1 mb-1">
                     <span className={`w-2 h-2 rounded-full border ${item.veg ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} />
@@ -431,7 +433,7 @@ const DemoBilling: React.FC = () => {
         </div>
 
         {/* ── RIGHT: Cart panel ── */}
-        <div className="lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l border-border flex flex-col bg-card">
+        <div className="hidden lg:flex lg:w-80 xl:w-96 border-l border-border flex-col bg-card">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <h3 className="font-semibold flex items-center gap-2 text-sm">
               <ShoppingCart className="h-4 w-4 text-primary" />
@@ -502,6 +504,80 @@ const DemoBilling: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Sticky Bottom Cart Bar */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border p-3 flex items-center justify-between shadow-2xl">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground font-medium">{cart.length} item{cart.length !== 1 ? 's' : ''} in cart</span>
+            <span className="text-base font-extrabold text-primary">₹{total}</span>
+          </div>
+          <Button size="sm" onClick={() => setMobileCartOpen(true)} className="gap-1.5 px-4 h-10 shadow-md">
+            <ShoppingCart className="h-4 w-4" />
+            View Cart & Bill
+          </Button>
+        </div>
+      )}
+
+      {/* Mobile Cart Sheet */}
+      <Sheet open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] p-0 flex flex-col rounded-t-2xl">
+          <SheetHeader className="p-4 border-b border-border">
+            <SheetTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-primary" />
+                {orderType === 'dine' ? `Dine In — ${tableNo}` : 'Parcel / Takeaway'}
+              </span>
+              <span className="text-xs text-muted-foreground font-normal">{cart.length} item{cart.length !== 1 ? 's' : ''}</span>
+            </SheetTitle>
+          </SheetHeader>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-[40vh]">
+            {cart.map(item => (
+              <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => updateQuantity(item.id, -1)} className="h-7 w-7 rounded border border-border flex items-center justify-center hover:bg-muted"><Minus className="h-3.5 w-3.5" /></button>
+                  <span className="text-sm w-6 text-center font-bold">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.id, 1)} className="h-7 w-7 rounded border border-border flex items-center justify-center hover:bg-muted"><Plus className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => updateQuantity(item.id, -item.quantity)} className="h-7 w-7 rounded flex items-center justify-center text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-4 py-2 border-t border-border bg-muted/20">
+            <p className="text-xs text-muted-foreground mb-1.5 font-medium">Quick Discount</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {DISCOUNTS.map(d => (
+                <button key={d.label} onClick={() => setSelectedDiscount(d)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${selectedDiscount.label === d.label ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/40'}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 border-t border-border space-y-3 bg-card">
+            <div className="bg-muted/50 rounded-xl p-3 space-y-1 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>₹{subtotal}</span></div>
+              {discountAmt > 0 && <div className="flex justify-between text-green-600"><span>Discount ({selectedDiscount.label})</span><span>-₹{discountAmt}</span></div>}
+              {packaging > 0 && <div className="flex justify-between"><span>Packaging</span><span>+₹{packaging}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">GST @5%</span><span>₹{gst}</span></div>
+              <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
+                <span>Total</span><span className="text-primary">₹{total}</span>
+              </div>
+            </div>
+            <Button className="w-full h-11 text-sm font-semibold" onClick={() => { setMobileCartOpen(false); setShowPayment(true); }}>
+              <Receipt className="mr-2 h-4 w-4" />
+              Collect Payment — ₹{total}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Modals */}
       <SplitPaymentModal
