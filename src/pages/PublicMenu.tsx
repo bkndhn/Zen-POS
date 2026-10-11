@@ -2070,7 +2070,7 @@ const PublicMenu = () => {
 
     return (
         <div
-            className="min-h-screen public-menu-container pb-24 relative overflow-x-hidden"
+            className="min-h-screen public-menu-container pb-24 relative overflow-x-clip"
             style={{
                 fontFamily: shopSettings?.menu_font_family || 'Inter, sans-serif',
                 backgroundColor: shopSettings?.menu_background_color || '#fef7ed',
@@ -2239,7 +2239,7 @@ const PublicMenu = () => {
             {itemCategories.length > 0 && (
                 <div className="sticky z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b dark:border-slate-800 shadow-sm transition-all duration-300"
                     style={{ 
-                        top: `${72 + (storeStatus && storeStatus.status !== 'open' ? 40 : 0) + (showSearch ? 48 : 0)}px`,
+                        top: `${64 + (storeStatus && storeStatus.status !== 'open' ? 40 : 0) + (showSearch ? 48 : 0)}px`,
                         borderColor: isDarkMode ? undefined : (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color} 20` : '#fed7aa') 
                     }}
                 >

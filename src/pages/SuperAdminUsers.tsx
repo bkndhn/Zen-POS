@@ -24,6 +24,7 @@ import { SuperAdminStorageQuota } from '@/components/SuperAdminStorageQuota';
 import { BackendHealthCard } from '@/components/BackendHealthCard';
 import { PlatformPaymentSettings } from '@/components/PlatformPaymentSettings';
 import { AddUserDialog } from '@/components/AddUserDialog';
+import { EditLandingConfigDialog } from '@/components/EditLandingConfigDialog';
 import { Pencil, Sparkles, HardDrive, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -211,6 +212,7 @@ const SuperAdminUsers: React.FC = () => {
   const [storageTarget, setStorageTarget] = useState<Row | null>(null);
   const [clientLimitsTarget, setClientLimitsTarget] = useState<Row | null>(null);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [editLandingOpen, setEditLandingOpen] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff'>('admin');
 
   // Pause / Activate and Delete state & handlers
@@ -1162,6 +1164,9 @@ const SuperAdminUsers: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">Super Admin Portal</h1>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditLandingOpen(true)}>
+              <Globe className="w-3.5 h-3.5 mr-1" /> Landing & Pricing
+            </Button>
             <Button size="sm" variant="outline" onClick={() => window.location.assign('/super-admin/rum')}>
               <Activity className="w-3.5 h-3.5 mr-1" /> RUM Dashboard
             </Button>
@@ -2449,6 +2454,10 @@ const SuperAdminUsers: React.FC = () => {
         open={addUserDialogOpen}
         onOpenChange={setAddUserDialogOpen}
         onUserAdded={fetchUsers}
+      />
+      <EditLandingConfigDialog
+        open={editLandingOpen}
+        onOpenChange={setEditLandingOpen}
       />
 
       {/* Confirm Pause / Activate Modal */}

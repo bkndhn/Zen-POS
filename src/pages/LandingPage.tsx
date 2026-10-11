@@ -1,61 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ShoppingCart, Monitor, QrCode, Wifi, WifiOff, MessageSquare,
   BarChart3, Users, Receipt, ChefHat, Globe, Shield,
-  Check, Star, ArrowRight, Smartphone, Database, FileDown
+  Check, Star, ArrowRight, Smartphone, Database, FileDown,
+  Zap, Phone
 } from 'lucide-react';
 import { RoiCalculator } from '@/components/landing/RoiCalculator';
 import { FeatureShowcaseTabs } from '@/components/landing/FeatureShowcaseTabs';
 import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
 import { PilotModal } from '@/components/landing/PilotModal';
 
-const features = [
-  { icon: ShoppingCart, title: 'Smart Billing', desc: 'Fast touch-based billing with category filters and search' },
-  { icon: ChefHat, title: 'Kitchen Display (KDS)', desc: 'Real-time order flow from counter to kitchen' },
-  { icon: QrCode, title: 'QR Menu', desc: 'Customers scan & browse your menu on their phone' },
-  { icon: WifiOff, title: 'Offline Mode', desc: 'Works without internet — syncs when back online' },
-  { icon: MessageSquare, title: 'WhatsApp Bills', desc: 'Send bills directly via WhatsApp to customers' },
-  { icon: BarChart3, title: 'Reports & Analytics', desc: 'Daily sales, item-wise reports, expense tracking' },
-  { icon: Users, title: 'Staff Management', desc: 'Add staff with role-based page permissions' },
-  { icon: Monitor, title: 'Customer Display', desc: 'Show order details on a second screen' },
-  { icon: Globe, title: 'Tamil & English', desc: 'Full Tamil language support for local shops' },
-  { icon: Receipt, title: 'GST Billing', desc: 'GST-compliant invoices with HSN codes & tax summary' },
-  { icon: Shield, title: 'Secure & Private', desc: 'Your data is encrypted and isolated per account' },
-  { icon: Smartphone, title: 'Works on Any Device', desc: 'Phone, tablet, laptop — no special hardware needed' },
-];
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface LandingConfig {
+  heroTitle: string;
+  heroSubtitle: string;
+  pilotDays: number;
+  monthlyPrice: string;
+  yearlyPrice: string;
+  contactPhone: string;
+  whatsappNumber: string;
+  promoBannerText?: string | null;
+}
 
-const pricingPlans = [
-  {
-    name: 'Free Pilot',
-    price: '0',
-    period: ' for 7 days',
-    desc: 'Run it next to your bill book',
-    features: ['All features unlocked', 'Free menu setup from a photo', 'On-site Day 1 help', 'No card, no contract'],
-    popular: false,
-    cta: 'Start Free Pilot',
-  },
-  {
-    name: 'All-in-One',
-    price: '1,000',
-    period: '/month',
-    desc: 'Everything, for every shop size',
-    features: ['Billing, KOT & Kitchen Display', 'Tables, seats & Waiter app', 'QR ordering & WhatsApp bills', 'Recipe costing & stock', 'Anti-theft owner alerts', 'Unlimited staff & items'],
-    popular: true,
-    cta: 'Get Started',
-  },
-  {
-    name: 'Yearly',
-    price: '10,000',
-    period: '/year',
-    desc: 'Pay yearly, get 2 months free',
-    features: ['Everything in All-in-One', 'Priority phone support', 'Free printer setup visit', 'Data export anytime'],
-    popular: false,
-    cta: 'Get Started',
-  },
+const DEFAULT_CONFIG: LandingConfig = {
+  heroTitle: 'Lightning POS & QR Ordering OS for Modern Food Businesses',
+  heroSubtitle: 'No hardware needed. Works offline. Tamil & English. Start billing in 2 minutes — from your phone or tablet.',
+  pilotDays: 7,
+  monthlyPrice: '1,000',
+  yearlyPrice: '10,000',
+  contactPhone: '9894451420',
+  whatsappNumber: '919894451420',
+  promoBannerText: null,
+};
+
+// ── Static Data ───────────────────────────────────────────────────────────────
+const features = [
+  { icon: ShoppingCart, title: 'Smart Billing', desc: 'Fast touch-based billing with trie search, multi-cart hold/recall' },
+  { icon: ChefHat, title: 'Kitchen Display (KDS)', desc: 'Real-time color-coded order flow from counter to kitchen' },
+  { icon: QrCode, title: 'QR Self-Ordering Menu', desc: 'Customers scan & browse your menu, add items, call waiter' },
+  { icon: WifiOff, title: '100% Offline Mode', desc: 'Full billing even without internet — syncs automatically' },
+  { icon: MessageSquare, title: 'WhatsApp Bills', desc: 'Send branded invoices directly via WhatsApp — zero SMS fees' },
+  { icon: BarChart3, title: 'Reports & Analytics', desc: 'Daily Z-reports, item-wise sales, payment mode breakdown' },
+  { icon: Users, title: 'Staff & Shift Management', desc: 'Role-based access, shift reconciliation, anti-theft alerts' },
+  { icon: Monitor, title: 'Token TV Board', desc: 'Public display showing Preparing vs. Ready orders with voice chime' },
+  { icon: Globe, title: 'Tamil & English', desc: 'Full Tamil language support, toggleable per staff member' },
+  { icon: Receipt, title: 'GST Billing', desc: 'GST-compliant invoices with HSN codes, CGST/SGST split' },
+  { icon: Shield, title: 'Secure & Private', desc: 'Row-Level Security — every shop\'s data is strictly isolated' },
+  { icon: Smartphone, title: 'Any Device, Any Printer', desc: 'Phone, tablet, laptop — 58mm & 80mm thermal printing built-in' },
 ];
 
 const trustBannerItems = [
@@ -76,12 +72,30 @@ const trustBannerItems = [
   },
 ];
 
+// ── Landing Page ──────────────────────────────────────────────────────────────
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, loading } = useAuth();
   const [showPilotModal, setShowPilotModal] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [config, setConfig] = useState<LandingConfig>(DEFAULT_CONFIG);
 
-  React.useEffect(() => {
+  // Fetch dynamic landing config from super_admin_settings
+  useEffect(() => {
+    supabase
+      .from('super_admin_settings')
+      .select('landing_page_config')
+      .eq('id', 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.landing_page_config) {
+          setConfig({ ...DEFAULT_CONFIG, ...(data.landing_page_config as Partial<LandingConfig>) });
+        }
+      })
+      .catch(() => {/* silently use defaults */});
+  }, []);
+
+  useEffect(() => {
     if (!loading && profile) {
       navigate(profile.role === 'super_admin' ? '/super-admin/users' : '/', { replace: true });
     }
@@ -92,49 +106,124 @@ const LandingPage: React.FC = () => {
     navigate('/demo');
   };
 
+  const whatsappPilotMsg = encodeURIComponent(
+    `Hi! I'd like to start the ${config.pilotDays}-day free pilot of ZenPOS for my restaurant. Please help me get set up.`
+  );
+
+  const pricingPlans = [
+    {
+      name: 'Free Pilot',
+      price: '0',
+      period: ` for ${config.pilotDays} days`,
+      desc: 'Run it next to your bill book',
+      features: ['All features unlocked', 'Free menu setup from a photo', 'On-site Day 1 help', 'No card, no contract'],
+      popular: false,
+      cta: `Start ${config.pilotDays}-Day Free Pilot`,
+      yearlyPrice: '0',
+    },
+    {
+      name: 'All-in-One',
+      price: config.monthlyPrice,
+      period: '/month',
+      desc: 'Everything, for every shop size',
+      features: ['Billing, KOT & Kitchen Display', 'Tables, seats & Waiter app', 'QR ordering & WhatsApp bills', 'Recipe costing & stock tracking', 'Anti-theft owner alerts', 'Unlimited staff & menu items'],
+      popular: true,
+      cta: 'Get Started',
+      yearlyPrice: config.yearlyPrice,
+    },
+    {
+      name: 'Yearly Plan',
+      price: config.yearlyPrice,
+      period: '/year',
+      desc: 'Pay yearly, get 2 months free',
+      features: ['Everything in All-in-One', 'Priority phone support', 'Free thermal printer setup visit', 'Data export anytime (CSV/Excel)'],
+      popular: false,
+      cta: 'Get Started',
+      yearlyPrice: config.yearlyPrice,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+
+      {/* Promo Banner (dynamic) */}
+      {config.promoBannerText && (
+        <div className="bg-primary text-primary-foreground text-center text-xs py-2 px-4 font-medium">
+          {config.promoBannerText}
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <ShoppingCart className="h-4 w-4 text-primary-foreground" />
+              <Zap className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">ZenPOS</span>
+            <span className="font-bold text-lg tracking-tight">ZenPOS</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleTryDemo}>Try Demo</Button>
-            <Button variant="outline" size="sm" onClick={() => setShowPilotModal(true)}>Free Pilot</Button>
+            <Button variant="ghost" size="sm" onClick={handleTryDemo} className="hidden sm:flex">
+              🚀 Try Demo
+            </Button>
+            <a
+              href={`https://wa.me/${config.whatsappNumber}?text=${whatsappPilotMsg}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 hover:bg-green-100 transition-colors"
+            >
+              <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+            </a>
             <Button size="sm" onClick={() => navigate('/auth')}>Login</Button>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden py-16 sm:py-24">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-            <Star className="h-3.5 w-3.5" /> Built for Tamil Nadu Restaurants
+      <section className="relative overflow-hidden py-16 sm:py-28">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-emerald-500/5" />
+        {/* Background grid texture */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 40px,currentColor 40px,currentColor 41px),repeating-linear-gradient(90deg,transparent,transparent 40px,currentColor 40px,currentColor 41px)'
+        }} />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          {/* Glassmorphic badge with pulse */}
+          <div className="inline-flex items-center gap-2.5 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-primary/20 text-primary rounded-full px-4 py-2 text-sm font-semibold mb-8 shadow-lg shadow-primary/10">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+            </span>
+            <Zap className="h-3.5 w-3.5" />
+            ⚡ {config.heroTitle}
           </div>
+
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-            Simple POS for <br className="hidden sm:block" />
-            <span className="text-primary">Small Restaurants</span>
+            Simple POS for{' '}
+            <span className="relative">
+              <span className="text-primary">Small Restaurants</span>
+              <span className="absolute -bottom-1 left-0 right-0 h-1 bg-primary/20 rounded-full" />
+            </span>
           </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            No hardware needed. Works offline. Tamil & English.
-            Start billing in 2 minutes — from your phone or tablet.
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            {config.heroSubtitle}
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" className="text-base px-8" onClick={() => setShowPilotModal(true)}>
-              Start Free Pilot <ArrowRight className="ml-2 h-4 w-4" />
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+            <Button size="lg" className="text-base px-8 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow" onClick={() => setShowPilotModal(true)}>
+              🚀 Start Free {config.pilotDays}-Day Pilot <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg" className="text-base px-8" onClick={handleTryDemo}>
               Try Interactive Demo
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">No credit card required • 7-day free pilot</p>
+
+          {/* Social proof strip */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> No credit card required</span>
+            <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> {config.pilotDays}-day free pilot</span>
+            <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> Works offline</span>
+            <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> No hardware lock-in</span>
+          </div>
         </div>
       </section>
 
@@ -153,9 +242,9 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {features.map((f) => (
-              <Card key={f.title} className="border border-border/50 hover:border-primary/30 transition-colors">
+              <Card key={f.title} className="border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-200 group">
                 <CardContent className="p-5 flex items-start gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center shrink-0 transition-colors">
                     <f.icon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -175,24 +264,49 @@ const LandingPage: React.FC = () => {
       {/* Pricing */}
       <section className="py-16 sm:py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold mb-3">Simple, Affordable Pricing</h2>
-            <p className="text-muted-foreground">Cheaper than a daily newspaper subscription</p>
+            <p className="text-muted-foreground mb-6">Cheaper than a daily newspaper subscription</p>
+
+            {/* Monthly / Yearly toggle */}
+            <div className="inline-flex items-center rounded-full border border-border bg-muted p-1 gap-1">
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${billingCycle === 'monthly' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingCycle('yearly')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${billingCycle === 'yearly' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Yearly
+                <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">Save 17%</span>
+              </button>
+            </div>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {pricingPlans.map((plan) => (
-              <Card key={plan.name} className={`relative border-2 transition-all ${plan.popular ? 'border-primary shadow-lg scale-[1.02]' : 'border-border'}`}>
+              <Card key={plan.name} className={`relative border-2 transition-all duration-200 ${plan.popular ? 'border-primary shadow-xl shadow-primary/15 scale-[1.02]' : 'border-border hover:border-primary/30 hover:shadow-md'}`}>
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-                    Most Popular
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full shadow">
+                    ⭐ Most Popular
                   </div>
                 )}
                 <CardContent className="p-6">
                   <h3 className="font-bold text-lg mb-1">{plan.name}</h3>
                   <p className="text-xs text-muted-foreground mb-4">{plan.desc}</p>
                   <div className="mb-6">
-                    <span className="text-3xl font-extrabold">₹{plan.price}</span>
-                    <span className="text-muted-foreground text-sm">{plan.period}</span>
+                    <span className="text-3xl font-extrabold">
+                      ₹{billingCycle === 'yearly' && plan.name !== 'Free Pilot' ? plan.yearlyPrice : plan.price}
+                    </span>
+                    <span className="text-muted-foreground text-sm">
+                      {billingCycle === 'yearly' && plan.name === 'All-in-One' ? '/year' : plan.period}
+                    </span>
+                    {billingCycle === 'yearly' && plan.name === 'All-in-One' && (
+                      <p className="text-xs text-emerald-600 font-semibold mt-1">🎁 2 months free included</p>
+                    )}
                   </div>
                   <ul className="space-y-2.5 mb-6">
                     {plan.features.map((f) => (
@@ -209,6 +323,20 @@ const LandingPage: React.FC = () => {
               </Card>
             ))}
           </div>
+
+          {/* Contact strip */}
+          <div className="text-center mt-8 text-sm text-muted-foreground">
+            <p>Questions? Call or WhatsApp us directly:</p>
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <a href={`tel:${config.contactPhone}`} className="flex items-center gap-1.5 font-semibold text-foreground hover:text-primary transition-colors">
+                <Phone className="h-4 w-4" /> +91 {config.contactPhone}
+              </a>
+              <a href={`https://wa.me/${config.whatsappNumber}?text=${whatsappPilotMsg}`} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 font-semibold text-green-700 dark:text-green-400 hover:underline">
+                <MessageSquare className="h-4 w-4" /> WhatsApp Demo
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -221,7 +349,7 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {trustBannerItems.map((t) => (
-              <Card key={t.title} className="border border-border/50 text-center">
+              <Card key={t.title} className="border border-border/50 text-center hover:border-primary/30 transition-colors">
                 <CardContent className="p-6">
                   <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <t.icon className="h-6 w-6 text-primary" />
@@ -240,15 +368,15 @@ const LandingPage: React.FC = () => {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4">Try It Right Now — No Signup Needed</h2>
           <p className="text-muted-foreground mb-8">
-            Explore the full POS with sample menu items, create bills, and see reports.
+            Explore the full POS with sample menu items, create bills with split payment, and see 58mm thermal receipt preview.
             All in demo mode, completely free.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="lg" className="text-base px-8" onClick={() => setShowPilotModal(true)}>
+            <Button size="lg" className="text-base px-8 shadow-md" onClick={() => setShowPilotModal(true)}>
               Start Free Pilot <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg" className="text-base px-8" onClick={handleTryDemo}>
-              Launch Demo
+              🚀 Launch Demo
             </Button>
           </div>
         </div>
@@ -258,9 +386,25 @@ const LandingPage: React.FC = () => {
       <footer className="py-8 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} ZenPOS. Made with ❤️ for Tamil Nadu restaurants.</p>
-          <p className="mt-1 text-xs">GST & FSSAI Ready • Offline First • RLS Isolated • No Lock-in</p>
+          <p className="mt-1 text-xs">GST & FSSAI Ready • 100% Offline First • RLS Isolated • No Lock-in</p>
         </div>
       </footer>
+
+      {/* Sticky mobile CTA footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-background/95 backdrop-blur-md border-t border-border px-4 py-2.5 flex gap-2 shadow-2xl">
+        <Button className="flex-1 text-sm h-10" onClick={handleTryDemo}>
+          🚀 Try Live Demo
+        </Button>
+        <a
+          href={`https://wa.me/${config.whatsappNumber}?text=${whatsappPilotMsg}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors"
+        >
+          <MessageSquare className="h-4 w-4" />
+          💬 WhatsApp Free Pilot
+        </a>
+      </div>
 
       {/* Pilot Modal */}
       <PilotModal open={showPilotModal} onOpenChange={setShowPilotModal} />

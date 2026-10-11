@@ -1,49 +1,272 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { 
-  ShoppingCart, Search, Plus, Minus, Trash2, Receipt, 
-  ArrowLeft, BarChart3, ChefHat, X 
+import {
+  ShoppingCart, Search, Plus, Minus, Trash2, Receipt,
+  X, UtensilsCrossed, Package, Printer, MessageSquare, RefreshCw,
+  Banknote, Smartphone, CreditCard, ChefHat
 } from 'lucide-react';
 
-// Sample data
+// ── Sample Data ──────────────────────────────────────────────────────────────
 const DEMO_CATEGORIES = ['All', 'Breakfast', 'Lunch', 'Snacks', 'Beverages', 'Desserts'];
 
 const DEMO_ITEMS = [
-  { id: '1', name: 'Idli (2 pcs)', price: 30, category: 'Breakfast' },
-  { id: '2', name: 'Dosa', price: 50, category: 'Breakfast' },
-  { id: '3', name: 'Vada (2 pcs)', price: 30, category: 'Breakfast' },
-  { id: '4', name: 'Pongal', price: 50, category: 'Breakfast' },
-  { id: '5', name: 'Poori Set', price: 60, category: 'Breakfast' },
-  { id: '6', name: 'Meals (Veg)', price: 100, category: 'Lunch' },
-  { id: '7', name: 'Chicken Biryani', price: 180, category: 'Lunch' },
-  { id: '8', name: 'Mutton Biryani', price: 220, category: 'Lunch' },
-  { id: '9', name: 'Chapati (2 pcs)', price: 40, category: 'Lunch' },
-  { id: '10', name: 'Parotta (2 pcs)', price: 50, category: 'Lunch' },
-  { id: '11', name: 'Chicken 65', price: 150, category: 'Snacks' },
-  { id: '12', name: 'Gobi Manchurian', price: 100, category: 'Snacks' },
-  { id: '13', name: 'Samosa (2 pcs)', price: 30, category: 'Snacks' },
-  { id: '14', name: 'Bajji Plate', price: 40, category: 'Snacks' },
-  { id: '15', name: 'Tea', price: 15, category: 'Beverages' },
-  { id: '16', name: 'Coffee', price: 20, category: 'Beverages' },
-  { id: '17', name: 'Fresh Juice', price: 50, category: 'Beverages' },
-  { id: '18', name: 'Lassi', price: 40, category: 'Beverages' },
-  { id: '19', name: 'Gulab Jamun (2)', price: 40, category: 'Desserts' },
-  { id: '20', name: 'Ice Cream', price: 50, category: 'Desserts' },
+  { id: '1', name: 'Idli (2 pcs)', price: 30, category: 'Breakfast', veg: true },
+  { id: '2', name: 'Masala Dosa', price: 60, category: 'Breakfast', veg: true },
+  { id: '3', name: 'Vada (2 pcs)', price: 35, category: 'Breakfast', veg: true },
+  { id: '4', name: 'Pongal', price: 50, category: 'Breakfast', veg: true },
+  { id: '5', name: 'Poori Set', price: 65, category: 'Breakfast', veg: true },
+  { id: '6', name: 'Meals (Veg)', price: 100, category: 'Lunch', veg: true },
+  { id: '7', name: 'Chicken Biryani', price: 180, category: 'Lunch', veg: false },
+  { id: '8', name: 'Mutton Biryani', price: 230, category: 'Lunch', veg: false },
+  { id: '9', name: 'Chapati (2 pcs)', price: 40, category: 'Lunch', veg: true },
+  { id: '10', name: 'Parotta (2 pcs)', price: 50, category: 'Lunch', veg: true },
+  { id: '11', name: 'Chicken 65', price: 160, category: 'Snacks', veg: false },
+  { id: '12', name: 'Gobi Manchurian', price: 110, category: 'Snacks', veg: true },
+  { id: '13', name: 'Samosa (2 pcs)', price: 30, category: 'Snacks', veg: true },
+  { id: '14', name: 'Bajji Plate', price: 40, category: 'Snacks', veg: true },
+  { id: '15', name: 'Tea', price: 15, category: 'Beverages', veg: true },
+  { id: '16', name: 'Filter Coffee', price: 20, category: 'Beverages', veg: true },
+  { id: '17', name: 'Fresh Lime Juice', price: 50, category: 'Beverages', veg: true },
+  { id: '18', name: 'Lassi', price: 45, category: 'Beverages', veg: true },
+  { id: '19', name: 'Gulab Jamun (2)', price: 40, category: 'Desserts', veg: true },
+  { id: '20', name: 'Ice Cream', price: 55, category: 'Desserts', veg: true },
 ];
 
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
+const TABLES = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'];
+const DISCOUNTS = [
+  { label: 'No Discount', value: 0, type: 'pct' as const },
+  { label: '5% OFF', value: 5, type: 'pct' as const },
+  { label: '10% OFF', value: 10, type: 'pct' as const },
+  { label: '₹50 Flat', value: 50, type: 'flat' as const },
+];
 
+interface CartItem { id: string; name: string; price: number; quantity: number; }
+
+// ── Receipt Modal ─────────────────────────────────────────────────────────────
+const ReceiptModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onNewOrder: () => void;
+  billNo: number;
+  cart: CartItem[];
+  orderType: 'dine' | 'parcel';
+  tableNo: string;
+  discount: typeof DISCOUNTS[0];
+  packagingCharge: boolean;
+  splitPayment: { cash: number; upi: number; card: number };
+  customerPhone: string;
+}> = ({ open, onClose, onNewOrder, billNo, cart, orderType, tableNo, discount, packagingCharge, splitPayment, customerPhone }) => {
+  const subtotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const discountAmt = discount.type === 'pct' ? Math.round(subtotal * discount.value / 100) : discount.value;
+  const packaging = packagingCharge && orderType === 'parcel' ? 10 : 0;
+  const taxable = subtotal - discountAmt + packaging;
+  const gst = Math.round(taxable * 0.05);
+  const netTotal = taxable + gst;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl">
+        <DialogHeader className="sr-only"><DialogTitle>Receipt</DialogTitle></DialogHeader>
+        {/* Thermal receipt — 58mm style */}
+        <div className="bg-white dark:bg-gray-50 text-gray-900 font-mono text-xs p-4 space-y-1.5 max-h-[80vh] overflow-y-auto">
+          {/* Header */}
+          <div className="text-center space-y-0.5 border-b border-dashed border-gray-400 pb-2 mb-2">
+            <p className="font-bold text-sm tracking-widest">ZenPOS DEMO KITCHEN</p>
+            <p className="text-[10px]">Tamil Nadu | FSSAI: 12345678901234</p>
+            <p className="text-[10px]">GSTIN: 33AABCZ1234A1Z5</p>
+            <p className="text-[10px]">Ph: +91 98944 51420</p>
+          </div>
+
+          {/* Bill Info */}
+          <div className="flex justify-between text-[10px]">
+            <span>Bill#: <b>{String(billNo).padStart(4, '0')}</b></span>
+            <span>{orderType === 'dine' ? `Table: ${tableNo}` : 'PARCEL'}</span>
+          </div>
+          <div className="flex justify-between text-[10px]">
+            <span>{dateStr} {timeStr}</span>
+            <span>Cashier: Demo</span>
+          </div>
+          {customerPhone && <p className="text-[10px]">Customer: {customerPhone}</p>}
+
+          {/* Items */}
+          <div className="border-t border-dashed border-gray-400 pt-1.5 mt-1.5">
+            <div className="flex justify-between font-bold text-[10px] mb-1">
+              <span className="flex-1">Item</span>
+              <span className="w-6 text-right">Qty</span>
+              <span className="w-12 text-right">Rate</span>
+              <span className="w-14 text-right">Amt</span>
+            </div>
+            {cart.map(c => (
+              <div key={c.id} className="flex justify-between text-[10px]">
+                <span className="flex-1 truncate pr-1">{c.name}</span>
+                <span className="w-6 text-right">{c.quantity}</span>
+                <span className="w-12 text-right">{c.price}</span>
+                <span className="w-14 text-right">{c.price * c.quantity}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="border-t border-dashed border-gray-400 pt-1.5 mt-1.5 space-y-0.5 text-[10px]">
+            <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal}</span></div>
+            {discountAmt > 0 && <div className="flex justify-between text-green-700"><span>Discount ({discount.label})</span><span>-₹{discountAmt}</span></div>}
+            {packaging > 0 && <div className="flex justify-between"><span>Packaging</span><span>₹{packaging}</span></div>}
+            <div className="flex justify-between"><span>GST @5%</span><span>₹{gst}</span></div>
+            <div className="flex justify-between font-bold text-sm border-t border-dashed border-gray-400 pt-1 mt-1">
+              <span>NET TOTAL</span><span>₹{netTotal}</span>
+            </div>
+          </div>
+
+          {/* Payment */}
+          <div className="border-t border-dashed border-gray-400 pt-1.5 text-[10px] space-y-0.5">
+            {splitPayment.cash > 0 && <div className="flex justify-between"><span>Cash</span><span>₹{splitPayment.cash.toFixed(2)}</span></div>}
+            {splitPayment.upi > 0 && <div className="flex justify-between"><span>UPI / QR</span><span>₹{splitPayment.upi.toFixed(2)}</span></div>}
+            {splitPayment.card > 0 && <div className="flex justify-between"><span>Card / POS</span><span>₹{splitPayment.card.toFixed(2)}</span></div>}
+          </div>
+
+          {/* Footer */}
+          <div className="text-center border-t border-dashed border-gray-400 pt-2 mt-2 space-y-0.5 text-[10px] text-gray-600">
+            <p>★ Thank you for dining with us! ★</p>
+            <p>Powered by ZenPOS · zenpos.app</p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="p-3 grid grid-cols-3 gap-2 border-t border-border bg-muted/30">
+          <Button variant="outline" size="sm" className="text-xs flex-col h-14 gap-1" onClick={() => {
+            toast({ title: '🖨️ Simulated Print', description: 'ESC/POS command sent to thermal printer.' });
+          }}>
+            <Printer className="h-4 w-4" />
+            <span>Print</span>
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs flex-col h-14 gap-1" onClick={() => {
+            const msg = encodeURIComponent(`Hi! Your bill from ZenPOS Demo Kitchen — Bill#${billNo}, Total: ₹${netTotal}. Thank you!`);
+            window.open(`https://wa.me/?text=${msg}`, '_blank');
+          }}>
+            <MessageSquare className="h-4 w-4" />
+            <span>WhatsApp</span>
+          </Button>
+          <Button size="sm" className="text-xs flex-col h-14 gap-1" onClick={() => { onNewOrder(); onClose(); }}>
+            <RefreshCw className="h-4 w-4" />
+            <span>New Order</span>
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ── Split Payment Modal ───────────────────────────────────────────────────────
+const SplitPaymentModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  total: number;
+  onConfirm: (split: { cash: number; upi: number; card: number }) => void;
+}> = ({ open, onClose, total, onConfirm }) => {
+  const [cash, setCash] = useState(0);
+  const [upi, setUpi] = useState(0);
+  const [card, setCard] = useState(0);
+
+  const paid = cash + upi + card;
+  const remaining = Math.max(0, total - paid);
+  const change = Math.max(0, paid - total);
+
+  const reset = () => { setCash(0); setUpi(0); setCard(0); };
+
+  const handleConfirm = () => {
+    if (paid < total) {
+      toast({ title: 'Insufficient payment', description: `Still ₹${remaining} remaining.`, variant: 'destructive' });
+      return;
+    }
+    onConfirm({ cash, upi, card });
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => { onClose(); reset(); }}>
+      <DialogContent className="max-w-sm rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5 text-primary" /> Collect Payment
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="text-center py-2">
+          <p className="text-muted-foreground text-sm">Bill Total</p>
+          <p className="text-3xl font-extrabold text-primary">₹{total}</p>
+        </div>
+
+        <div className="space-y-3">
+          {/* Cash */}
+          <div>
+            <Label className="text-xs font-semibold flex items-center gap-1.5 mb-1.5">
+              <Banknote className="h-3.5 w-3.5 text-green-600" /> Cash
+            </Label>
+            <div className="flex gap-1.5 mb-1.5 flex-wrap">
+              {[total, 100, 200, 500].map(v => (
+                <button key={v} onClick={() => setCash(v === total ? total - upi - card : v)}
+                  className="px-2.5 py-1 rounded-full text-xs font-semibold border border-green-300 bg-green-50 dark:bg-green-950/40 dark:border-green-800 text-green-800 dark:text-green-300 hover:bg-green-100 transition-colors">
+                  {v === total ? 'Exact' : `₹${v}`}
+                </button>
+              ))}
+            </div>
+            <Input type="number" min={0} value={cash || ''} onChange={e => setCash(Number(e.target.value) || 0)}
+              placeholder="₹0" className="h-9 text-sm" />
+          </div>
+
+          {/* UPI */}
+          <div>
+            <Label className="text-xs font-semibold flex items-center gap-1.5 mb-1.5">
+              <Smartphone className="h-3.5 w-3.5 text-blue-600" /> UPI / QR
+            </Label>
+            <div className="flex gap-1.5 mb-1.5">
+              <button onClick={() => setUpi(total - cash - card)}
+                className="px-2.5 py-1 rounded-full text-xs font-semibold border border-blue-300 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-800 text-blue-800 dark:text-blue-300 hover:bg-blue-100 transition-colors">
+                Remaining ₹{Math.max(0, total - cash - card)}
+              </button>
+            </div>
+            <Input type="number" min={0} value={upi || ''} onChange={e => setUpi(Number(e.target.value) || 0)}
+              placeholder="₹0" className="h-9 text-sm" />
+          </div>
+
+          {/* Card */}
+          <div>
+            <Label className="text-xs font-semibold flex items-center gap-1.5 mb-1.5">
+              <CreditCard className="h-3.5 w-3.5 text-purple-600" /> Card / POS Machine
+            </Label>
+            <Input type="number" min={0} value={card || ''} onChange={e => setCard(Number(e.target.value) || 0)}
+              placeholder="₹0" className="h-9 text-sm" />
+          </div>
+        </div>
+
+        {/* Balance summary */}
+        <div className="rounded-xl bg-muted p-3 space-y-1 text-sm">
+          <div className="flex justify-between"><span className="text-muted-foreground">Total Paid</span><span className="font-bold">₹{paid}</span></div>
+          {remaining > 0 && <div className="flex justify-between text-destructive font-semibold"><span>Remaining</span><span>₹{remaining}</span></div>}
+          {change > 0 && <div className="flex justify-between text-green-600 font-semibold"><span>Change Due</span><span>₹{change}</span></div>}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={() => { onClose(); reset(); }}>Cancel</Button>
+          <Button className="flex-1" onClick={handleConfirm} disabled={paid < total}>
+            <Receipt className="h-4 w-4 mr-1" /> Confirm & Bill
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ── Main Demo Billing ─────────────────────────────────────────────────────────
 const DemoBilling: React.FC = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -51,106 +274,137 @@ const DemoBilling: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [billCount, setBillCount] = useState(1);
 
-  useEffect(() => {
-    const isDemo = localStorage.getItem('hotel_pos_demo_mode');
-    if (isDemo !== 'true') {
-      navigate('/landing');
-    }
-  }, [navigate]);
+  // Order options
+  const [orderType, setOrderType] = useState<'dine' | 'parcel'>('dine');
+  const [tableNo, setTableNo] = useState('T1');
+  const [packagingCharge, setPackagingCharge] = useState(true);
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [selectedDiscount, setSelectedDiscount] = useState(DISCOUNTS[0]);
 
-  const filteredItems = useMemo(() => {
-    return DEMO_ITEMS.filter(item => {
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-      const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [search, selectedCategory]);
+  // Modals
+  const [showPayment, setShowPayment] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastSplit, setLastSplit] = useState({ cash: 0, upi: 0, card: 0 });
+
+  const filteredItems = useMemo(() =>
+    DEMO_ITEMS.filter(item =>
+      (selectedCategory === 'All' || item.category === selectedCategory) &&
+      item.name.toLowerCase().includes(search.toLowerCase())
+    ), [search, selectedCategory]);
 
   const addToCart = (item: typeof DEMO_ITEMS[0]) => {
     setCart(prev => {
       const existing = prev.find(c => c.id === item.id);
-      if (existing) {
-        return prev.map(c => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
-      }
+      if (existing) return prev.map(c => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
       return [...prev, { id: item.id, name: item.name, price: item.price, quantity: 1 }];
     });
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(c => {
-      if (c.id === id) {
-        const newQty = c.quantity + delta;
-        return newQty <= 0 ? c : { ...c, quantity: newQty };
-      }
-      return c;
+  const updateQuantity = (id: string, delta: number) =>
+    setCart(prev => prev.flatMap(c => {
+      if (c.id !== id) return [c];
+      const q = c.quantity + delta;
+      return q <= 0 ? [] : [{ ...c, quantity: q }];
     }));
+
+  const subtotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const discountAmt = selectedDiscount.type === 'pct'
+    ? Math.round(subtotal * selectedDiscount.value / 100)
+    : Math.min(selectedDiscount.value, subtotal);
+  const packaging = packagingCharge && orderType === 'parcel' ? 10 : 0;
+  const taxable = subtotal - discountAmt + packaging;
+  const gst = Math.round(taxable * 0.05);
+  const total = taxable + gst;
+
+  const handleConfirmPayment = (split: { cash: number; upi: number; card: number }) => {
+    setLastSplit(split);
+    setShowPayment(false);
+    setShowReceipt(true);
+    toast({ title: `✅ Bill #${String(billCount).padStart(4,'0')} Created!`, description: `Total ₹${total} • ${cart.length} item types` });
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(c => c.id !== id));
-  };
-
-  const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
-
-  const handleBill = () => {
-    if (cart.length === 0) return;
-    toast({
-      title: `Demo Bill #${billCount} Created!`,
-      description: `Total: ₹${total} • ${cart.length} items • This is a demo — no data is saved.`,
-    });
-    setBillCount(prev => prev + 1);
+  const handleNewOrder = () => {
+    setBillCount(p => p + 1);
     setCart([]);
+    setSelectedDiscount(DISCOUNTS[0]);
+    setCustomerPhone('');
   };
 
-  const exitDemo = () => {
-    localStorage.removeItem('hotel_pos_demo_mode');
-    navigate('/landing');
-  };
+  const exitDemo = () => { localStorage.removeItem('hotel_pos_demo_mode'); navigate('/landing'); };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Demo Header */}
-      <div className="bg-warning/10 border-b border-warning/30 px-4 py-2 flex items-center justify-between">
+      <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="border-warning text-warning-foreground bg-warning/20 text-xs">
+          <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-950/30 text-xs font-bold">
             DEMO MODE
           </Badge>
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            Sample data — nothing is saved
-          </span>
+          <span className="text-xs text-muted-foreground hidden sm:inline">Sample data — nothing is saved</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={exitDemo} className="text-xs h-7">
-          <X className="h-3 w-3 mr-1" /> Exit Demo
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-mono">Bill #{String(billCount).padStart(4, '0')}</span>
+          <Button variant="ghost" size="sm" onClick={exitDemo} className="text-xs h-7">
+            <X className="h-3 w-3 mr-1" /> Exit
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Items Panel */}
-        <div className="flex-1 flex flex-col p-3 sm:p-4 overflow-hidden">
-          {/* Search & Categories */}
-          <div className="mb-3 space-y-2">
-            <div className="relative">
+        {/* ── LEFT: Items panel ── */}
+        <div className="flex-1 flex flex-col p-3 sm:p-4 overflow-hidden min-h-0">
+          {/* Order Type */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setOrderType('dine')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${orderType === 'dine' ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}
+            >
+              <UtensilsCrossed className="h-4 w-4" /> Dine In
+            </button>
+            <button
+              onClick={() => setOrderType('parcel')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${orderType === 'parcel' ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}
+            >
+              <Package className="h-4 w-4" /> Takeaway / Parcel
+            </button>
+            {orderType === 'dine' && (
+              <div className="flex gap-1.5 ml-2 overflow-x-auto scrollbar-hide">
+                {TABLES.map(t => (
+                  <button key={t} onClick={() => setTableNo(t)}
+                    className={`shrink-0 w-9 h-9 rounded-lg text-xs font-bold border transition-all ${tableNo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/40'}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+            {orderType === 'parcel' && (
+              <label className="flex items-center gap-1.5 ml-2 text-xs text-muted-foreground cursor-pointer select-none">
+                <input type="checkbox" checked={packagingCharge} onChange={e => setPackagingCharge(e.target.checked)} className="accent-primary" />
+                +₹10 Packing
+              </label>
+            )}
+          </div>
+
+          {/* Customer phone */}
+          <div className="flex gap-2 mb-3">
+            <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search items..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9"
-              />
+              <Input placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
             </div>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-              {DEMO_CATEGORIES.map(cat => (
-                <Button
-                  key={cat}
-                  variant={selectedCategory === cat ? 'default' : 'outline'}
-                  size="sm"
-                  className="shrink-0 text-xs h-7"
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  {cat}
-                </Button>
-              ))}
-            </div>
+            <Input placeholder="Customer mobile (optional)" value={customerPhone}
+              onChange={e => setCustomerPhone(e.target.value)}
+              className="h-9 text-sm max-w-[180px] hidden sm:block" />
+          </div>
+
+          {/* Categories */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 mb-2">
+            {DEMO_CATEGORIES.map(cat => (
+              <button key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${selectedCategory === cat ? 'bg-primary text-primary-foreground border-primary shadow' : 'bg-background border-border hover:border-primary/40'}`}>
+                {cat}
+              </button>
+            ))}
           </div>
 
           {/* Items Grid */}
@@ -158,75 +412,117 @@ const DemoBilling: React.FC = () => {
             {filteredItems.map(item => {
               const inCart = cart.find(c => c.id === item.id);
               return (
-                <button
-                  key={item.id}
-                  onClick={() => addToCart(item)}
-                  className={`relative p-3 rounded-lg border text-left transition-all hover:border-primary/50 hover:shadow-sm ${
-                    inCart ? 'border-primary bg-primary/5' : 'border-border'
-                  }`}
-                >
+                <button key={item.id} onClick={() => addToCart(item)}
+                  className={`relative p-3 rounded-xl border text-left transition-all hover:shadow-md active:scale-95 ${inCart ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card hover:border-primary/40'}`}>
                   {inCart && (
                     <Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
                       {inCart.quantity}
                     </Badge>
                   )}
-                  <p className="font-medium text-sm truncate">{item.name}</p>
-                  <p className="text-primary font-bold text-sm mt-1">₹{item.price}</p>
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className={`w-2 h-2 rounded-full border ${item.veg ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} />
+                  </div>
+                  <p className="font-medium text-sm leading-tight mb-1">{item.name}</p>
+                  <p className="text-primary font-bold text-sm">₹{item.price}</p>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Cart Panel */}
+        {/* ── RIGHT: Cart panel ── */}
         <div className="lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l border-border flex flex-col bg-card">
           <div className="p-3 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" /> Cart
+            <h3 className="font-semibold flex items-center gap-2 text-sm">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              {orderType === 'dine' ? `Dine In — ${tableNo}` : 'Parcel / Takeaway'}
             </h3>
-            <span className="text-sm text-muted-foreground">{cart.length} items</span>
+            <span className="text-xs text-muted-foreground">{cart.length} item{cart.length !== 1 ? 's' : ''}</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[30vh] lg:max-h-none">
-            {cart.length === 0 ? (
-              <p className="text-center text-muted-foreground text-sm py-8">
-                Tap items to add to cart
-              </p>
-            ) : (
-              cart.map(item => (
-                <div key={item.id} className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">₹{item.price} × {item.quantity}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, -1)}>
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="text-sm w-6 text-center font-medium">{item.quantity}</span>
-                    <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, 1)}>
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="p-3 border-t border-border space-y-3">
-            <div className="flex justify-between text-lg font-bold">
-              <span>Total</span>
-              <span className="text-primary">₹{total}</span>
+          {/* KOT indicator */}
+          {cart.length > 0 && (
+            <div className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+              <ChefHat className="h-3 w-3" />
+              <span className="font-medium">KOT auto-sent to kitchen on bill</span>
             </div>
-            <Button className="w-full" size="lg" disabled={cart.length === 0} onClick={handleBill}>
-              <Receipt className="mr-2 h-4 w-4" /> Create Bill (Demo)
+          )}
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[28vh] lg:max-h-none">
+            {cart.length === 0 ? (
+              <p className="text-center text-muted-foreground text-sm py-8">Tap items to add to cart</p>
+            ) : cart.map(item => (
+              <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => updateQuantity(item.id, -1)} className="h-6 w-6 rounded border border-border flex items-center justify-center hover:bg-muted"><Minus className="h-3 w-3" /></button>
+                  <span className="text-sm w-5 text-center font-bold">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.id, 1)} className="h-6 w-6 rounded border border-border flex items-center justify-center hover:bg-muted"><Plus className="h-3 w-3" /></button>
+                  <button onClick={() => updateQuantity(item.id, -item.quantity)} className="h-6 w-6 rounded flex items-center justify-center text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Discount */}
+          {cart.length > 0 && (
+            <div className="px-3 py-2 border-t border-border">
+              <p className="text-xs text-muted-foreground mb-1.5 font-medium">Quick Discount</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {DISCOUNTS.map(d => (
+                  <button key={d.label} onClick={() => setSelectedDiscount(d)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${selectedDiscount.label === d.label ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/40'}`}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Summary & CTA */}
+          <div className="p-3 border-t border-border space-y-2">
+            {cart.length > 0 && (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-1 text-xs">
+                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>₹{subtotal}</span></div>
+                {discountAmt > 0 && <div className="flex justify-between text-green-600"><span>Discount ({selectedDiscount.label})</span><span>-₹{discountAmt}</span></div>}
+                {packaging > 0 && <div className="flex justify-between"><span>Packaging</span><span>+₹{packaging}</span></div>}
+                <div className="flex justify-between"><span className="text-muted-foreground">GST @5%</span><span>₹{gst}</span></div>
+                <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
+                  <span>Total</span><span className="text-primary">₹{total}</span>
+                </div>
+              </div>
+            )}
+            <Button className="w-full" size="lg" disabled={cart.length === 0} onClick={() => setShowPayment(true)}>
+              <Receipt className="mr-2 h-4 w-4" />
+              {cart.length === 0 ? 'Add Items to Cart' : `Collect Payment — ₹${total}`}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <SplitPaymentModal
+        open={showPayment}
+        onClose={() => setShowPayment(false)}
+        total={total}
+        onConfirm={handleConfirmPayment}
+      />
+      <ReceiptModal
+        open={showReceipt}
+        onClose={() => setShowReceipt(false)}
+        onNewOrder={handleNewOrder}
+        billNo={billCount}
+        cart={cart}
+        orderType={orderType}
+        tableNo={tableNo}
+        discount={selectedDiscount}
+        packagingCharge={packagingCharge}
+        splitPayment={lastSplit}
+        customerPhone={customerPhone}
+      />
     </div>
   );
 };
