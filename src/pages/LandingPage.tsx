@@ -2,13 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ShoppingCart, Monitor, QrCode, Wifi, WifiOff, MessageSquare,
   BarChart3, Users, Receipt, ChefHat, Globe, Shield,
   Check, Star, ArrowRight, Smartphone, Database, FileDown,
-  Zap, Phone
+  Zap, Phone, Menu
 } from 'lucide-react';
 import { RoiCalculator } from '@/components/landing/RoiCalculator';
 import { FeatureShowcaseTabs } from '@/components/landing/FeatureShowcaseTabs';
