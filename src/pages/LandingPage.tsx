@@ -160,7 +160,7 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground scroll-smooth">
+    <div className="min-h-screen w-full overflow-x-clip bg-background text-foreground scroll-smooth">
 
       {/* Promo Banner (dynamic) */}
       {config.promoBannerText && (
@@ -170,7 +170,7 @@ const LandingPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-xs transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
