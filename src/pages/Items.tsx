@@ -84,13 +84,13 @@ const DietaryBadge: React.FC<{ foodType?: string; allergen?: string }> = ({ food
     );
   }
   if (foodType === 'vegan') {
-    badges.push(<span key="vegan" className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-300 rounded px-1">?? Vegan</span>);
+    badges.push(<span key="vegan" className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-300 rounded px-1">🌱 Vegan</span>);
   }
   if (foodType === 'jain') {
-    badges.push(<span key="jain" className="text-[9px] font-bold text-orange-700 bg-orange-50 border border-orange-300 rounded px-1">?? Jain</span>);
+    badges.push(<span key="jain" className="text-[9px] font-bold text-orange-700 bg-orange-50 border border-orange-300 rounded px-1">🌿 Jain</span>);
   }
   if (allergen) {
-    badges.push(<span key="allergen" className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 rounded px-1">?? {allergen}</span>);
+    badges.push(<span key="allergen" className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 rounded px-1">⚠️ {allergen}</span>);
   }
   return <div className="flex gap-1 flex-wrap">{badges}</div>;
 };
@@ -986,7 +986,8 @@ const Items: React.FC = () => {
                     <Copy className="w-3.5 h-3.5" />
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Print Label" onClick={(e) => { e.stopPropagation(); setLabelPrintItem(item); }}><Printer className="w-3.5 h-3.5" /></Button>`n                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Print Label" onClick={(e) => { e.stopPropagation(); setLabelPrintItem(item); }}><Printer className="w-3.5 h-3.5" /></Button>
+                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
               </div>
             )}
           </div>
@@ -1091,7 +1092,8 @@ const Items: React.FC = () => {
               <Copy className="w-3.5 h-3.5" />
             </Button>
           )}
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Print Label" onClick={(e) => { e.stopPropagation(); setLabelPrintItem(item); }}><Printer className="w-3.5 h-3.5" /></Button>`n                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Print Label" onClick={(e) => { e.stopPropagation(); setLabelPrintItem(item); }}><Printer className="w-3.5 h-3.5" /></Button>
+                <EditItemDialog item={item} onItemUpdated={handleItemAdded} />
         </div>
       )}
     </div>
@@ -1115,7 +1117,8 @@ const Items: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          <button type="button" onClick={() => setShowHappyHour(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/20 text-xs font-semibold hover:bg-amber-100 transition-colors">? Happy Hour</button>`n          {/* List/Grid Toggle */}
+          <button type="button" onClick={() => setShowHappyHour(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/20 text-xs font-semibold hover:bg-amber-100 transition-colors"><Sparkles className="w-3.5 h-3.5" /> Happy Hour</button>
+          {/* List/Grid Toggle */}
           <div className="flex bg-muted rounded-lg p-0.5">
             <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
               <LayoutGrid className="w-4 h-4" />
@@ -1421,7 +1424,7 @@ const Items: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">MRP (?)</div>
+              <div className="text-xs text-muted-foreground mb-1">MRP (₹)</div>
               <input
                 type="number"
                 value={labelMrp || labelPrintItem?.price || ''}
@@ -1440,7 +1443,7 @@ const Items: React.FC = () => {
             </div>
             <div className="border border-dashed border-border rounded-lg p-3 text-center bg-white dark:bg-white text-black" id="label-preview">
               <div className="text-[10px] font-bold truncate">{labelPrintItem?.name}</div>
-              <div className="text-[16px] font-extrabold">?{labelMrp || labelPrintItem?.price}</div>
+              <div className="text-[16px] font-extrabold">₹{labelMrp || labelPrintItem?.price}</div>
               {labelPrintItem?.unit && <div className="text-[9px]">{labelPrintItem.unit}</div>}
               {labelExpiry && <div className="text-[9px]">Exp: {labelExpiry}</div>}
               <div className="font-mono text-[8px] mt-1 tracking-widest">{labelPrintItem?.barcode || labelPrintItem?.sku || labelPrintItem?.id?.slice(-8).toUpperCase()}</div>
@@ -1459,7 +1462,7 @@ const Items: React.FC = () => {
               }}
               className="w-full py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold"
             >
-              ??? Print Label
+              <Printer className="w-4 h-4 mr-1.5 inline" /> Print Label
             </button>
           </div>
         </DialogContent>
@@ -1467,7 +1470,7 @@ const Items: React.FC = () => {
 
       <Dialog open={showHappyHour} onOpenChange={setShowHappyHour}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>? Happy Hour Pricing</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Happy Hour Pricing</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {happyHours.length === 0 && (
               <div className="text-xs text-muted-foreground text-center py-4">No happy hour rules yet</div>
@@ -1476,7 +1479,7 @@ const Items: React.FC = () => {
               <div key={hh.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border">
                 <div>
                   <div className="text-sm font-medium">{hh.name}</div>
-                  <div className="text-xs text-muted-foreground">{hh.start_time} � {hh.end_time} � {hh.discount_percent}% off</div>
+                  <div className="text-xs text-muted-foreground">{hh.start_time} – {hh.end_time} · {hh.discount_percent}% off</div>
                 </div>
                 <button
                   type="button"

@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
+import { AiMediaGenerator } from '@/components/AiMediaGenerator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { Switch } from '@/components/ui/switch';
@@ -469,7 +470,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 <div className="space-y-1.5">
   <label className="text-xs font-medium text-muted-foreground">Dietary Type</label>
   <div className="flex gap-2 flex-wrap">
-    {[{v:'veg',l:'?? Veg'},{v:'non_veg',l:'?? Non-Veg'},{v:'vegan',l:'?? Vegan'},{v:'jain',l:'?? Jain'}].map(opt => (
+    {[{v:'veg',l:'🟢 Veg'},{v:'non_veg',l:'🔴 Non-Veg'},{v:'vegan',l:'🌱 Vegan'},{v:'jain',l:'🌿 Jain'}].map(opt => (
       <button
         key={opt.v}
         type="button"
@@ -862,6 +863,15 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
               itemId={`new-item-${Date.now()}`}
               hasPremiumAccess={hasPremiumAccess}
             />
+            <div className="mt-2">
+              <AiMediaGenerator
+                itemName={formData.name}
+                category={(formData as any).category}
+                onImage={(url) => setFormData(prev => ({ ...prev, media_type: 'image', video_url: '', image_url: url }))}
+                onGif={(url) => setFormData(prev => ({ ...prev, media_type: 'gif', image_url: '', video_url: url }))}
+              />
+            </div>
+
           </div>
 
           <div className="flex items-center space-x-2">

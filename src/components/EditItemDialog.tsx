@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Edit } from 'lucide-react';
 import { MediaUpload } from '@/components/MediaUpload';
+import { AiMediaGenerator } from '@/components/AiMediaGenerator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { formatStoredQuantity, getShortUnit, validateAndNormalizeQuickChips } from '@/utils/timeUtils';
@@ -441,7 +442,7 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
 <div className="space-y-1.5">
   <label className="text-xs font-medium text-muted-foreground">Dietary Type</label>
   <div className="flex gap-2 flex-wrap">
-    {[{v:'veg',l:'?? Veg'},{v:'non_veg',l:'?? Non-Veg'},{v:'vegan',l:'?? Vegan'},{v:'jain',l:'?? Jain'}].map(opt => (
+    {[{v:'veg',l:'🟢 Veg'},{v:'non_veg',l:'🔴 Non-Veg'},{v:'vegan',l:'🌱 Vegan'},{v:'jain',l:'🌿 Jain'}].map(opt => (
       <button
         key={opt.v}
         type="button"
@@ -865,6 +866,16 @@ export const EditItemDialog: React.FC<EditItemDialogProps> = ({ item, onItemUpda
                 itemId={item.id}
                 hasPremiumAccess={hasPremiumAccess}
               />
+              <div className="mt-2">
+                <AiMediaGenerator
+                  itemName={formData.name}
+                  category={(formData as any).category}
+                  itemId={item.id}
+                  onImage={(url) => setFormData(prev => ({ ...prev, media_type: 'image', video_url: '', image_url: url }))}
+                  onGif={(url) => setFormData(prev => ({ ...prev, media_type: 'gif', image_url: '', video_url: url }))}
+                />
+              </div>
+
             </div>
 
             <div className="flex items-center space-x-2">

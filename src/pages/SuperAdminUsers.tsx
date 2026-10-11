@@ -2350,6 +2350,24 @@ const SuperAdminUsers: React.FC = () => {
               />
             </div>
 
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-primary/5 hover:bg-primary/10 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">AI Item Image & 360° GIF</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">allow_ai_media</span>
+                </div>
+              </div>
+              <Switch
+                checked={selectedAdmin?.client_permissions?.['allow_ai_media'] === true}
+                onCheckedChange={(checked) => {
+                  if (selectedAdmin) handleTogglePermission(selectedAdmin.profile_id, 'allow_ai_media', checked);
+                }}
+              />
+            </div>
+
             <div className="flex items-center justify-between p-3 rounded-xl border bg-emerald-50/50 dark:bg-emerald-900/20 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center dark:bg-emerald-900/60">
