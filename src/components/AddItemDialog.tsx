@@ -469,7 +469,7 @@ export const AddItemDialog: React.FC<AddItemDialogProps> = ({ onItemAdded, exist
 <div className="space-y-1.5">
   <label className="text-xs font-medium text-muted-foreground">Dietary Type</label>
   <div className="flex gap-2 flex-wrap">
-    {[{v:'veg',l:'?? Veg'},{v:'non_veg',l:'?? Non-Veg'},{v:'vegan',l:'?? Vegan'},{v:'jain',l:'?? Jain'}].map(opt => (
+    {[{v:'veg',l:'🟢 Veg'},{v:'non_veg',l:'🔴 Non-Veg'},{v:'vegan',l:'🌱 Vegan'},{v:'jain',l:'🌿 Jain'}].map(opt => (
       <button
         key={opt.v}
         type="button"
