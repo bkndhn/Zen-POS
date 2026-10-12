@@ -18,3 +18,7 @@
 - [x] Remove stray 'n / ? marks on Items page
 - [x] Map newer pages (Kitchen Prep, Tokens, AI pages, Stock Adjustment) into permissions
 - [x] Free AI item photo + 360° GIF, gated by Super Admin "allow_ai_media"
+- [x] Landing page prices/text/contacts from Super Admin settings everywhere
+- [x] Super Admin-only client creation; self sign-ups start paused
+- [ ] Owner self-signup (cancelled by user: Super Admin adds clients)
+- [ ] Native Android/iOS install files (blocked: must be built on a computer with Android Studio / Xcode)
