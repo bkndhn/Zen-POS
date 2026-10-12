@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, TrendingUp, Clock, Zap } from 'lucide-react';
+import { useLandingConfig, priceToNumber } from '@/hooks/useLandingConfig';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-IN');
 
 export const RoiCalculator: React.FC<{ onStartTrial?: () => void }> = ({ onStartTrial }) => {
+  const cfg = useLandingConfig();
   const [dailyBills, setDailyBills] = useState(150);
   const [avgOrderValue, setAvgOrderValue] = useState(180);
   const [leakagePct, setLeakagePct] = useState(3.5);
@@ -16,7 +18,7 @@ export const RoiCalculator: React.FC<{ onStartTrial?: () => void }> = ({ onStart
   const wasteSaved = (monthlyRevenue * wastePct) / 100;
   const cashierHoursSaved = dailyBills * 0.8 * 30 / 60; // 0.8 min saved per bill
   const extraProfit = leakageSaved + wasteSaved;
-  const zenposMonthly = 1000;
+  const zenposMonthly = priceToNumber(cfg.monthlyPrice) || 1;
   const roi = extraProfit / zenposMonthly;
 
   return (
@@ -93,13 +95,13 @@ export const RoiCalculator: React.FC<{ onStartTrial?: () => void }> = ({ onStart
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Return on Investment (ROI)</p>
                   <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400">{roi.toFixed(1)}x</p>
-                  <p className="text-[11px] text-muted-foreground">vs ₹1,000/month ZenPOS subscription</p>
+                  <p className="text-[11px] text-muted-foreground">vs ₹{cfg.monthlyPrice}/month ZenPOS subscription</p>
                 </div>
               </CardContent>
             </Card>
 
             <Button className="w-full" size="lg" onClick={onStartTrial}>
-              Start 7-Day Free Pilot <ArrowRight className="ml-2 h-4 w-4" />
+              Start {cfg.pilotDays}-Day Free Pilot <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>

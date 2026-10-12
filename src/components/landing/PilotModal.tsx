@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useLandingConfig } from '@/hooks/useLandingConfig';
 
 const shopTypes = ['Restaurant', 'Juice Shop', 'Food Truck', 'Bakery', 'Grocery', 'Café', 'Cloud Kitchen'];
 
@@ -16,6 +17,7 @@ interface Props {
 
 export const PilotModal: React.FC<Props> = ({ open, onOpenChange }) => {
   const navigate = useNavigate();
+  const cfg = useLandingConfig();
   const [shopName, setShopName] = useState('');
   const [phone, setPhone] = useState('');
   const [shopType, setShopType] = useState('');
@@ -51,7 +53,7 @@ export const PilotModal: React.FC<Props> = ({ open, onOpenChange }) => {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            {submitted ? "🎉 You're all set!" : 'Start Your Free 7-Day Pilot'}
+            {submitted ? "🎉 You're all set!" : `Start Your Free ${cfg.pilotDays}-Day Pilot`}
           </DialogTitle>
         </DialogHeader>
 

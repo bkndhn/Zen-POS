@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, X, AlertCircle } from 'lucide-react';
+import { useLandingConfig } from '@/hooks/useLandingConfig';
 
 type Status = 'yes' | 'partial' | 'no';
 
@@ -49,7 +50,7 @@ export const CompetitorComparison: React.FC = () => {
                 <th className="text-left px-4 py-3 font-semibold text-foreground w-1/2">Feature</th>
                 <th className="text-center px-3 py-3 font-bold text-primary min-w-[90px]">
                   ZenPOS
-                  <div className="text-[10px] font-normal text-muted-foreground">₹1,000/mo</div>
+                  <div className="text-[10px] font-normal text-muted-foreground">₹{cfg.monthlyPrice}/mo</div>
                 </th>
                 <th className="text-center px-3 py-3 font-semibold text-foreground min-w-[90px]">
                   Petpooja / Posist

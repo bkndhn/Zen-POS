@@ -73,18 +73,7 @@ const LandingPage: React.FC = () => {
   const [showPilotModal, setShowPilotModal] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [config, setConfig] = useState<LandingConfig>(DEFAULT_CONFIG);
-
-  // Fetch dynamic landing config from super_admin_settings
-  useEffect(() => {
-    Promise.resolve((supabase.rpc as any)('get_public_landing_config'))
-      .then(({ data }: { data: unknown }) => {
-        if (data && typeof data === 'object') {
-          setConfig({ ...DEFAULT_CONFIG, ...(data as Partial<LandingConfig>) });
-        }
-      })
-      .catch(() => {/* silently use defaults */});
-  }, []);
+  const config: LandingConfig = useLandingConfig();
 
   useEffect(() => {
     if (!loading && profile) {

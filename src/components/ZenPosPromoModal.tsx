@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Phone, MessageSquare, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLandingConfig } from '@/hooks/useLandingConfig';
 
 interface ZenPosPromoModalProps {
   open: boolean;
@@ -9,8 +10,9 @@ interface ZenPosPromoModalProps {
 }
 
 export const ZenPosPromoModal: React.FC<ZenPosPromoModalProps> = ({ open, onOpenChange }) => {
-  const supportPhone = '9894451420';
-  const whatsappNumber = '919894451420';
+  const cfg = useLandingConfig();
+  const supportPhone = cfg.contactPhone;
+  const whatsappNumber = cfg.whatsappNumber;
   const whatsappMessage = encodeURIComponent(
     'Hi! I saw this digital menu and would like to get ZenPOS for my restaurant / food business. Please share details and setup pricing.'
   );
@@ -35,7 +37,7 @@ export const ZenPosPromoModal: React.FC<ZenPosPromoModalProps> = ({ open, onOpen
             'Instant QR Menu & WhatsApp Digital Invoicing',
             '100% Offline-First POS with Bluetooth Thermal Printing',
             'Live Kitchen Display (KDS) & Digital Token TV Screen',
-            'Free 7-Day Pilot — Zero Setup Fee & No Hardware Lock-in',
+            `Free ${cfg.pilotDays}-Day Pilot — Zero Setup Fee & No Hardware Lock-in`,
           ].map((feature, i) => (
             <div key={i} className="flex items-center gap-2.5 text-gray-700 dark:text-gray-300">
               <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
