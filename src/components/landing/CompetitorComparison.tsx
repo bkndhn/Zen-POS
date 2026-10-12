@@ -31,6 +31,7 @@ const StatusIcon: React.FC<{ s: Status; note?: string }> = ({ s, note }) => {
 };
 
 export const CompetitorComparison: React.FC = () => {
+  const cfg = useLandingConfig();
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? features : features.slice(0, 6);
 

@@ -79,6 +79,8 @@ export const EditLandingConfigDialog: React.FC<EditLandingConfigDialogProps> = (
         });
 
       if (error) throw error;
+      notifyLandingConfigUpdated();
+
 
       toast({
         title: 'Landing Page & Pricing Updated!',
