@@ -22,28 +22,7 @@ import { FeatureShowcaseTabs } from '@/components/landing/FeatureShowcaseTabs';
 import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
 import { PilotModal } from '@/components/landing/PilotModal';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface LandingConfig {
-  heroTitle: string;
-  heroSubtitle: string;
-  pilotDays: number;
-  monthlyPrice: string;
-  yearlyPrice: string;
-  contactPhone: string;
-  whatsappNumber: string;
-  promoBannerText?: string | null;
-}
-
-const DEFAULT_CONFIG: LandingConfig = {
-  heroTitle: 'Lightning POS & QR Ordering OS for Modern Food Businesses',
-  heroSubtitle: 'No hardware needed. Works offline. Tamil & English. Start billing in 2 minutes — from your phone or tablet.',
-  pilotDays: 7,
-  monthlyPrice: '1,000',
-  yearlyPrice: '10,000',
-  contactPhone: '9894451420',
-  whatsappNumber: '919894451420',
-  promoBannerText: null,
-};
+import { useLandingConfig, type LandingConfig } from '@/hooks/useLandingConfig';
 
 // ── Static Data ───────────────────────────────────────────────────────────────
 const features = [
