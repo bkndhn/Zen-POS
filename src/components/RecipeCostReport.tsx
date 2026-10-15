@@ -67,11 +67,22 @@ const RecipeCostReport: React.FC = () => {
     return () => { cancelled = true; };
   }, [adminProfileId, date]);
 
+  const [dayExpenses, setDayExpenses] = useState(0);
+  useEffect(() => {
+    if (!adminProfileId) return;
+    let cancelled = false;
+    Promise.resolve((supabase as any).from('expenses').select('amount').eq('admin_id', adminProfileId).eq('date', date))
+      .then(({ data }: any) => { if (!cancelled) setDayExpenses((data || []).reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0)); })
+      .catch(() => { if (!cancelled) setDayExpenses(0); });
+    return () => { cancelled = true; };
+  }, [adminProfileId, date]);
+
   const totals = useMemo(() => {
     const sales = rows.reduce((s, r) => s + r.sales, 0);
     const cost = rows.reduce((s, r) => s + r.cost, 0);
-    return { sales, cost, profit: sales - cost, pct: sales > 0 ? (cost / sales) * 100 : 0 };
-  }, [rows]);
+    const np = netProfit({ sales, foodCost: cost, expenses: dayExpenses });
+    return { sales, cost, profit: sales - cost, pct: sales > 0 ? (cost / sales) * 100 : 0, net: np.net, netPct: np.netMarginPct };
+  }, [rows, dayExpenses]);
 
   const exportCsv = () => {
     const head = 'Item,Qty sold,Sales,Cost per unit,Food cost,Gross profit,Margin %,Cost source';
