@@ -17,6 +17,7 @@ import { ShiftReconciliationHistory } from '@/components/ShiftReconciliationHist
 import { generateZReportPdf } from '@/utils/zReportPdf';
 import { printZReportThermal } from '@/utils/zReportPrinter';
 import { BlindShiftClose } from '@/components/BlindShiftClose';
+import { expectedDrawerCash } from '@/utils/shiftReconciliation';
 
 
 interface ZReportDialogProps {
@@ -42,6 +43,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     totalBills: number;
     branchName: string;
     shift?: any;
+    cashPaidOut: number;
   } | null>(null);
 
   useEffect(() => {
@@ -131,13 +133,26 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
          if (bData) bName = bData.name;
       }
 
+      // Cash expenses paid from the drawer during this shift reduce expected cash
+      let expQuery = supabase
+        .from('expenses')
+        .select('amount, payment_mode, created_at, date')
+        .eq('admin_id', adminId)
+        .eq('branch_id', branchId);
+      expQuery = shiftData?.opened_at ? expQuery.gte('created_at', shiftData.opened_at) : expQuery.eq('date', today);
+      const { data: expData } = await expQuery;
+      const cashPaidOut = (expData || [])
+        .filter((e: any) => !e.payment_mode || String(e.payment_mode).toLowerCase() === 'cash')
+        .reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+
       setReportData({
         date: format(new Date(), 'dd-MM-yyyy hh:mm a'),
         totalAmount: total,
         paymentTotals,
         totalBills: data?.length || 0,
         branchName: bName,
-        shift: shiftData
+        shift: shiftData,
+        cashPaidOut,
       });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -182,25 +197,32 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     }
   };
 
-  const handlePrint = async () => {
+  const expectedForShift = reportData?.shift
+    ? expectedDrawerCash({
+        openingCash: Number(reportData.shift.opening_cash) || 0,
+        cashSales: reportData.paymentTotals['cash'] || 0,
+        paidIn: Number(adjustments) || 0,
+        cashPaidOut: reportData.cashPaidOut,
+      })
+    : 0;
+
+  const handlePrint = async (countedCash?: number, countNotes?: string) => {
     if (!reportData) return;
 
     let cashSummary: { openingCash: number; expectedCash: number; actualCash: number; variance: number } | null = null;
 
     if (reportData.shift) {
-      if (!actualClosingCash || isNaN(Number(actualClosingCash))) {
-        toast({ title: 'Validation Error', description: 'Please enter the actual closing cash in drawer.', variant: 'destructive' });
-        return;
-      }
+      if (countedCash === undefined) { setBlindCloseOpen(true); return; }
       setIsClosingShift(true);
       try {
         const adminId = adminProfileId;
         const branchId = operatingBranchId || profile?.id;
         const openingCash = Number(reportData.shift.opening_cash) || 0;
         const cashSales = reportData.paymentTotals['cash'] || 0;
-        const adjustmentValue = Number(adjustments) || 0;
-        const expectedCash = openingCash + cashSales + adjustmentValue;
-        const actualCash = Number(actualClosingCash);
+        const adjustmentValue = (Number(adjustments) || 0) - reportData.cashPaidOut;
+        const expectedCash = expectedForShift;
+        const actualCash = countedCash;
+        const notesText = [countNotes, reconNotes].filter(Boolean).join(' · ');
 
         await supabase.from('shifts').update({
           status: 'closed',
@@ -226,7 +248,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           total_sales: reportData.totalAmount,
           total_bills: reportData.totalBills,
           payment_breakdown: reportData.paymentTotals as any,
-          notes: reconNotes || null,
+          notes: notesText || null,
         } as any);
         checkSupabaseResult('shift_reconciliations.insert', reconResult as any);
 
@@ -299,6 +321,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
             <div>Total Bills: ${reportData.totalBills}</div>
             <div class="line"></div>
             ${reportData.shift ? `<div class="row"><span>Opening Cash</span><span>Rs ${Number(reportData.shift.opening_cash).toFixed(2)}</span></div>` : ''}
+            ${cashSummary ? `<div class="row"><span>Cash Expenses</span><span>Rs ${reportData.cashPaidOut.toFixed(2)}</span></div><div class="row"><span>Expected Cash</span><span>Rs ${cashSummary.expectedCash.toFixed(2)}</span></div><div class="row"><span>Counted Cash</span><span>Rs ${cashSummary.actualCash.toFixed(2)}</span></div><div class="row bold"><span>Variance</span><span>Rs ${cashSummary.variance.toFixed(2)}</span></div><div class="line"></div>` : ''}
             <div class="row bold"><span>Total Sales</span><span>Rs ${reportData.totalAmount.toFixed(2)}</span></div>
             ${paymentRowsHTML}
             <div class="line"></div>
@@ -367,16 +390,15 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         
         {reportData && reportData.shift && (
           <div className="px-4 pb-4 space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase">Close Shift: Actual Cash in Drawer</Label>
-            <Input 
-              type="number" 
-              placeholder="0.00" 
-              value={actualClosingCash} 
-              onChange={(e) => setActualClosingCash(e.target.value)} 
-            />
-            <div className="text-[10px] text-muted-foreground">
-              Expected Cash: ₹{(Number(reportData.shift.opening_cash) + (reportData.paymentTotals['cash'] || 0)).toFixed(2)}
-            </div>
+            {reportData.cashPaidOut > 0 && (
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Cash expenses paid from drawer</span><span>−₹{reportData.cashPaidOut.toFixed(2)}</span>
+              </div>
+            )}
+            <Label className="text-xs text-muted-foreground uppercase">Cash added to drawer (paid-in, optional)</Label>
+            <Input type="number" placeholder="0" value={adjustments} onChange={(e) => setAdjustments(e.target.value)} />
+            <Input placeholder="Shift notes (optional)" value={reconNotes} onChange={(e) => setReconNotes(e.target.value)} />
+            <p className="text-[10px] text-muted-foreground">Expected cash stays hidden until the drawer is counted.</p>
           </div>
         )}
         <DialogFooter className="gap-2">
@@ -386,22 +408,19 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           <Button variant="outline" onClick={handleDownloadPdf} disabled={loading || !reportData}>
             <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
-          <Button variant="outline" onClick={() => setBlindCloseOpen(true)} disabled={loading || !reportData?.shift}>
-            🔒 Blind Count
-          </Button>
-          <Button onClick={handlePrint} disabled={loading || isClosingShift || !reportData || reportData.totalBills === 0}>
-            {isClosingShift ? "Closing Shift..." : "Close Shift & Print"}
+          <Button onClick={() => handlePrint()} disabled={loading || isClosingShift || !reportData || (!reportData.shift && reportData.totalBills === 0)}>
+            {isClosingShift ? "Closing Shift..." : reportData?.shift ? "🔒 Count Drawer & Close" : "Print Z-Report"}
           </Button>
         </DialogFooter>
 
         <ShiftReconciliationHistory open={historyOpen} onOpenChange={setHistoryOpen} />
-        {reportData?.shift && adminProfileId && (
+        {reportData?.shift && (
           <BlindShiftClose
             open={blindCloseOpen}
             onOpenChange={setBlindCloseOpen}
-            adminId={adminProfileId}
-            shiftId={reportData.shift.id}
-            expectedCash={Number(reportData.shift.opening_cash) + (reportData.paymentTotals['cash'] || 0)}
+            expectedCash={expectedForShift}
+            busy={isClosingShift}
+            onConfirm={async (cash, reason) => { await handlePrint(cash, reason); setBlindCloseOpen(false); }}
           />
         )}
       </DialogContent>

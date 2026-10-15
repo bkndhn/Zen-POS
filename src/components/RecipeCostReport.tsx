@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, Printer } from 'lucide-react';
+import { netProfit } from '@/utils/shiftReconciliation';
 
 interface Row { id: string; name: string; qty: number; sales: number; unitCost: number; cost: number; profit: number; hasRecipe: boolean; }
 
@@ -67,11 +68,22 @@ const RecipeCostReport: React.FC = () => {
     return () => { cancelled = true; };
   }, [adminProfileId, date]);
 
+  const [dayExpenses, setDayExpenses] = useState(0);
+  useEffect(() => {
+    if (!adminProfileId) return;
+    let cancelled = false;
+    Promise.resolve((supabase as any).from('expenses').select('amount').eq('admin_id', adminProfileId).eq('date', date))
+      .then(({ data }: any) => { if (!cancelled) setDayExpenses((data || []).reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0)); })
+      .catch(() => { if (!cancelled) setDayExpenses(0); });
+    return () => { cancelled = true; };
+  }, [adminProfileId, date]);
+
   const totals = useMemo(() => {
     const sales = rows.reduce((s, r) => s + r.sales, 0);
     const cost = rows.reduce((s, r) => s + r.cost, 0);
-    return { sales, cost, profit: sales - cost, pct: sales > 0 ? (cost / sales) * 100 : 0 };
-  }, [rows]);
+    const np = netProfit({ sales, foodCost: cost, expenses: dayExpenses });
+    return { sales, cost, profit: sales - cost, pct: sales > 0 ? (cost / sales) * 100 : 0, net: np.net, netPct: np.netMarginPct };
+  }, [rows, dayExpenses]);
 
   const exportCsv = () => {
     const head = 'Item,Qty sold,Sales,Cost per unit,Food cost,Gross profit,Margin %,Cost source';
@@ -126,6 +138,9 @@ const RecipeCostReport: React.FC = () => {
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total food cost</p><p className="text-lg font-bold text-destructive">₹{totals.cost.toFixed(0)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Gross profit</p><p className="text-lg font-bold text-success">₹{totals.profit.toFixed(0)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Food cost %</p><p className={`text-lg font-bold ${totals.pct > targetPct ? 'text-destructive' : ''}`}>{totals.pct.toFixed(1)}%</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Expenses (day)</p><p className="text-lg font-bold text-destructive">₹{dayExpenses.toFixed(0)}</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net profit</p><p className={`text-lg font-bold ${totals.net >= 0 ? 'text-success' : 'text-destructive'}`}>₹{totals.net.toFixed(0)}</p></CardContent></Card>
+        <Card className="col-span-2"><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net margin (after food cost & expenses)</p><p className={`text-lg font-bold ${totals.netPct >= 0 ? 'text-success' : 'text-destructive'}`}>{totals.netPct.toFixed(1)}%</p></CardContent></Card>
       </div>
       <Card>
         <CardHeader><CardTitle className="text-base">Dish-wise food cost · {format(new Date(date), 'dd MMM yyyy')}</CardTitle></CardHeader>
