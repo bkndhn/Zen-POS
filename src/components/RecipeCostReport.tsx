@@ -138,6 +138,9 @@ const RecipeCostReport: React.FC = () => {
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total food cost</p><p className="text-lg font-bold text-destructive">₹{totals.cost.toFixed(0)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Gross profit</p><p className="text-lg font-bold text-success">₹{totals.profit.toFixed(0)}</p></CardContent></Card>
         <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Food cost %</p><p className={`text-lg font-bold ${totals.pct > targetPct ? 'text-destructive' : ''}`}>{totals.pct.toFixed(1)}%</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Expenses (day)</p><p className="text-lg font-bold text-destructive">₹{dayExpenses.toFixed(0)}</p></CardContent></Card>
+        <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net profit</p><p className={`text-lg font-bold ${totals.net >= 0 ? 'text-success' : 'text-destructive'}`}>₹{totals.net.toFixed(0)}</p></CardContent></Card>
+        <Card className="col-span-2"><CardContent className="p-3"><p className="text-xs text-muted-foreground">Net margin (after food cost & expenses)</p><p className={`text-lg font-bold ${totals.netPct >= 0 ? 'text-success' : 'text-destructive'}`}>{totals.netPct.toFixed(1)}%</p></CardContent></Card>
       </div>
       <Card>
         <CardHeader><CardTitle className="text-base">Dish-wise food cost · {format(new Date(date), 'dd MMM yyyy')}</CardTitle></CardHeader>
