@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, Printer } from 'lucide-react';
+import { netProfit } from '@/utils/shiftReconciliation';
 
 interface Row { id: string; name: string; qty: number; sales: number; unitCost: number; cost: number; profit: number; hasRecipe: boolean; }
 
