@@ -42,6 +42,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     totalBills: number;
     branchName: string;
     shift?: any;
+    cashPaidOut: number;
   } | null>(null);
 
   useEffect(() => {
@@ -131,13 +132,26 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
          if (bData) bName = bData.name;
       }
 
+      // Cash expenses paid from the drawer during this shift reduce expected cash
+      let expQuery = supabase
+        .from('expenses')
+        .select('amount, payment_mode, created_at, date')
+        .eq('admin_id', adminId)
+        .eq('branch_id', branchId);
+      expQuery = shiftData?.opened_at ? expQuery.gte('created_at', shiftData.opened_at) : expQuery.eq('date', today);
+      const { data: expData } = await expQuery;
+      const cashPaidOut = (expData || [])
+        .filter((e: any) => !e.payment_mode || String(e.payment_mode).toLowerCase() === 'cash')
+        .reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+
       setReportData({
         date: format(new Date(), 'dd-MM-yyyy hh:mm a'),
         totalAmount: total,
         paymentTotals,
         totalBills: data?.length || 0,
         branchName: bName,
-        shift: shiftData
+        shift: shiftData,
+        cashPaidOut,
       });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -182,25 +196,32 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
     }
   };
 
-  const handlePrint = async () => {
+  const expectedForShift = reportData?.shift
+    ? expectedDrawerCash({
+        openingCash: Number(reportData.shift.opening_cash) || 0,
+        cashSales: reportData.paymentTotals['cash'] || 0,
+        paidIn: Number(adjustments) || 0,
+        cashPaidOut: reportData.cashPaidOut,
+      })
+    : 0;
+
+  const handlePrint = async (countedCash?: number, countNotes?: string) => {
     if (!reportData) return;
 
     let cashSummary: { openingCash: number; expectedCash: number; actualCash: number; variance: number } | null = null;
 
     if (reportData.shift) {
-      if (!actualClosingCash || isNaN(Number(actualClosingCash))) {
-        toast({ title: 'Validation Error', description: 'Please enter the actual closing cash in drawer.', variant: 'destructive' });
-        return;
-      }
+      if (countedCash === undefined) { setBlindCloseOpen(true); return; }
       setIsClosingShift(true);
       try {
         const adminId = adminProfileId;
         const branchId = operatingBranchId || profile?.id;
         const openingCash = Number(reportData.shift.opening_cash) || 0;
         const cashSales = reportData.paymentTotals['cash'] || 0;
-        const adjustmentValue = Number(adjustments) || 0;
-        const expectedCash = openingCash + cashSales + adjustmentValue;
-        const actualCash = Number(actualClosingCash);
+        const adjustmentValue = (Number(adjustments) || 0) - reportData.cashPaidOut;
+        const expectedCash = expectedForShift;
+        const actualCash = countedCash;
+        const notesText = [countNotes, reconNotes].filter(Boolean).join(' · ');
 
         await supabase.from('shifts').update({
           status: 'closed',
