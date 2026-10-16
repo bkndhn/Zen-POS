@@ -40,7 +40,7 @@ export const SuperAdminProfitAnalytics: React.FC<{ clients: Client[] }> = ({ cli
         if (!alive) return;
         setBills((b || []).map((r: any) => {
           const pd = r.payment_details && typeof r.payment_details === 'object' ? r.payment_details : null;
-          const split = pd?.split && typeof pd.split === 'object' ? pd.split : null;
+          const src = pd?.split && typeof pd.split === 'object' ? pd.split : pd; const split = src && Object.keys(src).some((k) => ['cash','upi','card','other'].includes(k)) ? src : null;
           return {
             total: Number(r.total_amount) || 0, paymentMode: r.payment_mode, due: Number(r.due_amount) || 0,
             createdAt: r.created_at, split,
