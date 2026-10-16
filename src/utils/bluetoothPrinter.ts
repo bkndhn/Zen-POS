@@ -704,9 +704,10 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
       try { parsedHeader = JSON.parse(cachedHeaderStr); } catch {}
     }
 
-    const receiptQrEnabled = data.receiptQrEnabled ?? parsedHeader.receiptQrEnabled ?? false;
-    const receiptQrType = data.receiptQrType || parsedHeader.receiptQrType || 'payment';
     const upiId = data.upiId || parsedHeader.upiId || '';
+    // Live UPI QR prints on every bill by default once a UPI ID is saved (owner can still turn it off).
+    const receiptQrEnabled = data.receiptQrEnabled ?? parsedHeader.receiptQrEnabled ?? !!upiId;
+    const receiptQrType = data.receiptQrType || parsedHeader.receiptQrType || 'payment';
     const upiName = data.upiName || parsedHeader.upiName || data.shopName || '';
     const telegram = data.telegram || parsedHeader.telegram || '';
 
@@ -715,7 +716,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
       
       if (receiptQrType === 'payment' && upiId) {
         // According to UPI Spec, we can pass &mode=02 for secure QR/Dine-In, which often locks amounts depending on the app.
-        const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR&mode=02`;
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${data.total.toFixed(2)}&tr=${data.billNo}&cu=INR&mode=02`;
         qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { margin: 1 });
       } else if (receiptQrType === 'social' && telegram) {
         qrCodeDataUrl = await QRCode.toDataURL(telegram, { margin: 1 });

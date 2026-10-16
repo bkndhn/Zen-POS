@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface LandingConfig {
   heroTitle: string;
   heroSubtitle: string;
+  heroHeadline: string;
+  heroHighlight: string;
   pilotDays: number;
   monthlyPrice: string;
   yearlyPrice: string;
@@ -14,6 +16,8 @@ export interface LandingConfig {
 
 export const DEFAULT_LANDING_CONFIG: LandingConfig = {
   heroTitle: 'Lightning POS & QR Ordering OS for Modern Food Businesses',
+  heroHeadline: 'Simple POS for',
+  heroHighlight: 'Small Restaurants',
   heroSubtitle: 'No hardware needed. Works offline. Tamil & English. Start billing in 2 minutes — from your phone or tablet.',
   pilotDays: 7,
   monthlyPrice: '1,000',

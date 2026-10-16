@@ -231,11 +231,11 @@ const LandingPage: React.FC = () => {
           </div>
 
           <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight break-words">
-            Simple POS for{' '}
-            <span className="relative">
-              <span className="text-primary">Small Restaurants</span>
+            {config.heroHeadline}{config.heroHighlight ? ' ' : ''}
+            {config.heroHighlight && <span className="relative">
+              <span className="text-primary">{config.heroHighlight}</span>
               <span className="absolute -bottom-1 left-0 right-0 h-1 bg-primary/20 rounded-full" />
-            </span>
+            </span>}
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             {config.heroSubtitle}
