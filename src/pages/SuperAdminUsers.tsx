@@ -24,6 +24,7 @@ import { SuperAdminStorageQuota } from '@/components/SuperAdminStorageQuota';
 import { BackendHealthCard } from '@/components/BackendHealthCard';
 import { PlatformPaymentSettings } from '@/components/PlatformPaymentSettings';
 import { AddUserDialog } from '@/components/AddUserDialog';
+import { SuperAdminProfitAnalytics } from '@/components/SuperAdminProfitAnalytics';
 import { EditLandingConfigDialog } from '@/components/EditLandingConfigDialog';
 import { Pencil, Sparkles, HardDrive, Plus, Pause, Trash2, AlertTriangle, Sliders, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1501,6 +1502,7 @@ const SuperAdminUsers: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="payments" className="space-y-6 mt-6 focus-visible:outline-none">
+            <SuperAdminProfitAnalytics clients={rows.filter((r) => r.role === 'admin').map((r) => ({ id: r.profile_id, name: r.hotel_name || r.shop_name || r.name }))} />
             <PlatformPaymentSettings />
           </TabsContent>
 

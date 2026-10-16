@@ -12,6 +12,8 @@ import { Globe, Save, Loader2, RefreshCw } from 'lucide-react';
 interface LandingConfig {
   heroTitle: string;
   heroSubtitle: string;
+  heroHeadline: string;
+  heroHighlight: string;
   pilotDays: number;
   monthlyPrice: string;
   yearlyPrice: string;
@@ -22,6 +24,8 @@ interface LandingConfig {
 
 const DEFAULT_CONFIG: LandingConfig = {
   heroTitle: 'Lightning POS & QR Ordering OS for Modern Food Businesses',
+  heroHeadline: 'Simple POS for',
+  heroHighlight: 'Small Restaurants',
   heroSubtitle: 'No hardware needed. Works offline. Tamil & English. Start billing in 2 minutes — from your phone or tablet.',
   pilotDays: 7,
   monthlyPrice: '1,000',
@@ -136,7 +140,21 @@ export const EditLandingConfigDialog: React.FC<EditLandingConfigDialogProps> = (
             {/* Hero Copy */}
             <div className="space-y-2">
               <div>
-                <Label className="text-xs font-semibold">Hero Badge / Main Title</Label>
+                <Label className="text-xs font-semibold">Main Headline (big text)</Label>
+                <Input
+                  value={config.heroHeadline}
+                  onChange={(e) => setConfig({ ...config, heroHeadline: e.target.value })}
+                  placeholder="Simple POS for"
+                  className="h-9 text-xs mb-2"
+                />
+                <Label className="text-xs font-semibold">Headline Highlight (coloured words)</Label>
+                <Input
+                  value={config.heroHighlight}
+                  onChange={(e) => setConfig({ ...config, heroHighlight: e.target.value })}
+                  placeholder="Small Restaurants"
+                  className="h-9 text-xs mb-2"
+                />
+                <Label className="text-xs font-semibold">Hero Badge (small pill above headline)</Label>
                 <Input
                   value={config.heroTitle}
                   onChange={(e) => setConfig({ ...config, heroTitle: e.target.value })}
