@@ -67,7 +67,7 @@ export const OwnerProfitAnalytics: React.FC<{ adminId: string }> = ({ adminId })
     <Card className="rounded-2xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base"><TrendingUp className="w-4 h-4 text-primary" /> Profit & Tender Reconciliation</CardTitle>
-        <CardDescription className="text-xs">Hourly profit, gross margin and payment-type totals per client shop.</CardDescription>
+        <CardDescription className="text-xs">Hourly profit, gross margin and payment-type totals for your shop.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
