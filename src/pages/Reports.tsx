@@ -2005,67 +2005,7 @@ const Reports: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="menu_matrix" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">📊 Menu Engineering Matrix</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {/* Stars */}
-                <div className="rounded-xl border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20 p-3">
-                  <div className="font-bold text-sm text-yellow-700 dark:text-yellow-400 mb-2">⭐ Stars <span className="text-xs font-normal">(High Revenue + High Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Star').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Star').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')} · {item.qty}x</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-yellow-600 mt-1">✅ Promote heavily — your best sellers</div>
-                </div>
-                {/* Plowhorses */}
-                <div className="rounded-xl border border-blue-300 bg-blue-50 dark:bg-blue-950/20 p-3">
-                  <div className="font-bold text-sm text-blue-700 dark:text-blue-400 mb-2">🐎 Plowhorses <span className="text-xs font-normal">(Low Revenue + High Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Plowhorse').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Plowhorse').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')}</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-blue-600 mt-1">💡 Raise price slightly or optimize ingredients</div>
-                </div>
-                {/* Puzzles */}
-                <div className="rounded-xl border border-purple-300 bg-purple-50 dark:bg-purple-950/20 p-3">
-                  <div className="font-bold text-sm text-purple-700 dark:text-purple-400 mb-2">🔮 Puzzles <span className="text-xs font-normal">(High Revenue + Low Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Puzzle').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Puzzle').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')}</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-purple-600 mt-1">📢 Feature in combos or redesign menu placement</div>
-                </div>
-                {/* Dogs */}
-                <div className="rounded-xl border border-muted bg-muted/20 p-3">
-                  <div className="font-bold text-sm text-muted-foreground mb-2">🐕 Dogs <span className="text-xs font-normal">(Low Revenue + Low Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Dog').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Dog').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">{item.qty}x sold</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-muted-foreground mt-1">🗑️ Consider dropping or deep discounting</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <MenuEngineeringMatrix lines={menuSaleLines} />
         </TabsContent>
 
         <TabsContent value="bills" className="mt-4">
