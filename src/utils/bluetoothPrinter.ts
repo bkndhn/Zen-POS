@@ -706,7 +706,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
 
     const upiId = data.upiId || parsedHeader.upiId || '';
     // Live UPI QR prints on every bill by default once a UPI ID is saved (owner can still turn it off).
-    const receiptQrEnabled = data.receiptQrEnabled ?? parsedHeader.receiptQrEnabled ?? !!upiId;
+    const receiptQrEnabled = (data.receiptQrEnabled ?? parsedHeader.receiptQrEnabled ?? false) && !!upiId;
     const receiptQrType = data.receiptQrType || parsedHeader.receiptQrType || 'payment';
     const upiName = data.upiName || parsedHeader.upiName || data.shopName || '';
     const telegram = data.telegram || parsedHeader.telegram || '';

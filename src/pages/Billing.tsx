@@ -1434,7 +1434,7 @@ const Billing = () => {
           printerWidth: parsed.printerWidth || '58mm',
           qrPaymentEnabled: parsed.qrPaymentEnabled || false,
           telegram: parsed.telegram || '',
-          receiptQrEnabled: parsed.receiptQrEnabled || !!parsed.upiId,
+          receiptQrEnabled: !!parsed.receiptQrEnabled && !!parsed.upiId,
           receiptQrType: parsed.receiptQrType || 'payment',
           upiId: parsed.upiId || '',
           upiName: parsed.upiName || ''
@@ -1534,7 +1534,7 @@ const Billing = () => {
           defaultOrderType: (data as any).default_order_type || undefined,
           qrPaymentEnabled: data.qr_payment_enabled || false,
           telegram: data.telegram || '',
-          receiptQrEnabled: data.receipt_qr_enabled || !!data.upi_id,
+          receiptQrEnabled: !!data.receipt_qr_enabled && !!data.upi_id,
           receiptQrType: data.receipt_qr_type || 'payment',
           upiId: data.upi_id || '',
           upiName: data.upi_name || '',

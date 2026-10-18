@@ -12,8 +12,8 @@ interface Client { id: string; name: string }
 const today = () => new Date().toISOString().slice(0, 10);
 const inr = (n: number) => `₹${(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
-export const SuperAdminProfitAnalytics: React.FC<{ clients: Client[] }> = ({ clients }) => {
-  const [clientId, setClientId] = useState<string>('');
+export const OwnerProfitAnalytics: React.FC<{ adminId: string }> = ({ adminId }) => {
+  const clientId = adminId;
   const [from, setFrom] = useState(today());
   const [to, setTo] = useState(today());
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,6 @@ export const SuperAdminProfitAnalytics: React.FC<{ clients: Client[] }> = ({ cli
   const [expenses, setExpenses] = useState({ total: 0, cash: 0 });
   const [error, setError] = useState('');
 
-  useEffect(() => { if (!clientId && clients[0]) setClientId(clients[0].id); }, [clients, clientId]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -73,10 +72,6 @@ export const SuperAdminProfitAnalytics: React.FC<{ clients: Client[] }> = ({ cli
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div><Label className="text-xs">Client</Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Select client" /></SelectTrigger>
-              <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
           </div>
           <div><Label className="text-xs">From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9" /></div>
           <div><Label className="text-xs">To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9" /></div>
