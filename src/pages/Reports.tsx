@@ -1,4 +1,5 @@
 import RecipeCostReport from '@/components/RecipeCostReport';
+import MenuEngineeringMatrix from '@/components/MenuEngineeringMatrix';
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1497,24 +1498,17 @@ const Reports: React.FC = () => {
   const netCashFlow = totalSales - totalPurchasePayments - totalExpenses;
   const profit = netProfit;
 
-  // Menu Engineering: compute per-item popularity and profitability
-  const menuMatrixData = useMemo(() => {
-    if (!itemReports || itemReports.length === 0) return [];
-    const avgRevenue = itemReports.reduce((s: number, i: any) => s + (i.total_revenue || 0), 0) / itemReports.length;
-    const avgQty = itemReports.reduce((s: number, i: any) => s + (i.total_quantity || 0), 0) / itemReports.length;
-    return itemReports.map((item: any) => {
-      const revenue = item.total_revenue || 0;
-      const qty = item.total_quantity || 0;
-      const isHighRevenue = revenue > avgRevenue;
-      const isHighPopularity = qty > avgQty;
-      let quadrant: 'Star' | 'Plowhorse' | 'Puzzle' | 'Dog';
-      if (isHighRevenue && isHighPopularity) quadrant = 'Star';
-      else if (!isHighRevenue && isHighPopularity) quadrant = 'Plowhorse';
-      else if (isHighRevenue && !isHighPopularity) quadrant = 'Puzzle';
-      else quadrant = 'Dog';
-      return { name: item.item_name, quadrant, revenue, qty };
-    });
-  }, [itemReports]);
+  // Menu Engineering: sale lines with purchase cost, scoped to this shop's bills
+  const menuSaleLines = useMemo(() => activeBills.flatMap(b => (b.bill_items || []).map(bi => {
+    const raw = bi.items?.name || bi.item_name_override || 'Item';
+    return {
+      name: raw.startsWith('Calci ') ? raw.replace(/^Calci /, '') : raw,
+      category: bi.items?.category,
+      quantity: Number(bi.quantity) || 0,
+      total: Number(bi.total) || 0,
+      unitCost: Number(bi.items?.purchase_rate) || 0,
+    };
+  })), [activeBills]);
 
   const handleExportAllExcel = () => {
     try {
@@ -2005,67 +1999,7 @@ const Reports: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="menu_matrix" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">📊 Menu Engineering Matrix</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {/* Stars */}
-                <div className="rounded-xl border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20 p-3">
-                  <div className="font-bold text-sm text-yellow-700 dark:text-yellow-400 mb-2">⭐ Stars <span className="text-xs font-normal">(High Revenue + High Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Star').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Star').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')} · {item.qty}x</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-yellow-600 mt-1">✅ Promote heavily — your best sellers</div>
-                </div>
-                {/* Plowhorses */}
-                <div className="rounded-xl border border-blue-300 bg-blue-50 dark:bg-blue-950/20 p-3">
-                  <div className="font-bold text-sm text-blue-700 dark:text-blue-400 mb-2">🐎 Plowhorses <span className="text-xs font-normal">(Low Revenue + High Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Plowhorse').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Plowhorse').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')}</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-blue-600 mt-1">💡 Raise price slightly or optimize ingredients</div>
-                </div>
-                {/* Puzzles */}
-                <div className="rounded-xl border border-purple-300 bg-purple-50 dark:bg-purple-950/20 p-3">
-                  <div className="font-bold text-sm text-purple-700 dark:text-purple-400 mb-2">🔮 Puzzles <span className="text-xs font-normal">(High Revenue + Low Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Puzzle').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Puzzle').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">₹{Math.round(item.revenue).toLocaleString('en-IN')}</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-purple-600 mt-1">📢 Feature in combos or redesign menu placement</div>
-                </div>
-                {/* Dogs */}
-                <div className="rounded-xl border border-muted bg-muted/20 p-3">
-                  <div className="font-bold text-sm text-muted-foreground mb-2">🐕 Dogs <span className="text-xs font-normal">(Low Revenue + Low Popularity)</span></div>
-                  {menuMatrixData.filter((i: any) => i.quadrant === 'Dog').length === 0
-                    ? <div className="text-xs text-muted-foreground">None yet</div>
-                    : menuMatrixData.filter((i: any) => i.quadrant === 'Dog').slice(0, 6).map((item: any) => (
-                      <div key={item.name} className="flex justify-between text-xs py-0.5">
-                        <span>{item.name}</span>
-                        <span className="text-muted-foreground">{item.qty}x sold</span>
-                      </div>
-                    ))}
-                  <div className="text-[10px] text-muted-foreground mt-1">🗑️ Consider dropping or deep discounting</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <MenuEngineeringMatrix lines={menuSaleLines} />
         </TabsContent>
 
         <TabsContent value="bills" className="mt-4">
