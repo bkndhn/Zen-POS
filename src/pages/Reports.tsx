@@ -1,4 +1,5 @@
 import RecipeCostReport from '@/components/RecipeCostReport';
+import MenuEngineeringMatrix from '@/components/MenuEngineeringMatrix';
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1497,24 +1498,17 @@ const Reports: React.FC = () => {
   const netCashFlow = totalSales - totalPurchasePayments - totalExpenses;
   const profit = netProfit;
 
-  // Menu Engineering: compute per-item popularity and profitability
-  const menuMatrixData = useMemo(() => {
-    if (!itemReports || itemReports.length === 0) return [];
-    const avgRevenue = itemReports.reduce((s: number, i: any) => s + (i.total_revenue || 0), 0) / itemReports.length;
-    const avgQty = itemReports.reduce((s: number, i: any) => s + (i.total_quantity || 0), 0) / itemReports.length;
-    return itemReports.map((item: any) => {
-      const revenue = item.total_revenue || 0;
-      const qty = item.total_quantity || 0;
-      const isHighRevenue = revenue > avgRevenue;
-      const isHighPopularity = qty > avgQty;
-      let quadrant: 'Star' | 'Plowhorse' | 'Puzzle' | 'Dog';
-      if (isHighRevenue && isHighPopularity) quadrant = 'Star';
-      else if (!isHighRevenue && isHighPopularity) quadrant = 'Plowhorse';
-      else if (isHighRevenue && !isHighPopularity) quadrant = 'Puzzle';
-      else quadrant = 'Dog';
-      return { name: item.item_name, quadrant, revenue, qty };
-    });
-  }, [itemReports]);
+  // Menu Engineering: sale lines with purchase cost, scoped to this shop's bills
+  const menuSaleLines = useMemo(() => activeBills.flatMap(b => (b.bill_items || []).map(bi => {
+    const raw = bi.items?.name || bi.item_name_override || 'Item';
+    return {
+      name: raw.startsWith('Calci ') ? raw.replace(/^Calci /, '') : raw,
+      category: bi.items?.category,
+      quantity: Number(bi.quantity) || 0,
+      total: Number(bi.total) || 0,
+      unitCost: Number(bi.items?.purchase_rate) || 0,
+    };
+  })), [activeBills]);
 
   const handleExportAllExcel = () => {
     try {
