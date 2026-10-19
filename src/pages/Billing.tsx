@@ -48,6 +48,7 @@ import { useWeighingScale } from '@/hooks/useWeighingScale';
 import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils/antiTheft';
 import { VoidBillDialog } from '@/components/VoidBillDialog';
 import { invalidateRelatedData } from '@/utils/cacheUtils';
+import { QuickCounterPad } from '@/components/QuickCounterPad';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -1006,6 +1007,8 @@ const Billing = () => {
   const syncChannelRef = useRef<any>(null);
   const calciInputRef = useRef<HTMLInputElement>(null);
   const fastCashPendingRef = useRef(false);
+  const paymentInFlightRef = useRef(false);
+  const [counterBusy, setCounterBusy] = useState(false);
 
   useEffect(() => {
     if (appBillingMode === 'calci') {
@@ -2946,14 +2949,16 @@ const Billing = () => {
     handleCompletePayment({
       paymentMethod: cashType,
       paymentAmounts: { [cashType]: currentTotal },
-      discount: 0,
+      discount,
       discountType: 'flat',
-      additionalCharges: additionalCharges.map(c => ({
+      additionalCharges: additionalCharges.filter(c => c.is_default).map(c => ({
         name: c.name,
         amount: c.amount,
         enabled: c.is_default
       })),
-      orderType: defaultOrderType || 'dine_in'
+      orderType: defaultOrderType || 'dine_in',
+      printAction: 'print',
+      localFirst: true
     });
   };
 
@@ -2974,7 +2979,11 @@ const Billing = () => {
     customerGstin?: string;
     orderType?: 'dine_in' | 'parcel';
     printAction?: 'print' | 'no-print';
+    localFirst?: boolean;
   }) => {
+    if (paymentInFlightRef.current) return;
+    paymentInFlightRef.current = true;
+    setCounterBusy(true);
     setPaymentDialogOpen(false);
 
     const finalCart = paymentData.finalItems || cart;
@@ -3001,10 +3010,8 @@ const Billing = () => {
       // ======= ZERO-LATENCY BILL NUMBER GENERATION =======
       // Uses shared utility for unified bill numbering across POS and table orders
 
-      if (!isOffline) {
-        await syncBillCounter(adminId, operatingBranchId);
-      }
-      const billNumber = isOffline ? `BILL-OFF-${Date.now()}` : getInstantBillNumber(adminId, operatingBranchId);
+      // Counter initialization warms the number; never wait on a server fetch at checkout.
+      const billNumber = getInstantBillNumber(adminId, operatingBranchId);
 
       const now = new Date();
       const subtotal = validCart.reduce((sum, item) => {
@@ -3114,7 +3121,10 @@ const Billing = () => {
       const isLocalOnlyMode = superAdminBlockedCloud || privacyMode === 'local';
       
       // OFFLINE MODE or LOCAL-ONLY MODE - Use PendingBill system (IndexedDB only)
-      if (isOffline || isLocalOnlyMode) {
+      if (isOffline || isLocalOnlyMode || paymentData.localFirst) {
+        const license = checkOfflineLicenseStatus();
+        if (!license.isValid) throw new Error('Connect to verify your subscription before billing.');
+        if (!adminId || !profile?.user_id || profile.role === 'super_admin') throw new Error('Sign in to your restaurant account before billing.');
         const { offlineManager } = await import('@/utils/offlineManager');
 
         const pendingBillId = `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -3125,6 +3135,8 @@ const Billing = () => {
           const billItem: any = {
             item_id: String(item.id).startsWith('calci-') ? null : item.id,
             name: item.name,
+            base_value: baseValue,
+            unit: item.unit || 'pcs',
             quantity: item.quantity,
             price: item.price,
             total: lineTotal,
@@ -3167,6 +3179,9 @@ const Billing = () => {
           customer_gstin: paymentData.customerGstin || null,
           customer_mobile: paymentData.customerMobile || null,
           customer_phone: paymentData.customerMobile || null,
+          channel: orderChannel,
+          service_status: 'pending',
+          kitchen_status: 'pending',
           items: pendingBillItems
         };
 
@@ -3189,7 +3204,7 @@ const Billing = () => {
               is_active: true
             }
           }))
-        });
+        }).catch(error => console.warn('Bill is durable; report cache refresh deferred:', error));
 
         // Trigger local custom event to update reports dashboard
         window.dispatchEvent(new CustomEvent('bills-updated'));
@@ -3198,7 +3213,7 @@ const Billing = () => {
         setTimeout(() => bc.close(), 100);
 
         toast({
-          title: isLocalOnlyMode && !isOffline ? "🔒 Bill Saved Locally" : "📴 Bill Saved Offline",
+          title: isLocalOnlyMode && !isOffline ? "Bill Saved Locally" : isOffline ? "Bill Saved Offline" : "Bill Saved",
           description: isLocalOnlyMode && !isOffline 
             ? `${billNumber} saved to this device only (Local Only mode).`
             : `${billNumber} queued. Will sync when online.`,
@@ -3208,7 +3223,7 @@ const Billing = () => {
         clearCart();
 
         // Try print in offline mode ONLY if auto-print is enabled
-        const offlineAutoPrintEnabled = (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
+        const offlineAutoPrintEnabled = paymentData.printAction ? paymentData.printAction === 'print' : (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
         if (offlineAutoPrintEnabled) {
           try {
             const offlinePrintData = {
@@ -3253,7 +3268,10 @@ const Billing = () => {
               fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(operatingBranchId),
               footerMessage: billSettings?.billBottomText || getStoredFooterMessage(operatingBranchId)
             };
-            await printReceipt(offlinePrintData as PrintData);
+            void printReceipt(offlinePrintData as PrintData).then(ok => {
+              if (!ok) sonnerToast.warning('Bill saved; receipt awaiting printer', { description: 'Reconnect the printer before retrying the receipt.' });
+              else if (Object.keys(getStationMap()).length > 0) void printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, billSettings);
+            }).catch(() => sonnerToast.error('Bill saved, but receipt was not printed'));
           } catch (printError) {
             console.log('Print skipped while offline:', printError);
           }
@@ -3504,6 +3522,9 @@ const Billing = () => {
         description: error.message || "Failed to save bill. Check connection.",
         variant: "destructive"
       });
+    } finally {
+      paymentInFlightRef.current = false;
+      setCounterBusy(false);
     }
   };
 
@@ -3797,6 +3818,9 @@ const Billing = () => {
             </div>
           </div>
 
+          <QuickCounterPad value={calciInput} onChange={setCalciInput} onCash={handleFastCash} busy={counterBusy} prices={recentCalciPrices} />
+          {/* Legacy calculator controls retained while existing item shortcuts are active. */}
+          <div className="hidden">
           {/* Desktop: text input with keyboard */}
           <div className="hidden md:block">
             <div className="relative flex items-center">
@@ -3892,6 +3916,7 @@ const Billing = () => {
             <p className="text-xs text-muted-foreground mt-2 px-1 text-center">
               Type amounts like <span className="font-mono bg-muted px-1 rounded">10+25+2×15</span> then tap Add
             </p>
+          </div>
           </div>
         </div>
       ) : (
