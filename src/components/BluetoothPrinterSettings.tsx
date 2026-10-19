@@ -14,6 +14,7 @@ import { Printer, Bluetooth, AlertCircle, CheckCircle2, RefreshCw, FileText, Zap
 import { usePrinter } from '@/hooks/usePrinter';
 import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS, setStationMap } from '@/utils/stationPrinters';
 import { printerManager, PrinterManager } from '@/utils/printerManager';
+import { ReceiptCalibrationControls } from '@/components/ReceiptCalibrationControls';
 
 
 // Local storage key for device persistence
@@ -602,6 +603,7 @@ export const BluetoothPrinterSettings: React.FC = () => {
                 </div>
               )}
 
+              <ReceiptCalibrationControls />
               {/* Advanced routing is only relevant after a station mapping exists. */}
               {Object.keys(getStationMap()).length > 0 && <StationPrinterMap />}
             </div>
