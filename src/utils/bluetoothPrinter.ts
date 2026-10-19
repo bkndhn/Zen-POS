@@ -1,6 +1,7 @@
 import { isBillNumberHidden } from './printerConfig';
 import QRCode from 'qrcode';
 import { getStoredFooterMessage } from './billFontUtils';
+import { getReceiptCalibration, calibrationCommands } from './receiptCalibration';
 
 // ESC/POS Commands
 const ESC = 0x1B;
@@ -391,6 +392,8 @@ const formatLine = (left: string, right: string, width: number = 32): string => 
 // Export the receipt byte generation for use by PrinterManager
 export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array> => {
   const commands: Uint8Array[] = [];
+  const calibration = { ...getReceiptCalibration(), ...(data.printerWidth ? { width: data.printerWidth } : {}) };
+  const paper = calibrationCommands(calibration);
 
   // Handle Font Styles for ESC/POS
   const isCondensed = data.fontFamily?.toLowerCase().includes('condensed') || data.fontFamily === 'Oswald' || data.fontFamily === 'Fjalla One';
@@ -398,15 +401,15 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   const isSmallFont = data.fontScale && data.fontScale <= 0.8;
 
   // COMPACT mode: 58mm = 32 chars, 80mm = 48 chars
-  let LINE_WIDTH = data.printerWidth === '80mm' ? 48 : 32;
+  let LINE_WIDTH = paper.columns;
 
   if (isDoubleWidth) {
     LINE_WIDTH = Math.floor(LINE_WIDTH / 2);
   } else if (isCondensed || isSmallFont) {
-    LINE_WIDTH = data.printerWidth === '80mm' ? 64 : 42; // Font B allows more chars
+    LINE_WIDTH = (calibration.width === '80mm' ? 64 : 42) - calibration.leftMarginChars;
   }
 
-  const IMAGE_WIDTH = data.printerWidth === '80mm' ? 576 : 384;
+  const IMAGE_WIDTH = paper.columns * 12;
   const SEP = '-'.repeat(LINE_WIDTH);
   const SEP_DOUBLE = '='.repeat(LINE_WIDTH);
 
@@ -431,7 +434,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
       const shortName = item.name.length > maxName ? item.name.substring(0, maxName) : item.name;
       return padRight(shortName, maxName) + ' ' + right;
     } else {
-      return `${item.name}\n${' '.repeat(LINE_WIDTH - right.length)}${right}`;
+      return `${item.name}\n${' '.repeat(Math.max(0, LINE_WIDTH - right.length))}${right}`;
     }
   };
 
@@ -441,6 +444,7 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   // Robust Initialization Sequence
   commands.push(new Uint8Array([0x00, 0x00, 0x00])); // Flush hanging GBK/UTF-8 bytes from previous crashed jobs
   commands.push(INIT);                               // ESC @ (Initialize printer)
+  commands.push(paper.setup);
   commands.push(new Uint8Array([0x1C, 0x2E]));       // FS . (Cancel Kanji mode to prevent swallowing standard ASCII)
   commands.push(new Uint8Array([0x1B, 0x74, 0x00])); // ESC t 0 (Select PC437 code page)
 
@@ -747,20 +751,8 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   commands.push(textToBytes(footerMsg));
   commands.push(FEED_LINE);
 
-  // Check if autoCut is enabled in localStorage
-  const autoCut = localStorage.getItem('hotel_pos_auto_cut') !== 'false';
-
-
-  
-  if (autoCut) {
-    // Feed text past cutter blade so footer is fully visible
-    commands.push(FEED_LINES(paperSaving ? 2 : 3));
-    commands.push(CUT_FULL); // Standard GS V 0 cut command
-    commands.push(CUT_ALT);  // ESC i cut command (supported by Xprinter, Sunmi, Bixolon, ZKP)
-  } else {
-    // Feed to tear-bar without cutting
-    commands.push(FEED_LINES(paperSaving ? 3 : 4));
-  }
+  // One cutter command only; the device's feed setting protects the footer.
+  commands.push(paper.finish);
 
   // Combine all commands
   const totalLength = commands.reduce((sum, arr) => sum + arr.length, 0);
