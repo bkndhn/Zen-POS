@@ -30,6 +30,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StorageUsageSettings } from '@/components/StorageUsageSettings';
 import { OfflineLifecycleCard } from '@/components/OfflineLifecycleCard';
+import { SyncOutboxCard } from '@/components/SyncOutboxCard';
 import { DevicePrefixSettings } from '@/components/DevicePrefixSettings';
 import { LocalBackupSettings } from '@/components/LocalBackupSettings';
 import { AggregatorIntegrationSettings } from '@/components/AggregatorIntegrationSettings';
@@ -618,6 +619,7 @@ const Settings = () => {
 
             <div className={cn("space-y-4 sm:space-y-6 mt-0", (!searchQuery.trim() && activeTab !== "preferences") ? "hidden" : "block")}>
               {/* Offline lifecycle dashboard */}
+              <SearchableSection title="Bills waiting to upload" keywords="offline sync unsynced failed outbox upload backup" searchQuery={searchQuery}><SyncOutboxCard /></SearchableSection>
               <SearchableSection title="Offline Lifecycle" keywords="offline queue sync cached rows sqlite indexeddb pending writes" searchQuery={searchQuery}><OfflineLifecycleCard /></SearchableSection>
 
               {/* Local Backup Settings */}
