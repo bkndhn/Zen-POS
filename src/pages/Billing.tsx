@@ -3180,6 +3180,7 @@ const Billing = () => {
           customer_mobile: paymentData.customerMobile || null,
           customer_phone: paymentData.customerMobile || null,
           channel: orderChannel,
+          billing_type: appBillingMode,
           service_status: 'pending',
           kitchen_status: 'pending',
           items: pendingBillItems

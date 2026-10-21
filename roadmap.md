@@ -1,8 +1,9 @@
 # Roadmap
-- [ ] Quick calculator checkout using the existing billing rules and local durable save
-- [ ] Automatic offline bill replay with original bill numbers and atomic bill/stock creation
-- [ ] Receipt width, margin, feed and cutter calibration with a test ticket
-- [ ] Verify counter and sync tests; physical printer and signed-in shop checks require hardware/access
+- [x] Quick calculator checkout using the existing billing rules and local durable save
+- [x] Automatic offline bill replay with original bill numbers and atomic bill/stock creation
+- [x] Receipt width, margin, feed and cutter calibration with a test ticket
+- [x] Verify counter and sync tests
+- [ ] Physical printer test and signed-in shop sale (blocked: needs your printer and a signed-in shop)
 - [x] Verify live identity semantics and tax-rate data
 - [x] Enforce tax-rate tenant foreign key
 - [x] Standardize frontend tenant/auth identifiers and add tests
