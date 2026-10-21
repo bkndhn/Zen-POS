@@ -56,8 +56,15 @@ export interface PendingBill {
         tax_rate_snapshot?: number | null;
         hsn_code?: string | null;
         tax_amount?: number | null;
+        base_value?: number;
+        unit?: string;
+        selling_unit?: string;
+        billing_type?: string;
+        item_name_override?: string;
     }>;
     table_no?: string | null;
+    channel?: string;
+    billing_type?: string;
     synced: boolean;
     syncError?: string;
     retries: number;
