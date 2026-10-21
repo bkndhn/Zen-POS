@@ -1059,93 +1059,39 @@ class OfflineManager {
         }
         // --- End Data Privacy Check ---
 
-        // Sanitize payment mode to match Supabase payment_method enum: cash, card, upi, other
-        let finalPaymentMode = bill.payment_mode ? bill.payment_mode.toLowerCase() : 'cash';
-        if (!['cash', 'card', 'upi', 'other'].includes(finalPaymentMode)) {
-            if (finalPaymentMode.includes('online')) {
-                finalPaymentMode = 'other';
-            } else if (finalPaymentMode === 'split') {
-                finalPaymentMode = 'other';
-            } else {
-                finalPaymentMode = 'cash';
-            }
+        if (!finalAdminId || !finalCreatedBy) {
+            throw new Error('Sign in to your restaurant account to upload saved bills.');
         }
 
-        // Generate proper sequential or daily reset bill number
-        const properBillNumber = await this.generateNextBillNumberForSync(finalAdminId || '', finalBranchId);
-
-        // Create the bill in Supabase with full data isolation and GST columns
-        const billData: any = {
-            bill_no: properBillNumber,
-            total_amount: bill.total_amount,
-            discount: bill.discount,
-            payment_mode: finalPaymentMode as any,
-            payment_details: bill.payment_details,
-            additional_charges: bill.additional_charges,
-            created_by: finalCreatedBy,
-            admin_id: finalAdminId || null,
-            branch_id: finalBranchId || null,
-            date: bill.date,
-            created_at: bill.created_at,
-            status_updated_at: bill.created_at,
-            service_status: 'pending' as const,
-            kitchen_status: 'pending' as const,
-            table_no: bill.table_no || null,
-            round_off: bill.round_off || 0,
-            order_type: bill.order_type || 'dine_in',
-            customer_mobile: bill.customer_mobile || null,
-            customer_phone: bill.customer_phone || null
-        };
-
-        if (bill.tax_summary) {
-            billData.tax_summary = bill.tax_summary;
-            billData.total_tax = bill.total_tax || 0;
-            billData.customer_gstin = bill.customer_gstin || null;
-        }
-
-        const { data: createdBill, error: billError } = await supabase
+        // Idempotent retry: if an earlier attempt reached the server but the reply was lost,
+        // the bill already exists with its original number — never create it twice.
+        let existingQuery: any = supabase
             .from('bills')
-            .insert([billData])
-            .select()
-            .single();
+            .select('*')
+            .eq('admin_id', finalAdminId)
+            .eq('bill_no', bill.bill_no)
+            .eq('date', bill.date)
+            .eq('created_by', finalCreatedBy)
+            .limit(1);
+        const { data: existingRows, error: existingError } = await existingQuery;
+        if (existingError) throw existingError;
+        const alreadyUploaded = !!existingRows?.[0];
 
-        if (billError) throw billError;
-        if (!createdBill) throw new Error('Failed to create bill');
-
-        // Create bill items with tax snapshots
-        const billItems = bill.items.map(item => {
-            const billItem: any = {
-                bill_id: createdBill.id,
-                item_id: item.item_id,
-                quantity: item.quantity,
-                price: item.price,
-                total: item.total
-            };
-            if (item.tax_rate_snapshot !== undefined && item.tax_rate_snapshot !== null) {
-                billItem.tax_rate_snapshot = item.tax_rate_snapshot;
-            }
-            if (item.hsn_code !== undefined && item.hsn_code !== null) {
-                billItem.hsn_code = item.hsn_code;
-            }
-            if (item.tax_amount !== undefined && item.tax_amount !== null) {
-                billItem.tax_amount = item.tax_amount;
-            }
-            return billItem;
-        });
-
-        const { error: itemsError } = await supabase
-            .from('bill_items')
-            .insert(billItems);
-
-        if (itemsError) {
-            // Rollback
-            await supabase.from('bills').delete().eq('id', createdBill.id);
-            throw itemsError;
+        let createdBill: any = existingRows?.[0];
+        if (!alreadyUploaded) {
+            // One server transaction: bill, bill lines and stock deduction together.
+            const { data, error } = await supabase.rpc(
+                'secure_create_bill',
+                buildReplayArgs(bill as any, { adminId: finalAdminId, createdBy: finalCreatedBy, branchId: finalBranchId || null }) as any,
+            );
+            if (error) throw error;
+            if (!data) throw new Error('Failed to create bill');
+            createdBill = data;
         }
 
-        // Sync CRM Customer details
+        // Sync CRM Customer details (skipped on a retry so visits are not counted twice)
         const cleanPhone = bill.customer_mobile?.replace(/[\s\-\(\)\+]/g, '') || '';
-        if (finalAdminId && cleanPhone.length >= 10) {
+        if (!alreadyUploaded && finalAdminId && cleanPhone.length >= 10) {
             try {
                 let lookup: any = supabase
                     .from('customers')
@@ -1182,31 +1128,8 @@ class OfflineManager {
             }
         }
 
-        // Deduct stock in Supabase (parallel requests)
-        const stockUpdatePromises = bill.items.map(async (item) => {
-            try {
-                const { data: currentItem } = await supabase
-                    .from('items')
-                    .select('stock_quantity, selling_unit, inventory_unit, unit')
-                    .eq('id', item.item_id)
-                    .single();
-
-                if (currentItem && currentItem.stock_quantity !== null && currentItem.stock_quantity !== undefined) {
-                    const sellUnit = currentItem.selling_unit || currentItem.unit;
-                    const invUnit = currentItem.inventory_unit;
-                    const deductionInInvUnit = convertToInventoryUnit(item.quantity, sellUnit, invUnit);
-                    await supabase
-                        .from('items')
-                        .update({ stock_quantity: toStoredQuantity2(Math.max(0, currentItem.stock_quantity - deductionInInvUnit)) })
-                        .eq('id', item.item_id);
-                }
-            } catch (err) {
-                console.warn("[Sync] Stock update failed for item", item.item_id, err);
-            }
-        });
-        await Promise.all(stockUpdatePromises);
-
-        console.log(`[Sync] Offline bill ${bill.bill_no} → ${properBillNumber}`);
+        // Stock was already deducted inside secure_create_bill (same transaction as the bill).
+        console.log(`[Sync] Offline bill ${bill.bill_no} uploaded with its original number`);
 
         // Delete the temporary offline bill from STORES.BILLS cache
         await this.delete(STORES.BILLS, bill.id);
