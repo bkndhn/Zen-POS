@@ -6,7 +6,6 @@
 
 import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
 import { buildReplayArgs } from './pendingBillReplay';
 
 import { initStoragePersistence, secondaryVault } from './nativeStorage';
@@ -866,96 +865,6 @@ class OfflineManager {
             };
         } catch (error) {
             console.error('[Cloud Pruning] Error pruning bills:', error);
-        }
-    }
-
-    private async generateNextBillNumberForSync(adminId: string, branchId: string | null): Promise<string> {
-        if (!adminId || adminId === '') {
-            throw new Error('Cannot generate bill number: adminId is required');
-        }
-
-        try {
-            let query = supabase
-                .from('bills')
-                .select('bill_no')
-                .eq('admin_id', adminId);
-                
-            if (branchId) {
-                query = query.eq('branch_id', branchId);
-            } else {
-                query = query.is('branch_id', null);
-            }
-
-            const { data, error } = await query
-                .order('created_at', { ascending: false })
-                .limit(10);
-
-            if (error) {
-                console.error('[BillCounterSync] Error fetching recent bills:', error);
-                throw error;
-            }
-
-            const today = new Date();
-            const dd = String(today.getDate()).padStart(2, '0');
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const yy = String(today.getFullYear()).slice(-2);
-            const todayPrefix = `${dd}/${mm}/${yy}`;
-
-            const branchKey = branchId ? `hotel_pos_continue_bill_number_${branchId}` : 'hotel_pos_continue_bill_number';
-            const continueBillFromYesterday = (localStorage.getItem(branchKey) ?? localStorage.getItem('hotel_pos_continue_bill_number')) !== 'false';
-
-            if (data && data.length > 0) {
-                // Let's inspect the most recent bill number to determine format
-                const lastBillNo = data[0].bill_no;
-                
-                // Check Daily Reset format: DD/MM/YY-XXX
-                const dailyMatch = lastBillNo.match(/^(\d{2}\/\d{2}\/\d{2})-(\d+)$/);
-                if (dailyMatch) {
-                    const lastDatePrefix = dailyMatch[1];
-                    const lastCounter = parseInt(dailyMatch[2], 10);
-                    
-                    if (lastDatePrefix === todayPrefix) {
-                        return `${todayPrefix}-${String(lastCounter + 1).padStart(3, '0')}`;
-                    } else {
-                        return `${todayPrefix}-001`;
-                    }
-                }
-
-                // Check Sequential format: BILL-XXXXXX
-                const seqMatch = lastBillNo.match(/^BILL-(\d+)$/);
-                if (seqMatch) {
-                    // Find the max sequential number in the recent list (in case of out-of-order creation)
-                    let maxSeq = parseInt(seqMatch[1], 10);
-                    data.forEach((b: any) => {
-                        const m = b.bill_no.match(/^BILL-(\d+)$/);
-                        if (m) {
-                            const val = parseInt(m[1], 10);
-                            if (val > maxSeq) maxSeq = val;
-                        }
-                    });
-                    return `BILL-${String(maxSeq + 1).padStart(6, '0')}`;
-                }
-            }
-
-            // Fallback if no bills or unrecognized format: check localStorage settings
-            if (continueBillFromYesterday) {
-                let maxNumber = 0;
-                if (data && data.length > 0) {
-                    data.forEach((b: any) => {
-                        const m = b.bill_no.match(/(\d+)$/);
-                        if (m) {
-                            const num = parseInt(m[1], 10);
-                            if (num > maxNumber) maxNumber = num;
-                        }
-                    });
-                }
-                return `BILL-${String(maxNumber + 1).padStart(6, '0')}`;
-            } else {
-                return `${todayPrefix}-001`;
-            }
-        } catch (e) {
-            console.error('[BillCounterSync] Failed to generate next bill number:', e);
-            throw e;
         }
     }
 
