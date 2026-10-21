@@ -7,6 +7,7 @@
 import * as React from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToInventoryUnit, toStoredQuantity2 } from '@/utils/timeUtils';
+import { buildReplayArgs } from './pendingBillReplay';
 
 import { initStoragePersistence, secondaryVault } from './nativeStorage';
 import type { StorageBackend } from './storage/StorageBackend';
