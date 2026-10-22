@@ -1,3 +1,4 @@
+import { getKitchenSlipEnabled, buildKitchenSlipLines } from './kitchenSlip';
 import { isBillNumberHidden } from './printerConfig';
 import QRCode from 'qrcode';
 import { getStoredFooterMessage } from './billFontUtils';
@@ -370,6 +371,8 @@ interface PrintData {
   // Order type
   orderType?: 'dine_in' | 'parcel';
   showOrderType?: boolean;
+  /** Set false to skip the attached kitchen slip for this print. */
+  kitchenSlip?: boolean;
 }
 
 const textToBytes = (text: string): Uint8Array => {
@@ -750,6 +753,19 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   }
   commands.push(textToBytes(footerMsg));
   commands.push(FEED_LINE);
+
+  // Attached kitchen slip so the cashier sees exactly what the kitchen got.
+  if (data.kitchenSlip !== false && getKitchenSlipEnabled() && data.items.length > 0) {
+    commands.push(ALIGN_LEFT);
+    commands.push(FEED_LINE);
+    const slip = buildKitchenSlipLines(data, LINE_WIDTH, (q, u) => formatQuantityWithUnit(q, u));
+    slip.forEach((line, i) => {
+      if (i === 1 || i === 2) commands.push(BOLD_ON);
+      commands.push(textToBytes(line));
+      commands.push(FEED_LINE);
+      if (i === 1 || i === 2) commands.push(BOLD_OFF);
+    });
+  }
 
   // One cutter command only; the device's feed setting protects the footer.
   commands.push(paper.finish);
