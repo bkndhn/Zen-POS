@@ -1,3 +1,4 @@
+import { getKitchenSlipEnabled, buildKitchenSlipLines } from './kitchenSlip';
 import { isBillNumberHidden } from './printerConfig';
 import QRCode from 'qrcode';
 import { getStoredFooterMessage } from './billFontUtils';
