@@ -15,6 +15,7 @@ import { usePrinter } from '@/hooks/usePrinter';
 import { getStationMap, assignStationPrinter, removeStationPrinter, DEFAULT_STATIONS, setStationMap } from '@/utils/stationPrinters';
 import { printerManager, PrinterManager } from '@/utils/printerManager';
 import { ReceiptCalibrationControls } from '@/components/ReceiptCalibrationControls';
+import { KitchenPrinterControls } from '@/components/KitchenPrinterControls';
 
 
 // Local storage key for device persistence
@@ -604,6 +605,7 @@ export const BluetoothPrinterSettings: React.FC = () => {
               )}
 
               <ReceiptCalibrationControls />
+              <KitchenPrinterControls />
               {/* Advanced routing is only relevant after a station mapping exists. */}
               {Object.keys(getStationMap()).length > 0 && <StationPrinterMap />}
             </div>
