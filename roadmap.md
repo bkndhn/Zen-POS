@@ -3,6 +3,10 @@
 - [x] Automatic offline bill replay with original bill numbers and atomic bill/stock creation
 - [x] Receipt width, margin, feed and cutter calibration with a test ticket
 - [x] Verify counter and sync tests
+- [x] Kitchen USB printer printing alongside the counter receipt
+- [x] Physical numpad keys on the counter pad
+- [x] Bills-waiting-to-upload panel in Settings
+- [ ] Network (LAN) kitchen printer (blocked: needs an Android app update built in Android Studio)
 - [ ] Physical printer test and signed-in shop sale (blocked: needs your printer and a signed-in shop)
 - [x] Verify live identity semantics and tax-rate data
 - [x] Enforce tax-rate tenant foreign key
