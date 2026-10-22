@@ -9,6 +9,8 @@
  */
 
 // USB Vendor/Product IDs for common thermal printers (expand as needed)
+import { isKitchenUsbDevice } from './kitchenPrinterConfig';
+
 const KNOWN_PRINTER_FILTERS: any[] = [
     { classCode: 7 }, // Printer class
 ];
@@ -32,12 +34,23 @@ export class USBPrinterTransport {
         return this.device?.opened === true;
     }
 
+    /** Stable identity of the current device (used to tell two printers apart). */
+    getIdentity(): { vendorId: number; productId: number; serialNumber: string; name: string } | null {
+        if (!this.device) return null;
+        return {
+            vendorId: this.device.vendorId,
+            productId: this.device.productId,
+            serialNumber: this.device.serialNumber || '',
+            name: this.getDeviceName() || 'USB printer',
+        };
+    }
+
     /**
      * Request a new USB device from user.
      * The browser will remember the pairing — subsequent calls to `reconnect()` 
      * will reuse the same device without prompting.
      */
-    async requestDevice(): Promise<boolean> {
+    async requestDevice(options: { rejectIfInUse?: boolean } = {}): Promise<boolean> {
         if (!USBPrinterTransport.isSupported()) {
             console.error('[USB] WebUSB not supported');
             return false;
@@ -48,6 +61,12 @@ export class USBPrinterTransport {
             this.device = await (navigator as any).usb.requestDevice({
                 filters: KNOWN_PRINTER_FILTERS
             });
+
+            // A printer already opened by this page belongs to another role (counter vs kitchen).
+            if (options.rejectIfInUse && this.device?.opened) {
+                this.device = null;
+                return false;
+            }
 
             return await this.open();
         } catch (error: any) {
@@ -65,11 +84,13 @@ export class USBPrinterTransport {
      * Try to reconnect to a previously paired device.
      * No user gesture/dialog required — the browser already has permission.
      */
-    async reconnect(): Promise<boolean> {
+    async reconnect(match?: (device: any) => boolean): Promise<boolean> {
         if (!USBPrinterTransport.isSupported()) return false;
 
         try {
-            const devices = await (navigator as any).usb.getDevices();
+            const all = await (navigator as any).usb.getDevices();
+            // By default (counter printer) never grab the saved kitchen printer.
+            const devices = all.filter(match ?? ((d: any) => !isKitchenUsbDevice(d)));
             if (devices.length === 0) {
                 console.log('[USB] No previously paired devices found');
                 return false;
@@ -196,9 +217,10 @@ export class USBPrinterTransport {
     /** Forget the device — removes browser pairing */
     async forget(): Promise<void> {
         if (this.device) {
+            const device = this.device;
             try {
                 await this.close();
-                await this.device.forget();
+                await device.forget?.();
             } catch (error) {
                 console.warn('[USB] forget error:', error);
             }

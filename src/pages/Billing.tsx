@@ -29,7 +29,9 @@ import { getInstantBillNumber, initBillCounter, syncBillCounter } from '@/utils/
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 import { printReceipt, PrintData } from '@/utils/bluetoothPrinter';
-import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
+import { printKOTs, KOTPrintStationResult, groupItemsByStation, buildKOTBytes, type KOTItem } from '@/utils/kotGenerator';
+import { kitchenPrinter } from '@/utils/kitchenPrinter';
+import { routeKitchenTickets } from '@/utils/kitchenPrinterConfig';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { toast as sonnerToast } from 'sonner';
@@ -2684,7 +2686,8 @@ const Billing = () => {
     billNumber: string,
     orderType: 'dine_in' | 'parcel' | undefined,
     settingsToUse: typeof billSettings,
-    retryStations?: string[]
+    retryStations?: string[],
+    isRetry = true
   ) => {
     const catStationMap: Record<string, string> = {};
     for (const c of itemCategories) {
@@ -2700,7 +2703,7 @@ const Billing = () => {
     const toastId = `kot-${billNumber}-${retryStations?.join('-') || 'all'}`;
     sonnerToast.loading('Printing station KOT/BOT…', {
       id: toastId,
-      description: retryStations?.length ? `Retrying ${retryStations.join(', ')}` : 'Preparing Kitchen/Bar/Dessert tickets',
+      description: isRetry && retryStations?.length ? `Retrying ${retryStations.join(', ')}` : 'Preparing Kitchen/Bar/Dessert tickets',
     });
 
     const result = await printKOTs(kotItems, catStationMap, {
@@ -2743,6 +2746,45 @@ const Billing = () => {
       sonnerToast.dismiss(toastId);
     }
     return result;
+  };
+
+  /** Which tickets go to the kitchen USB printer and which to mapped station printers. */
+  const planKitchenDispatch = (validCart: CartItem[]) => {
+    const catStationMap: Record<string, string> = {};
+    for (const c of itemCategories) {
+      catStationMap[(c.name || '').toLowerCase()] = (c.print_station || 'kitchen').toLowerCase();
+    }
+    const kotItems: KOTItem[] = validCart.map((it: any) => ({
+      name: it.name, quantity: it.quantity, unit: it.unit, selling_unit: it.selling_unit, category: it.category,
+    }));
+    const groups = groupItemsByStation(kotItems, catStationMap);
+    const route = routeKitchenTickets(Object.keys(groups), getStationMap(), kitchenPrinter.isActive());
+    return { groups, ...route };
+  };
+
+  /** Kitchen ticket on its own USB printer — runs alongside the customer receipt. */
+  const sendKitchenPrinterTicket = async (
+    plan: ReturnType<typeof planKitchenDispatch>,
+    billNumber: string,
+    orderType: 'dine_in' | 'parcel' | undefined,
+    tableNo: string | undefined,
+    shopName: string | undefined,
+  ): Promise<void> => {
+    const items = plan.kitchenStations.flatMap(st => plan.groups[st] || []);
+    if (items.length === 0) return;
+    const bytes = buildKOTBytes('kitchen', items, {
+      billNo: billNumber, tableNo, orderType, shopName,
+      printerWidth: kitchenPrinter.getConfig()?.width || '58mm',
+    });
+    const ok = await kitchenPrinter.print(bytes);
+    if (!ok) {
+      sonnerToast.error('Kitchen ticket not printed', {
+        id: `kitchen-${billNumber}`,
+        description: `Bill ${billNumber} is saved. Check the kitchen printer cable and power.`,
+        action: { label: 'Retry', onClick: () => void sendKitchenPrinterTicket(plan, billNumber, orderType, tableNo, shopName) },
+        duration: 10000,
+      });
+    }
   };
 
   // Handler for retry print button in error dialog
@@ -3269,9 +3311,11 @@ const Billing = () => {
               fontScale: billSettings?.billFontScale ? Number(billSettings.billFontScale) : getStoredBillFontScale(operatingBranchId),
               footerMessage: billSettings?.billBottomText || getStoredFooterMessage(operatingBranchId)
             };
+            const kitchenPlan = planKitchenDispatch(validCart);
+            void sendKitchenPrinterTicket(kitchenPlan, billNumber, paymentData.orderType, selectedTableNumber || undefined, billSettings?.shopName);
             void printReceipt(offlinePrintData as PrintData).then(ok => {
               if (!ok) sonnerToast.warning('Bill saved; receipt awaiting printer', { description: 'Reconnect the printer before retrying the receipt.' });
-              else if (Object.keys(getStationMap()).length > 0) void printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, billSettings);
+              else if (kitchenPlan.splitStations.length > 0) void printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, billSettings, kitchenPlan.splitStations, false);
             }).catch(() => sonnerToast.error('Bill saved, but receipt was not printed'));
           } catch (printError) {
             console.log('Print skipped while offline:', printError);
@@ -3370,6 +3414,8 @@ const Billing = () => {
           // 1. Always prioritize the customer bill on the active printer.
           // Station KOTs are only needed when the owner explicitly mapped stations.
           if (shouldPrint) {
+            const kitchenPlan = planKitchenDispatch(validCart);
+            const kitchenJob = sendKitchenPrinterTicket(kitchenPlan, billNumber, paymentData.orderType, selectedTableNumber || undefined, settingsToUse?.shopName);
             const receiptPrinted = await printReceipt(printData).catch(err => {
               console.error('Receipt print failed:', err);
               return false;
@@ -3379,10 +3425,11 @@ const Billing = () => {
               sonnerToast.error('Bill print failed', {
                 description: 'Reconnect the printer and use Test Print before the next bill.',
               });
-            } else if (Object.keys(getStationMap()).length > 0) {
-              await printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, settingsToUse)
+            } else if (kitchenPlan.splitStations.length > 0) {
+              await printSplitKOTsWithFeedback(validCart, billNumber, paymentData.orderType, settingsToUse, kitchenPlan.splitStations, false)
                 .catch(err => console.error('KOT print failed:', err));
             }
+            await kitchenJob.catch(err => console.error('Kitchen ticket failed:', err));
           }
 
 
