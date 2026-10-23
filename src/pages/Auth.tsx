@@ -222,11 +222,8 @@ const Auth = () => {
 
       void clearAuthRateLimit('sign_in', formData.email);
       
-      if (rememberMe) {
-        safeLocalStorage.setItem('hotel_pos_saved_email', btoa(encodeURIComponent(formData.email)));
-      } else {
-        safeLocalStorage.removeItem('hotel_pos_saved_email');
-      }
+      if (rememberMe) rememberAccount(formData.email);
+      else forgetAccount(formData.email);
     } catch (error: any) {
       logSecurityEvent('AUTH_ERROR', { email: formData.email, error: error.message });
       toast({
@@ -263,11 +260,40 @@ const Auth = () => {
           </p>
 
           <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-5">
+            {!isForgotPassword && accounts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Choose an account</p>
+                <div className="space-y-2">
+                  {accounts.map(acc => {
+                    const active = !showEmailField && formData.email === acc.email;
+                    return (
+                      <div key={acc.email} className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${active ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted'}`}>
+                        <button type="button" onClick={() => pickAccount(acc.email)} className="flex flex-1 min-w-0 items-center gap-3 text-left">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{accountInitials(acc.email)}</span>
+                          <span className="truncate text-sm font-medium text-foreground">{acc.email}</span>
+                        </button>
+                        <button type="button" aria-label={`Remove ${acc.email}`} onClick={() => removeAccount(acc.email)} className="rounded-full p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {!showEmailField && (
+                    <button type="button" onClick={() => { setShowEmailField(true); setFormData(p => ({ ...p, email: '' })); }} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                      <UserPlus className="h-4 w-4" /> Use another account
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(isForgotPassword || showEmailField || accounts.length === 0) && (
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
+                autoComplete="username"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 required
@@ -275,6 +301,7 @@ const Auth = () => {
                 className="h-12 rounded-xl border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500/20 transition-all"
               />
             </div>
+            )}
 
             {!isForgotPassword && (
               <div className="space-y-2">
