@@ -6,6 +6,7 @@
 - [x] Kitchen USB printer printing alongside the counter receipt
 - [x] Physical numpad keys on the counter pad
 - [x] Bills-waiting-to-upload panel in Settings
+- [x] Billing: park up to 10 bills with a name, recall/swap/delete (F8)
 - [ ] Network (LAN) kitchen printer (blocked: needs an Android app update built in Android Studio)
 - [ ] Physical printer test and signed-in shop sale (blocked: needs your printer and a signed-in shop)
 - [x] Verify live identity semantics and tax-rate data
