@@ -679,6 +679,25 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             </div>
           )}
 
+          {/* One-tap discount chips */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+            {DISCOUNT_PRESETS.map(p => {
+              const active = discountType === p.type && discount === p.value;
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => { setDiscountType(p.type); setDiscount(active ? 0 : p.value); }}
+                  className={`px-3 h-8 rounded-full text-xs font-semibold border transition-colors ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-foreground hover:bg-muted'}`}
+                >
+                  {p.label} off
+                </button>
+              );
+            })}
+            {discount > 0 && (
+              <button type="button" onClick={() => setDiscount(0)} className="px-3 h-8 rounded-full text-xs font-medium text-muted-foreground hover:bg-muted">Clear</button>
+            )}
+          </div>
           {/* Discount - Collapsible, compact */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg flex-shrink-0">
             <button
@@ -911,14 +930,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
             <div className="mt-2 rounded-xl border border-border p-2 space-y-1.5">
               <div className="text-xs text-muted-foreground font-medium">Quick Tender</div>
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: 'Exact', value: Math.ceil(cashDue) },
-                  { label: '+₹50', value: Math.ceil(cashDue) + 50 },
-                  { label: '+₹100', value: Math.ceil(cashDue) + 100 },
-                  { label: '₹200', value: 200 },
-                  { label: '₹500', value: 500 },
-                  { label: '₹2000', value: 2000 },
-                ].map(chip => (
+                {tenderSuggestions(cashDue).map((v, i) => ({ label: i === 0 ? `Exact ₹${v}` : `₹${v}`, value: v })).map(chip => (
                   <button
                     key={chip.label}
                     type="button"
