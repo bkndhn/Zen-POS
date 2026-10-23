@@ -1,4 +1,4 @@
-import { safeLocalStorage } from '@/utils/safeStorage';
+const safeLocalStorage = { getItem: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, setItem: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* full */ } }, removeItem: (k: string) => { try { localStorage.removeItem(k); } catch { /* noop */ } } };
 
 export const PARKED_KEY = 'zenpos_parked_carts';
 const LEGACY_KEY = 'hotel_pos_held_bill';
