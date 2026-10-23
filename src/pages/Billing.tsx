@@ -3821,36 +3821,38 @@ const Billing = () => {
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Park bill / Parked list:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
               </div>
             </PopoverContent>
           </Popover>
 
-          {/* Held Bills Counter Badge */}
-          {heldBillCount > 0 && (
+          {/* Parked bills button */}
+          {(heldBillCount > 0 || cart.some(i => i.quantity > 0)) && (
             <button
               type="button"
-              onClick={() => {
-                const held = localStorage.getItem('hotel_pos_held_bill');
-                if (held) {
-                  try {
-                    const parsed = JSON.parse(held);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      setCart(parsed);
-                      localStorage.removeItem('hotel_pos_held_bill');
-                      setHeldBillCount(0);
-                      toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
-                    }
-                  } catch {}
-                }
-              }}
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
-              title="Click to restore held bill (F8)"
+              onClick={() => setParkedOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/20 transition-all shrink-0 cursor-pointer"
+              title="Park this bill or recall a parked one (F8)"
+              aria-label={`Parked bills: ${heldBillCount}`}
             >
-              <span>📌 Held Bill</span>
-              <span className="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>
+              <PauseCircle className="w-3.5 h-3.5" />
+              <span>Park</span>
+              {heldBillCount > 0 && <span className="bg-primary text-primary-foreground rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
             </button>
           )}
+          <ParkedCartsSheet
+            open={parkedOpen}
+            onOpenChange={setParkedOpen}
+            parked={parkedCarts}
+            currentCount={cart.filter(i => i.quantity > 0).length}
+            onPark={(note) => { if (parkCurrentCart(note)) setParkedOpen(false); }}
+            onRecall={recallParkedCart}
+            onDelete={(id) => updateParked(removeParked(parkedCarts, id))}
+          />
+        </div>
+      </div>
+
+      {/* Search and Layout Toggle OR Calci Input */}
         </div>
       </div>
 
