@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { DISCOUNT_PRESETS, discountAmountFor, tenderSuggestions } from "@/utils/quickTender";
 import { hapticSuccess, hapticWarning } from '@/utils/haptics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -294,9 +295,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
     }, 0);
 
   const subtotal = cartSubtotal + totalExclusiveTax + totalAdditionalCharges;
-  const discountAmount = discountType === 'percentage'
-    ? (subtotal * discount) / 100
-    : discount;
+  const discountAmount = discountAmountFor(subtotal, discountType, discount);
   const total = subtotal - discountAmount;
   const totalPaymentAmount = Object.values(paymentAmounts).reduce((sum, amount) => sum + amount, 0);
   const remaining = total - totalPaymentAmount;
