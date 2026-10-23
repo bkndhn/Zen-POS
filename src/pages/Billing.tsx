@@ -51,6 +51,8 @@ import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils
 import { VoidBillDialog } from '@/components/VoidBillDialog';
 import { invalidateRelatedData } from '@/utils/cacheUtils';
 import { QuickCounterPad } from '@/components/QuickCounterPad';
+import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
+import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -959,10 +961,33 @@ const Billing = () => {
     }
   });
 
-  const [heldBillCount, setHeldBillCount] = useState<number>(() => {
-    const h = localStorage.getItem('hotel_pos_held_bill');
-    return h ? 1 : 0;
-  });
+  const [parkedCarts, setParkedCarts] = useState<ParkedCart[]>(() => loadParked());
+  const [parkedOpen, setParkedOpen] = useState(false);
+  const heldBillCount = parkedCarts.length;
+  const updateParked = (next: ParkedCart[]) => { setParkedCarts(next); saveParked(next); };
+  const parkCurrentCart = (note: string) => {
+    const live = cart.filter(i => i.quantity > 0);
+    if (live.length === 0) return false;
+    if (parkedCarts.length >= MAX_PARKED) {
+      toast({ title: 'Parking full', description: `Only ${MAX_PARKED} bills can be parked. Recall or delete one first.`, variant: 'destructive' });
+      return false;
+    }
+    updateParked(addParked(parkedCarts, live, note));
+    setCart([]);
+    toast({ title: 'Bill parked', description: note.trim() ? `"${note.trim().slice(0, 40)}" is on hold.` : 'Cart is on hold. Press F8 to see parked bills.' });
+    return true;
+  };
+  const recallParkedCart = (id: string) => {
+    const entry = parkedCarts.find(p => p.id === id);
+    if (!entry) return;
+    let next = removeParked(parkedCarts, id);
+    const live = cart.filter(i => i.quantity > 0);
+    if (live.length > 0) next = addParked(next, live, 'Swapped bill');
+    updateParked(next);
+    setCart(entry.items as CartItem[]);
+    setParkedOpen(false);
+    toast({ title: 'Bill recalled', description: live.length > 0 ? 'Previous cart was parked so nothing is lost.' : `${entry.note || 'Parked bill'} is back in the cart.` });
+  };
 
   const [autoPrintEnabledState, setAutoPrintEnabledState] = useState<boolean>(() => {
     return (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
@@ -1101,32 +1126,15 @@ const Billing = () => {
           break;
         case 'F8':
           e.preventDefault();
-          if (cart.length > 0) {
-            localStorage.setItem('hotel_pos_held_bill', JSON.stringify(cart));
-            setCart([]);
-            setHeldBillCount(1);
-            toast({ title: '📌 Bill Held', description: 'Cart saved. Press F8 again to restore.' });
-          } else {
-            const held = localStorage.getItem('hotel_pos_held_bill');
-            if (held) {
-              try {
-                const parsed = JSON.parse(held);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  setCart(parsed);
-                  localStorage.removeItem('hotel_pos_held_bill');
-                  setHeldBillCount(0);
-                  toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
-                }
-              } catch {}
-            }
-          }
+          if (cart.some(i => i.quantity > 0)) parkCurrentCart('');
+          else setParkedOpen(o => !o);
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, toast]);
+  }, [cart, toast, parkedCarts]);
   const [billSettings, setBillSettings] = useState<{
     shopName: string;
     address: string;
