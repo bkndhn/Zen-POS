@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Bell, Clipboard, Calculator, AlertCircle, Delete, Printer, Keyboard } from 'lucide-react';
+import { Bell, Clipboard, Calculator, AlertCircle, Delete, Printer, Keyboard, PauseCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { PrinterStatusPanel } from '@/components/PrinterStatusPanel';
