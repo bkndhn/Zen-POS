@@ -3853,10 +3853,6 @@ const Billing = () => {
       </div>
 
       {/* Search and Layout Toggle OR Calci Input */}
-        </div>
-      </div>
-
-      {/* Search and Layout Toggle OR Calci Input */}
       {calciEnabled && appBillingMode === 'calci' ? (
         <div className="mb-4">
           <div className="flex justify-center mb-3">
