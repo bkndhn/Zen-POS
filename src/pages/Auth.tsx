@@ -318,6 +318,8 @@ const Auth = () => {
                 <div className="relative">
                   <Input
                     id="password"
+                    ref={passwordRef}
+                    autoComplete="current-password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
