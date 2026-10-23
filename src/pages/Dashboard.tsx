@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatQuantityWithUnit } from '@/utils/timeUtils';
 import PopularTimesWidget from '@/components/PopularTimesWidget';
 import { OwnerProfitAnalytics } from '@/components/OwnerProfitAnalytics';
+import { SalesPacingCard } from '@/components/SalesPacingCard';
 
 interface DashboardStats {
   todaySales: number;
@@ -507,6 +508,7 @@ const Dashboard = () => {
         ))}
       </div>
 
+      {adminId && profile?.role !== 'super_admin' && <SalesPacingCard adminId={adminId} />}
       {adminId && profile?.role !== 'super_admin' && <OwnerProfitAnalytics adminId={adminId} />}
 
       {/* Popular Times Widget */}
