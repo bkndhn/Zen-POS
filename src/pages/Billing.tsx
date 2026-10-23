@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Bell, Clipboard, Calculator, AlertCircle, Delete, Printer, Keyboard } from 'lucide-react';
+import { Bell, Clipboard, Calculator, AlertCircle, Delete, Printer, Keyboard, PauseCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PrinterErrorDialog } from '@/components/PrinterErrorDialog';
 import { PrinterStatusPanel } from '@/components/PrinterStatusPanel';
@@ -51,6 +51,8 @@ import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils
 import { VoidBillDialog } from '@/components/VoidBillDialog';
 import { invalidateRelatedData } from '@/utils/cacheUtils';
 import { QuickCounterPad } from '@/components/QuickCounterPad';
+import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
+import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -959,10 +961,33 @@ const Billing = () => {
     }
   });
 
-  const [heldBillCount, setHeldBillCount] = useState<number>(() => {
-    const h = localStorage.getItem('hotel_pos_held_bill');
-    return h ? 1 : 0;
-  });
+  const [parkedCarts, setParkedCarts] = useState<ParkedCart[]>(() => loadParked());
+  const [parkedOpen, setParkedOpen] = useState(false);
+  const heldBillCount = parkedCarts.length;
+  const updateParked = (next: ParkedCart[]) => { setParkedCarts(next); saveParked(next); };
+  const parkCurrentCart = (note: string) => {
+    const live = cart.filter(i => i.quantity > 0);
+    if (live.length === 0) return false;
+    if (parkedCarts.length >= MAX_PARKED) {
+      toast({ title: 'Parking full', description: `Only ${MAX_PARKED} bills can be parked. Recall or delete one first.`, variant: 'destructive' });
+      return false;
+    }
+    updateParked(addParked(parkedCarts, live, note));
+    setCart([]);
+    toast({ title: 'Bill parked', description: note.trim() ? `"${note.trim().slice(0, 40)}" is on hold.` : 'Cart is on hold. Press F8 to see parked bills.' });
+    return true;
+  };
+  const recallParkedCart = (id: string) => {
+    const entry = parkedCarts.find(p => p.id === id);
+    if (!entry) return;
+    let next = removeParked(parkedCarts, id);
+    const live = cart.filter(i => i.quantity > 0);
+    if (live.length > 0) next = addParked(next, live, 'Swapped bill');
+    updateParked(next);
+    setCart(entry.items as CartItem[]);
+    setParkedOpen(false);
+    toast({ title: 'Bill recalled', description: live.length > 0 ? 'Previous cart was parked so nothing is lost.' : `${entry.note || 'Parked bill'} is back in the cart.` });
+  };
 
   const [autoPrintEnabledState, setAutoPrintEnabledState] = useState<boolean>(() => {
     return (localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false';
@@ -1101,32 +1126,15 @@ const Billing = () => {
           break;
         case 'F8':
           e.preventDefault();
-          if (cart.length > 0) {
-            localStorage.setItem('hotel_pos_held_bill', JSON.stringify(cart));
-            setCart([]);
-            setHeldBillCount(1);
-            toast({ title: '📌 Bill Held', description: 'Cart saved. Press F8 again to restore.' });
-          } else {
-            const held = localStorage.getItem('hotel_pos_held_bill');
-            if (held) {
-              try {
-                const parsed = JSON.parse(held);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  setCart(parsed);
-                  localStorage.removeItem('hotel_pos_held_bill');
-                  setHeldBillCount(0);
-                  toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
-                }
-              } catch {}
-            }
-          }
+          if (cart.some(i => i.quantity > 0)) parkCurrentCart('');
+          else setParkedOpen(o => !o);
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, toast]);
+  }, [cart, toast, parkedCarts]);
   const [billSettings, setBillSettings] = useState<{
     shopName: string;
     address: string;
@@ -3813,36 +3821,34 @@ const Billing = () => {
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Calci Math Mode:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F3</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Clear Cart / New Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F4</kbd></div>
                 <div className="flex justify-between items-center"><span className="text-muted-foreground">Checkout & Print:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">F5 / F6</kbd></div>
-                <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold / Restore Bill:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
+                <div className="flex justify-between items-center"><span className="text-muted-foreground">Park bill / Parked list:</span> <kbd className="bg-muted border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded font-mono font-bold text-amber-600 dark:text-amber-400 text-[10px]">F8</kbd></div>
               </div>
             </PopoverContent>
           </Popover>
 
-          {/* Held Bills Counter Badge */}
-          {heldBillCount > 0 && (
+          {/* Parked bills button */}
+          {(heldBillCount > 0 || cart.some(i => i.quantity > 0)) && (
             <button
               type="button"
-              onClick={() => {
-                const held = localStorage.getItem('hotel_pos_held_bill');
-                if (held) {
-                  try {
-                    const parsed = JSON.parse(held);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                      setCart(parsed);
-                      localStorage.removeItem('hotel_pos_held_bill');
-                      setHeldBillCount(0);
-                      toast({ title: '📌 Bill Restored', description: 'Held bill restored to cart.' });
-                    }
-                  } catch {}
-                }
-              }}
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all shrink-0 cursor-pointer"
-              title="Click to restore held bill (F8)"
+              onClick={() => setParkedOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/30 text-xs font-bold hover:bg-primary/20 transition-all shrink-0 cursor-pointer"
+              title="Park this bill or recall a parked one (F8)"
+              aria-label={`Parked bills: ${heldBillCount}`}
             >
-              <span>📌 Held Bill</span>
-              <span className="bg-amber-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>
+              <PauseCircle className="w-3.5 h-3.5" />
+              <span>Park</span>
+              {heldBillCount > 0 && <span className="bg-primary text-primary-foreground rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
             </button>
           )}
+          <ParkedCartsSheet
+            open={parkedOpen}
+            onOpenChange={setParkedOpen}
+            parked={parkedCarts}
+            currentCount={cart.filter(i => i.quantity > 0).length}
+            onPark={(note) => { if (parkCurrentCart(note)) setParkedOpen(false); }}
+            onRecall={recallParkedCart}
+            onDelete={(id) => updateParked(removeParked(parkedCarts, id))}
+          />
         </div>
       </div>
 
