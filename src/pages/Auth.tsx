@@ -9,7 +9,8 @@ import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Store, Clock, Loader2 } from 'lucide-react';
 import { isValidEmail, logSecurityEvent } from '@/utils/securityUtils';
 import { clearAuthRateLimit, enforceAuthRateLimit, formatRetryAfter } from '@/utils/authRateLimit';
-import { safeLocalStorage } from '@/utils/storageUtils';
+import { loadAccounts, rememberAccount, forgetAccount, accountInitials, type RememberedAccount } from '@/utils/rememberedAccounts';
+import { X, UserPlus } from 'lucide-react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
@@ -27,19 +28,34 @@ const Auth = () => {
     password: '',
   });
   const [rememberMe, setRememberMe] = useState(false);
+  const [accounts, setAccounts] = useState<RememberedAccount[]>([]);
+  const [showEmailField, setShowEmailField] = useState(true);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
-    const savedEmail = safeLocalStorage.getItem('hotel_pos_saved_email');
-    if (savedEmail) {
-      try {
-        const decoded = decodeURIComponent(atob(savedEmail));
-        setFormData(prev => ({ ...prev, email: decoded }));
-      } catch {
-        setFormData(prev => ({ ...prev, email: savedEmail }));
-      }
+    const list = loadAccounts();
+    setAccounts(list);
+    if (list.length) {
+      setFormData(prev => ({ ...prev, email: list[0].email }));
       setRememberMe(true);
+      setShowEmailField(false);
     }
   }, []);
+
+  const pickAccount = (email: string) => {
+    setFormData(prev => ({ ...prev, email }));
+    setRememberMe(true);
+    setShowEmailField(false);
+    setTimeout(() => passwordRef.current?.focus(), 50);
+  };
+  const removeAccount = (email: string) => {
+    const next = forgetAccount(email);
+    setAccounts(next);
+    if (formData.email === email) {
+      setFormData(prev => ({ ...prev, email: next[0]?.email || '' }));
+      if (!next.length) setShowEmailField(true);
+    }
+  };
 
   if (authLoading) {
     return (
