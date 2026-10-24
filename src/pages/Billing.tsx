@@ -51,6 +51,7 @@ import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils
 import { VoidBillDialog } from '@/components/VoidBillDialog';
 import { invalidateRelatedData } from '@/utils/cacheUtils';
 import { QuickCounterPad } from '@/components/QuickCounterPad';
+import { syncAllMissingCalciQuickKeys } from '@/utils/calciQuickKeyUtils';
 import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
 import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
 import { BillingMobileMenuSheet } from '@/components/BillingMobileMenuSheet';
@@ -214,6 +215,8 @@ interface BillingGridItemCardProps {
   onUpdateQuantity: (id: string, change: number) => void;
   expiryDays?: number | null;
   isFastMover?: boolean;
+  /** Quick-key code assigned to this item (e.g. '1', '42') */
+  quickCode?: string;
 }
 
 const BillingGridItemCard = React.memo(({
@@ -225,7 +228,8 @@ const BillingGridItemCard = React.memo(({
   onAddToCartWithAmount,
   onUpdateQuantity,
   expiryDays,
-  isFastMover
+  isFastMover,
+  quickCode,
 }: BillingGridItemCardProps) => {
   const cachedImageUrl = getCachedImageUrl(item.id);
   const imageUrl = item.image_url || cachedImageUrl;
@@ -242,6 +246,12 @@ const BillingGridItemCard = React.memo(({
     <div className={`relative bg-card rounded-premium border p-4 flex flex-col shadow-premium-sm hover:shadow-premium hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-primary shadow-premium' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-border hover:border-primary/40'}`}>
       {/* Image container with quantity badge */}
       <div className="relative aspect-[4/3] mb-1 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+        {/* Quick-key badge */}
+        {quickCode && (
+          <span className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-zinc-900/80 text-amber-300 font-mono text-[10px] font-bold shadow-sm backdrop-blur-sm border border-amber-400/30">
+            #{quickCode}
+          </span>
+        )}
 
         {/* Media rendering - supports images, GIFs, and videos */}
         {item.media_type === 'video' ? (
@@ -350,7 +360,8 @@ const BillingGridItemCard = React.memo(({
          prevProps.item.name === nextProps.item.name &&
          prevProps.item.image_url === nextProps.item.image_url &&
          prevProps.item.video_url === nextProps.item.video_url &&
-         prevProps.item.stock_quantity === nextProps.item.stock_quantity;
+         prevProps.item.stock_quantity === nextProps.item.stock_quantity &&
+         prevProps.quickCode === nextProps.quickCode;
 });
 
 interface BillingListItemCardProps {
@@ -363,6 +374,7 @@ interface BillingListItemCardProps {
   onUpdateQuantity: (id: string, change: number) => void;
   expiryDays?: number | null;
   isFastMover?: boolean;
+  quickCode?: string;
 }
 
 const BillingListItemCard = React.memo(({
@@ -375,6 +387,7 @@ const BillingListItemCard = React.memo(({
   onUpdateQuantity,
   expiryDays,
   isFastMover
+  quickCode,
 }: BillingListItemCardProps) => {
   const cachedImageUrl = getCachedImageUrl(item.id);
   const imageUrl = item.image_url || cachedImageUrl;
@@ -416,7 +429,12 @@ const BillingListItemCard = React.memo(({
 
               {/* Name and Price */}
               <div className="min-w-0">
-                <h3 className="font-semibold text-sm truncate">{item.name}</h3>
+                <h3 className="font-semibold text-sm truncate flex items-center gap-1.5">
+                  {item.name}
+                  {quickCode && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-zinc-900/80 text-amber-300 font-mono text-[10px] font-bold border border-amber-400/30 flex-shrink-0">#{quickCode}</span>
+                  )}
+                </h3>
                 {(expiryDays != null || isFastMover || isLowStock(item)) && (
                   <div className="flex flex-wrap gap-1 mt-0.5">
                     {expiryDays != null && (
@@ -951,6 +969,23 @@ const Billing = () => {
   // Petty cash quick-add dialog
   const [pettyCashOpen, setPettyCashOpen] = useState(false);
 
+  // Calci shortcodes: code -> itemId (e.g. '1' -> 'item-abc')
+  const [calciShortcodes, setCalciShortcodes] = useState<Record<string, string>>(() => {
+    try {
+      const branchKey = operatingBranchId ? `hotel_pos_calci_shortcodes_${operatingBranchId}` : 'hotel_pos_calci_shortcodes';
+      const s = localStorage.getItem(branchKey) || localStorage.getItem('hotel_pos_calci_shortcodes');
+      const parsed = s ? JSON.parse(s) : {};
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch { return {}; }
+  });
+
+  // Inverted map: itemId -> quick code string (for badge display)
+  const itemCodeMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [code, id] of Object.entries(calciShortcodes)) m.set(id, code);
+    return m;
+  }, [calciShortcodes]);
+
   // Fetch loyalty points whenever the payment dialog resolves a customer
   // We listen to the global 'pending_customer_phone' to resolve loyalty
   const fetchLoyaltyForPhone = React.useCallback(async (phone: string) => {
@@ -969,6 +1004,18 @@ const Billing = () => {
       setLoyaltyPoints(0);
     }
   }, [adminProfileId]);
+
+  // Auto-seed quick keys on items load so Quick Mode works without visiting Settings
+  useEffect(() => {
+    if (items.length > 0 && adminProfileId) {
+      syncAllMissingCalciQuickKeys(items, adminProfileId, operatingBranchId).then(updated => {
+        if (updated && Object.keys(updated).length > 0) {
+          setCalciShortcodes(updated);
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, adminProfileId, operatingBranchId]);
   const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>(() => {
     return (localStorage.getItem(branchKey('hotel_pos_default_billing_mode')) as 'pos' | 'calci') || 'pos';
   });
@@ -1881,9 +1928,8 @@ const Billing = () => {
   }, [items, itemTrie, searchQuery, selectedCategory]);
   const addToCart = (item: Item) => {
     if (calciEnabled && appBillingMode === 'calci') {
-      const shortcodesStr = localStorage.getItem('hotel_pos_calci_shortcodes');
-      let shortcodes: Record<string, string> = {};
-      try { if (shortcodesStr) { const parsed = JSON.parse(shortcodesStr); shortcodes = (parsed && typeof parsed === 'object') ? parsed : {}; } } catch {}
+      // Use calciShortcodes state (always synced with DB + localStorage)
+      const shortcodes: Record<string, string> = calciShortcodes;
       
       let shortcodeKey = Object.keys(shortcodes).find(key => shortcodes[key] === item.id);
       
@@ -3924,6 +3970,7 @@ const Billing = () => {
             onAddToCart={addToCart}
             onUpdateQuantity={updateQuantity}
             total={getTotalAmount()}
+            quickKeys={calciShortcodes}
           />
         </div>
       </div>
@@ -3948,7 +3995,31 @@ const Billing = () => {
             </div>
           </div>
 
-          <QuickCounterPad value={calciInput} onChange={setCalciInput} onCash={handleFastCash} busy={counterBusy} prices={recentCalciPrices} />
+          {/* Mobile: Browse Menu shortcut – calci keypad takes vertical space, give a quick escape */}
+          <div className="md:hidden flex items-center justify-between px-1 mb-2">
+            <span className="text-xs font-semibold text-muted-foreground">
+              {calciMode === 'quick' ? '⚡ Quick Keypad' : '🔢 Amount Keypad'}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(true)}
+              className="text-xs h-7 gap-1 text-primary"
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5" />
+              Browse Menu ({items.length})
+            </Button>
+          </div>
+
+          <QuickCounterPad
+            value={calciInput}
+            onChange={setCalciInput}
+            onCash={handleFastCash}
+            onAddToCart={() => { handleCalciSubmit(calciInput); setCalciInput(''); }}
+            busy={counterBusy}
+            prices={recentCalciPrices}
+            mode={calciMode}
+          />
           {/* Legacy calculator controls retained while existing item shortcuts are active. */}
           <div className="hidden">
           {/* Desktop: text input with keyboard */}
@@ -4083,7 +4154,7 @@ const Billing = () => {
       <div
         className="flex-1 overflow-y-auto scroll-smooth min-h-0"
         style={{
-          paddingBottom: cart.some(i => i.quantity > 0) && !paymentDialogOpen ? '140px' : '16px',
+          paddingBottom: cart.some(i => i.quantity > 0) && !paymentDialogOpen ? '140px' : '80px',
           WebkitOverflowScrolling: 'touch'
         }}
       >
@@ -4103,6 +4174,7 @@ const Billing = () => {
                   onUpdateQuantity={stableUpdateQuantity}
                   expiryDays={nearExpiryMap[item.id]?.days ?? null}
                   isFastMover={fastMoverIds.has(item.id)}
+                  quickCode={itemCodeMap.get(item.id)}
                 />
               );
             })}
@@ -4124,6 +4196,7 @@ const Billing = () => {
                   onUpdateQuantity={stableUpdateQuantity}
                   expiryDays={nearExpiryMap[item.id]?.days ?? null}
                   isFastMover={fastMoverIds.has(item.id)}
+                  quickCode={itemCodeMap.get(item.id)}
                 />
               );
             })}
