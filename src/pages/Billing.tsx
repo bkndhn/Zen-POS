@@ -3989,16 +3989,27 @@ const Billing = () => {
                 onClick={() => setCalciMode('num')} 
                 className={cn("px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-all", calciMode === 'num' ? "bg-white dark:bg-zinc-700 shadow text-primary" : "text-muted-foreground hover:text-foreground")}
               >
-                Num Mode
+                NUM
               </button>
               <button 
                 onClick={() => setCalciMode('quick')} 
                 className={cn("px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-all", calciMode === 'quick' ? "bg-white dark:bg-zinc-700 shadow text-primary" : "text-muted-foreground hover:text-foreground")}
               >
-                Quick Mode
+                QUICK
               </button>
             </div>
-            {/* Full Screen / Split View toggle */}
+            {/* Browse Menu shortcut — always visible in Calci mode */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(true)}
+              className="text-xs h-8 px-2 gap-1 text-primary"
+              title="Browse Menu"
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Browse</span>
+            </Button>
+                        {/* Full Screen / Split View toggle */}
             <Button
               type="button"
               variant="outline"
@@ -4008,26 +4019,10 @@ const Billing = () => {
               title={isCalciStretched ? 'Switch to Split View' : 'Switch to Full Screen Keypad'}
             >
               {isCalciStretched ? (
-                <><Minimize2 className="w-3.5 h-3.5 text-primary" /><span className="hidden sm:inline">Split View</span></>
+                <Minimize2 className="w-3.5 h-3.5 text-primary" />
               ) : (
-                <><Maximize2 className="w-3.5 h-3.5 text-primary" /><span className="hidden sm:inline">Full Screen</span></>
+                <Maximize2 className="w-3.5 h-3.5 text-primary" />
               )}
-            </Button>
-          </div>
-
-          {/* Mobile: Browse Menu shortcut – calci keypad takes vertical space, give a quick escape */}
-          <div className="md:hidden flex items-center justify-between px-1 mb-2">
-            <span className="text-xs font-semibold text-muted-foreground">
-              {calciMode === 'quick' ? '⚡ Quick Keypad' : '🔢 Amount Keypad'}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMobileMenuOpen(true)}
-              className="text-xs h-7 gap-1 text-primary"
-            >
-              <UtensilsCrossed className="w-3.5 h-3.5" />
-              Browse Menu ({items.length})
             </Button>
           </div>
 

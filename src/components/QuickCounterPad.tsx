@@ -79,33 +79,15 @@ export function QuickCounterPad({
 
   const keys: { k: string; hint?: string }[] = [
     { k: '7' }, { k: '8' }, { k: '9' }, { k: 'clear', hint: 'Esc' },
-    { k: '4' }, { k: '5' }, { k: '6' }, { k: 'back', hint: '\u232b' },
+    { k: '4' }, { k: '5' }, { k: '6' }, { k: 'back' },
     { k: '1' }, { k: '2' }, { k: '3' }, { k: '+', hint: '+' },
-    { k: '0' }, { k: '.' }, { k: '*', hint: '\u00d7' },
+    { k: '0' }, { k: '.' }, { k: '*' },
   ];
 
   return (
     <div className={fullScreen ? 'max-w-2xl mx-auto space-y-2' : 'max-w-xl mx-auto space-y-2'}>
 
-      {/* ── Header bar: mode label + Full Screen toggle ── */}
-      <div className="flex items-center justify-between px-0.5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          {mode === 'quick' ? '\u26a1 Quick Mode' : '\ud83d\udd22 Num Mode'}
-        </span>
-        {onToggleFullScreen && (
-          <button
-            type="button"
-            onClick={onToggleFullScreen}
-            className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-md hover:bg-primary/10"
-            title={fullScreen ? 'Switch to Split View' : 'Switch to Full Screen'}
-          >
-            {fullScreen
-              ? <><Minimize2 className="w-3.5 h-3.5" /><span>Split View</span></>
-              : <><Maximize2 className="w-3.5 h-3.5" /><span>Full Screen</span></>
-            }
-          </button>
-        )}
-      </div>
+      
 
       {/* ── Live Cart Summary Strip (Full Screen only) ── */}
       {fullScreen && (
@@ -122,12 +104,12 @@ export function QuickCounterPad({
             </span>
             {lastTwo.length > 0 && (
               <span className="text-muted-foreground text-xs truncate max-w-[160px]">
-                — {lastTwo.map(i => `${i.name.slice(0, 12)} \u00d7${i.quantity}`).join(' \u2022 ')}
+                — {lastTwo.map(i => `${i.name.slice(0, 12)} ×${i.quantity}`).join(' • ')}
               </span>
             )}
           </div>
           <span className="font-bold text-primary text-sm shrink-0">
-            \u20b9{(total ?? 0).toFixed(0)}
+            ₹{(total ?? 0).toFixed(0)}
           </span>
         </button>
       )}
@@ -155,7 +137,7 @@ export function QuickCounterPad({
               disabled={busy}
               onClick={() => onChange(value ? `${value}+${price}` : String(price))}
             >
-              \u20b9{price}
+              ₹{price}
             </Button>
           ))}
         </div>
@@ -172,7 +154,7 @@ export function QuickCounterPad({
             aria-label={k === 'back' ? 'Delete last digit' : k === 'clear' ? 'Clear amount' : undefined}
             onClick={() => onChange(k === 'clear' ? '' : k === 'back' ? value.slice(0, -1) : value + k)}
           >
-            {k === 'back' ? <Delete className={fullScreen ? 'h-6 w-6' : 'h-5 w-5'} /> : k === 'clear' ? 'C' : k === '*' ? '\u00d7' : k}
+            {k === 'back' ? <Delete className={fullScreen ? 'h-6 w-6' : 'h-5 w-5'} /> : k === 'clear' ? 'C' : k === '*' ? '×' : k}
             {hint && <span className="absolute top-1 right-1.5 text-[10px] text-muted-foreground">{hint}</span>}
           </Button>
         ))}
@@ -185,7 +167,7 @@ export function QuickCounterPad({
           aria-label="Fast Cash and print"
         >
           <Printer className={fullScreen ? 'h-5 w-5' : 'h-4 w-4'} />
-          <span className="absolute top-1 right-1.5 text-[10px] opacity-70">\u21b5</span>
+          
         </Button>
       </div>
 
@@ -208,14 +190,14 @@ export function QuickCounterPad({
           onClick={onCash}
         >
           <Printer className={`${fullScreen ? 'h-5 w-5' : 'h-4 w-4'} mr-1.5`} />
-          \u26a1 Fast Cash
+          Print & Pay
         </Button>
       </div>
 
       <p className="text-[11px] text-center text-muted-foreground pb-1">
         {mode === 'quick'
-          ? 'QUICK MODE: Type item code (e.g. 1 for Chai, 1*3 for 3 Chais). Tap + to chain.'
-          : 'NUM MODE: Type amount in \u20b9 (e.g. 20+50 or 20*3). Tap \u26a1 Fast Cash to print.'}
+          ? 'QUICK: Type item code (e.g. 1 for Chai, 1*3 for 3 Chais). Tap + to add more.'
+          : 'NUM: Enter amount (e.g. 20+50 or 20×3). Press Print & Pay to checkout.'}
       </p>
     </div>
   );
