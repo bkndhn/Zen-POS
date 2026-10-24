@@ -46,7 +46,7 @@ interface BillingMobileMenuSheetProps {
 
 export const BillingMobileMenuSheet: React.FC<BillingMobileMenuSheetProps> = ({
   open, onOpenChange,
-  items, itemCategories, cart,
+  items = [], itemCategories = [], cart,
   onAddToCart, onUpdateQuantity, total,
   quickKeys = {},
 }) => {

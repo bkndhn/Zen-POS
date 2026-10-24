@@ -3918,9 +3918,12 @@ const Billing = () => {
           <BillingMobileMenuSheet
             open={mobileMenuOpen}
             onOpenChange={setMobileMenuOpen}
+            items={items ?? []}
+            itemCategories={itemCategories ?? []}
             cart={cart}
-            onAddItem={(item) => addItem(item)}
-            adminId={adminId}
+            onAddToCart={addToCart}
+            onUpdateQuantity={updateQuantity}
+            total={getTotalAmount()}
           />
         </div>
       </div>
