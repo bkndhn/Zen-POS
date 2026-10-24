@@ -84,6 +84,9 @@ interface CompletePaymentDialogProps {
   defaultOrderType?: 'dine_in' | 'parcel';
   taxRatesMap?: Record<string, { rate: number; name: string; cess: number; hsn_code: string }>;
   autoPrintEnabled?: boolean;
+  /** Pre-computed loyalty discount amount to pre-fill (₹) */
+  loyaltyDiscount?: number;
+  loyaltyPoints?: number;
   nearExpiry?: Record<string, { days: number }>;
 }
 
@@ -135,11 +138,14 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   defaultOrderType,
   taxRatesMap = {},
   autoPrintEnabled = false,
+  loyaltyDiscount = 0,
+  loyaltyPoints = 0,
   nearExpiry,
 }) => {
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
-  const [discount, setDiscount] = useState(0);
-  const [discountType, setDiscountType] = useState<'flat' | 'percentage'>('flat');
+  const [discount, setDiscount] = useState(loyaltyDiscount ?? 0);
+  const [discountType, setDiscountType] = useState<'flat' | 'percentage'>(loyaltyDiscount > 0 ? 'flat' : 'flat');
+
   const [selectedCharges, setSelectedCharges] = useState<Record<string, boolean>>({});
   const [itemTotalOverrides, setItemTotalOverrides] = useState<Record<string, number>>({});
   const [chargeAmountOverrides, setChargeAmountOverrides] = useState<Record<string, number>>({});

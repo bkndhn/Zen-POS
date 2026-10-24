@@ -54,6 +54,8 @@ import { QuickCounterPad } from '@/components/QuickCounterPad';
 import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
 import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
 import { BillingMobileMenuSheet } from '@/components/BillingMobileMenuSheet';
+import { LoyaltyBadge } from '@/components/LoyaltyBadge';
+import { AddExpenseDialog } from '@/components/AddExpenseDialog';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -943,6 +945,30 @@ const Billing = () => {
   
   const [calciEnabled, setCalciEnabled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Loyalty: fetched when customer phone resolves
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyRedeemActive, setLoyaltyRedeemActive] = useState(false);
+  // Petty cash quick-add dialog
+  const [pettyCashOpen, setPettyCashOpen] = useState(false);
+
+  // Fetch loyalty points whenever the payment dialog resolves a customer
+  // We listen to the global 'pending_customer_phone' to resolve loyalty
+  const fetchLoyaltyForPhone = React.useCallback(async (phone: string) => {
+    if (!phone || !adminProfileId) return;
+    const cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+    const { data } = await supabase
+      .from('customers')
+      .select('loyalty_points')
+      .eq('admin_id', adminProfileId)
+      .ilike('phone', `%${cleanPhone.slice(-10)}`)
+      .limit(1)
+      .maybeSingle();
+    if (data?.loyalty_points) {
+      setLoyaltyPoints(Number(data.loyalty_points));
+    } else {
+      setLoyaltyPoints(0);
+    }
+  }, [adminProfileId]);
   const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>(() => {
     return (localStorage.getItem(branchKey('hotel_pos_default_billing_mode')) as 'pos' | 'calci') || 'pos';
   });
@@ -977,6 +1003,7 @@ const Billing = () => {
     const tableLabel = selectedTableNumber ? `Table ${selectedTableNumber}` : '';
     updateParked(addParked(parkedCarts, live, note.trim() || tableLabel, Date.now(), { id: selectedTableId, number: selectedTableNumber }));
     setCart([]);
+    setLoyaltyPoints(0); setLoyaltyRedeemActive(false);
     setSelectedTableId(null);
     setSelectedTableNumber(null);
     toast({ title: 'Bill parked', description: note.trim() ? `"${note.trim().slice(0, 40)}" is on hold.` : 'Cart is on hold. Press F8 to see parked bills.' });
@@ -2176,6 +2203,8 @@ const Billing = () => {
     setDiscount(0);
     setIsEditMode(false);
     setEditingBill(null);
+    setLoyaltyPoints(0);
+    setLoyaltyRedeemActive(false);
     // Navigate back to billing without any state
     navigate('/billing', {
       replace: true
@@ -3869,6 +3898,14 @@ const Billing = () => {
               {heldBillCount > 0 && <span className="bg-primary text-primary-foreground rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
             </button>
           )}
+          {/* Petty Cash / Quick Drawer Expense */}
+          <button
+            onClick={() => setPettyCashOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-700 hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors shrink-0"
+            title="Log quick cash expense"
+          >
+            <span>💸</span><span className="hidden sm:inline">Expense</span>
+          </button>
           <ParkedCartsSheet
             open={parkedOpen}
             onOpenChange={setParkedOpen}
@@ -4367,9 +4404,23 @@ const Billing = () => {
         </div>
       </DialogContent>
     </Dialog>
-    {/* TODO: Add LoyaltyBadge here to show points when customer is selected */}
-    {/* TODO: Add Loyalty points redeem toggle here */}
-    {/* TODO: Add Petty Cash / Quick Drawer Expense button in the billing actions area */}
+    {/* Loyalty Badge & Redeem toggle – shown when a customer is resolved */}
+    {loyaltyPoints > 0 && (
+      <div className="mx-4 mb-2">
+        <LoyaltyBadge
+          points={loyaltyPoints}
+          redeemValue={Math.floor(loyaltyPoints / 10)}
+          redeeming={loyaltyRedeemActive}
+          onToggleRedeem={() => setLoyaltyRedeemActive(v => !v)}
+        />
+      </div>
+    )}
+
+    {/* Petty Cash Quick-Add – log drawer expense without leaving billing */}
+    {pettyCashOpen && (
+      <AddExpenseDialog onExpenseAdded={() => setPettyCashOpen(false)} />
+    )}
+
     {/* Payment Dialog */}
     <CompletePaymentDialog 
       nearExpiry={nearExpiryMap}
@@ -4390,6 +4441,8 @@ const Billing = () => {
       defaultOrderType={defaultOrderType} 
 
       autoPrintEnabled={(localStorage.getItem(operatingBranchId ? `hotel_pos_auto_print_${operatingBranchId}` : 'hotel_pos_auto_print') ?? localStorage.getItem('hotel_pos_auto_print')) !== 'false'} 
+      loyaltyDiscount={loyaltyRedeemActive ? Math.floor(loyaltyPoints / 10) : 0}
+      loyaltyPoints={loyaltyPoints}
     />
 
     {/* Printer Error Dialog */}
