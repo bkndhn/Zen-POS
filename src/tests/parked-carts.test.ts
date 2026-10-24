@@ -39,3 +39,11 @@ describe('parked carts', () => {
     expect(minutesAgo(0, 125 * 60_000)).toBe('2 h ago');
   });
 });
+
+describe('parked table', () => {
+  it('keeps table 4 with the parked bill', () => {
+    const l = addParked([], [{ price: 10, quantity: 1 }], '', 1, { id: 't4', number: '4' });
+    expect(l[0].tableNumber).toBe('4');
+    expect(l[0].tableId).toBe('t4');
+  });
+});

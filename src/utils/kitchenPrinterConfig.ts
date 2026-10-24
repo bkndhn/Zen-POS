@@ -13,7 +13,15 @@ export interface KitchenPrinterConfig {
   serialNumber: string;
   name: string;
   width: '58mm' | '80mm';
+  /** 'usb' (browser USB) or 'lan' (network printer, Android app). */
+  connection?: 'usb' | 'lan';
+  host?: string;
+  port?: number;
 }
+
+/** Accepts a plain IPv4 address or hostname; rejects anything with a scheme or path. */
+export const isValidPrinterHost = (host: string): boolean =>
+  /^(\d{1,3}\.){3}\d{1,3}$/.test(host.trim()) && host.trim().split('.').every(n => Number(n) <= 255);
 
 export interface UsbIdentity {
   vendorId?: number;
@@ -26,6 +34,16 @@ export const getKitchenPrinterConfig = (): KitchenPrinterConfig | null => {
     const raw = localStorage.getItem(KITCHEN_PRINTER_KEY);
     if (!raw) return null;
     const p = JSON.parse(raw);
+    if (p?.connection === 'lan') {
+      if (typeof p.host !== 'string' || !isValidPrinterHost(p.host)) return null;
+      return {
+        enabled: p.enabled !== false, vendorId: 0, productId: 0, serialNumber: '',
+        name: typeof p.name === 'string' && p.name ? p.name : `Kitchen ${p.host}`,
+        width: p.width === '80mm' ? '80mm' : '58mm',
+        connection: 'lan', host: p.host.trim(),
+        port: Number.isInteger(p.port) && p.port > 0 && p.port < 65536 ? p.port : 9100,
+      };
+    }
     if (typeof p?.vendorId !== 'number' || typeof p?.productId !== 'number') return null;
     return {
       enabled: p.enabled !== false,
@@ -50,7 +68,7 @@ export const clearKitchenPrinterConfig = (): void => {
 
 /** True when the USB device is the saved kitchen printer. */
 export const isKitchenUsbDevice = (device: UsbIdentity, config = getKitchenPrinterConfig()): boolean => {
-  if (!config) return false;
+  if (!config || config.connection === 'lan') return false;
   if (device.vendorId !== config.vendorId || device.productId !== config.productId) return false;
   if (config.serialNumber) return (device.serialNumber || '') === config.serialNumber;
   return true;
