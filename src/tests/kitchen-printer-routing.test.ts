@@ -33,6 +33,7 @@ describe('LAN kitchen printer', () => {
     expect(isValidPrinterHost('300.1.1.1')).toBe(false);
   });
   it('defaults LAN port to 9100 and never matches a USB device', () => {
+    const m = new Map<string,string>(); (globalThis as any).localStorage = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => m.set(k, v), removeItem: (k: string) => m.delete(k) };
     localStorage.setItem('zenpos_kitchen_printer', JSON.stringify({ connection: 'lan', host: '10.0.0.9' }));
     const c = _get();
     expect(c?.port).toBe(9100);
