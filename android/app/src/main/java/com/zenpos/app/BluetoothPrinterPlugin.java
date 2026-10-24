@@ -289,4 +289,38 @@ public class BluetoothPrinterPlugin extends Plugin {
         ret.put("devices", devicesArray);
         call.resolve(ret);
     }
+
+    /** Sends raw ESC/POS bytes to a LAN printer (port 9100) on a background thread. */
+    @PluginMethod
+    public void printNetwork(PluginCall call) {
+        final String host = call.getString("host", "");
+        final int port = call.getInt("port", 9100);
+        final String hex = call.getString("hex");
+        if (host == null || !host.matches("^(\\d{1,3}\\.){3}\\d{1,3}$") || hex == null || hex.length() % 2 != 0) {
+            call.reject("Invalid printer address or data");
+            return;
+        }
+        new Thread(() -> {
+            java.net.Socket s = new java.net.Socket();
+            try {
+                s.connect(new java.net.InetSocketAddress(host, port), 4000);
+                s.setSoTimeout(5000);
+                byte[] data = new byte[hex.length() / 2];
+                for (int i = 0; i < data.length; i++) {
+                    data[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+                }
+                OutputStream out = s.getOutputStream();
+                out.write(data);
+                out.flush();
+                JSObject ret = new JSObject();
+                ret.put("success", true);
+                call.resolve(ret);
+            } catch (Exception e) {
+                Log.e(TAG, "LAN print failed", e);
+                call.reject("Network printer not reachable: " + e.getMessage());
+            } finally {
+                try { s.close(); } catch (Exception ignored) {}
+            }
+        }).start();
+    }
 }

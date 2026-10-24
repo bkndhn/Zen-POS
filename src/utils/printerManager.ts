@@ -41,6 +41,7 @@ export interface BluetoothPrinterPlugin {
   getBluetoothState(): Promise<{ supported: boolean; enabled: boolean; permission: boolean }>;
   enableBluetooth(): Promise<{ enabled: boolean; prompted: boolean }>;
   disconnect(): Promise<void>;
+  printNetwork(options: { host: string; port: number; hex: string }): Promise<{ success: boolean }>;
 }
 
 export const BluetoothPrinter = registerPlugin<BluetoothPrinterPlugin>('BluetoothPrinter');
