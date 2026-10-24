@@ -386,7 +386,7 @@ const BillingListItemCard = React.memo(({
   onAddToCartWithAmount,
   onUpdateQuantity,
   expiryDays,
-  isFastMover
+  isFastMover,
   quickCode,
 }: BillingListItemCardProps) => {
   const cachedImageUrl = getCachedImageUrl(item.id);
