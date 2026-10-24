@@ -1,6 +1,7 @@
 /**
- * Dedicated USB kitchen printer. Runs on its own USB connection so the kitchen
- * ticket prints at the same time as the counter receipt instead of after it.
+ * Dedicated kitchen printer.
+ * Supports USB (WebUSB), LAN/IP, and Bluetooth (Android app).
+ * LAN connections automatically fall back to Bluetooth if Wi-Fi drops.
  */
 import { Capacitor } from '@capacitor/core';
 import { BluetoothPrinter } from './printerManager';
@@ -36,12 +37,41 @@ const writeLan = async (bytes: Uint8Array, host: string, port: number): Promise<
   }
 };
 
+const writeBluetooth = async (bytes: Uint8Array, address: string): Promise<boolean> => {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    const r = await BluetoothPrinter.printRaw({ hex: toHex(bytes), address });
+    return !!r?.success;
+  } catch {
+    return false;
+  }
+};
+
 const writeOnce = async (bytes: Uint8Array): Promise<boolean> => {
   const cfg = getKitchenPrinterConfig();
-  if (cfg?.connection === 'lan' && cfg.host) {
-    if (await writeLan(bytes, cfg.host, cfg.port || 9100)) return true;
-    return writeLan(bytes, cfg.host, cfg.port || 9100); // one retry for a sleepy printer
+  if (!cfg) return false;
+
+  // Bluetooth-direct mode
+  if (cfg.connection === 'bluetooth' && cfg.bluetoothAddress) {
+    if (await writeBluetooth(bytes, cfg.bluetoothAddress)) return true;
+    // One retry
+    return writeBluetooth(bytes, cfg.bluetoothAddress);
   }
+
+  // LAN mode with optional Bluetooth fallback
+  if (cfg.connection === 'lan' && cfg.host) {
+    if (await writeLan(bytes, cfg.host, cfg.port || 9100)) return true;
+    // One retry for a sleepy printer
+    if (await writeLan(bytes, cfg.host, cfg.port || 9100)) return true;
+    // If LAN failed and fallback Bluetooth is configured, use it
+    if (cfg.fallbackBluetoothAddress) {
+      console.warn('[KitchenPrinter] LAN failed; routing to fallback Bluetooth:', cfg.fallbackBluetoothAddress);
+      return writeBluetooth(bytes, cfg.fallbackBluetoothAddress);
+    }
+    return false;
+  }
+
+  // USB mode
   if (!(await ensureConnected())) return false;
   if (await transport.write(bytes)) return true;
   // Cable re-plugged or printer power-cycled: reopen once and retry.
@@ -54,7 +84,10 @@ export const kitchenPrinter = {
   isSupported: () => USBPrinterTransport.isSupported(),
   getConfig: getKitchenPrinterConfig,
   isActive: () => !!getKitchenPrinterConfig()?.enabled,
-  isConnected: () => getKitchenPrinterConfig()?.connection === 'lan' || transport.isConnected(),
+  isConnected: () => {
+    const cfg = getKitchenPrinterConfig();
+    return cfg?.connection === 'lan' || cfg?.connection === 'bluetooth' || transport.isConnected();
+  },
 
   async pair(width: KitchenPrinterConfig['width'] = '58mm'): Promise<{ ok: boolean; name?: string; error?: string }> {
     if (!USBPrinterTransport.isSupported()) return { ok: false, error: 'This browser cannot use USB printers.' };
@@ -81,8 +114,48 @@ export const kitchenPrinter = {
     if (!isValidPrinterHost(host)) return { ok: false, error: 'Enter the printer IP, like 192.168.1.50.' };
     if (!Capacitor.isNativePlatform()) return { ok: false, error: 'Network printers work in the ZenPOS Android app.' };
     await transport.close().catch(() => undefined);
-    saveKitchenPrinterConfig({ enabled: true, vendorId: 0, productId: 0, serialNumber: '', name: `Kitchen ${host}`, width, connection: 'lan', host: host.trim(), port });
+    const existing = getKitchenPrinterConfig();
+    saveKitchenPrinterConfig({
+      enabled: true, vendorId: 0, productId: 0, serialNumber: '',
+      name: `Kitchen ${host}`, width, connection: 'lan', host: host.trim(), port,
+      // Preserve any existing fallback Bluetooth config
+      fallbackBluetoothAddress: existing?.fallbackBluetoothAddress,
+      fallbackBluetoothName: existing?.fallbackBluetoothName,
+    });
     return { ok: true };
+  },
+
+  /** Bluetooth kitchen printer — works in the Android app only. */
+  isBluetoothSupported: () => Capacitor.isNativePlatform(),
+  async pairBluetooth(address: string, name: string, width: KitchenPrinterConfig['width'] = '58mm'): Promise<{ ok: boolean; error?: string }> {
+    if (!address) return { ok: false, error: 'Select a Bluetooth printer.' };
+    if (!Capacitor.isNativePlatform()) return { ok: false, error: 'Bluetooth printers work in the ZenPOS Android app.' };
+    await transport.close().catch(() => undefined);
+    saveKitchenPrinterConfig({
+      enabled: true, vendorId: 0, productId: 0, serialNumber: '',
+      name: name || `Kitchen BT ${address}`, width, connection: 'bluetooth',
+      bluetoothAddress: address, bluetoothName: name,
+    });
+    return { ok: true };
+  },
+
+  /** Set a Bluetooth fallback for when LAN drops. */
+  setFallbackBluetooth(address: string, name: string) {
+    const config = getKitchenPrinterConfig();
+    if (config) {
+      saveKitchenPrinterConfig({ ...config, fallbackBluetoothAddress: address || undefined, fallbackBluetoothName: name || undefined });
+    }
+  },
+
+  /** Get list of paired Bluetooth devices from Android. */
+  async getPairedBluetoothDevices(): Promise<Array<{ name: string; address: string }>> {
+    if (!Capacitor.isNativePlatform()) return [];
+    try {
+      const result = await BluetoothPrinter.getPairedDevices();
+      return result?.devices || [];
+    } catch {
+      return [];
+    }
   },
 
   setEnabled(enabled: boolean) {

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight, Scale } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight, Scale, UtensilsCrossed } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -53,6 +53,7 @@ import { invalidateRelatedData } from '@/utils/cacheUtils';
 import { QuickCounterPad } from '@/components/QuickCounterPad';
 import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
 import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
+import { BillingMobileMenuSheet } from '@/components/BillingMobileMenuSheet';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -941,6 +942,7 @@ const Billing = () => {
   const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
   
   const [calciEnabled, setCalciEnabled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [appBillingMode, setAppBillingMode] = useState<'pos' | 'calci'>(() => {
     return (localStorage.getItem(branchKey('hotel_pos_default_billing_mode')) as 'pos' | 'calci') || 'pos';
   });
@@ -2296,8 +2298,19 @@ const Billing = () => {
         itemsAdded++;
       }
       
-      // Always update cart with valid items first
-      setCart(localCart);
+      // MERGE into existing cart — never wipe items added via POS grid or Mobile Menu
+      setCart(prev => {
+        let updated = [...prev];
+        for (const newItem of localCart) {
+          const idx = updated.findIndex(ci => ci.id === newItem.id);
+          if (idx >= 0) {
+            updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + newItem.quantity };
+          } else {
+            updated.push(newItem);
+          }
+        }
+        return updated;
+      });
 
       // If there was an unassigned code in Quick Mode, show the dialog after setting valid items
       if (pendingUnassigned) {
@@ -3786,6 +3799,17 @@ const Billing = () => {
             </div>
           )}
 
+          {/* Mobile Menu Drawer Trigger */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden relative rounded-xl h-8 px-2 text-xs shrink-0"
+          >
+            <UtensilsCrossed className="w-3.5 h-3.5 mr-1" />
+            <span>Menu</span>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -3853,6 +3877,13 @@ const Billing = () => {
             onPark={(note) => { if (parkCurrentCart(note)) setParkedOpen(false); }}
             onRecall={recallParkedCart}
             onDelete={(id) => updateParked(removeParked(parkedCarts, id))}
+          />
+          <BillingMobileMenuSheet
+            open={mobileMenuOpen}
+            onOpenChange={setMobileMenuOpen}
+            cart={cart}
+            onAddItem={(item) => addItem(item)}
+            adminId={adminId}
           />
         </div>
       </div>
