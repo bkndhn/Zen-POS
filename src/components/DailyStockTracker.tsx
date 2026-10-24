@@ -42,7 +42,7 @@ const DailyStockTracker: React.FC<Props> = ({ items, adminId, branchId, onUpdate
     setLoading(true);
     try {
       const start = new Date(); start.setHours(0, 0, 0, 0);
-      let bq = supabase.from('bills').select('id').eq('admin_id', adminId).eq('is_deleted', false)
+      let bq = supabase.from('bills').select('id').eq('admin_id', adminId).or('is_deleted.is.null,is_deleted.eq.false')
         .gte('created_at', start.toISOString()).limit(5000);
       if (branchId) bq = bq.eq('branch_id', branchId);
       const { data: bills, error } = await bq;

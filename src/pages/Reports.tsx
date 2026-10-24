@@ -823,7 +823,7 @@ const Reports: React.FC = () => {
 
           // Apply filter for deleted/processed bills
           if (billFilter === 'processed') {
-            billsQuery = billsQuery.eq('is_deleted', false);
+            billsQuery = billsQuery.or('is_deleted.is.null,is_deleted.eq.false');
           } else {
             billsQuery = billsQuery.eq('is_deleted', true);
           }

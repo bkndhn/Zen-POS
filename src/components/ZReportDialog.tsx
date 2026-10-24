@@ -83,7 +83,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
         .from('bills')
         .select('total_amount, payment_mode, payment_details')
         .eq('branch_id', branchId)
-        .eq('is_deleted', false);
+        .or('is_deleted.is.null,is_deleted.eq.false');
         
       if (shiftData) {
         query = query.gte('created_at', shiftData.opened_at);

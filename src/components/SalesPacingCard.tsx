@@ -17,9 +17,21 @@ export const SalesPacingCard: React.FC<{ adminId: string }> = ({ adminId }) => {
       const yest = format(subDays(now, 1), 'yyyy-MM-dd');
       const { data: rows } = await supabase.from('bills')
         .select('date, total_amount, created_at, is_deleted')
-        .eq('admin_id', adminId).in('date', [today, yest]).limit(5000);
+        .eq('admin_id', adminId).in('date', [today, yest])
+        .or('is_deleted.is.null,is_deleted.eq.false')
+        .limit(5000);
       if (!alive) return;
-      setData(pacing((rows || []).filter((r: any) => !r.is_deleted) as any, today, yest, now));
+      let merged: any[] = rows || [];
+      try {
+        const { offlineManager } = await import('@/utils/offlineManager');
+        if (offlineManager?.mergeOfflineBills) {
+          const result = await offlineManager.mergeOfflineBills(merged, adminId, null);
+          merged = Array.isArray(result) ? result : merged;
+        }
+      } catch { /* offline not available */ }
+      // Filter to only today+yesterday, exclude deleted
+      const validRows = merged.filter((r: any) => !r.is_deleted && (r.date === today || r.date === yest));
+      setData(pacing(validRows as any, today, yest, now));
     };
     load();
     const id = setInterval(load, 60_000);

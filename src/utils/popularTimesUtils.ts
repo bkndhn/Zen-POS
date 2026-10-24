@@ -59,12 +59,17 @@ export function getHistoricalBaseline(matrix: DayHourMatrix, dayOfWeek: number, 
 /**
  * Extract today's hourly actual data from bills created today.
  */
-export function getTodayActual(bills: Array<{ created_at: string; total_amount: number }>): HourlyBucket[] {
-  const todayStr = new Date().toISOString().split('T')[0];
+export function getTodayActual(bills: Array<{ created_at?: string; date?: string; total_amount: number }>): HourlyBucket[] {
+  // Use local date, not UTC, to avoid IST +5:30 boundary issues
+  const localToday = new Date().toLocaleDateString('en-CA'); // 'en-CA' gives yyyy-MM-dd in local time
   const hourly: Record<number, HourlyBucket> = {};
   for (const bill of bills) {
-    if (!bill.created_at.startsWith(todayStr)) continue;
-    const hour = new Date(bill.created_at).getHours();
+    // Resolve bill date from .date field first, then fall back to created_at local date
+    const billDate = (bill as any).date
+      || (bill.created_at ? new Date(bill.created_at).toLocaleDateString('en-CA') : '');
+    if (billDate !== localToday) continue;
+    // Extract hour in local time
+    const hour = bill.created_at ? new Date(bill.created_at).getHours() : new Date().getHours();
     if (!hourly[hour]) hourly[hour] = { hour, count: 0, revenue: 0 };
     hourly[hour].count++;
     hourly[hour].revenue += Number(bill.total_amount || 0);
@@ -129,9 +134,13 @@ export const DAYPARTS = [
   { label: 'Late Night', emoji: '🌙', startHour: 23, endHour: 27 }, // 27 = next day 3 AM
 ];
 
-export function computeDayparts(bills: Array<{ created_at: string; total_amount: number }>): Daypart[] {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayBills = bills.filter(b => b.created_at.startsWith(todayStr));
+export function computeDayparts(bills: Array<{ created_at?: string; date?: string; total_amount: number }>): Daypart[] {
+  const localToday = new Date().toLocaleDateString('en-CA');
+  const todayBills = bills.filter(b => {
+    const billDate = (b as any).date
+      || (b.created_at ? new Date(b.created_at).toLocaleDateString('en-CA') : '');
+    return billDate === localToday;
+  });
   return DAYPARTS.map(dp => {
     const slice = todayBills.filter(b => {
       const h = new Date(b.created_at).getHours();

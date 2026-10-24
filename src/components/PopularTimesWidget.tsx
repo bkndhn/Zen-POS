@@ -25,6 +25,21 @@ export const PopularTimesWidget: React.FC<Props> = ({ adminId, branchFilterId })
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'dine_in' | 'parcel' | 'online'>('all');
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  // Refresh on window focus (returning from Billing) and on bill-created events
+  useEffect(() => {
+    const refresh = () => setRefreshTick(t => t + 1);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('bill-created', refresh);
+    window.addEventListener('storage', (e: StorageEvent) => {
+      if (e.key && e.key.startsWith('offline_bills_')) refresh();
+    });
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('bill-created', refresh);
+    };
+  }, []);
 
   useEffect(() => {
     if (!adminId) return;
@@ -35,9 +50,9 @@ export const PopularTimesWidget: React.FC<Props> = ({ adminId, branchFilterId })
         eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
         let q = supabase
           .from('bills')
-          .select('created_at, total_amount, order_type, customer_id, customer_phone')
+          .select('id, bill_no, date, created_at, total_amount, order_type, customer_id, customer_phone, is_deleted')
           .eq('admin_id', adminId)
-          .eq('is_deleted', false)
+          .or('is_deleted.is.null,is_deleted.eq.false')
           .gte('created_at', eightWeeksAgo.toISOString());
         if (branchFilterId) q = q.eq('branch_id', branchFilterId);
         const { data } = await q;
@@ -58,7 +73,8 @@ export const PopularTimesWidget: React.FC<Props> = ({ adminId, branchFilterId })
       }
     };
     fetch();
-  }, [adminId, branchFilterId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminId, branchFilterId, refreshTick]);
 
   const filteredBills = useMemo(() => {
     if (orderTypeFilter === 'all') return bills;
