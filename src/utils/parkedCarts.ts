@@ -10,13 +10,15 @@ export interface ParkedCart<T = any> {
   note: string;
   total: number;
   parkedAt: number;
+  tableId?: string | null;
+  tableNumber?: string | null;
 }
 
 export function cartTotal(items: Array<{ price?: number; quantity?: number }>): number {
   return Math.round(items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 0), 0) * 100) / 100;
 }
 
-export function addParked<T>(list: ParkedCart<T>[], items: T[], note: string, now = Date.now()): ParkedCart<T>[] {
+export function addParked<T>(list: ParkedCart<T>[], items: T[], note: string, now = Date.now(), table?: { id?: string | null; number?: string | null }): ParkedCart<T>[] {
   const live = (items as any[]).filter((i) => (i?.quantity ?? 0) > 0) as T[];
   if (live.length === 0) return list;
   const entry: ParkedCart<T> = {
@@ -25,6 +27,8 @@ export function addParked<T>(list: ParkedCart<T>[], items: T[], note: string, no
     note: note.trim().slice(0, 40),
     total: cartTotal(live as any),
     parkedAt: now,
+    tableId: table?.id ?? null,
+    tableNumber: table?.number ?? null,
   };
   return [entry, ...list].slice(0, MAX_PARKED);
 }

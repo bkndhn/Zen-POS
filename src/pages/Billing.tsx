@@ -972,8 +972,11 @@ const Billing = () => {
       toast({ title: 'Parking full', description: `Only ${MAX_PARKED} bills can be parked. Recall or delete one first.`, variant: 'destructive' });
       return false;
     }
-    updateParked(addParked(parkedCarts, live, note));
+    const tableLabel = selectedTableNumber ? `Table ${selectedTableNumber}` : '';
+    updateParked(addParked(parkedCarts, live, note.trim() || tableLabel, Date.now(), { id: selectedTableId, number: selectedTableNumber }));
     setCart([]);
+    setSelectedTableId(null);
+    setSelectedTableNumber(null);
     toast({ title: 'Bill parked', description: note.trim() ? `"${note.trim().slice(0, 40)}" is on hold.` : 'Cart is on hold. Press F8 to see parked bills.' });
     return true;
   };
@@ -982,9 +985,11 @@ const Billing = () => {
     if (!entry) return;
     let next = removeParked(parkedCarts, id);
     const live = cart.filter(i => i.quantity > 0);
-    if (live.length > 0) next = addParked(next, live, 'Swapped bill');
+    if (live.length > 0) next = addParked(next, live, selectedTableNumber ? `Table ${selectedTableNumber}` : 'Swapped bill', Date.now(), { id: selectedTableId, number: selectedTableNumber });
     updateParked(next);
     setCart(entry.items as CartItem[]);
+    setSelectedTableId(entry.tableId ?? null);
+    setSelectedTableNumber(entry.tableNumber ?? null);
     setParkedOpen(false);
     toast({ title: 'Bill recalled', description: live.length > 0 ? 'Previous cart was parked so nothing is lost.' : `${entry.note || 'Parked bill'} is back in the cart.` });
   };
