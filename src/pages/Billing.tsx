@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight, Scale, UtensilsCrossed } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Grid, List, X, Trash2, Edit2, Check, Package, ChevronRight, Scale, UtensilsCrossed, Maximize2, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { CompletePaymentDialog } from '@/components/CompletePaymentDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -1023,6 +1023,11 @@ const Billing = () => {
   const [isCalciStretched, setIsCalciStretched] = useState(() => {
     return localStorage.getItem(branchKey('hotel_pos_calci_stretched')) === 'true';
   });
+  const toggleCalciFullScreen = () => {
+    const next = !isCalciStretched;
+    setIsCalciStretched(next);
+    localStorage.setItem(branchKey('hotel_pos_calci_stretched'), String(next));
+  };
   const [calciMode, setCalciMode] = useState<'num' | 'quick'>(() => {
     return (localStorage.getItem(branchKey('hotel_pos_default_calci_mode')) as 'num' | 'quick') || 'num';
   });
@@ -3978,7 +3983,7 @@ const Billing = () => {
       {/* Search and Layout Toggle OR Calci Input */}
       {calciEnabled && appBillingMode === 'calci' ? (
         <div className="mb-4">
-          <div className="flex justify-center mb-3">
+          <div className="flex items-center justify-between mb-3 px-1 gap-2">
             <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-lg flex items-center shadow-inner">
               <button 
                 onClick={() => setCalciMode('num')} 
@@ -3993,6 +3998,21 @@ const Billing = () => {
                 Quick Mode
               </button>
             </div>
+            {/* Full Screen / Split View toggle */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleCalciFullScreen}
+              className="text-xs h-8 px-2.5 gap-1.5 rounded-lg border-zinc-300 dark:border-zinc-700 font-medium shrink-0"
+              title={isCalciStretched ? 'Switch to Split View' : 'Switch to Full Screen Keypad'}
+            >
+              {isCalciStretched ? (
+                <><Minimize2 className="w-3.5 h-3.5 text-primary" /><span className="hidden sm:inline">Split View</span></>
+              ) : (
+                <><Maximize2 className="w-3.5 h-3.5 text-primary" /><span className="hidden sm:inline">Full Screen</span></>
+              )}
+            </Button>
           </div>
 
           {/* Mobile: Browse Menu shortcut – calci keypad takes vertical space, give a quick escape */}
@@ -4019,106 +4039,13 @@ const Billing = () => {
             busy={counterBusy}
             prices={recentCalciPrices}
             mode={calciMode}
+            fullScreen={isCalciStretched}
+            onToggleFullScreen={toggleCalciFullScreen}
+            cart={cart.filter(i => i.quantity > 0).map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: (i as any).store_price ?? i.price }))}
+            total={getTotalAmount()}
+            onOpenCart={() => setPaymentDialogOpen(true)}
           />
-          {/* Legacy calculator controls retained while existing item shortcuts are active. */}
-          <div className="hidden">
-          {/* Desktop: text input with keyboard */}
-          <div className="hidden md:block">
-            <div className="relative flex items-center">
-              <Calculator className="absolute left-4 w-5 h-5 text-muted-foreground" />
-              <Input 
-                ref={calciInputRef}
-                autoFocus
-                inputMode="tel"
-                placeholder="Enter amounts (e.g. 10 + 25 + 2*15)"
-                value={calciInput}
-                onChange={e => setCalciInput(e.target.value)}
-                onKeyDown={handleCalciKeyDown}
-                className="pl-12 h-14 text-lg bg-white/50 dark:bg-zinc-900/50 rounded-xl shadow-sm border-zinc-200 dark:border-zinc-800 font-mono"
-              />
-              <Button 
-                className="absolute right-2 h-10 rounded-lg"
-                onClick={() => handleCalciSubmit(calciInput)}
-              >
-                Add
-              </Button>
-            </div>
-            {/* Recent Price Memory Chips (Last 4 entered prices) */}
-            {recentCalciPrices.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-2 flex-wrap text-xs px-1">
-                <span className="text-muted-foreground text-[11px] font-medium">Recent:</span>
-                {recentCalciPrices.map((price, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setCalciInput(prev => prev ? `${prev}+${price}` : String(price));
-                      calciInputRef.current?.focus();
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 hover:bg-primary/10 hover:text-primary border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-semibold transition-all shadow-sm active:scale-95"
-                  >
-                    +₹{price}
-                  </button>
-                ))}
-              </div>
-            )}
 
-            <p className="text-xs text-muted-foreground mt-2 px-1 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Press <kbd className="bg-muted px-1.5 rounded text-[10px] mx-1 border shadow-sm font-mono">Enter</kbd> to add to cart.
-            </p>
-          </div>
-
-          {/* Mobile: built-in calculator numpad */}
-          <div className="md:hidden">
-            {/* Display */}
-            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-t-2xl px-4 py-3 border border-zinc-700 border-b-0 flex items-center justify-between">
-              <button 
-                onClick={() => {
-                  const newVal = !isCalciStretched;
-                  setIsCalciStretched(newVal);
-                  localStorage.setItem(branchKey('hotel_pos_calci_stretched'), String(newVal));
-                }}
-                className="text-zinc-400 p-2 -ml-2 rounded-lg active:bg-white/10"
-              >
-                {isCalciStretched ? <span className="text-xl font-bold">⇲</span> : <span className="text-xl font-bold">⇱</span>}
-              </button>
-              <div className="text-right font-mono text-2xl text-white min-h-[40px] flex items-center justify-end overflow-x-auto flex-1 ml-2">
-                {calciInput || <span className="text-zinc-500">0</span>}
-              </div>
-            </div>
-
-            {/* Numpad Grid */}
-            <div className={cn("grid grid-cols-4 gap-[1px] bg-zinc-300 dark:bg-zinc-700 rounded-b-2xl overflow-hidden border border-t-0 border-zinc-300 dark:border-zinc-700", isCalciStretched ? "h-[60vh]" : "")}>
-              {/* Row 1: C, ×, +, ⌫ */}
-              <button onClick={() => setCalciInput('')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-red-500 font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>C</button>
-              <button onClick={() => setCalciInput(p => p + '*')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>×</button>
-              <button onClick={() => setCalciInput(p => p + '+')} className={cn("bg-zinc-200 dark:bg-zinc-800 text-primary font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>+</button>
-              <button onClick={() => setCalciInput(p => p.slice(0, -1))} className={cn("bg-zinc-200 dark:bg-zinc-800 text-foreground font-bold active:bg-zinc-300 dark:active:bg-zinc-700 transition-colors flex items-center justify-center", isCalciStretched ? "h-full" : "py-4")}><Delete className={cn(isCalciStretched ? "w-8 h-8" : "w-6 h-6")} /></button>
-              {/* Row 2: 7, 8, 9 */}
-              <button onClick={() => setCalciInput(p => p + '7')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>7</button>
-              <button onClick={() => setCalciInput(p => p + '8')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>8</button>
-              <button onClick={() => setCalciInput(p => p + '9')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>9</button>
-              {/* Add button spans 3 rows (rows 2-4) */}
-              <button onClick={() => { handleCalciSubmit(calciInput); }} className={cn("bg-primary text-primary-foreground font-bold row-span-3 h-full active:bg-primary/80 transition-colors flex items-center justify-center", isCalciStretched ? "text-2xl" : "text-xl")}>Add<br/>to<br/>Cart</button>
-              {/* Row 3: 4, 5, 6 */}
-              <button onClick={() => setCalciInput(p => p + '4')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>4</button>
-              <button onClick={() => setCalciInput(p => p + '5')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>5</button>
-              <button onClick={() => setCalciInput(p => p + '6')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>6</button>
-              {/* Row 4: 1, 2, 3 */}
-              <button onClick={() => setCalciInput(p => p + '1')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>1</button>
-              <button onClick={() => setCalciInput(p => p + '2')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>2</button>
-              <button onClick={() => setCalciInput(p => p + '3')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>3</button>
-              {/* Row 5: 0, ., Fast Cash */}
-              <button onClick={() => setCalciInput(p => p + '0')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>0</button>
-              <button onClick={() => setCalciInput(p => p + '.')} className={cn("bg-white dark:bg-zinc-900 text-foreground font-semibold active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors", isCalciStretched ? "h-full text-4xl" : "py-4 text-2xl")}>.</button>
-              <button onClick={handleFastCash} className={cn("bg-green-600 text-white font-bold h-full active:bg-green-700 transition-colors flex items-center justify-center col-span-2", isCalciStretched ? "text-2xl" : "text-xl")}>⚡ Fast Cash</button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 px-1 text-center">
-              Type amounts like <span className="font-mono bg-muted px-1 rounded">10+25+2×15</span> then tap Add
-            </p>
-          </div>
-          </div>
         </div>
       ) : (
       <div className="mb-3 flex items-center gap-2">
