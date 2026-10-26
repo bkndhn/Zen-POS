@@ -4024,12 +4024,16 @@ export type Database = {
           closed_by: string | null
           created_at: string
           expected_cash: number
+          handover_float: number | null
+          handover_staff: string | null
           id: string
           notes: string | null
           opened_at: string | null
           opening_cash: number
           payment_breakdown: Json
+          safe_drop: number | null
           shift_id: string | null
+          shift_name: string | null
           total_bills: number
           total_sales: number
           variance: number
@@ -4044,12 +4048,16 @@ export type Database = {
           closed_by?: string | null
           created_at?: string
           expected_cash?: number
+          handover_float?: number | null
+          handover_staff?: string | null
           id?: string
           notes?: string | null
           opened_at?: string | null
           opening_cash?: number
           payment_breakdown?: Json
+          safe_drop?: number | null
           shift_id?: string | null
+          shift_name?: string | null
           total_bills?: number
           total_sales?: number
           variance?: number
@@ -4064,12 +4072,16 @@ export type Database = {
           closed_by?: string | null
           created_at?: string
           expected_cash?: number
+          handover_float?: number | null
+          handover_staff?: string | null
           id?: string
           notes?: string | null
           opened_at?: string | null
           opening_cash?: number
           payment_breakdown?: Json
+          safe_drop?: number | null
           shift_id?: string | null
+          shift_name?: string | null
           total_bills?: number
           total_sales?: number
           variance?: number
@@ -4103,6 +4115,7 @@ export type Database = {
           notes: string | null
           opened_at: string | null
           opening_cash: number
+          shift_name: string | null
           status: string
           updated_at: string | null
           user_id: string
@@ -4118,6 +4131,7 @@ export type Database = {
           notes?: string | null
           opened_at?: string | null
           opening_cash?: number
+          shift_name?: string | null
           status?: string
           updated_at?: string | null
           user_id: string
@@ -4133,6 +4147,7 @@ export type Database = {
           notes?: string | null
           opened_at?: string | null
           opening_cash?: number
+          shift_name?: string | null
           status?: string
           updated_at?: string | null
           user_id?: string
@@ -4243,6 +4258,7 @@ export type Database = {
           revenue_milestone_enabled: boolean | null
           shift_management_enabled: boolean | null
           shift_management_unlocked: boolean | null
+          shift_mode: string | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null
@@ -4370,6 +4386,7 @@ export type Database = {
           revenue_milestone_enabled?: boolean | null
           shift_management_enabled?: boolean | null
           shift_management_unlocked?: boolean | null
+          shift_mode?: string | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -4497,6 +4514,7 @@ export type Database = {
           revenue_milestone_enabled?: boolean | null
           shift_management_enabled?: boolean | null
           shift_management_unlocked?: boolean | null
+          shift_mode?: string | null
           shop_latitude?: number | null
           shop_longitude?: number | null
           shop_name?: string | null
@@ -5772,6 +5790,7 @@ export type Database = {
           revenue_milestone_enabled: boolean | null
           shift_management_enabled: boolean | null
           shift_management_unlocked: boolean | null
+          shift_mode: string | null
           shop_latitude: number | null
           shop_longitude: number | null
           shop_name: string | null

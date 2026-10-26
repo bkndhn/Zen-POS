@@ -2185,7 +2185,7 @@ const Reports: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="shifts" className="mt-4">
-          <ShiftsTabContent adminId={adminId} operatingBranchId={operatingBranchId} />
+          <ShiftsTabContent adminId={adminId} operatingBranchId={isAllBranchesView ? null : branchFilterId} />
         </TabsContent>
 
         <TabsContent value="menu_matrix" className="mt-4">
