@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { ChefHat, Bell, Clock } from 'lucide-react';
+import { ChefHat, Bell, Clock, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { formatTimeAMPM, getTimeElapsed } from '@/utils/timeUtils';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +19,60 @@ interface DisplayBill {
  * Public-facing display for TVs/tablets showing order status
  * No authentication required
  */
+
+/** 4-step Bento progress stepper for each order */
+const ORDER_STEPS = [
+    { key: 'pending',   label: 'Received',    icon: '📋' },
+    { key: 'preparing', label: 'Kitchen Fired', icon: '🔥' },
+    { key: 'ready',     label: 'Ready',        icon: '✅' },
+    { key: 'served',    label: 'Settled',      icon: '🎉' },
+] as const;
+
+function getStepIndex(kitchenStatus: string): number {
+    if (kitchenStatus === 'served' || kitchenStatus === 'completed') return 3;
+    if (kitchenStatus === 'ready') return 2;
+    if (kitchenStatus === 'preparing') return 1;
+    return 0;
+}
+
+const OrderStepper: React.FC<{ kitchenStatus: string }> = ({ kitchenStatus }) => {
+    const active = getStepIndex(kitchenStatus);
+    return (
+        <div className="flex items-center justify-between w-full mt-3 px-1">
+            {ORDER_STEPS.map((step, idx) => {
+                const done = idx < active;
+                const current = idx === active;
+                return (
+                    <React.Fragment key={step.key}>
+                        <div className="flex flex-col items-center gap-1">
+                            <div className={cn(
+                                'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500',
+                                done    ? 'bg-green-500 text-white shadow-lg shadow-green-500/40' :
+                                current ? 'bg-orange-400 text-white shadow-lg shadow-orange-400/50 animate-pulse' :
+                                          'bg-white/10 text-white/30'
+                            )}>
+                                {done ? <CheckCircle2 className="w-4 h-4" /> :
+                                 current ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                                 <Circle className="w-4 h-4" />}
+                            </div>
+                            <span className={cn(
+                                'text-[9px] font-semibold text-center leading-tight max-w-[52px]',
+                                done || current ? 'text-white' : 'text-white/30'
+                            )}>{step.label}</span>
+                        </div>
+                        {idx < ORDER_STEPS.length - 1 && (
+                            <div className={cn(
+                                'flex-1 h-0.5 mx-1 rounded transition-all duration-500',
+                                idx < active ? 'bg-green-500' : 'bg-white/10'
+                            )} />
+                        )}
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    );
+};
+
 const CustomerDisplay = () => {
     const [bills, setBills] = useState<DisplayBill[]>([]);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -220,8 +274,9 @@ const CustomerDisplay = () => {
                                         </div>
                                         <div className="flex items-center justify-center gap-1 text-white/60 text-sm">
                                             <Bell className="w-4 h-4" />
-                                            Ready
+                                            Ready to Pick Up
                                         </div>
+                                        <OrderStepper kitchenStatus="ready" />
                                     </div>
                                 ))}
                             </div>
@@ -259,6 +314,7 @@ const CustomerDisplay = () => {
                                             <Clock className="w-4 h-4" />
                                             {getTimeElapsed(bill.created_at)}
                                         </div>
+                                        <OrderStepper kitchenStatus="preparing" />
                                     </div>
                                 ))}
                             </div>

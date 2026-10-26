@@ -18,10 +18,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle, LayoutGrid, List, ArrowRightLeft } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle, LayoutGrid, List, ArrowRightLeft, Printer } from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { cn } from '@/lib/utils';
 import { formatQuantityWithUnit, getShortUnit, isWeightOrVolumeUnit, parseQuickChipQuantity } from '@/utils/timeUtils';
+import { printTableOrderKOT } from '@/utils/kotGenerator';
 import { getKOTStatusBadgeInfo, getOccupancyTimerInfo } from '@/utils/seatUtils';
 import { reservationManager, TableReservation } from '@/utils/reservationManager';
 import { TableMoveDialog } from '@/components/TableMoveDialog';
@@ -517,7 +518,7 @@ const WaiterCompanion: React.FC = () => {
     }, [cart, gstSettings]);
 
     // Submit table order
-    const handleSubmitOrder = async () => {
+    const handleSubmitOrder = async (printKOT: boolean = false) => {
         if (!selectedTable || cart.length === 0 || !adminId) return;
 
         const licStatus = checkOfflineLicenseStatus();
@@ -665,6 +666,32 @@ const WaiterCompanion: React.FC = () => {
             // Update UI status immediately
             setTables(prev => prev.map(t => t.id === selectedTable.id ? { ...t, status: 'occupied' } : t));
 
+            // KOT Print (if requested) — never throws or cancels the saved order
+            if (printKOT) {
+                const allCartItems = cart.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    instructions: item.instructions
+                }));
+                try {
+                    await printTableOrderKOT({
+                        id: `KOT-${selectedTable.table_number}-${Date.now()}`,
+                        order_number: String(nextOrderNo),
+                        table_number: selectedTable.table_number,
+                        customer_note: customerNote,
+                        items: allCartItems
+                    });
+                } catch (printErr) {
+                    console.warn('KOT Print failed, order remains saved:', printErr);
+                    toast({
+                        title: 'Order Saved — Printer Busy',
+                        description: 'Order pushed to kitchen. Thermal printer was not reachable.',
+                        variant: 'default'
+                    });
+                }
+            }
+
             toast({ 
                 title: isOffline ? '📴 Order Saved Offline' : 'Order Pushed!', 
                 description: isOffline ? `Order queued for Table ${selectedTable.table_number}. Will sync when online.` : `Order submitted for Table ${selectedTable.table_number}` 
@@ -684,7 +711,7 @@ const WaiterCompanion: React.FC = () => {
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] bg-background overflow-hidden">
             {/* Mobile Step Header */}
-            <div className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 px-2 py-2">
+            <div className="sticky top-0 z-20 border-b border-border/50 bg-card/90 backdrop-blur-xl supports-[backdrop-filter]:bg-card/75 px-2 py-2 shadow-sm">
                 <div className="flex items-center gap-1.5">
                     {([
                         { key: 'tables' as const, step: 1, label: 'Table', disabled: false, badge: selectedTable ? selectedTable.table_number : null },
@@ -1239,7 +1266,7 @@ const WaiterCompanion: React.FC = () => {
                         </div>
 
                         {/* Bottom Total & Checkout Summary */}
-                        <div className="bg-card border-t pt-3 space-y-3 mt-auto">
+                        <div className="bg-card/95 backdrop-blur-md border-t border-border/60 pt-3 space-y-3 mt-auto rounded-b-2xl">
                             <div className="space-y-1 text-xs text-muted-foreground px-1">
                                 <div className="flex justify-between">
                                     <span>Subtotal:</span>
@@ -1262,14 +1289,30 @@ const WaiterCompanion: React.FC = () => {
                                 <span className="font-bold text-muted-foreground text-sm">Estimated Total:</span>
                                 <span className="text-xl font-black text-primary">₹{cartTotal.toFixed(0)}</span>
                             </div>
-                            <Button
-                                onClick={handleSubmitOrder}
-                                disabled={isSubmitting}
-                                className="w-full h-12 rounded-xl text-white font-bold bg-primary hover:bg-primary/95 flex items-center justify-center gap-2 text-sm shadow-md"
-                            >
-                                <ChefHat className="w-4 h-4" />
-                                {isSubmitting ? 'Pushing to Kitchen...' : 'Send Order to Kitchen'}
-                            </Button>
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                {/* 1. Original kitchen push — untouched behavior */}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => handleSubmitOrder(false)}
+                                    disabled={isSubmitting || cart.length === 0}
+                                    className="h-12 rounded-xl font-semibold flex items-center justify-center gap-1.5 text-xs sm:text-sm border-primary/40 hover:bg-primary/10 active:scale-[0.97] transition-all"
+                                >
+                                    <ChefHat className="w-4 h-4 text-primary" />
+                                    {isSubmitting ? 'Pushing...' : 'Send to Kitchen'}
+                                </Button>
+
+                                {/* 2. NEW: Send + thermal print KOT */}
+                                <Button
+                                    type="button"
+                                    onClick={() => handleSubmitOrder(true)}
+                                    disabled={isSubmitting || cart.length === 0}
+                                    className="h-12 rounded-xl font-bold bg-primary hover:bg-primary/95 text-primary-foreground flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-md active:scale-[0.97] transition-all"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    {isSubmitting ? 'Printing...' : 'Send & Print KOT'}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}
