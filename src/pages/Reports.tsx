@@ -17,7 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from '@/hooks/use-toast';
 import { CalendarDays, TrendingUp, TrendingDown, DollarSign, Package, Receipt, CreditCard, BarChart3, Edit, Trash2, Eye, Download, FileSpreadsheet, FileCode, Printer, Search, MessageCircle, Phone, Image as ImageIcon, FileText, Loader2, Send } from 'lucide-react';
 import { FacebookIcon, InstagramIcon, WhatsAppIcon } from '@/components/SocialIcons';
-import { format } from 'date-fns';
+import { format, subDays, startOfMonth } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { exportAllReportsToExcel, exportAllReportsToPDF } from '@/utils/exportUtils';
 import { exportSalesToTallyXML } from '@/utils/tallyExport';
@@ -32,6 +32,27 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
+
+// Shift tab types
+interface ShiftRecon {
+  id: string;
+  opened_at: string;
+  closed_at: string;
+  opening_cash: number;
+  cash_sales: number;
+  expected_cash: number;
+  actual_cash: number;
+  variance: number;
+  total_sales: number;
+  total_bills: number;
+  payment_breakdown: Record<string, number> | null;
+  notes: string | null;
+  shift_name?: string;
+  safe_drop?: number;
+  handover_float?: number;
+  handover_staff?: string;
+  closed_by?: string;
+}
 
 import { PinLockGuard } from '@/components/PinLockGuard';
 import { ZReportDialog } from '@/components/ZReportDialog';
@@ -1980,7 +2001,7 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-10 min-w-[800px] h-10">
+          <TabsList className="grid w-full grid-cols-11 min-w-[900px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
@@ -1991,11 +2012,16 @@ const Reports: React.FC = () => {
             <TabsTrigger value="tables" disabled={billFilter === 'deleted'} className="text-sm font-medium">Tables</TabsTrigger>
             <TabsTrigger value="menu_matrix" disabled={billFilter === 'deleted'} className="text-sm font-medium">Menu Matrix</TabsTrigger>
             <TabsTrigger value="food_cost" className="text-sm font-medium">Food Cost</TabsTrigger>
+            <TabsTrigger value="shifts" className="text-sm font-medium">Shifts</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="food_cost" className="mt-4">
           <RecipeCostReport />
+        </TabsContent>
+
+        <TabsContent value="shifts" className="mt-4">
+          <ShiftsTabContent adminId={adminId} operatingBranchId={operatingBranchId} />
         </TabsContent>
 
         <TabsContent value="menu_matrix" className="mt-4">

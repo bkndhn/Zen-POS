@@ -206,7 +206,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
       })
     : 0;
 
-  const handlePrint = async (countedCash?: number, countNotes?: string) => {
+  const handlePrint = async (countedCash?: number, countNotes?: string, counts?: any, safeDrop = 0, handoverFloat = 0, handoverStaff = '') => {
     if (!reportData) return;
 
     let cashSummary: { openingCash: number; expectedCash: number; actualCash: number; variance: number } | null = null;
@@ -249,8 +249,46 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
           total_bills: reportData.totalBills,
           payment_breakdown: reportData.paymentTotals as any,
           notes: notesText || null,
+          handover_float: handoverFloat,
+          handover_staff: handoverStaff || null,
+          safe_drop: safeDrop,
+          shift_name: (reportData.shift as any)?.shift_name || 'General Shift',
         } as any);
         checkSupabaseResult('shift_reconciliations.insert', reconResult as any);
+
+        // Auto-trigger anti-theft alert if variance exceeds threshold
+        try {
+          const variance = actualCash - expectedCash;
+          const { data: settingsRow } = await supabase
+            .from('shop_settings')
+            .select('antitheft_shift_variance_amt')
+            .eq('user_id', adminId)
+            .eq('branch_id', branchId)
+            .maybeSingle();
+          const threshold = Number((settingsRow as any)?.antitheft_shift_variance_amt ?? 100);
+          if (Math.abs(variance) >= threshold) {
+            await supabase.from('anti_theft_alerts').insert({
+              admin_id: adminId,
+              branch_id: branchId,
+              alert_type: 'shift_variance',
+              severity: variance < 0 ? 'critical' : 'medium',
+              amount: Math.abs(variance),
+              cashier_name: profile?.full_name || (profile as any)?.email || 'Unknown',
+              details: {
+                expected: expectedCash,
+                actual: actualCash,
+                variance,
+                reason: countNotes || '',
+                shift_name: (reportData.shift as any)?.shift_name || 'General Shift',
+                safe_drop: safeDrop,
+                handover_float: handoverFloat,
+                handover_staff: handoverStaff,
+              },
+            } as any);
+          }
+        } catch (atErr) {
+          console.warn('Anti-theft alert insert failed:', atErr);
+        }
 
         cashSummary = {
           openingCash,
@@ -420,7 +458,8 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
             onOpenChange={setBlindCloseOpen}
             expectedCash={expectedForShift}
             busy={isClosingShift}
-            onConfirm={async (cash, reason) => { await handlePrint(cash, reason); setBlindCloseOpen(false); }}
+            shiftName={(reportData?.shift as any)?.shift_name}
+            onConfirm={async (cash, reason, cts, sd, hf, hs) => { await handlePrint(cash, reason, cts, sd, hf, hs); setBlindCloseOpen(false); }}
           />
         )}
       </DialogContent>

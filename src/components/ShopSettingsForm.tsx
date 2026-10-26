@@ -85,6 +85,7 @@ export const ShopSettingsForm = () => {
     const [receiptQrType, setReceiptQrType] = useState('payment');
     const [shiftManagementEnabled, setShiftManagementEnabled] = useState(false);
     const [shiftManagementUnlocked, setShiftManagementUnlocked] = useState(false);
+    const [shiftMode, setShiftMode] = useState('single');
     const [remoteOrderFlow, setRemoteOrderFlow] = useState('manual_settle');
     const [allowVoidBills, setAllowVoidBills] = useState(true);
     const [fcmUnlocked, setFcmUnlocked] = useState(false);
@@ -279,6 +280,7 @@ export const ShopSettingsForm = () => {
                 setReceiptQrType(data.receipt_qr_type || 'payment');
                 setShiftManagementEnabled((data as any).shift_management_enabled ?? false);
                 setShiftManagementUnlocked((data as any).shift_management_unlocked ?? false);
+                setShiftMode((data as any).shift_mode ?? 'single');
                 setRemoteOrderFlow((data as any).remote_order_flow || 'manual_settle');
                 setAllowVoidBills((data as any).allow_void_bills ?? true);
                 setFcmUnlocked((data as any).fcm_unlocked ?? false);
@@ -586,6 +588,8 @@ export const ShopSettingsForm = () => {
                 receipt_qr_enabled: receiptQrEnabled,
                 receipt_qr_type: receiptQrType,
                     shift_management_enabled: shiftManagementEnabled,
+                    shift_mode: shiftMode,
+                    antitheft_shift_variance_amt: antitheftVarianceAmt,
                     remote_order_flow: remoteOrderFlow,
                     allow_void_bills: allowVoidBills,
                     fcm_enabled: fcmEnabled,
@@ -1061,9 +1065,7 @@ export const ShopSettingsForm = () => {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <Label>Z-Report & Shift Management</Label>
-                                    {!shiftManagementUnlocked && (
-                                        <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-[10px]">PRO ADD-ON</Badge>
-                                    )}
+
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Require staff to open a shift with opening cash before billing.
@@ -1073,13 +1075,42 @@ export const ShopSettingsForm = () => {
                                 <Switch
                                     checked={shiftManagementEnabled}
                                     onCheckedChange={setShiftManagementEnabled}
-                                    disabled={!shiftManagementUnlocked}
                                 />
-                                {!shiftManagementUnlocked && (
-                                    <span className="text-[10px] text-red-500 font-medium">Contact Super Admin to unlock</span>
-                                )}
                             </div>
                         </div>
+                        {shiftManagementEnabled && (
+                          <div className="space-y-3 pt-3 border-t">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-sm">Shift Mode</Label>
+                                <p className="text-xs text-muted-foreground mt-0.5">How many shifts per day?</p>
+                              </div>
+                              <Select value={shiftMode} onValueChange={setShiftMode}>
+                                <SelectTrigger className="w-[180px] h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="single">Single Shift (Daily)</SelectItem>
+                                  <SelectItem value="two">2 Shifts (Day / Night)</SelectItem>
+                                  <SelectItem value="three">3 Shifts 24/7</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-sm">Anti-Theft Shortage Alert (₹)</Label>
+                                <p className="text-xs text-muted-foreground mt-0.5">Trigger alert when drawer short by this amount</p>
+                              </div>
+                              <Input
+                                type="number"
+                                min={0}
+                                className="w-28 h-8 text-xs"
+                                value={antitheftVarianceAmt}
+                                onChange={e => setAntitheftVarianceAmt(Math.max(0, Number(e.target.value) || 0))}
+                              />
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between pt-4 border-t">
                             <div>
                                 <div className="flex items-center gap-2">

@@ -42,6 +42,7 @@ import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
 import { useBranch } from '@/contexts/BranchContext';
 import { cn } from '@/lib/utils';
+import { ZReportDialog } from '@/components/ZReportDialog';
 import VoiceBillingButton, { VoiceIntent } from '@/components/VoiceBillingButton';
 import { getStationMap } from '@/utils/stationPrinters';
 import { getKOTStatusBadgeInfo } from '@/utils/seatUtils';
@@ -536,6 +537,10 @@ const Billing = () => {
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [openingCash, setOpeningCash] = useState<string>('');
   const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
+  const [shiftName, setShiftName] = useState('');
+  const [activeShift, setActiveShift] = useState<any>(null);
+  const [zReportOpen, setZReportOpen] = useState(false);
+  const [lastShiftHandover, setLastShiftHandover] = useState<{ amount: number } | null>(null);
 
   // Check for open shift
   useEffect(() => {
@@ -562,7 +567,7 @@ const Billing = () => {
       const { data, error } = await supabase
         .from('shifts')
 
-        .select('id, status')
+        .select('id, status, opened_at, opening_cash, shift_name')
         .eq('admin_id', adminId)
         .eq('branch_id', branchId)
         .eq('status', 'open')
@@ -570,8 +575,29 @@ const Billing = () => {
 
       if (!data) {
         setShowShiftModal(true);
+        setActiveShift(null);
+        // Load last shift handover float for banner
+        try {
+          const { data: lastRecon } = await supabase
+            .from('shift_reconciliations')
+            .select('actual_cash, handover_float, closed_at')
+            .eq('admin_id', adminId)
+            .eq('branch_id', branchId)
+            .order('closed_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (lastRecon && lastRecon.closed_at) {
+            const closedAt = new Date(lastRecon.closed_at);
+            const diffH = (Date.now() - closedAt.getTime()) / 3600000;
+            if (diffH < 24) {
+              const amt = Number((lastRecon as any).handover_float ?? lastRecon.actual_cash ?? 0);
+              if (amt > 0) setLastShiftHandover({ amount: amt });
+            }
+          }
+        } catch { /* ignore */ }
       } else {
         setShowShiftModal(false);
+        setActiveShift(data);
       }
     };
     if (adminId && !isAllBranchesView) {
@@ -594,8 +620,9 @@ const Billing = () => {
         branch_id: branchId,
         user_id: profile?.id,
         opening_cash: Number(openingCash),
-        status: 'open'
-      });
+        status: 'open',
+        shift_name: shiftName || 'General Shift',
+      } as any);
       if (error) throw error;
       toast({ title: 'Shift Started', description: 'Your shift has been opened successfully.' });
       setShowShiftModal(false);
@@ -4598,7 +4625,20 @@ const Billing = () => {
       onOpenChange={setIsCustomItemOpen} 
       onAdd={handleAddCustomItem} 
     />
+    {activeShift && (
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 text-xs bg-card border border-border shadow-lg rounded-full px-3 py-1.5">
+        <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+        <span className="font-semibold text-success">{(activeShift as any).shift_name || 'Active Shift'}</span>
+        <span className="text-muted-foreground">· {new Date(activeShift.opened_at).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</span>
+        <button
+          type="button"
+          onClick={() => setZReportOpen(true)}
+          className="ml-1 text-xs font-bold text-primary hover:underline"
+        >Close & Handover</button>
+      </div>
+    )}
 
+    {zReportOpen && <ZReportDialog open={zReportOpen} onOpenChange={setZReportOpen} />}
     <Dialog open={showShiftModal} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
@@ -4608,6 +4648,30 @@ const Billing = () => {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
+          <div className="flex flex-wrap gap-2 mb-1">
+            {['Morning (Shift 1)', 'Evening (Shift 2)', 'Night (Shift 3)', 'General Shift'].map(s => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setShiftName(s)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  shiftName === s ? 'bg-primary text-primary-foreground border-primary' : 'border-muted-foreground/30 text-muted-foreground hover:border-primary/60'
+                }`}
+              >{s}</button>
+            ))}
+          </div>
+          {lastShiftHandover && (
+            <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 text-sm">
+              <p className="font-semibold text-primary">Previous shift left ₹{lastShiftHandover.amount.toLocaleString('en-IN')} in drawer</p>
+              <button
+                type="button"
+                className="mt-2 text-xs border border-border rounded px-2 py-1 hover:bg-muted"
+                onClick={() => setOpeningCash(String(lastShiftHandover.amount))}
+              >
+                Use ₹{lastShiftHandover.amount.toLocaleString('en-IN')} as Opening Float
+              </button>
+            </div>
+          )}
           <Label htmlFor="opening-cash">Opening Cash (₹)</Label>
           <Input
             id="opening-cash"
