@@ -1056,9 +1056,29 @@ const Billing = () => {
     setIsCalciStretched(next);
     localStorage.setItem(branchKey('hotel_pos_calci_stretched'), String(next));
   };
+  // Refs for full-screen calci height calculation
+  const calciWrapperRef = useRef<HTMLDivElement>(null);
+  const calciToolbarRef = useRef<HTMLDivElement>(null);
   const [calciMode, setCalciMode] = useState<'num' | 'quick'>(() => {
     return (localStorage.getItem(branchKey('hotel_pos_default_calci_mode')) as 'num' | 'quick') || 'num';
   });
+
+  // ResizeObserver: keep --billing-top-offset in sync with the toolbar height
+  useEffect(() => {
+    if (!isCalciStretched) return;
+    const toolbar = calciToolbarRef.current;
+    const wrapper = calciWrapperRef.current;
+    if (!toolbar || !wrapper) return;
+    const update = () => {
+      const rect = toolbar.getBoundingClientRect();
+      wrapper.style.setProperty('--billing-top-offset', `${rect.bottom}px`);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(toolbar);
+    window.addEventListener('resize', update);
+    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
+  }, [isCalciStretched]);
 
   const [recentCalciPrices, setRecentCalciPrices] = useState<number[]>(() => {
     try {
@@ -4010,8 +4030,14 @@ const Billing = () => {
 
       {/* Search and Layout Toggle OR Calci Input */}
       {calciEnabled && appBillingMode === 'calci' ? (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-3 px-1 gap-2">
+        <div
+          ref={calciWrapperRef}
+          className={isCalciStretched ? "flex flex-col min-h-0 overflow-hidden" : "mb-4"}
+          style={isCalciStretched ? {
+            height: 'calc(100dvh - var(--billing-top-offset, 120px) - max(68px, calc(58px + env(safe-area-inset-bottom, 0px))))'
+          } : undefined}
+        >
+          <div ref={calciToolbarRef} className="flex items-center justify-between mb-3 px-1 gap-2 shrink-0">
             <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-lg flex items-center shadow-inner">
               <button 
                 onClick={() => setCalciMode('num')} 
@@ -4067,6 +4093,7 @@ const Billing = () => {
             cart={cart.filter(i => i.quantity > 0).map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: (i as any).store_price ?? i.price }))}
             total={getTotalAmount()}
             onOpenCart={() => setPaymentDialogOpen(true)}
+            className={isCalciStretched ? "flex-1 min-h-0" : undefined}
           />
 
         </div>
