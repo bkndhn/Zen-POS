@@ -29,6 +29,7 @@ import { TableMoveDialog } from '@/components/TableMoveDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
+import { usePrinter } from '@/hooks/usePrinter';
 
 interface Table {
     id: string;
@@ -96,6 +97,8 @@ const WaiterCompanion: React.FC = () => {
     const { operatingBranchId } = useBranch();
     const isOnline = useNetworkStatus();
     const adminId = adminProfileId;
+    const { connectionState, isConnected, hasNativeBridge, deviceName, connect } = usePrinter();
+    const isPrinterReady = isConnected || (hasNativeBridge && Boolean(localStorage.getItem('hotel_pos_bluetooth_printer_address')));
 
     // State
     const [tables, setTables] = useState<Table[]>([]);
@@ -708,6 +711,67 @@ const WaiterCompanion: React.FC = () => {
         }
     };
 
+    const handleReprintKOT = (table: Table) => async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!adminId) return;
+        try {
+            // 1. Try table_orders first
+            const { data: orders } = await supabase
+                .from('table_orders')
+                .select('*')
+                .eq('admin_id', adminId)
+                .eq('table_number', table.table_number)
+                .in('status', ['pending', 'preparing', 'ready', 'served'])
+                .order('created_at', { ascending: false });
+
+            let kotItems: { name: string; quantity: number; notes?: string; unit?: string }[] = [];
+            let billRef = `T${table.table_number}`;
+            let orderNumber: string | number | undefined;
+
+            if (orders && orders.length > 0) {
+                const latest = orders[0];
+                const items = Array.isArray(latest.items) ? latest.items : [];
+                kotItems = items.map((it: any) => ({ name: it.name || it.item_name || 'Item', quantity: it.quantity || 1, notes: it.notes, unit: it.unit }));
+                orderNumber = latest.order_number;
+                billRef = latest.order_number ? String(latest.order_number) : billRef;
+            } else {
+                // Fallback: latest bill for this table
+                const { data: latestBill } = await (supabase as any)
+                    .from('bills')
+                    .select('*, bill_items(*, items(name, unit))')
+                    .eq('admin_id', adminId)
+                    .eq('table_no', table.table_number)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (latestBill?.bill_items?.length > 0) {
+                    kotItems = latestBill.bill_items.map((bi: any) => ({
+                        name: bi.items?.name || bi.name || 'Item',
+                        quantity: bi.quantity || 1,
+                        unit: bi.items?.unit,
+                    }));
+                    orderNumber = latestBill.bill_no;
+                    billRef = latestBill.bill_no ? String(latestBill.bill_no) : billRef;
+                }
+            }
+
+            if (kotItems.length === 0) {
+                toast({ title: `No active items found`, description: `No active items found to reprint for Table T${table.table_number}`, variant: 'destructive' });
+                return;
+            }
+
+            await printTableOrderKOT({
+                order_number: `[REPRINT] ${billRef}`,
+                table_number: String(table.table_number),
+                items: kotItems.map(it => ({ name: it.name, quantity: it.quantity, unit: it.unit, instructions: it.notes })),
+            });
+            toast({ title: `KOT Reprinted`, description: `KOT Reprinted for Table T${table.table_number}` });
+        } catch (err: any) {
+            console.error('Reprint KOT error:', err);
+            toast({ title: 'Printer Error', description: 'Ensure Bluetooth printer is powered on and within range', variant: 'destructive' });
+        }
+    };
+
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] bg-background overflow-hidden">
             {/* Mobile Step Header */}
@@ -754,6 +818,30 @@ const WaiterCompanion: React.FC = () => {
                             </button>
                         );
                     })}
+                </div>
+                {/* Printer Status Pill */}
+                <div className="flex justify-end mt-1.5 px-0.5">
+                    <span
+                        className={cn(
+                            connectionState === 'connecting' || !isPrinterReady
+                                ? 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold cursor-pointer bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300'
+                                : 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold cursor-pointer bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300'
+                        )}
+                        onClick={() => {
+                            if (!isPrinterReady) {
+                                connect();
+                            } else {
+                                toast({ title: 'Printer connected', description: deviceName || 'Printer is ready' });
+                            }
+                        }}
+                    >
+                        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: isPrinterReady ? '#10b981' : '#f59e0b' }} />
+                        {connectionState === 'connecting'
+                            ? '\uD83D\uDDB8 Connecting...'
+                            : isPrinterReady
+                                ? (deviceName ? `\uD83D\uDDB8 ${deviceName}` : '\uD83D\uDDB8 Printer Ready')
+                                : '\uD83D\uDDB8 Printer Offline'}
+                    </span>
                 </div>
             </div>
 
@@ -813,6 +901,16 @@ const WaiterCompanion: React.FC = () => {
                                                 <span className="flex items-center gap-1 text-[11px] font-semibold"><User className="w-3.5 h-3.5" /> Max {table.capacity}</span>
                                                 {table.has_seats && <Badge variant="outline" className="text-[9px] font-bold">S1-S{table.seat_count}</Badge>}
                                             </div>
+                                            {table.status === 'occupied' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="mt-2 w-full h-7 text-[11px] gap-1 border-primary/30 text-primary hover:bg-primary/5"
+                                                    onClick={handleReprintKOT(table)}
+                                                >
+                                                    <Printer className="w-3 h-3" /> Reprint KOT
+                                                </Button>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 );

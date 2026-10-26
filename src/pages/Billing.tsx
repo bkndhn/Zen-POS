@@ -58,6 +58,7 @@ import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type Parke
 import { BillingMobileMenuSheet } from '@/components/BillingMobileMenuSheet';
 import { LoyaltyBadge } from '@/components/LoyaltyBadge';
 import { AddExpenseDialog } from '@/components/AddExpenseDialog';
+import { OvernightShiftWarningDialog } from '@/components/OvernightShiftWarningDialog';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -541,6 +542,8 @@ const Billing = () => {
   const [activeShift, setActiveShift] = useState<any>(null);
   const [zReportOpen, setZReportOpen] = useState(false);
   const [lastShiftHandover, setLastShiftHandover] = useState<{ amount: number } | null>(null);
+  const [overnightShift, setOvernightShift] = useState<{ id: string; opened_at: string; opening_cash: number; shift_name?: string } | null>(null);
+  const [showOvernightWarning, setShowOvernightWarning] = useState(false);
 
   // Check for open shift
   useEffect(() => {
@@ -597,8 +600,22 @@ const Billing = () => {
           }
         } catch { /* ignore */ }
       } else {
-        setShowShiftModal(false);
-        setActiveShift(data);
+        // Check if shift is from a previous day (overnight unclosed shift)
+        const shiftOpenedDate = new Date(data.opened_at);
+        const now = new Date();
+        const isDifferentDay = shiftOpenedDate.toDateString() !== now.toDateString();
+        const ageHours = (now.getTime() - shiftOpenedDate.getTime()) / (1000 * 60 * 60);
+        const isOvernightUnclosed = isDifferentDay || ageHours >= 14;
+
+        if (isOvernightUnclosed) {
+          setOvernightShift(data);
+          setShowOvernightWarning(true);
+          setShowShiftModal(false);
+          setActiveShift(null);
+        } else {
+          setShowShiftModal(false);
+          setActiveShift(data);
+        }
       }
     };
     if (adminId && !isAllBranchesView) {
@@ -4667,6 +4684,22 @@ const Billing = () => {
     )}
 
     {zReportOpen && <ZReportDialog open={zReportOpen} onOpenChange={setZReportOpen} />}
+    {overnightShift && (
+      <OvernightShiftWarningDialog
+        open={showOvernightWarning}
+        onOpenChange={setShowOvernightWarning}
+        shift={overnightShift}
+        adminId={adminId || ''}
+        branchId={operatingBranchId || profile?.id || ''}
+        onReconciledAndReady={(handoverFloat) => {
+          setShowOvernightWarning(false);
+          setOvernightShift(null);
+          setActiveShift(null);
+          if (handoverFloat > 0) setLastShiftHandover({ amount: handoverFloat });
+          setShowShiftModal(true);
+        }}
+      />
+    )}
     <Dialog open={showShiftModal} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
