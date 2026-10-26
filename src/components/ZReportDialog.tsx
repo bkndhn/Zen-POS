@@ -273,7 +273,7 @@ export const ZReportDialog: React.FC<ZReportDialogProps> = ({ open, onOpenChange
               alert_type: 'shift_variance',
               severity: variance < 0 ? 'critical' : 'medium',
               amount: Math.abs(variance),
-              cashier_name: profile?.full_name || (profile as any)?.email || 'Unknown',
+              cashier_name: profile?.name || (profile as any)?.email || 'Unknown',
               details: {
                 expected: expectedCash,
                 actual: actualCash,

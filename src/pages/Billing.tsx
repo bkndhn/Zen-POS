@@ -578,7 +578,7 @@ const Billing = () => {
         setActiveShift(null);
         // Load last shift handover float for banner
         try {
-          const { data: lastRecon } = await supabase
+          const { data: lastReconRaw } = await (supabase as any)
             .from('shift_reconciliations')
             .select('actual_cash, handover_float, closed_at')
             .eq('admin_id', adminId)
@@ -586,6 +586,7 @@ const Billing = () => {
             .order('closed_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+          const lastRecon = lastReconRaw as { actual_cash: number; handover_float: number | null; closed_at: string } | null;
           if (lastRecon && lastRecon.closed_at) {
             const closedAt = new Date(lastRecon.closed_at);
             const diffH = (Date.now() - closedAt.getTime()) / 3600000;
