@@ -4037,11 +4037,8 @@ const Billing = () => {
         <div
           ref={calciWrapperRef}
           className={isCalciStretched ? "flex flex-col min-h-0 overflow-hidden" : "mb-4"}
-          style={isCalciStretched ? {
-            height: 'calc(100dvh - var(--billing-top-offset, 120px) - max(68px, calc(58px + env(safe-area-inset-bottom, 0px))))'
-          } : undefined}
         >
-          <div ref={calciToolbarRef} className="flex items-center justify-between mb-3 px-1 gap-2 shrink-0">
+          <div ref={calciToolbarRef} className={cn("flex items-center justify-between px-1 gap-2 shrink-0", isCalciStretched ? "mb-2" : "mb-3")}>
             <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-lg flex items-center shadow-inner">
               <button 
                 onClick={() => setCalciMode('num')} 
