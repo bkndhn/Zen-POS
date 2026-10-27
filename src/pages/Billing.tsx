@@ -718,68 +718,6 @@ const Billing = () => {
     }
   };
 
-  // ── Broadcast cart state to Customer Pole Display (BroadcastChannel + Supabase) ──
-  const broadcastToPole = useCallback((status: 'IDLE' | 'ACTIVE' | 'PAYING' | 'SETTLED') => {
-    const cartItems = cart.filter(i => i.quantity > 0).map(i => ({
-      name: i.name,
-      quantity: i.quantity,
-      price: (i as any).store_price ?? i.price,
-      total: ((i as any).store_price ?? i.price) * i.quantity,
-    }));
-    const subtotal    = cartItems.reduce((s, i) => s + i.total, 0);
-    const discountAmt = discount;
-
-    // Accurate GST computation (mirrors CompletePaymentDialog logic)
-    let runningTax = 0;
-    if (gstSettings.enabled) {
-      runningTax = cart.filter(i => i.quantity > 0).reduce((acc, item) => {
-        const taxRateId = (item as any).tax_rate_id;
-        const rateInfo  = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
-        const rate      = rateInfo?.rate ?? 0;
-        const lineTotal = ((item as any).store_price ?? item.price) * item.quantity;
-        return acc + (lineTotal * (rate / (gstSettings.isComposition ? 1 : 100)));
-      }, 0);
-    }
-    const grandTotal = Math.max(0, subtotal - discountAmt + runningTax);
-
-    // Real UPI & shop name from DB settings (with localStorage fallback)
-    const effectiveUpiId =
-      (billSettings as any)?.upiId ||
-      (shopSettings as any)?.upi_id ||
-      localStorage.getItem('hotel_pos_upi_id') ||
-      undefined;
-    const effectiveShopName =
-      billSettings?.shopName ||
-      (shopSettings as any)?.shop_name ||
-      (profile as any)?.hotel_name ||
-      'ZenPOS';
-
-    const msg = {
-      type: 'CART_UPDATE' as const,
-      cart: cartItems,
-      subtotal,
-      discount: discountAmt,
-      tax: runningTax,
-      grandTotal,
-      upiId: effectiveUpiId,
-      shopName: effectiveShopName,
-      branchId: operatingBranchId || profile?.id,
-      status,
-    };
-
-    // 1. Same-device instant update (BroadcastChannel)
-    poleChannelRef.current?.postMessage(msg);
-    // 2. Cross-device via Supabase Realtime
-    supabasePoleChannelRef.current?.send({ type: 'broadcast', event: 'CART_UPDATE', payload: msg });
-    // 3. Persist for secondary windows on same device
-    try { localStorage.setItem('zenpos_active_pole_state', JSON.stringify(msg)); } catch { /* ignore */ }
-  }, [cart, discount, gstSettings, billSettings, shopSettings, operatingBranchId, profile]);
-
-  // Broadcast on every cart change
-  useEffect(() => {
-    broadcastToPole(cart.length > 0 ? 'ACTIVE' : 'IDLE');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, discount]);
 
   // ── 1-tap Accountant Daily Export ─────────────────────────────────────────
   const handleAccountantExport = useCallback(async () => {
@@ -1453,6 +1391,69 @@ const Billing = () => {
     billFontFamily?: string;
     billFontScale?: number;
   } | null>(null);
+
+  // ── Broadcast cart state to Customer Pole Display (BroadcastChannel + Supabase) ──
+  const broadcastToPole = useCallback((status: 'IDLE' | 'ACTIVE' | 'PAYING' | 'SETTLED') => {
+    const cartItems = cart.filter(i => i.quantity > 0).map(i => ({
+      name: i.name,
+      quantity: i.quantity,
+      price: (i as any).store_price ?? i.price,
+      total: ((i as any).store_price ?? i.price) * i.quantity,
+    }));
+    const subtotal    = cartItems.reduce((s, i) => s + i.total, 0);
+    const discountAmt = discount;
+
+    // Accurate GST computation (mirrors CompletePaymentDialog logic)
+    let runningTax = 0;
+    if (gstSettings.enabled) {
+      runningTax = cart.filter(i => i.quantity > 0).reduce((acc, item) => {
+        const taxRateId = (item as any).tax_rate_id;
+        const rateInfo  = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
+        const rate      = rateInfo?.rate ?? 0;
+        const lineTotal = ((item as any).store_price ?? item.price) * item.quantity;
+        return acc + (lineTotal * (rate / (gstSettings.isComposition ? 1 : 100)));
+      }, 0);
+    }
+    const grandTotal = Math.max(0, subtotal - discountAmt + runningTax);
+
+    // Real UPI & shop name from DB settings (with localStorage fallback)
+    const effectiveUpiId =
+      (billSettings as any)?.upiId ||
+      (shopSettings as any)?.upi_id ||
+      localStorage.getItem('hotel_pos_upi_id') ||
+      undefined;
+    const effectiveShopName =
+      billSettings?.shopName ||
+      (shopSettings as any)?.shop_name ||
+      (profile as any)?.hotel_name ||
+      'ZenPOS';
+
+    const msg = {
+      type: 'CART_UPDATE' as const,
+      cart: cartItems,
+      subtotal,
+      discount: discountAmt,
+      tax: runningTax,
+      grandTotal,
+      upiId: effectiveUpiId,
+      shopName: effectiveShopName,
+      branchId: operatingBranchId || profile?.id,
+      status,
+    };
+
+    // 1. Same-device instant update (BroadcastChannel)
+    poleChannelRef.current?.postMessage(msg);
+    // 2. Cross-device via Supabase Realtime
+    supabasePoleChannelRef.current?.send({ type: 'broadcast', event: 'CART_UPDATE', payload: msg });
+    // 3. Persist for secondary windows on same device
+    try { localStorage.setItem('zenpos_active_pole_state', JSON.stringify(msg)); } catch { /* ignore */ }
+  }, [cart, discount, gstSettings, billSettings, shopSettings, operatingBranchId, profile]);
+
+  // Broadcast on every cart change
+  useEffect(() => {
+    broadcastToPole(cart.length > 0 ? 'ACTIVE' : 'IDLE');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, discount]);
 
   // Printer error dialog state
   const [printerErrorOpen, setPrinterErrorOpen] = useState(false);
