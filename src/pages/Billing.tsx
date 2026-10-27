@@ -52,6 +52,7 @@ import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils
 import { VoidBillDialog } from '@/components/VoidBillDialog';
 import { invalidateRelatedData } from '@/utils/cacheUtils';
 import { QuickCounterPad } from '@/components/QuickCounterPad';
+import { useFillToBottom } from '@/hooks/useFillToBottom';
 import { syncAllMissingCalciQuickKeys } from '@/utils/calciQuickKeyUtils';
 import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
 import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
