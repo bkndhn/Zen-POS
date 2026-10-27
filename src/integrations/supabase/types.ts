@@ -6226,6 +6226,10 @@ export type Database = {
         Returns: undefined
       }
       sweep_admin_storage_alerts: { Args: never; Returns: number }
+      tenant_subscription_active: {
+        Args: { p_admin_id: string }
+        Returns: boolean
+      }
       unlink_auth_provider: { Args: { p_provider: string }; Returns: Json }
       unregister_device_token: { Args: { p_token: string }; Returns: undefined }
       user_has_branch_access: {
