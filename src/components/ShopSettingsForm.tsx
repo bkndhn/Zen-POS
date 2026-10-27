@@ -1408,7 +1408,7 @@ export const ShopSettingsForm = () => {
                                             try {
                                                 const { data } = await supabase.storage
                                                     .from('app-releases')
-                                                    .createSignedUrl('zenpos-latest.apk', 3600);
+                                                    .createSignedUrl('zenpos-latest.apk', 60); // short-lived: download starts immediately
                                                 if (data?.signedUrl) {
                                                     window.open(data.signedUrl, '_blank');
                                                 } else {
