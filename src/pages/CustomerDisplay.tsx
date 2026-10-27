@@ -104,6 +104,18 @@ const PoleDisplay: React.FC = () => {
     });
     const [qrDataUrl, setQrDataUrl] = useState<string>('');
     const [settledTimer, setSettledTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+    // Shared message handler used by both BroadcastChannel and Supabase Realtime
+    const applyMessage = (msg: PoleMessage) => {
+        setState(msg);
+        if (msg.shopName) localStorage.setItem('zenpos_pole_shop_name', msg.shopName);
+        if (msg.status === 'SETTLED') {
+            const t = setTimeout(() => {
+                setState(prev => ({ ...prev, cart: [], subtotal: 0, discount: 0, tax: 0, grandTotal: 0, status: 'IDLE' }));
+            }, 4000);
+            setSettledTimer(t);
+        }
+    };
     const [clock, setClock] = useState(new Date());
 
     // Clock tick
@@ -123,31 +135,40 @@ const PoleDisplay: React.FC = () => {
         } catch { /* ignore */ }
     }, []);
 
-    // BroadcastChannel listener
+    // Read branchId from URL for cross-device Supabase sync
+    const urlBranch = new URLSearchParams(window.location.search).get('branch');
+
+    // BroadcastChannel listener (same-device, zero-latency)
     useEffect(() => {
         if (typeof BroadcastChannel === 'undefined') return;
         const ch = new BroadcastChannel('zenpos-customer-pole');
         ch.onmessage = (e: MessageEvent<PoleMessage>) => {
             const msg = e.data;
             if (msg?.type !== 'CART_UPDATE') return;
-            setState(msg);
-            if (msg.shopName) localStorage.setItem('zenpos_pole_shop_name', msg.shopName);
-
-            if (msg.status === 'SETTLED') {
-                const t = setTimeout(() => {
-                    setState(prev => ({ ...prev, cart: [], subtotal: 0, discount: 0, tax: 0, grandTotal: 0, status: 'IDLE' }));
-                }, 4000);
-                setSettledTimer(t);
-            }
+            applyMessage(msg);
         };
         return () => { ch.close(); if (settledTimer) clearTimeout(settledTimer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Supabase Realtime listener (cross-device — phone/tablet on same network)
+    useEffect(() => {
+        if (!urlBranch) return;
+        const channel = supabase
+            .channel(`pole:${urlBranch}`)
+            .on('broadcast', { event: 'CART_UPDATE' }, ({ payload }: { payload: PoleMessage }) => {
+                if (payload?.type === 'CART_UPDATE') applyMessage(payload);
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [urlBranch]);
+
     // QR generation
     useEffect(() => {
         if (!state.upiId || state.grandTotal <= 0) { setQrDataUrl(''); return; }
-        const upiStr = `upi://pay?pa=${encodeURIComponent(state.upiId)}&am=${state.grandTotal.toFixed(2)}&cu=INR&tn=ZenPOS%20Payment`;
+        const shopNameEncoded = encodeURIComponent(state.shopName || 'ZenPOS');
+        const upiStr = `upi://pay?pa=${encodeURIComponent(state.upiId!)}&pn=${shopNameEncoded}&am=${state.grandTotal.toFixed(2)}&cu=INR&tn=ZenPOS%20Bill`;
         QRCode.toDataURL(upiStr, { width: 200, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
             .then(url => setQrDataUrl(url))
             .catch(() => setQrDataUrl(''));

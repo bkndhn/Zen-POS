@@ -9,9 +9,11 @@
 export interface HappyHourRule {
   id: string;
   name: string;
-  start_time: string; // "HH:MM" or "HH:MM:SS"
-  end_time: string;   // "HH:MM" or "HH:MM:SS"
+  start_time: string;    // "HH:MM" or "HH:MM:SS"
+  end_time: string;      // "HH:MM" or "HH:MM:SS"
   discount_percent: number;
+  is_active?: boolean;   // if absent, treat as active
+  days_of_week?: number[]; // 0=Sun…6=Sat; absent = all days
 }
 
 export interface EffectivePrice {
@@ -37,6 +39,15 @@ const normalize = (t: string): string => (t ?? '').slice(0, 5);
  * Handles overnight ranges e.g. 22:00–02:00.
  */
 export const isRuleActive = (rule: HappyHourRule, now: Date = new Date()): boolean => {
+  // Respect is_active flag (absent = active)
+  if (rule.is_active === false) return false;
+
+  // Respect days_of_week (0=Sun…6=Sat; absent = every day)
+  if (rule.days_of_week && rule.days_of_week.length > 0) {
+    const today = now.getDay();
+    if (!rule.days_of_week.includes(today)) return false;
+  }
+
   const current = toHHMM(now);
   const start   = normalize(rule.start_time);
   const end     = normalize(rule.end_time);

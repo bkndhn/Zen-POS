@@ -64,7 +64,7 @@ import { OvernightShiftWarningDialog } from '@/components/OvernightShiftWarningD
 import { exportDailyAccountantReport, type AccountantBill } from '@/utils/exportUtils';
 import { getActiveHappyHourRule, getEffectiveItemPrice, type HappyHourRule } from '@/utils/happyHourUtils';
 import { PrinterHealthBanner } from '@/components/PrinterHealthBanner';
-import { FileDown, Sparkles } from 'lucide-react';
+import { FileDown, Sparkles, Tv2 } from 'lucide-react';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -557,12 +557,38 @@ const Billing = () => {
 
   // Customer Pole Display broadcast channel (same-device secondary window)
   const poleChannelRef = useRef<BroadcastChannel | null>(null);
+  const supabasePoleChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [poleDialogOpen, setPoleDialogOpen] = useState(false);
+  const [poleQrDataUrl, setPoleQrDataUrl] = useState<string>('');
+
   useEffect(() => {
     if (typeof BroadcastChannel !== 'undefined') {
       poleChannelRef.current = new BroadcastChannel('zenpos-customer-pole');
     }
-    return () => { poleChannelRef.current?.close(); };
-  }, []);
+    // Supabase realtime pole channel (cross-device)
+    const branchId = operatingBranchId || profile?.id;
+    if (branchId) {
+      supabasePoleChannelRef.current = supabase.channel(`pole:${branchId}`);
+      supabasePoleChannelRef.current.subscribe();
+    }
+    return () => {
+      poleChannelRef.current?.close();
+      if (supabasePoleChannelRef.current) supabase.removeChannel(supabasePoleChannelRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operatingBranchId, profile?.id]);
+
+  // Generate QR for Pole Display pairing dialog
+  useEffect(() => {
+    if (!poleDialogOpen) return;
+    const branchId = operatingBranchId || profile?.id;
+    const poleUrl = `${window.location.origin}/display?mode=pole${branchId ? `&branch=${branchId}` : ''}`;
+    import('qrcode').then(QRCode => {
+      QRCode.default.toDataURL(poleUrl, { width: 200, margin: 2 })
+        .then(url => setPoleQrDataUrl(url))
+        .catch(() => setPoleQrDataUrl(''));
+    }).catch(() => {});
+  }, [poleDialogOpen, operatingBranchId, profile?.id]);
   const [overnightShift, setOvernightShift] = useState<{ id: string; opened_at: string; opening_cash: number; shift_name?: string } | null>(null);
   const [showOvernightWarning, setShowOvernightWarning] = useState(false);
 
@@ -692,34 +718,62 @@ const Billing = () => {
     }
   };
 
-  // ── Broadcast cart state to Customer Pole Display ────────────────────────
+  // ── Broadcast cart state to Customer Pole Display (BroadcastChannel + Supabase) ──
   const broadcastToPole = useCallback((status: 'IDLE' | 'ACTIVE' | 'PAYING' | 'SETTLED') => {
-    if (!poleChannelRef.current) return;
     const cartItems = cart.filter(i => i.quantity > 0).map(i => ({
       name: i.name,
       quantity: i.quantity,
       price: (i as any).store_price ?? i.price,
       total: ((i as any).store_price ?? i.price) * i.quantity,
     }));
-    const subtotal   = cartItems.reduce((s, i) => s + i.total, 0);
+    const subtotal    = cartItems.reduce((s, i) => s + i.total, 0);
     const discountAmt = discount;
-    const taxAmt     = 0; // tax computed in CompletePaymentDialog; best-effort here
-    const grandTotal  = Math.max(0, subtotal - discountAmt);
-    const upiId = localStorage.getItem('hotel_pos_upi_id') || undefined;
+
+    // Accurate GST computation (mirrors CompletePaymentDialog logic)
+    let runningTax = 0;
+    if (gstSettings.enabled) {
+      runningTax = cart.filter(i => i.quantity > 0).reduce((acc, item) => {
+        const taxRateId = (item as any).tax_rate_id;
+        const rateInfo  = taxRateId ? gstSettings.taxRatesMap[taxRateId] : null;
+        const rate      = rateInfo?.rate ?? 0;
+        const lineTotal = ((item as any).store_price ?? item.price) * item.quantity;
+        return acc + (lineTotal * (rate / (gstSettings.isComposition ? 1 : 100)));
+      }, 0);
+    }
+    const grandTotal = Math.max(0, subtotal - discountAmt + runningTax);
+
+    // Real UPI & shop name from DB settings (with localStorage fallback)
+    const effectiveUpiId =
+      (billSettings as any)?.upiId ||
+      (shopSettings as any)?.upi_id ||
+      localStorage.getItem('hotel_pos_upi_id') ||
+      undefined;
+    const effectiveShopName =
+      billSettings?.shopName ||
+      (shopSettings as any)?.shop_name ||
+      (profile as any)?.hotel_name ||
+      'ZenPOS';
+
     const msg = {
       type: 'CART_UPDATE' as const,
       cart: cartItems,
       subtotal,
       discount: discountAmt,
-      tax: taxAmt,
+      tax: runningTax,
       grandTotal,
-      upiId,
-      shopName: (shopSettings as any)?.shop_name || 'ZenPOS',
+      upiId: effectiveUpiId,
+      shopName: effectiveShopName,
+      branchId: operatingBranchId || profile?.id,
       status,
     };
-    poleChannelRef.current.postMessage(msg);
+
+    // 1. Same-device instant update (BroadcastChannel)
+    poleChannelRef.current?.postMessage(msg);
+    // 2. Cross-device via Supabase Realtime
+    supabasePoleChannelRef.current?.send({ type: 'broadcast', event: 'CART_UPDATE', payload: msg });
+    // 3. Persist for secondary windows on same device
     try { localStorage.setItem('zenpos_active_pole_state', JSON.stringify(msg)); } catch { /* ignore */ }
-  }, [cart, discount, shopSettings]);
+  }, [cart, discount, gstSettings, billSettings, shopSettings, operatingBranchId, profile]);
 
   // Broadcast on every cart change
   useEffect(() => {
@@ -2174,10 +2228,18 @@ const Billing = () => {
       }
       const storePrice = item.price;
       const channelPrice = getChannelPrice(item, orderChannel);
+
+      // Apply active happy hour discount automatically
+      const hhResult = getEffectiveItemPrice(channelPrice, happyHourRules);
+      const effectivePrice = hhResult.isHappyHour ? hhResult.price : channelPrice;
+
       return [...prev, {
         ...item,
         store_price: storePrice,
-        price: channelPrice,
+        price: effectivePrice,
+        original_price: hhResult.isHappyHour ? channelPrice : undefined,
+        is_happy_hour: hhResult.isHappyHour,
+        happy_hour_rule: hhResult.isHappyHour ? hhResult.ruleName : undefined,
         quantity: baseValue
       }];
     });
@@ -3804,6 +3866,7 @@ const Billing = () => {
         };
 
         postSaveTasks();
+        broadcastToPole('SETTLED');
 
       } catch (saveError: any) {
         console.error('Save failed:', saveError);
@@ -3907,6 +3970,18 @@ const Billing = () => {
           >
             <FileDown className="w-4 h-4" />
             <span className="hidden sm:inline text-xs font-semibold">Accountant</span>
+          </Button>
+
+          {/* Customer Pole Display */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-xl gap-1.5 border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/30"
+            onClick={() => setPoleDialogOpen(true)}
+            title="Open Customer Pole Display"
+          >
+            <Tv2 className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs font-semibold">Display</span>
           </Button>
 
           <Button
@@ -4791,6 +4866,31 @@ const Billing = () => {
     )}
 
     {zReportOpen && <ZReportDialog open={zReportOpen} onOpenChange={setZReportOpen} />}
+
+    {/* Customer Pole Display pairing dialog */}
+    <Dialog open={poleDialogOpen} onOpenChange={setPoleDialogOpen}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Tv2 className="w-5 h-5 text-sky-500" /> Customer Display</DialogTitle>
+          <DialogDescription>Open on a second screen or let customers scan to view their order live.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <Button className="w-full gap-2" onClick={() => { window.open(`/display?mode=pole${operatingBranchId || profile?.id ? `&branch=${operatingBranchId || profile?.id}` : ''}`, 'ZenPOS_Pole', 'width=1024,height=768'); }}>
+            <Tv2 className="w-4 h-4" /> Open in New Window
+          </Button>
+          {poleQrDataUrl ? (
+            <div className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border bg-muted/30">
+              <p className="text-xs text-muted-foreground font-semibold">Scan with any phone on the same network</p>
+              <img src={poleQrDataUrl} alt="Pole Display QR" className="rounded-lg" width={160} height={160} />
+              <p className="text-[10px] text-muted-foreground text-center break-all">{`${window.location.origin}/display?mode=pole${operatingBranchId || profile?.id ? `&branch=${operatingBranchId || profile?.id}` : ''}`}</p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">Generating QR…</div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+
     {overnightShift && (
       <OvernightShiftWarningDialog
         open={showOvernightWarning}
