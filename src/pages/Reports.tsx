@@ -227,7 +227,12 @@ function ShiftsTabContent({ adminId, operatingBranchId }: { adminId: string | un
         r.handover_float ?? '',
         r.handover_staff || '',
         r.notes || '',
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+      ].map(v => {
+        // Neutralise spreadsheet formulas in free-text cells (shift name, staff, notes)
+        let s = String(v ?? '');
+        if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+        return `"${s.replace(/"/g, '""')}"`;
+      }).join(',');
     });
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
