@@ -1080,22 +1080,8 @@ const Billing = () => {
     return (localStorage.getItem(branchKey('hotel_pos_default_calci_mode')) as 'num' | 'quick') || 'num';
   });
 
-  // ResizeObserver: keep --billing-top-offset in sync with the toolbar height
-  useEffect(() => {
-    if (!isCalciStretched) return;
-    const toolbar = calciToolbarRef.current;
-    const wrapper = calciWrapperRef.current;
-    if (!toolbar || !wrapper) return;
-    const update = () => {
-      const rect = toolbar.getBoundingClientRect();
-      wrapper.style.setProperty('--billing-top-offset', `${rect.bottom}px`);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(toolbar);
-    window.addEventListener('resize', update);
-    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
-  }, [isCalciStretched]);
+  // Full-screen keypad: stretch from the wrapper's top edge to the bottom bar (measured, not guessed).
+  useFillToBottom(calciWrapperRef, calciEnabled && appBillingMode === 'calci' && isCalciStretched);
 
   const [recentCalciPrices, setRecentCalciPrices] = useState<number[]>(() => {
     try {
