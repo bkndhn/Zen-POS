@@ -52,6 +52,7 @@ import { reportAntiTheft, openCashDrawerNoSale, diffRemovedItems } from '@/utils
 import { VoidBillDialog } from '@/components/VoidBillDialog';
 import { invalidateRelatedData } from '@/utils/cacheUtils';
 import { QuickCounterPad } from '@/components/QuickCounterPad';
+import { useFillToBottom } from '@/hooks/useFillToBottom';
 import { syncAllMissingCalciQuickKeys } from '@/utils/calciQuickKeyUtils';
 import { ParkedCartsSheet } from '@/components/ParkedCartsSheet';
 import { addParked, removeParked, loadParked, saveParked, MAX_PARKED, type ParkedCart } from '@/utils/parkedCarts';
@@ -1080,22 +1081,8 @@ const Billing = () => {
     return (localStorage.getItem(branchKey('hotel_pos_default_calci_mode')) as 'num' | 'quick') || 'num';
   });
 
-  // ResizeObserver: keep --billing-top-offset in sync with the toolbar height
-  useEffect(() => {
-    if (!isCalciStretched) return;
-    const toolbar = calciToolbarRef.current;
-    const wrapper = calciWrapperRef.current;
-    if (!toolbar || !wrapper) return;
-    const update = () => {
-      const rect = toolbar.getBoundingClientRect();
-      wrapper.style.setProperty('--billing-top-offset', `${rect.bottom}px`);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(toolbar);
-    window.addEventListener('resize', update);
-    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
-  }, [isCalciStretched]);
+  // Full-screen keypad: stretch from the wrapper's top edge to the bottom bar (measured, not guessed).
+  useFillToBottom(calciWrapperRef, calciEnabled && appBillingMode === 'calci' && isCalciStretched);
 
   const [recentCalciPrices, setRecentCalciPrices] = useState<number[]>(() => {
     try {
@@ -4050,11 +4037,8 @@ const Billing = () => {
         <div
           ref={calciWrapperRef}
           className={isCalciStretched ? "flex flex-col min-h-0 overflow-hidden" : "mb-4"}
-          style={isCalciStretched ? {
-            height: 'calc(100dvh - var(--billing-top-offset, 120px) - max(68px, calc(58px + env(safe-area-inset-bottom, 0px))))'
-          } : undefined}
         >
-          <div ref={calciToolbarRef} className="flex items-center justify-between mb-3 px-1 gap-2 shrink-0">
+          <div ref={calciToolbarRef} className={cn("flex items-center justify-between px-1 gap-2 shrink-0", isCalciStretched ? "mb-2" : "mb-3")}>
             <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-lg flex items-center shadow-inner">
               <button 
                 onClick={() => setCalciMode('num')} 
