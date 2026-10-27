@@ -551,6 +551,7 @@ const Billing = () => {
   // Happy Hour state
   const [happyHourRules, setHappyHourRules] = useState<HappyHourRule[]>([]);
   const [activeHappyHourRule, setActiveHappyHourRule] = useState<HappyHourRule | null>(null);
+  const { data: shopSettings } = useBranchSettings<any>('shop_settings');
 
   // Customer Pole Display broadcast channel (same-device secondary window)
   const poleChannelRef = useRef<BroadcastChannel | null>(null);
@@ -3874,7 +3875,7 @@ const Billing = () => {
       {activeHappyHourRule && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-xs font-semibold mb-1">
           <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
-          <span>Happy Hour Active: <strong>{activeHappyHourRule.name}</strong> — {activeHappyHourRule.discount_percent}% off all items until {activeHappyHourRule.end_time.slice(0,5)}</span>
+          <span>Happy Hour Active: <strong>{activeHappyHourRule.name}</strong> — {activeHappyHourRule.discount_percent}% off all items until {activeHappyHourRule.end_time?.slice(0,5) || ''}</span>
         </div>
       )}
       {/* Header & Modes */}
