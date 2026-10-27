@@ -552,6 +552,7 @@ const Billing = () => {
   // Happy Hour state
   const [happyHourRules, setHappyHourRules] = useState<HappyHourRule[]>([]);
   const [activeHappyHourRule, setActiveHappyHourRule] = useState<HappyHourRule | null>(null);
+  const [discount, setDiscount] = useState(0);
   const { data: shopSettings } = useBranchSettings<any>('shop_settings');
 
   // Customer Pole Display broadcast channel (same-device secondary window)
@@ -754,7 +755,6 @@ const Billing = () => {
     }
   }, [adminId, operatingBranchId, profile, shopSettings, activeBranch]);
 
-  const [discount, setDiscount] = useState(0);
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
   const [tempQuantity, setTempQuantity] = useState<string>('');
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
