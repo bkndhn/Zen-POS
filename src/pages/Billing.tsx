@@ -60,6 +60,10 @@ import { BillingMobileMenuSheet } from '@/components/BillingMobileMenuSheet';
 import { LoyaltyBadge } from '@/components/LoyaltyBadge';
 import { AddExpenseDialog } from '@/components/AddExpenseDialog';
 import { OvernightShiftWarningDialog } from '@/components/OvernightShiftWarningDialog';
+import { exportDailyAccountantReport, type AccountantBill } from '@/utils/exportUtils';
+import { getActiveHappyHourRule, getEffectiveItemPrice, type HappyHourRule } from '@/utils/happyHourUtils';
+import { PrinterHealthBanner } from '@/components/PrinterHealthBanner';
+import { FileDown, Sparkles } from 'lucide-react';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -543,6 +547,19 @@ const Billing = () => {
   const [activeShift, setActiveShift] = useState<any>(null);
   const [zReportOpen, setZReportOpen] = useState(false);
   const [lastShiftHandover, setLastShiftHandover] = useState<{ amount: number } | null>(null);
+
+  // Happy Hour state
+  const [happyHourRules, setHappyHourRules] = useState<HappyHourRule[]>([]);
+  const [activeHappyHourRule, setActiveHappyHourRule] = useState<HappyHourRule | null>(null);
+
+  // Customer Pole Display broadcast channel (same-device secondary window)
+  const poleChannelRef = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      poleChannelRef.current = new BroadcastChannel('zenpos-customer-pole');
+    }
+    return () => { poleChannelRef.current?.close(); };
+  }, []);
   const [overnightShift, setOvernightShift] = useState<{ id: string; opened_at: string; opening_cash: number; shift_name?: string } | null>(null);
   const [showOvernightWarning, setShowOvernightWarning] = useState(false);
 
@@ -626,6 +643,26 @@ const Billing = () => {
     }
   }, [adminId, operatingBranchId, profile, isAllBranchesView]);
 
+  // Fetch happy hour rules and check active rule every minute
+  useEffect(() => {
+    if (!adminId) return;
+    const loadRules = async () => {
+      const { data } = await (supabase as any)
+        .from('happy_hours')
+        .select('*')
+        .eq('admin_id', adminId);
+      const rules: HappyHourRule[] = data || [];
+      setHappyHourRules(rules);
+      setActiveHappyHourRule(getActiveHappyHourRule(rules));
+    };
+    loadRules();
+    const id = setInterval(() => {
+      setActiveHappyHourRule(getActiveHappyHourRule(happyHourRules));
+    }, 60_000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminId]);
+
   const handleOpenShift = async () => {
     if (!openingCash || isNaN(Number(openingCash))) {
       toast({ title: 'Invalid Amount', description: 'Please enter a valid opening cash amount.', variant: 'destructive' });
@@ -651,6 +688,69 @@ const Billing = () => {
       setOpeningShiftLoading(false);
     }
   };
+
+  // ── Broadcast cart state to Customer Pole Display ────────────────────────
+  const broadcastToPole = useCallback((status: 'IDLE' | 'ACTIVE' | 'PAYING' | 'SETTLED') => {
+    if (!poleChannelRef.current) return;
+    const cartItems = cart.filter(i => i.quantity > 0).map(i => ({
+      name: i.name,
+      quantity: i.quantity,
+      price: (i as any).store_price ?? i.price,
+      total: ((i as any).store_price ?? i.price) * i.quantity,
+    }));
+    const subtotal   = cartItems.reduce((s, i) => s + i.total, 0);
+    const discountAmt = discount;
+    const taxAmt     = 0; // tax computed in CompletePaymentDialog; best-effort here
+    const grandTotal  = Math.max(0, subtotal - discountAmt);
+    const upiId = localStorage.getItem('hotel_pos_upi_id') || undefined;
+    const msg = {
+      type: 'CART_UPDATE' as const,
+      cart: cartItems,
+      subtotal,
+      discount: discountAmt,
+      tax: taxAmt,
+      grandTotal,
+      upiId,
+      shopName: (shopSettings as any)?.shop_name || 'ZenPOS',
+      status,
+    };
+    poleChannelRef.current.postMessage(msg);
+    try { localStorage.setItem('zenpos_active_pole_state', JSON.stringify(msg)); } catch { /* ignore */ }
+  }, [cart, discount, shopSettings]);
+
+  // Broadcast on every cart change
+  useEffect(() => {
+    broadcastToPole(cart.length > 0 ? 'ACTIVE' : 'IDLE');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, discount]);
+
+  // ── 1-tap Accountant Daily Export ─────────────────────────────────────────
+  const handleAccountantExport = useCallback(async () => {
+    if (!adminId) return;
+    const branchId = operatingBranchId || profile?.id;
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      let q = (supabase as any)
+        .from('bills')
+        .select('bill_no, created_at, payment_mode, payment_type, total_amount, net_amount, taxable_amount, cgst, sgst, igst, discount, round_off, status, is_deleted')
+        .eq('admin_id', adminId)
+        .gte('created_at', `${todayStr}T00:00:00`)
+        .order('created_at', { ascending: true });
+      if (branchId) q = q.eq('branch_id', branchId);
+      const { data, error } = await q;
+      if (error) throw error;
+      exportDailyAccountantReport({
+        bills: (data || []) as AccountantBill[],
+        date: todayStr,
+        shopName: (shopSettings as any)?.shop_name,
+        gstin: (shopSettings as any)?.gstin,
+        branchName: (activeBranch as any)?.name,
+      });
+      toast({ title: 'Export Ready', description: `zenpos-accountant-daily-${todayStr}.csv downloaded.` });
+    } catch (err: any) {
+      toast({ title: 'Export Failed', description: err.message, variant: 'destructive' });
+    }
+  }, [adminId, operatingBranchId, profile, shopSettings, activeBranch]);
 
   const [discount, setDiscount] = useState(0);
   const [editingQuantity, setEditingQuantity] = useState<string | null>(null);
@@ -3768,6 +3868,15 @@ const Billing = () => {
     {/* Main Items Area */}
     <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-hidden max-w-full flex flex-col pb-[72px] md:pb-6">
       <AllBranchesReadOnlyBanner message="Switch to a specific branch to create bills." />
+      {/* Pre-rush printer health warning */}
+      <PrinterHealthBanner />
+      {/* Happy Hour active banner */}
+      {activeHappyHourRule && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-xs font-semibold mb-1">
+          <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+          <span>Happy Hour Active: <strong>{activeHappyHourRule.name}</strong> — {activeHappyHourRule.discount_percent}% off all items until {activeHappyHourRule.end_time.slice(0,5)}</span>
+        </div>
+      )}
       {/* Header & Modes */}
       <div className="flex flex-col gap-2 mb-2 w-full">
         <div className="flex flex-nowrap items-center gap-1.5 w-full overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -3785,6 +3894,18 @@ const Billing = () => {
           </div>
 
           <PrinterStatusPanel inline className="shrink-0" />
+
+          {/* 1-tap Accountant Daily Export */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-xl gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-950/30"
+            onClick={handleAccountantExport}
+            title="Download today's accountant summary CSV"
+          >
+            <FileDown className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs font-semibold">Accountant</span>
+          </Button>
 
           <Button
             variant="outline"

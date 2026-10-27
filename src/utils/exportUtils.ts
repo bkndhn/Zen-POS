@@ -405,3 +405,112 @@ export const exportToExcel = (expenses: ExpenseForPDF[], title: string = 'Expens
 
 export const exportExpensesToPDF = exportToPDF;
 export const exportExpensesToExcel = exportToExcel;
+
+// ─── Bill type for accountant export ─────────────────────────────────────────
+export interface AccountantBill {
+  bill_no: string | number;
+  created_at: string;
+  payment_mode?: string;
+  payment_type?: string;
+  total_amount?: number;
+  net_amount?: number;
+  taxable_amount?: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+  discount?: number;
+  round_off?: number;
+  status?: string;
+  is_deleted?: boolean;
+}
+
+export interface AccountantExportOptions {
+  bills: AccountantBill[];
+  date: string; // YYYY-MM-DD
+  shopName?: string;
+  gstin?: string;
+  branchName?: string;
+}
+
+/** 1-tap daily accountant CSV — structured for direct CA / Tally import */
+export const exportDailyAccountantReport = (opts: AccountantExportOptions): void => {
+  const { bills, date, shopName = 'ZenPOS Shop', gstin = '', branchName = '' } = opts;
+
+  // Filter out voided/deleted bills
+  const validBills = bills.filter(b => b.status !== 'voided' && b.is_deleted !== true);
+
+  // ── Section 1: Tax & Revenue Summary ──────────────────────────────────────
+  const totalGross    = validBills.reduce((s, b) => s + Number(b.total_amount ?? b.net_amount ?? 0), 0);
+  const totalTaxable  = validBills.reduce((s, b) => s + Number(b.taxable_amount ?? 0), 0);
+  const totalCGST     = validBills.reduce((s, b) => s + Number(b.cgst ?? 0), 0);
+  const totalSGST     = validBills.reduce((s, b) => s + Number(b.sgst ?? 0), 0);
+  const totalIGST     = validBills.reduce((s, b) => s + Number(b.igst ?? 0), 0);
+  const totalDiscount = validBills.reduce((s, b) => s + Number(b.discount ?? 0), 0);
+  const totalRoundOff = validBills.reduce((s, b) => s + Number(b.round_off ?? 0), 0);
+
+  // ── Section 2: Payment Mode Breakdown ─────────────────────────────────────
+  const paymentGroups: Record<string, { count: number; total: number }> = {};
+  for (const b of validBills) {
+    const mode = ((b.payment_mode ?? b.payment_type ?? 'Other').trim()) || 'Other';
+    if (!paymentGroups[mode]) paymentGroups[mode] = { count: 0, total: 0 };
+    paymentGroups[mode].count++;
+    paymentGroups[mode].total += Number(b.total_amount ?? b.net_amount ?? 0);
+  }
+
+  // ── Section 3: Bill Range ─────────────────────────────────────────────────
+  const billNos = validBills.map(b => String(b.bill_no));
+  const firstBill = billNos[0] ?? '-';
+  const lastBill  = billNos[billNos.length - 1] ?? '-';
+  const cancelledCount = bills.filter(b => b.status === 'voided' || b.is_deleted === true).length;
+
+  // ── Build CSV ─────────────────────────────────────────────────────────────
+  const lines: string[] = [];
+  const row = (...vals: any[]) => lines.push(vals.map(csvEscape).join(','));
+  const blank = () => lines.push('');
+
+  row('ZenPOS Daily Accountant Summary');
+  row('Shop', shopName);
+  row('GSTIN', gstin || 'N/A');
+  row('Branch', branchName || 'Main');
+  row('Date', date);
+  row('Generated At', new Date().toLocaleString('en-IN'));
+  blank();
+
+  row('=== REVENUE & TAX SUMMARY ===');
+  row('Metric', 'Amount (Rs.)');
+  row('Total Gross Sales',    totalGross.toFixed(2));
+  row('Net Taxable Value',    totalTaxable.toFixed(2));
+  row('Total CGST',           totalCGST.toFixed(2));
+  row('Total SGST',           totalSGST.toFixed(2));
+  row('Total IGST',           totalIGST.toFixed(2));
+  row('Total Discount Given', totalDiscount.toFixed(2));
+  row('Total Round-off',      totalRoundOff.toFixed(2));
+  blank();
+
+  row('=== PAYMENT MODE BREAKDOWN ===');
+  row('Mode', 'Bills', 'Total (Rs.)');
+  for (const [mode, { count, total }] of Object.entries(paymentGroups)) {
+    row(mode, count, total.toFixed(2));
+  }
+  blank();
+
+  row('=== BILL RANGE ===');
+  row('First Bill No',        firstBill);
+  row('Last Bill No',         lastBill);
+  row('Total Bills',          validBills.length);
+  row('Cancelled/Void Bills', cancelledCount);
+  blank();
+
+  row('=== INVOICE LINE ITEMS ===');
+  row('Bill No', 'Time', 'Payment Mode', 'Taxable (Rs.)', 'GST (Rs.)', 'Grand Total (Rs.)');
+  for (const b of validBills) {
+    const time  = b.created_at ? new Date(b.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
+    const mode  = b.payment_mode ?? b.payment_type ?? 'Other';
+    const taxbl = Number(b.taxable_amount ?? 0).toFixed(2);
+    const gst   = (Number(b.cgst ?? 0) + Number(b.sgst ?? 0) + Number(b.igst ?? 0)).toFixed(2);
+    const grand = Number(b.total_amount ?? b.net_amount ?? 0).toFixed(2);
+    row(b.bill_no, time, mode, taxbl, gst, grand);
+  }
+
+  downloadCsv(`zenpos-accountant-daily-${date}.csv`, lines.join('\r\n'));
+};
