@@ -230,7 +230,7 @@ function ShiftsTabContent({ adminId, operatingBranchId }: { adminId: string | un
       ].map(v => {
         // Neutralise spreadsheet formulas in free-text cells (shift name, staff, notes)
         let s = String(v ?? '');
-        if (typeof v !== 'number' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+        if (typeof v !== 'number' && !/^-?\d+(\.\d+)?$/.test(s) && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
         return `"${s.replace(/"/g, '""')}"`;
       }).join(',');
     });
