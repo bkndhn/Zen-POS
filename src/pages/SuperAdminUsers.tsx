@@ -1172,7 +1172,8 @@ const SuperAdminUsers: React.FC = () => {
             </Button>
             <Button size="sm" variant="outline" onClick={async () => {
               try {
-                const { data } = await supabase.storage.from('app-releases').createSignedUrl('zenpos-latest.apk', 3600);
+                // Short-lived link: the download starts immediately, so it need not outlive this click
+                const { data } = await supabase.storage.from('app-releases').createSignedUrl('zenpos-latest.apk', 60);
                 if (data?.signedUrl) {
                   window.open(data.signedUrl, '_blank');
                 } else {
