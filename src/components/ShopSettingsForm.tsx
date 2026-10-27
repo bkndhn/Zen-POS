@@ -1429,7 +1429,7 @@ export const ShopSettingsForm = () => {
                                             try {
                                                 const { data } = await supabase.storage
                                                     .from('app-releases')
-                                                    .createSignedUrl('zenpos-latest.apk', 86400);
+                                                    .createSignedUrl('zenpos-latest.apk', 900); // 15 minutes
                                                 if (data?.signedUrl) {
                                                     await navigator.clipboard.writeText(data.signedUrl);
                                                     toast({ title: 'Download link copied! Share with your staff.' });

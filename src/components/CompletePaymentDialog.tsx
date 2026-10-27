@@ -18,6 +18,9 @@ import { isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { toast } from '@/hooks/use-toast';
 import { suggestedClearancePct } from '@/utils/expiryPricing';
 
+/** Must match the staff discount cap enforced in secure_create_bill. */
+const STAFF_MAX_DISCOUNT_PCT = 20;
+
 
 interface CartItem {
   id: string;
@@ -157,7 +160,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
   const [customerGstin, setCustomerGstin] = useState('');
   const [splitWays, setSplitWays] = useState(1);
   const [orderType, setOrderType] = useState<'dine_in' | 'parcel'>(defaultOrderType || 'dine_in');
-  const { adminProfileId } = useAuth();
+  const { adminProfileId, profile } = useAuth();
 
   // When dialog opens, sync orderType to configured default (per branch)
   useEffect(() => {
@@ -416,6 +419,18 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
         });
         return;
       }
+    }
+
+    // Staff discounts are capped at 20% of the bill (the server enforces the same rule);
+    // only the shop owner can give a larger discount.
+    if (profile?.role === 'user' && discountAmount > subtotal * STAFF_MAX_DISCOUNT_PCT / 100 + 0.01) {
+      hapticWarning();
+      toast({
+        title: "Discount too high",
+        description: `Staff can give up to ${STAFF_MAX_DISCOUNT_PCT}% off. Ask the owner for a bigger discount.`,
+        variant: "destructive"
+      });
+      return;
     }
 
     // Haptic feedback — satisfying confirmation bump
