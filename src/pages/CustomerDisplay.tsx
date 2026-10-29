@@ -228,9 +228,14 @@ const PoleDisplay: React.FC = () => {
             </div>
 
             {/* Main body */}
-            <div className="flex-1 flex overflow-hidden">
+            {state.happyHour && (
+                <div className="shrink-0 px-6 py-2 bg-amber-500/20 text-amber-200 text-sm font-semibold text-center">
+                    ✨ {state.happyHour.name} — {state.happyHour.percent}% off applied
+                </div>
+            )}
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* LEFT: Item list */}
-                <div className="flex-[3] overflow-y-auto p-6 space-y-2 border-r border-white/10">
+                <div className="flex-1 md:flex-[3] overflow-y-auto p-4 md:p-6 space-y-2 md:border-r border-white/10">
                     <p className="text-xs uppercase tracking-widest text-white/30 mb-3 font-semibold">Your Order</p>
                     {state.cart.map((item, i) => (
                         <div
@@ -244,13 +249,18 @@ const PoleDisplay: React.FC = () => {
                                 <span className="text-xl font-bold leading-tight truncate max-w-[60vw]">{item.name}</span>
                                 <span className="text-base text-white/50 shrink-0">×{item.quantity}</span>
                             </div>
-                            <span className="text-xl font-semibold tabular-nums shrink-0 ml-4">{fmt(item.total)}</span>
+                            <span className="flex flex-col items-end shrink-0 ml-4">
+                                {item.originalPrice != null && item.originalPrice > item.price && (
+                                    <span className="text-sm text-white/40 line-through tabular-nums">{fmt(item.originalPrice * item.quantity)}</span>
+                                )}
+                                <span className="text-xl font-semibold tabular-nums">{fmt(item.total)}</span>
+                            </span>
                         </div>
                     ))}
                 </div>
 
                 {/* RIGHT: Summary + QR */}
-                <div className="flex-[2] shrink-0 flex flex-col items-center justify-between p-6 bg-slate-900/50">
+                <div className="md:flex-[2] shrink-0 flex flex-col items-center justify-between p-4 md:p-6 bg-slate-900/50 border-t md:border-t-0 border-white/10">
                     <div className="w-full space-y-3">
                         <div className="flex justify-between text-lg text-white/60">
                             <span>Subtotal</span><span>{fmt(state.subtotal)}</span>
@@ -267,13 +277,13 @@ const PoleDisplay: React.FC = () => {
                         )}
                         <div className="border-t border-white/20 pt-3 flex justify-between items-end">
                             <span className="text-2xl font-bold">Total</span>
-                            <span className="text-5xl font-black text-primary tabular-nums">{fmt(state.grandTotal)}</span>
+                            <span className="text-4xl md:text-5xl font-black text-primary tabular-nums" data-testid="pole-total">{fmt(state.grandTotal)}</span>
                         </div>
                     </div>
 
                     {/* UPI QR */}
                     {qrDataUrl && state.grandTotal > 0 && (
-                        <div className="mt-6 flex flex-col items-center gap-3">
+                        <div className="mt-4 md:mt-6 flex flex-col items-center gap-2 md:gap-3">
                             <p className="text-sm text-white/40 font-semibold uppercase tracking-wider">Scan to Pay</p>
                             <img
                                 src={qrDataUrl}
