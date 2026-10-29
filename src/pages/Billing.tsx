@@ -4526,8 +4526,12 @@ const Billing = () => {
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="font-bold text-sm bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                ₹{item.price}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}
+              <span className="font-bold text-sm flex items-baseline gap-1.5">
+                {(item as any).is_happy_hour && (item as any).original_price != null && (
+                  <span className="text-xs font-medium text-muted-foreground line-through" data-testid="hh-original-price">₹{(item as any).original_price}</span>
+                )}
+                <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                ₹{item.price}</span>/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}
               </span>
 
               <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-600 rounded-full p-1">
@@ -4890,7 +4894,7 @@ const Billing = () => {
             <div className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border bg-muted/30">
               <p className="text-xs text-muted-foreground font-semibold">Scan with any phone on the same network</p>
               <img src={poleQrDataUrl} alt="Pole Display QR" className="rounded-lg" width={160} height={160} />
-              <p className="text-[10px] text-muted-foreground text-center break-all">{`${window.location.origin}/display?mode=pole${operatingBranchId || profile?.id ? `&branch=${operatingBranchId || profile?.id}` : ''}`}</p>
+              <p className="text-[10px] text-muted-foreground text-center break-all">{getPoleDisplayUrl()}</p>
             </div>
           ) : (
             <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">Generating QR…</div>
