@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { PrinterHealthBanner } from '@/components/PrinterHealthBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -774,6 +775,7 @@ const WaiterCompanion: React.FC = () => {
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] bg-background overflow-hidden">
+            <div className="px-2 pt-2 empty:hidden"><PrinterHealthBanner /></div>
             {/* Mobile Step Header */}
             <div className="sticky top-0 z-20 border-b border-border/50 bg-card/90 backdrop-blur-xl supports-[backdrop-filter]:bg-card/75 px-2 py-2 shadow-sm">
                 <div className="flex items-center gap-1.5">

@@ -1,42 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { usePrinter } from '@/hooks/usePrinter';
 
 /**
- * PrinterHealthBanner
- *
- * Renders an amber warning strip during pre-rush time windows (12:00–13:00 and 19:00–20:00)
- * if no printer is connected. Provides a 1-tap Quick Test Print button.
- * Hidden outside pre-rush windows or when printer is ready.
+ * Pre-rush printer health banner.
+ * Shows during the build-up to lunch and dinner rush when the counter printer is not connected,
+ * with a one-tap connect + test print. Hidden when the printer is ready or outside those windows.
  */
 
-const PRE_RUSH_WINDOWS = [
-  { startH: 12, endH: 13 },  // Lunch rush
-  { startH: 19, endH: 20 },  // Dinner rush
+// Minutes since midnight
+export const PRE_RUSH_WINDOWS = [
+  { start: 11 * 60 + 30, end: 13 * 60 + 30 }, // lunch build-up
+  { start: 18 * 60 + 30, end: 21 * 60 },      // dinner build-up
 ];
 
-function isPreRushNow(d: Date): boolean {
-  const h = d.getHours();
-  return PRE_RUSH_WINDOWS.some(w => h >= w.startH && h < w.endH);
+export function isPreRushNow(d: Date): boolean {
+  const m = d.getHours() * 60 + d.getMinutes();
+  return PRE_RUSH_WINDOWS.some(w => m >= w.start && m < w.end);
 }
 
-export const PrinterHealthBanner: React.FC = () => {
+interface Props {
+  /** Show even outside rush windows (used for previews/tests). */
+  force?: boolean;
+}
+
+export const PrinterHealthBanner: React.FC<Props> = ({ force = false }) => {
   const { isConnected, hasNativeBridge, connectionState, connect, print } = usePrinter();
   const [now, setNow] = useState(new Date());
   const [dismissed, setDismissed] = useState(false);
   const [testPrinting, setTestPrinting] = useState(false);
 
-  // Update clock every 60 seconds
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  // Reset dismissed flag when a new pre-rush window starts
-  const preRush = isPreRushNow(now);
-  const prevPreRush = React.useRef(preRush);
+  const preRush = force || isPreRushNow(now);
+  const prevPreRush = useRef(preRush);
   useEffect(() => {
     if (preRush && !prevPreRush.current) setDismissed(false);
     prevPreRush.current = preRush;
@@ -51,27 +53,27 @@ export const PrinterHealthBanner: React.FC = () => {
   const handleQuickTestPrint = async () => {
     setTestPrinting(true);
     try {
-      if (!isPrinterReady) {
-        await connect();
+      if (!isConnected) {
+        const ok = await (connect as any)();
+        if (ok === false) throw new Error('connect failed');
       }
-      // Send a minimal ESC/POS feed — bluetoothPrinter print() accepts raw bytes or receipt data
-      // We pass a minimal receipt object; the actual structure is handled by printerManager
-      await (print as any)({
-        shopName: 'ZenPOS',
+      const d = new Date();
+      const ok = await print({
         billNo: 'TEST',
+        date: d.toLocaleDateString('en-IN'),
+        time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         items: [],
         subtotal: 0,
-        tax: 0,
         total: 0,
-        paymentMode: '',
-        date: new Date().toLocaleString('en-IN'),
-        isTestPrint: true,
-      });
-      toast({ title: 'Test Print Sent', description: 'Check your printer for output.' });
+        paymentMethod: 'Printer check',
+        shopName: 'ZenPOS printer check',
+      } as any);
+      if (!ok) throw new Error('print failed');
+      toast({ title: 'Test print sent', description: 'Check the printer for a short test slip.' });
     } catch {
       toast({
-        title: 'Print Failed',
-        description: 'Ensure Bluetooth printer is powered on and paired.',
+        title: 'Printer not responding',
+        description: 'Turn the printer on, check paper, and pair it in Settings → Printer.',
         variant: 'destructive',
       });
     } finally {
@@ -80,26 +82,30 @@ export const PrinterHealthBanner: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-xs font-medium mb-2 w-full">
-      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
-      <span className="flex-1 min-w-0 truncate">
-        <strong>Peak Rush Alert:</strong> Counter printer is offline. Connect before orders rush in.
+    <div
+      role="alert"
+      data-testid="printer-health-banner"
+      className="flex items-center gap-2 px-3 py-2 rounded-xl border border-warning/50 bg-warning/10 text-foreground text-xs font-medium mb-2 w-full"
+    >
+      <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
+      <span className="flex-1 min-w-0">
+        <strong>Rush coming:</strong> printer is offline. Test it now.
       </span>
       <Button
         size="sm"
         variant="outline"
-        className="h-7 text-xs shrink-0 border-amber-400 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+        className="h-7 text-xs shrink-0"
         onClick={handleQuickTestPrint}
         disabled={testPrinting || connectionState === 'connecting'}
       >
-        {testPrinting ? 'Printing…' : 'Test Print'}
+        {testPrinting ? 'Printing…' : 'Test print'}
       </Button>
       <Button
         size="sm"
         variant="ghost"
-        className="h-7 w-7 p-0 shrink-0 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+        className="h-7 w-7 p-0 shrink-0"
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
+        aria-label="Dismiss printer warning"
       >
         <X className="w-3.5 h-3.5" />
       </Button>

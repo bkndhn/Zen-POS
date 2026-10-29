@@ -100,7 +100,9 @@ const HappyHourForm: React.FC<{ adminId: string; onSave: (hh: any) => void }> = 
   const [start, setStart] = useState('15:00');
   const [end, setEnd] = useState('18:00');
   const [discount, setDiscount] = useState('20');
+  const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [saving, setSaving] = useState(false);
+  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
     <div className="space-y-2 text-sm">
@@ -109,13 +111,19 @@ const HappyHourForm: React.FC<{ adminId: string; onSave: (hh: any) => void }> = 
         <input type="time" value={start} onChange={e=>setStart(e.target.value)} className="flex-1 border rounded px-2 py-1" />
         <input type="time" value={end} onChange={e=>setEnd(e.target.value)} className="flex-1 border rounded px-2 py-1" />
       </div>
-      <input type="number" placeholder="Discount %" value={discount} onChange={e=>setDiscount(e.target.value)} className="w-full border rounded px-2 py-1" />
+      <div className="flex flex-wrap gap-1" aria-label="Days">
+        {DAY_LABELS.map((d, i) => (
+          <button key={d} type="button" onClick={() => setDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].sort())}
+            className={`px-2 py-0.5 rounded border text-xs ${days.includes(i) ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground'}`}>{d}</button>
+        ))}
+      </div>
+      <input type="number" min={1} max={90} placeholder="Discount %" value={discount} onChange={e=>setDiscount(e.target.value)} className="w-full border rounded px-2 py-1" />
       <button 
-        disabled={saving || !name} 
+        disabled={saving || !name.trim() || days.length === 0 || !(Number(discount) > 0 && Number(discount) <= 90)} 
         onClick={async () => {
           setSaving(true);
-          const hh = { admin_id: adminId, name, start_time: start, end_time: end, discount_percent: Number(discount) };
-          const { data, error } = await supabase.from('happy_hours').insert(hh).select().single();
+          const hh = { admin_id: adminId, name: name.trim().slice(0, 60), start_time: start, end_time: end, discount_percent: Number(discount), days_of_week: days, is_active: true, applies_to: 'all' };
+          const { data } = await supabase.from('happy_hours').insert(hh).select().single();
           if (data) onSave(data);
           setSaving(false);
           setName('');
