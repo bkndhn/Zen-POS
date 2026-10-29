@@ -5,6 +5,7 @@ import { ChefHat, Bell, Clock, CheckCircle2, Circle, Loader2, Monitor, Tv2 } fro
 import { formatTimeAMPM, getTimeElapsed } from '@/utils/timeUtils';
 import { cn } from '@/lib/utils';
 import QRCode from 'qrcode';
+import { isValidPoleToken } from '@/utils/polePairing';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ interface PoleCartItem {
     name: string;
     quantity: number;
     price: number;
+    originalPrice?: number;
     total: number;
 }
 
@@ -32,6 +34,7 @@ interface PoleMessage {
     grandTotal: number;
     upiId?: string;
     shopName?: string;
+    happyHour?: { name: string; percent: number };
     status: 'IDLE' | 'ACTIVE' | 'PAYING' | 'SETTLED';
 }
 
@@ -136,7 +139,8 @@ const PoleDisplay: React.FC = () => {
     }, []);
 
     // Read branchId from URL for cross-device Supabase sync
-    const urlBranch = new URLSearchParams(window.location.search).get('branch');
+    const rawPair = new URLSearchParams(window.location.search).get('pair');
+    const urlBranch = isValidPoleToken(rawPair) ? rawPair : null;
 
     // BroadcastChannel listener (same-device, zero-latency)
     useEffect(() => {
