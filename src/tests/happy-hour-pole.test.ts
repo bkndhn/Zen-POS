@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getEffectiveItemPrice, isRuleActive, type HappyHourRule } from '@/utils/happyHourUtils';
 import { isValidPoleToken, getPolePairingToken } from '@/utils/polePairing';
-import { isPreRushNow } from '@/components/PrinterHealthBanner';
+import { isPreRushNow } from '@/utils/preRush';
 
 const rule: HappyHourRule = { id: '1', name: 'Tea Time', start_time: '15:00', end_time: '18:00', discount_percent: 20, days_of_week: [0, 1, 2, 3, 4, 5, 6] };
 const at = (h: number, m = 0, day = 3) => { const d = new Date(2026, 9, 25 + day, h, m); return d; }; // Oct 25 2026 is a Sunday

@@ -3,6 +3,7 @@ import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { usePrinter } from '@/hooks/usePrinter';
+import { isPreRushNow, PRE_RUSH_WINDOWS } from '@/utils/preRush';
 
 /**
  * Pre-rush printer health banner.
@@ -10,16 +11,7 @@ import { usePrinter } from '@/hooks/usePrinter';
  * with a one-tap connect + test print. Hidden when the printer is ready or outside those windows.
  */
 
-// Minutes since midnight
-export const PRE_RUSH_WINDOWS = [
-  { start: 11 * 60 + 30, end: 13 * 60 + 30 }, // lunch build-up
-  { start: 18 * 60 + 30, end: 21 * 60 },      // dinner build-up
-];
-
-export function isPreRushNow(d: Date): boolean {
-  const m = d.getHours() * 60 + d.getMinutes();
-  return PRE_RUSH_WINDOWS.some(w => m >= w.start && m < w.end);
-}
+export { isPreRushNow, PRE_RUSH_WINDOWS };
 
 interface Props {
   /** Show even outside rush windows (used for previews/tests). */
