@@ -26,6 +26,10 @@ export const DevicePermissions: React.FC = () => {
     });
 
     useEffect(() => {
+        // Never cover customer-facing public screens (pole display, token/menu TVs, public menu, landing)
+        const path = window.location.pathname;
+        if (/^\/(display|tokens\/|menu\/|menu-tv\/|feedback|landing|terms|order|t\/)/.test(path)) return;
+
         // Only show if not already requested
         const alreadyRequested = localStorage.getItem(PERMISSIONS_KEY);
         if (alreadyRequested) return;

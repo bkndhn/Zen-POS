@@ -32,3 +32,9 @@
 - [x] Super Admin-only client creation; self sign-ups start paused
 - [ ] Owner self-signup (cancelled by user: Super Admin adds clients)
 - [ ] Native Android/iOS install files (blocked: must be built on a computer with Android Studio / Xcode)
+- [x] Customer screen (pole display) with running total, struck-through happy-hour prices and UPI pay QR, paired by private code
+- [x] Happy-hour prices applied in Billing and accepted by the server for staff bills
+- [x] Pre-rush printer warning with test print in Billing and Waiter Companion
+- [x] Token TV: sound, recently-called list, live/offline status
+- [x] Anonymous visitors cannot read any shop's private data (checked)
+- [ ] Signed-in shop test: create a real happy-hour rule and ring a bill (blocked: preview cannot sign in to this backend)
