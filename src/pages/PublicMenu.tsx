@@ -1579,13 +1579,9 @@ const PublicMenu = () => {
                 }
             }
 
-            // Step 2: No stored session or old one expired. Each device keeps its own
-            // session — guests never join (or see) another party's orders on the table.
-            // Staff still see every order for the table.
-
-
-
-            // Step 3: No active orders at all → generate new session
+            // Step 2: No stored session or old one expired → start a new one. Each
+            // device keeps its own session; guests never join (or see) another
+            // party's orders on the table. Staff still see every order for the table.
             const newSid = crypto.randomUUID();
             localStorage.setItem(sessionStorageKey, newSid);
             setSessionId(newSid);
