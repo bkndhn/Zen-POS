@@ -38,3 +38,7 @@
 - [x] Token TV: sound, recently-called list, live/offline status
 - [x] Anonymous visitors cannot read any shop's private data (checked)
 - [ ] Signed-in shop test: create a real happy-hour rule and ring a bill (blocked: preview cannot sign in to this backend)
+- [x] Online menu payment choice per shop: both / UPI only / pay on delivery only, enforced by the server
+- [x] Fix online-menu order numbers (every recent order was numbered "1")
+- [x] Home page: how it works, FAQ, delivery & shift highlights
+- [ ] Signed-in shift walkthrough (open → cash bill → close → Reports → Shifts) (blocked: preview cannot sign in to this backend; steps given to user)

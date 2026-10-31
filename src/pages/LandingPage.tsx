@@ -15,7 +15,7 @@ import {
   ShoppingCart, Monitor, QrCode, Wifi, WifiOff, MessageSquare,
   BarChart3, Users, Receipt, ChefHat, Globe, Shield,
   Check, Star, ArrowRight, Smartphone, Database, FileDown,
-  Zap, Phone, Menu
+  Zap, Phone, Menu, Truck, Clock, Printer
 } from 'lucide-react';
 import { RoiCalculator } from '@/components/landing/RoiCalculator';
 import { FeatureShowcaseTabs } from '@/components/landing/FeatureShowcaseTabs';
@@ -23,12 +23,15 @@ import { CompetitorComparison } from '@/components/landing/CompetitorComparison'
 import { PilotModal } from '@/components/landing/PilotModal';
 
 import { useLandingConfig, type LandingConfig } from '@/hooks/useLandingConfig';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // ── Static Data ───────────────────────────────────────────────────────────────
 const features = [
   { icon: ShoppingCart, title: 'Smart Billing', desc: 'Fast touch-based billing with trie search, multi-cart hold/recall' },
   { icon: ChefHat, title: 'Kitchen Display (KDS)', desc: 'Real-time color-coded order flow from counter to kitchen' },
   { icon: QrCode, title: 'QR Self-Ordering Menu', desc: 'Customers scan & browse your menu, add items, call waiter' },
+  { icon: Truck, title: 'Delivery & Pickup Orders', desc: 'Your own online menu — take UPI, pay on delivery, or both. You choose.' },
+  { icon: Clock, title: 'Shifts & Cash Drawer', desc: 'Open with a float, close with a blind count, see every shift in Reports' },
   { icon: WifiOff, title: '100% Offline Mode', desc: 'Full billing even without internet — syncs automatically' },
   { icon: MessageSquare, title: 'WhatsApp Bills', desc: 'Send branded invoices directly via WhatsApp — zero SMS fees' },
   { icon: BarChart3, title: 'Reports & Analytics', desc: 'Daily Z-reports, item-wise sales, payment mode breakdown' },
@@ -59,12 +62,28 @@ const trustBannerItems = [
 ];
 
 // ── Landing Page ──────────────────────────────────────────────────────────────
+const howItWorks = [
+  { icon: Smartphone, title: 'Send us your menu', desc: 'A photo of your menu card is enough. We set up items, prices and GST for you.' },
+  { icon: Printer, title: 'Connect your printer', desc: 'Use the phone, tablet or laptop you already have with any 58mm or 80mm thermal printer.' },
+  { icon: Receipt, title: 'Start billing', desc: 'Open a shift, take orders, print KOTs and close the day with a Z-report — online or offline.' },
+];
+
+const faqs = [
+  { q: 'Does it work without internet?', a: 'Yes. Billing keeps working offline and bills upload automatically with their original numbers when the internet is back.' },
+  { q: 'Which printers work?', a: 'Most 58mm and 80mm thermal printers over Bluetooth, USB or your browser. We help you set it up on Day 1.' },
+  { q: 'Can customers order online and pay?', a: 'Yes. Share your menu link or QR. You decide whether customers pay by UPI, pay on delivery/pickup, or either.' },
+  { q: 'Is my sales data private?', a: 'Each shop’s data is locked to that shop. Not even the ZenPOS platform admin can see your sales, bills or customers.' },
+  { q: 'Can I take my data out?', a: 'Any time. Export bills, items and customers to CSV/Excel in one tap. No lock-in.' },
+];
+
 const navLinks = [
+  { label: 'How it works', href: '#how-it-works' },
   { label: 'Features', href: '#features' },
   { label: 'ROI Calculator', href: '#roi-calculator' },
   { label: 'Live Showcase', href: '#showcase' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Trust & Security', href: '#trust' },
+  { label: 'FAQ', href: '#faq' },
 ];
 
 const LandingPage: React.FC = () => {
@@ -163,7 +182,7 @@ const LandingPage: React.FC = () => {
               href={`https://wa.me/${config.whatsappNumber}?text=${whatsappPilotMsg}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 hover:bg-green-100 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border border-success/40 bg-success/10 text-success hover:bg-success/20 transition-colors"
             >
               <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
             </a>
@@ -214,14 +233,14 @@ const LandingPage: React.FC = () => {
 
       {/* Hero */}
       <section className="relative overflow-hidden py-16 sm:py-28">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-emerald-500/5" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-success/5" />
         {/* Background grid texture */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 40px,currentColor 40px,currentColor 41px),repeating-linear-gradient(90deg,transparent,transparent 40px,currentColor 40px,currentColor 41px)'
         }} />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
           {/* Glassmorphic badge with pulse */}
-          <div className="inline-flex items-center gap-2.5 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm border border-primary/20 text-primary rounded-full px-4 py-2 text-sm font-semibold mb-8 shadow-lg shadow-primary/10">
+          <div className="inline-flex items-center gap-2.5 bg-card/70 backdrop-blur-sm border border-primary/20 text-primary rounded-full px-4 py-2 text-sm font-semibold mb-8 shadow-lg shadow-primary/10">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
@@ -257,6 +276,26 @@ const LandingPage: React.FC = () => {
             <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> Works offline</span>
             <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> No hardware lock-in</span>
           </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how-it-works" className="py-14 sm:py-20 scroll-mt-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Live in one afternoon</h2>
+            <p className="text-muted-foreground">Three steps. No new hardware.</p>
+          </div>
+          <ol className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {howItWorks.map((step, i) => (
+              <li key={step.title} className="relative rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
+                <span className="absolute -top-3 left-5 h-7 w-7 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center shadow">{i + 1}</span>
+                <step.icon className="h-6 w-6 text-primary mb-3 mt-2" />
+                <h3 className="font-semibold mb-1">{step.title}</h3>
+                <p className="text-sm text-muted-foreground">{step.desc}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -314,7 +353,7 @@ const LandingPage: React.FC = () => {
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${billingCycle === 'yearly' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 Yearly
-                <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">Save 17%</span>
+                <span className="text-[10px] font-bold bg-success/15 text-success px-1.5 py-0.5 rounded-full">Save 17%</span>
               </button>
             </div>
           </div>
@@ -338,7 +377,7 @@ const LandingPage: React.FC = () => {
                       {billingCycle === 'yearly' && plan.name === 'All-in-One' ? '/year' : plan.period}
                     </span>
                     {billingCycle === 'yearly' && plan.name === 'All-in-One' && (
-                      <p className="text-xs text-emerald-600 font-semibold mt-1">🎁 2 months free included</p>
+                      <p className="text-xs text-success font-semibold mt-1">🎁 2 months free included</p>
                     )}
                   </div>
                   <ul className="space-y-2.5 mb-6">
@@ -365,7 +404,7 @@ const LandingPage: React.FC = () => {
                 <Phone className="h-4 w-4" /> +91 {config.contactPhone}
               </a>
               <a href={`https://wa.me/${config.whatsappNumber}?text=${whatsappPilotMsg}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 font-semibold text-green-700 dark:text-green-400 hover:underline">
+                className="flex items-center gap-1.5 font-semibold text-success hover:underline">
                 <MessageSquare className="h-4 w-4" /> WhatsApp Demo
               </a>
             </div>
@@ -396,6 +435,23 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="py-16 sm:py-20 bg-muted/30 scroll-mt-16">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Questions owners ask us</h2>
+          </div>
+          <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card px-4">
+            {faqs.map((f, i) => (
+              <AccordionItem key={f.q} value={`faq-${i}`} className={i === faqs.length - 1 ? 'border-b-0' : ''}>
+                <AccordionTrigger className="text-left text-sm sm:text-base">{f.q}</AccordionTrigger>
+                <AccordionContent className="text-sm text-muted-foreground">{f.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-16 sm:py-20 bg-primary/5">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
@@ -416,7 +472,7 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border">
+      <footer className="py-8 pb-20 sm:pb-8 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} ZenPOS. Made with ❤️ for Tamil Nadu restaurants.</p>
           <p className="mt-1 text-xs">GST & FSSAI Ready • 100% Offline First • RLS Isolated • No Lock-in</p>
@@ -432,7 +488,7 @@ const LandingPage: React.FC = () => {
           href={`https://wa.me/${config.whatsappNumber}?text=${whatsappPilotMsg}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-md bg-success hover:bg-success/90 text-success-foreground font-semibold text-sm transition-colors"
         >
           <MessageSquare className="h-4 w-4" />
           💬 WhatsApp Free Pilot
