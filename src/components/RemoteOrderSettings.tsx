@@ -453,7 +453,7 @@ export const RemoteOrderSettings = () => {
             {!hasUpiId && (
               <p className="text-xs text-warning flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                Add your UPI ID in Settings → Payment to accept online payment. Until then customers only see "Pay on delivery/pickup".
+                Add your UPI ID in Settings → Shop Details to accept online payment. Until then customers only see "Pay on delivery/pickup".
               </p>
             )}
           </div>
