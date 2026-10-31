@@ -11,13 +11,13 @@ import { Slider } from '@/components/ui/slider';
 import { toast } from '@/hooks/use-toast';
 import { Truck, MapPin, Package, Zap, Heart, Shield, AlertTriangle } from 'lucide-react';
 import { AllBranchesReadOnlyBanner } from '@/components/AllBranchesReadOnlyBanner';
-import { useDebounce } from '@/hooks/useDebounce'; // need to see if this exists, otherwise write custom debounce or just use immediate save or a simple timeout
+import { normalizeRemotePaymentMode } from '@/utils/remotePaymentMethods';
 
 export const RemoteOrderSettings = () => {
   const { isAllBranchesView } = useBranch();
   
   const { data, loading, saving, save } = useBranchSettings<any>('shop_settings', 
-    'remote_ordering_enabled, remote_ordering_paused, remote_order_modes, table_qr_protection, delivery_fee_mode, delivery_fee_flat, delivery_fee_base, delivery_fee_per_km, delivery_fee_free_km, max_delivery_radius_km, packaging_fee_mode, packaging_fee_value, surge_fee_enabled, surge_fee_amount, tipping_enabled, require_payment_before_order, require_payment_before_table_order'
+    'remote_ordering_enabled, remote_ordering_paused, remote_order_modes, table_qr_protection, delivery_fee_mode, delivery_fee_flat, delivery_fee_base, delivery_fee_per_km, delivery_fee_free_km, max_delivery_radius_km, packaging_fee_mode, packaging_fee_value, surge_fee_enabled, surge_fee_amount, tipping_enabled, require_payment_before_order, require_payment_before_table_order, remote_payment_methods, upi_id'
   );
 
 
@@ -39,6 +39,7 @@ export const RemoteOrderSettings = () => {
     tipping_enabled: false,
     require_payment_before_order: false,
     require_payment_before_table_order: false,
+    remote_payment_methods: 'both',
   });
 
   useEffect(() => {
@@ -61,9 +62,12 @@ export const RemoteOrderSettings = () => {
         tipping_enabled: data.tipping_enabled || false,
         require_payment_before_order: data.require_payment_before_order ?? false,
         require_payment_before_table_order: data.require_payment_before_table_order ?? false,
+        remote_payment_methods: normalizeRemotePaymentMode(data),
       });
     }
   }, [data]);
+
+  const hasUpiId = typeof data?.upi_id === 'string' && data.upi_id.trim().length > 0;
 
   const updateSetting = async (key: string, value: any) => {
     setLocalSettings((prev: any) => ({ ...prev, [key]: value }));
@@ -415,17 +419,43 @@ export const RemoteOrderSettings = () => {
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border p-4">
+          <div className="rounded-xl border p-4 space-y-3" data-testid="remote-payment-methods-setting">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Require Payment Before Order</Label>
+              <Label className="text-sm font-medium">How delivery / pickup customers can pay</Label>
               <p className="text-xs text-muted-foreground">
-                Customers must complete online payment before their order is confirmed on the public menu.
+                Choose what customers see when they order from your online menu.
               </p>
             </div>
-            <Switch
-              checked={localSettings.require_payment_before_order}
-              onCheckedChange={(checked) => updateSetting('require_payment_before_order', checked)}
-            />
+            <RadioGroup
+              value={localSettings.remote_payment_methods}
+              onValueChange={(val) => updateMultipleSettings({
+                remote_payment_methods: val,
+                require_payment_before_order: val === 'online_only',
+              })}
+              className="grid gap-2"
+            >
+              {[
+                { v: 'both', label: 'Both — UPI or pay on delivery/pickup', needsUpi: false },
+                { v: 'online_only', label: 'Online (UPI) only — pay before the order is sent', needsUpi: true },
+                { v: 'cod_only', label: 'Pay on delivery/pickup only', needsUpi: false },
+              ].map(opt => {
+                const disabled = opt.needsUpi && !hasUpiId;
+                return (
+                  <div key={opt.v} className="flex items-center gap-2">
+                    <RadioGroupItem value={opt.v} id={`pay-${opt.v}`} disabled={disabled} />
+                    <Label htmlFor={`pay-${opt.v}`} className={`text-sm font-normal ${disabled ? 'text-muted-foreground' : ''}`}>
+                      {opt.label}
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+            {!hasUpiId && (
+              <p className="text-xs text-warning flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Add your UPI ID in Settings → Shop Details to accept online payment. Until then customers only see "Pay on delivery/pickup".
+              </p>
+            )}
           </div>
 
           <div className="flex items-center justify-between rounded-xl border p-4">
