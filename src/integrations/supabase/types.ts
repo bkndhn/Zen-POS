@@ -5480,15 +5480,6 @@ export type Database = {
         Args: { p_body: string; p_target_user_id?: string; p_title: string }
         Returns: number
       }
-      adopt_public_table_session: {
-        Args: {
-          p_admin_id: string
-          p_branch_id: string
-          p_seat_id: string
-          p_table_number: string
-        }
-        Returns: Json
-      }
       apply_stock_adjustment: {
         Args: {
           p_branch_id: string
