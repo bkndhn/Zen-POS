@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.enforce_remote_order_payment_method() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.resolve_public_payment_settings(uuid, uuid) FROM PUBLIC, anon, authenticated;
