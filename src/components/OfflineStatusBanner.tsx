@@ -42,9 +42,9 @@ const OfflineStatusBanner: React.FC = () => {
             if (retryCount === 0) {
                 await offlineManager.resetSyncRetries();
                 await offlineManager.resetWriteQueueRetries();
-                // @ts-ignore
+                // @ts-expect-error
                 if (offlineManager.backend?.isReady()) {
-                    // @ts-ignore
+                    // @ts-expect-error
                     await offlineManager.backend.releaseStaleClaims(0);
                 }
             }
