@@ -10,6 +10,7 @@ import { MapPin, Clock, Banknote, ShoppingBag, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { UpiPrePaymentDialog } from '@/components/UpiPrePaymentDialog';
+import { resolveRemotePaymentOptions } from '@/utils/remotePaymentMethods';
 
 
 interface RemoteCheckoutProps {
@@ -61,6 +62,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUpiDialog, setShowUpiDialog] = useState(false);
+  const payOptions = resolveRemotePaymentOptions(shopSettings);
 
   useEffect(() => {
     if (shopSettings.remote_order_modes === 'delivery') setOrderType('delivery');
@@ -365,28 +367,40 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
               </CardContent>
             </Card>
 
-            <div className="space-y-2 pt-2">
-              {shopSettings?.require_payment_before_order && (
-                <p className="text-xs text-amber-600 font-medium text-center py-1">
-                  Payment required — please pay via UPI to confirm your order
+            <div className="space-y-2 pt-2" data-testid="remote-pay-options" data-pay-mode={payOptions.mode}>
+              {payOptions.blocked && (
+                <p className="text-sm text-destructive font-medium text-center py-2" data-testid="remote-pay-blocked">
+                  Online payment isn't set up for this shop yet. Please call the shop to order.
                 </p>
               )}
-              {!shopSettings?.require_payment_before_order && (
-                <Button className="w-full hover:opacity-90 transition-opacity" onClick={handlePayOnPickupClick} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
-                  <Banknote className="w-4 h-4 mr-2" />
-                  {t('menu.payAt', 'Pay at')} {orderType === 'delivery' ? (t('menu.delivery') || 'Delivery') : (t('menu.pickup') || 'Pickup')}
-                </Button>
+              {payOptions.mode === 'online_only' && payOptions.allowOnline && (
+                <p className="text-xs text-muted-foreground font-medium text-center py-1">
+                  This shop takes online payment only — pay via UPI to confirm your order
+                </p>
+              )}
+              {payOptions.mode === 'cod_only' && (
+                <p className="text-xs text-muted-foreground font-medium text-center py-1">
+                  Pay when you {orderType === 'delivery' ? 'receive your order' : 'pick up your order'}
+                </p>
               )}
 
-              {shopSettings.upi_id && (
+              {payOptions.allowOnline && (
                 <Button
-                  variant={shopSettings?.require_payment_before_order ? 'default' : 'outline'}
+                  data-testid="remote-pay-upi"
+                  variant={payOptions.allowCod ? 'outline' : 'default'}
                   className="w-full"
                   onClick={handleUpiClick}
                   disabled={isSubmitting}
-                  style={shopSettings?.require_payment_before_order ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}
+                  style={!payOptions.allowCod ? { backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' } : {}}
                 >
                   <CreditCard className="w-4 h-4 mr-2" />{t('menu.payViaUPI') || 'Pay via UPI'}
+                </Button>
+              )}
+
+              {payOptions.allowCod && (
+                <Button data-testid="remote-pay-cod" className="w-full hover:opacity-90 transition-opacity" onClick={handlePayOnPickupClick} disabled={isSubmitting} style={{ backgroundColor: shopSettings?.menu_primary_color || '#ea580c', color: '#fff' }}>
+                  <Banknote className="w-4 h-4 mr-2" />
+                  {t('menu.payAt', 'Pay at')} {orderType === 'delivery' ? (t('menu.delivery') || 'Delivery') : (t('menu.pickup') || 'Pickup')}
                 </Button>
               )}
             </div>
@@ -394,8 +408,9 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* UPI Pre-Payment Dialog */}
-      {shopSettings.upi_id && (
+      {/* UPI Pre-Payment Dialog — payment reference is always required here;
+          customers who don't want to pay now close it and choose Pay at Delivery. */}
+      {payOptions.allowOnline && (
         <UpiPrePaymentDialog
           isOpen={showUpiDialog}
           onClose={() => setShowUpiDialog(false)}
@@ -404,7 +419,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
           upiId={shopSettings.upi_id}
           upiName={shopSettings.upi_name || shopSettings.shop_name || 'Store'}
           orderLabel={orderType === 'delivery' ? 'Delivery Order' : 'Pickup Order'}
-          requirePayment={!!shopSettings?.require_payment_before_order}
+          requirePayment
           shopPrimaryColor={shopSettings?.menu_primary_color || '#ea580c'}
         />
       )}
