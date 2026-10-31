@@ -288,7 +288,7 @@ const LandingPage: React.FC = () => {
           </div>
           <ol className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {howItWorks.map((step, i) => (
-              <li key={step.title} className="relative rounded-2xl border border-border bg-card p-5 animate-fade-in">
+              <li key={step.title} className="relative rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md">
                 <span className="absolute -top-3 left-5 h-7 w-7 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center shadow">{i + 1}</span>
                 <step.icon className="h-6 w-6 text-primary mb-3 mt-2" />
                 <h3 className="font-semibold mb-1">{step.title}</h3>
