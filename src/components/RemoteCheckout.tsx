@@ -177,7 +177,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
       if (blocked) throw new Error('Device is blocked from placing orders.');
       const { data: activeOrder } = await (supabase as any).rpc('get_active_remote_order_for_device', { p_admin_id: adminId, p_branch_id: branchId ?? null, p_device_id: deviceId });
       if (activeOrder) throw new Error('You already have an active order.');
-      let orderNumber = 1;
+      let orderNumber: string | number = 1;
       let insertedOrderId = '';
       const orderPayload: any = {
         admin_id: adminId, branch_id: branchId, device_id: deviceId,
@@ -199,7 +199,7 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
         orderNumber = rpcRes.order_number || 1;
       } else {
         const { data: orderNumberRes } = await supabase.rpc('get_next_remote_order_number', { p_admin_id: adminId, p_branch_id: branchId });
-        orderNumber = Number(orderNumberRes) || 1;
+        orderNumber = (orderNumberRes as any) || 1;
         const { data: insertedOrder, error: insertErr } = await (supabase as any)
           .from('remote_orders')
           .insert({ ...orderPayload, order_number: orderNumber, status: 'pending', is_paid: false })
