@@ -4252,6 +4252,7 @@ export type Database = {
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          remote_payment_methods: string
           require_payment_before_order: boolean | null
           require_payment_before_table_order: boolean | null
           revenue_milestone_amount: number | null
@@ -4380,6 +4381,7 @@ export type Database = {
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          remote_payment_methods?: string
           require_payment_before_order?: boolean | null
           require_payment_before_table_order?: boolean | null
           revenue_milestone_amount?: number | null
@@ -4508,6 +4510,7 @@ export type Database = {
           remote_order_modes?: string | null
           remote_ordering_enabled?: boolean | null
           remote_ordering_paused?: boolean | null
+          remote_payment_methods?: string
           require_payment_before_order?: boolean | null
           require_payment_before_table_order?: boolean | null
           revenue_milestone_amount?: number | null
@@ -5784,6 +5787,7 @@ export type Database = {
           remote_order_modes: string | null
           remote_ordering_enabled: boolean | null
           remote_ordering_paused: boolean | null
+          remote_payment_methods: string
           require_payment_before_order: boolean | null
           require_payment_before_table_order: boolean | null
           revenue_milestone_amount: number | null
@@ -6166,6 +6170,13 @@ export type Database = {
       resolve_profile_by_provider: {
         Args: { p_provider: string; p_provider_uid: string }
         Returns: string
+      }
+      resolve_public_payment_settings: {
+        Args: { p_admin_id: string; p_branch_id: string }
+        Returns: {
+          payment_methods: string
+          upi_id: string
+        }[]
       }
       run_process_push_queue: { Args: never; Returns: undefined }
       secure_create_bill:
