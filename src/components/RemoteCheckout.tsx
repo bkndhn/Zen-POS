@@ -223,19 +223,22 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
   };
 
   const handleUpiClick = () => {
+    if (!payOptions.allowOnline) return;
     if (!validateCheckoutForm()) return;
-    if (shopSettings.upi_id) { setShowUpiDialog(true); }
-    else { handlePlaceOrder('pay_on_pickup'); }
+    setShowUpiDialog(true);
   };
 
   const handlePayOnPickupClick = () => {
+    if (!payOptions.allowCod) return;
     if (!validateCheckoutForm()) return;
     handlePlaceOrder('pay_on_pickup');
   };
 
   const handleUpiConfirm = (utr: string) => {
     setShowUpiDialog(false);
-    handlePlaceOrder('upi', utr);
+    const ref = utr.trim();
+    if (ref) handlePlaceOrder('upi', ref);
+    else if (payOptions.allowCod) handlePlaceOrder('pay_on_pickup');
   };
 
   return (
