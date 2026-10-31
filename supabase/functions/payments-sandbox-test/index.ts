@@ -1,6 +1,6 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { admin, getPlatformCreds, getCreds, hmacSha256Hex } from '../_shared/pg.ts';
+import { admin, getPlatformCreds, hmacSha256Hex } from '../_shared/pg.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -32,20 +32,19 @@ Deno.serve(async (req) => {
       .eq('user_id', claims.claims.sub as string)
       .maybeSingle();
 
+    // Only the platform Super Admin may run the sandbox, and only against the
+    // platform account. Tenants (owners or staff) can never trigger it.
+    if (profile?.role !== 'super_admin') return json({ error: 'Forbidden' }, 403);
+
     const body = await req.json().catch(() => ({}));
-    const scope = body.scope === 'tenant' ? 'tenant' : 'platform';
+    if (body.scope && body.scope !== 'platform') return json({ error: 'Forbidden' }, 403);
+    const scope = 'platform' as const;
     const outcome: 'success' | 'failure' | 'duplicate' =
       ['success', 'failure', 'duplicate'].includes(body.outcome) ? body.outcome : 'success';
 
-    if (scope === 'platform' && profile?.role !== 'super_admin')
-      return json({ error: 'Forbidden' }, 403);
+    const adminId: string | null = null;
 
-    const adminId: string | null =
-      scope === 'tenant' ? (profile?.admin_id || profile?.id || null) : null;
-
-    const creds = scope === 'platform'
-      ? await getPlatformCreds('razorpay')
-      : await getCreds(adminId!, 'razorpay');
+    const creds = await getPlatformCreds('razorpay');
 
     const checks: { step: string; ok: boolean; detail?: string }[] = [];
     checks.push({ step: 'Credentials saved', ok: !!(creds.key_id && creds.key_secret) });
@@ -53,13 +52,16 @@ Deno.serve(async (req) => {
     checks.push({ step: 'Environment', ok: true, detail: creds.mode });
     if (!creds.webhook_secret) return json({ success: false, checks });
 
-    // Create a throwaway test transaction so settlement has something to act on
+    // Create a throwaway test transaction so settlement has something to act on.
+    // purpose 'order' with no reference_id: settlement marks only this test row
+    // paid and never creates or confirms a subscription payment.
     const txnId = crypto.randomUUID();
     await sb.from('payment_transactions').insert({
       id: txnId,
       admin_id: adminId,
+      reference_id: null,
       provider: 'razorpay',
-      purpose: 'subscription',
+      purpose: 'order',
       scope,
       environment: 'test',
       amount: 1,
@@ -128,6 +130,6 @@ Deno.serve(async (req) => {
     return json({ success: checks.every((c) => c.ok), checks, transaction_id: txnId });
   } catch (e) {
     console.error('payments-sandbox-test error:', e);
-    return json({ error: (e as Error).message }, 400);
+    return json({ error: 'Sandbox test failed. Check the function logs for details.' }, 400);
   }
 });
