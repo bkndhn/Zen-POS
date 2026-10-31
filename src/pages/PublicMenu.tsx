@@ -1579,27 +1579,10 @@ const PublicMenu = () => {
                 }
             }
 
-            // Step 2: No stored session or old one expired. Adopt any active session on this table/seat.
-            const { data: adopted } = await (supabase as any).rpc('adopt_public_table_session', {
-                p_admin_id: adminId,
-                p_branch_id: branchId || null,
-                p_table_number: tableNo,
-                p_seat_id: seatId || null,
-            });
+            // Step 2: No stored session or old one expired. Each device keeps its own
+            // session — guests never join (or see) another party's orders on the table.
+            // Staff still see every order for the table.
 
-            const adoptSid = (adopted as any)?.session_id;
-            if (adoptSid) {
-                localStorage.setItem(sessionStorageKey, adoptSid);
-                setSessionId(adoptSid);
-
-                const allSessionOrders = ((adopted as any)?.orders || []) as TableOrder[];
-                if (allSessionOrders.length > 0) {
-                    setSessionOrders(allSessionOrders);
-                    setShowMyOrders(true);
-                }
-                setSessionReady(true);
-                return;
-            }
 
 
             // Step 3: No active orders at all → generate new session
@@ -3753,7 +3736,7 @@ const PublicMenu = () => {
                     adminId={adminId || ''}
                     branchId={branchId || ''}
                     shopSettings={rawShopSettings as any}
-                    taxRates={Object.values(taxRatesMap).map((t: any) => ({ id: '', rate: t.rate, name: t.name, cess: t.cess || 0 }))}
+                    taxRates={Object.entries(taxRatesMap).map(([id, t]: [string, any]) => ({ id, rate: t.rate, name: t.name, cess: t.cess || 0 }))}
                     onOrderPlaced={(orderId) => {
                         setActiveRemoteOrderId(orderId);
                         setShowRemoteCheckout(false);

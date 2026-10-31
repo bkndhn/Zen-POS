@@ -115,14 +115,15 @@ export const RemoteCheckout: React.FC<RemoteCheckoutProps> = ({
   const getDisplayQty = (item: any) => item.quantity / (item.base_value || 1);
   const subtotal = cart.reduce((acc, item) => acc + (item.price * getDisplayQty(item)), 0);
   
+  // Mirrors the server pricing trigger: only tax-exclusive items add tax on top
+  // (inclusive tax is already inside the item price). The server recalculates
+  // every total, so this is display only.
   const tax = cart.reduce((acc, item) => {
-    const rate = taxRates.find(t => t.id === item.tax_rate_id)?.rate || 0;
+    if (item.is_tax_inclusive !== false) return acc;
+    const r = taxRates.find(t => t.id && t.id === item.tax_rate_id);
+    const rate = r ? (Number(r.rate) || 0) + (Number(r.cess) || 0) : 0;
     const lineTotal = item.price * getDisplayQty(item);
-    if (item.is_tax_inclusive) {
-      return acc + (lineTotal - (lineTotal / (1 + rate / 100)));
-    } else {
-      return acc + (lineTotal * (rate / 100));
-    }
+    return acc + (lineTotal * (rate / 100));
   }, 0);
 
   let deliveryFee = 0;
