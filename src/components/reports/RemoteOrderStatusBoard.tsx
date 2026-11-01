@@ -15,7 +15,7 @@ const LABEL: Record<string, string> = {
 
 const minsSince = (iso?: string | null) => (iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000)) : 0);
 
-export const RemoteOrderStatusBoard: React.FC = () => {
+export const RemoteOrderStatusBoard: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const { adminProfileId } = useAuth();
   const { operatingBranchId } = useBranch();
   const [orders, setOrders] = useState<any[]>([]);
@@ -63,11 +63,11 @@ export const RemoteOrderStatusBoard: React.FC = () => {
       </div>
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : orders.length === 0 ? (
-        <Card><CardContent className="p-6 text-center text-muted-foreground">No online orders today</CardContent></Card>
+      ) : (compact ? active.length === 0 : orders.length === 0) ? (
+        <Card><CardContent className="p-6 text-center text-muted-foreground">{compact ? 'No online orders in progress' : 'No online orders today'}</CardContent></Card>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {orders.map(o => {
+          {(compact ? active : orders).map(o => {
             const idx = STAGES.indexOf(o.status);
             const late = idx >= 0 && idx < 3 && o.estimated_prep_time && minsSince(o.accepted_at || o.created_at) > o.estimated_prep_time;
             const pay = (o.payment_method || o.payment_mode || '').toString().toUpperCase();
