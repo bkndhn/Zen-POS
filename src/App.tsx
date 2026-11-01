@@ -233,6 +233,7 @@ const PublicMenu = lazy(() => import("./pages/PublicMenu"));
 const QRMenu = lazy(() => import("./pages/QRMenu"));
 const TableOrderBilling = lazy(() => import("./pages/TableOrderBilling"));
 const WaiterCompanion = lazy(() => import("./pages/WaiterCompanion"));
+const StaffHub = lazy(() => import("./pages/StaffHub"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const DemoBilling = lazy(() => import("./pages/DemoBilling"));
 const SuperAdminUsers = lazy(() => import("./pages/SuperAdminUsers"));
@@ -418,6 +419,7 @@ const App = () => {
                   <Route path="/qr-menu" element={<Layout><ProtectedRoute requiredPermission="qrMenu"><QRMenu /></ProtectedRoute></Layout>} />
                   <Route path="/online-orders" element={<Layout><ProtectedRoute requiredPermission="onlineOrders"><OnlineOrders /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />
+                  <Route path="/staff" element={<Layout><ProtectedRoute requiredPermission="waiterCompanion"><StaffHub /></ProtectedRoute></Layout>} />
                   <Route path="/waiter" element={<Layout><ProtectedRoute requiredPermission="waiterCompanion"><WaiterCompanion /></ProtectedRoute></Layout>} />
                   <Route path="/suppliers" element={<Layout><ProtectedRoute requiredPermission="suppliers"><Suppliers /></ProtectedRoute></Layout>} />
                   <Route path="/purchases" element={<Layout><ProtectedRoute requiredPermission="purchases"><Purchases /></ProtectedRoute></Layout>} />

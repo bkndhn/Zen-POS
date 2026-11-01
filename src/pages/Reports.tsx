@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import RemoteOrderStatusBoard from '@/components/reports/RemoteOrderStatusBoard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -2170,7 +2171,7 @@ const Reports: React.FC = () => {
       {/* Detailed Reports */}
       <Tabs defaultValue="bills" className="w-full">
         <div className="overflow-x-auto">
-          <TabsList className="grid w-full grid-cols-11 min-w-[900px] h-10">
+          <TabsList className="grid w-full grid-cols-12 min-w-[980px] h-10">
             <TabsTrigger value="bills" className="text-sm font-medium">Bills</TabsTrigger>
             <TabsTrigger value="items" disabled={billFilter === 'deleted'} className="text-sm font-medium">Items</TabsTrigger>
             <TabsTrigger value="payments" disabled={billFilter === 'deleted'} className="text-sm font-medium">Payments</TabsTrigger>
@@ -2182,6 +2183,7 @@ const Reports: React.FC = () => {
             <TabsTrigger value="menu_matrix" disabled={billFilter === 'deleted'} className="text-sm font-medium">Menu Matrix</TabsTrigger>
             <TabsTrigger value="food_cost" className="text-sm font-medium">Food Cost</TabsTrigger>
             <TabsTrigger value="shifts" className="text-sm font-medium">Shifts</TabsTrigger>
+            <TabsTrigger value="live_orders" className="text-sm font-medium">Live Orders</TabsTrigger>
           </TabsList>
         </div>
 
@@ -2189,6 +2191,7 @@ const Reports: React.FC = () => {
           <RecipeCostReport />
         </TabsContent>
 
+        <TabsContent value="live_orders" className="mt-4"><RemoteOrderStatusBoard /></TabsContent>
         <TabsContent value="shifts" className="mt-4">
           <ShiftsTabContent adminId={adminId} operatingBranchId={isAllBranchesView ? null : branchFilterId} />
         </TabsContent>
