@@ -31,6 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { usePrinter } from '@/hooks/usePrinter';
+import { RemoteOrderStatusBoard } from '@/components/reports/RemoteOrderStatusBoard';
 
 interface Table {
     id: string;
@@ -854,6 +855,10 @@ const WaiterCompanion: React.FC = () => {
                 {/* TAB 1: TABLES SELECTOR */}
                 {activeTab === 'tables' && (
                     <div className="space-y-4">
+                        <details className="rounded-xl border border-border bg-card p-2">
+                            <summary className="cursor-pointer text-sm font-bold">Online orders in progress</summary>
+                            <div className="mt-2"><RemoteOrderStatusBoard compact /></div>
+                        </details>
                         <div className="flex items-center justify-between gap-2 mb-2 p-2 rounded-xl bg-muted/40 border border-border">
                             <div className="flex items-center gap-2">
                                 <Utensils className="w-5 h-5 text-primary" />

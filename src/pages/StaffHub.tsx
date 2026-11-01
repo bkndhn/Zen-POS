@@ -7,6 +7,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import QRCode from 'qrcode';
+import { getAppBaseUrl } from '@/utils/urlUtils';
+import { RemoteOrderStatusBoard } from '@/components/reports/RemoteOrderStatusBoard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getPoleDisplayUrl, isValidPoleToken } from '@/utils/polePairing';
 
 const POLE_KEY = 'zenpos_staff_pole_link';
@@ -18,6 +22,13 @@ const StaffHub: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [poleLink, setPoleLink] = useState<string>(() => localStorage.getItem(POLE_KEY) || '');
   const [draft, setDraft] = useState('');
+  const [qrTable, setQrTable] = useState<any | null>(null);
+  const [qrImg, setQrImg] = useState('');
+  const tableLink = (t: any) => `${getAppBaseUrl()}/menu/${adminProfileId}?table=${encodeURIComponent(t.table_number)}`;
+  useEffect(() => {
+    if (!qrTable) { setQrImg(''); return; }
+    QRCode.toDataURL(tableLink(qrTable), { width: 320, margin: 2 }).then(setQrImg).catch(() => setQrImg(''));
+  }, [qrTable]);
 
   const load = useCallback(async () => {
     if (!adminProfileId) return;
@@ -57,9 +68,10 @@ const StaffHub: React.FC = () => {
     <div className="p-3 space-y-3 max-w-5xl mx-auto">
       <h1 className="text-xl font-bold">Staff</h1>
       <Tabs defaultValue="tables">
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="tables">Tables</TabsTrigger>
           <TabsTrigger value="orders">Orders ({orders.length})</TabsTrigger>
+          <TabsTrigger value="online">Online</TabsTrigger>
           <TabsTrigger value="pole">Pole screen</TabsTrigger>
         </TabsList>
         <TabsContent value="tables" className="mt-3">
@@ -71,6 +83,7 @@ const StaffHub: React.FC = () => {
                   <div className="font-semibold">{t.table_name || `T${t.table_number}`}</div>
                   <Badge variant={t.status === 'available' ? 'secondary' : 'default'} className="capitalize">{t.status}</Badge>
                   {open > 0 && <div className="text-xs text-muted-foreground">{open} open order{open > 1 ? 's' : ''}</div>}
+                  <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => setQrTable(t)}>Table QR</Button>
                 </CardContent></Card>
               );
             })}
@@ -92,6 +105,7 @@ const StaffHub: React.FC = () => {
             </CardContent></Card>
           ))}
         </TabsContent>
+        <TabsContent value="online" className="mt-3"><RemoteOrderStatusBoard compact /></TabsContent>
         <TabsContent value="pole" className="mt-3 space-y-2">
           <div className="flex gap-2">
             <Input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Paste the till's pole display link" />
@@ -101,6 +115,21 @@ const StaffHub: React.FC = () => {
           <iframe title="Pole screen" src={poleSrc} className="w-full h-[70vh] rounded-lg border" />
         </TabsContent>
       </Tabs>
+      <Dialog open={!!qrTable} onOpenChange={o => !o && setQrTable(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader><DialogTitle>{qrTable ? (qrTable.table_name || `Table ${qrTable.table_number}`) : ''}</DialogTitle></DialogHeader>
+          {qrTable && (
+            <div className="space-y-3 text-center">
+              {qrImg && <img src={qrImg} alt="Table menu QR" className="mx-auto rounded bg-background" />}
+              <p className="text-xs break-all text-muted-foreground">{tableLink(qrTable)}</p>
+              <div className="flex gap-2">
+                <Button className="flex-1" variant="outline" onClick={() => navigator.clipboard?.writeText(tableLink(qrTable))}>Copy link</Button>
+                {qrImg && <Button className="flex-1" asChild><a href={qrImg} download={`table-${qrTable.table_number}-qr.png`}>Download</a></Button>}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
