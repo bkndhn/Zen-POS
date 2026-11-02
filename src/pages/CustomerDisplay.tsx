@@ -6,6 +6,8 @@ import { formatTimeAMPM, getTimeElapsed } from '@/utils/timeUtils';
 import { cn } from '@/lib/utils';
 import QRCode from 'qrcode';
 import { isValidPoleToken } from '@/utils/polePairing';
+import { PoleLiveOrders } from '@/components/PoleLiveOrders';
+const showStaffOrders = () => new URLSearchParams(window.location.search).get('orders') === '1';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,6 +197,7 @@ const PoleDisplay: React.FC = () => {
     if (state.status === 'IDLE' || state.cart.length === 0) {
         return (
             <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center gap-8 text-white select-none">
+                {showStaffOrders() && <div className="absolute top-0 left-0 right-0"><PoleLiveOrders /></div>}
                 <div className="text-center space-y-4">
                     <div className="text-7xl animate-pulse">🏪</div>
                     <h1 className="text-5xl font-black tracking-tight">{state.shopName}</h1>
@@ -227,6 +230,7 @@ const PoleDisplay: React.FC = () => {
                 </span>
             </div>
 
+            {showStaffOrders() && <PoleLiveOrders />}
             {/* Main body */}
             {state.happyHour && (
                 <div className="shrink-0 px-6 py-2 bg-amber-500/20 text-amber-200 text-sm font-semibold text-center">
