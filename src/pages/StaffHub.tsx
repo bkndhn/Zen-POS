@@ -112,7 +112,7 @@ const StaffHub: React.FC = () => {
             <Button onClick={savePole} disabled={!draft.trim()}>Link</Button>
           </div>
           <p className="text-xs text-muted-foreground">Copy the link from Billing → pole display button on the counter till.</p>
-          <iframe title="Pole screen" src={poleSrc} className="w-full h-[70vh] rounded-lg border" />
+          <iframe title="Pole screen" src={`${poleSrc}&orders=1`} className="w-full h-[70vh] rounded-lg border" />
         </TabsContent>
       </Tabs>
       <Dialog open={!!qrTable} onOpenChange={o => !o && setQrTable(null)}>
