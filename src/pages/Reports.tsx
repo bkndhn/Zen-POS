@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RemoteOrderStatusBoard from '@/components/reports/RemoteOrderStatusBoard';
+import WaiterPerformance from '@/components/reports/WaiterPerformance';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -3054,6 +3055,7 @@ const Reports: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
+                    <WaiterPerformance bills={bills as any} />
                   </div>
                 );
               })()}
