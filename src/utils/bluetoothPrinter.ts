@@ -44,7 +44,7 @@ const processImageForPrintingUncached = async (base64Url: string, targetWidth: n
   return new Promise((resolve) => {
 
     const img = new Image();
-    img.crossOrigin = "Anonymous";
+    img.crossOrigin = "anonymous";
     // Hard timeout: a slow/blocked image must never stall the whole receipt.
     let settled = false;
     const finish = (value: Uint8Array | null) => {

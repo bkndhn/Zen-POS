@@ -516,7 +516,7 @@ const Reports: React.FC = () => {
         const settings = await fetchSettingsForBill({ branch_id: null } as any);
         if (settings?.logoUrl) {
           const img = new Image();
-          img.crossOrigin = 'Anonymous';
+          img.crossOrigin = 'anonymous';
           img.src = settings.logoUrl;
         }
       } catch { /* warming is best-effort */ }
