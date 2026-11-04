@@ -12,6 +12,22 @@ const mins = (a?: string | null, b?: string | null) => {
 const avg = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
 const fmt = (m: number | null) => (m == null ? '—' : `${Math.round(m)} min`);
 
+export type RushKey = 'all' | 'morning' | 'lunch' | 'evening' | 'other';
+const RUSHES: { key: RushKey; label: string }[] = [
+  { key: 'all', label: 'All day' },
+  { key: 'morning', label: 'Morning 6–11' },
+  { key: 'lunch', label: 'Lunch 11–16' },
+  { key: 'evening', label: 'Evening 18–23' },
+];
+/** Which rush a timestamp falls in, using India time. */
+export const rushOf = (iso: string): RushKey => {
+  const h = Number(new Date(iso).toLocaleString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false })) % 24;
+  if (h >= 6 && h < 11) return 'morning';
+  if (h >= 11 && h < 16) return 'lunch';
+  if (h >= 18 && h < 23) return 'evening';
+  return 'other';
+};
+
 /** Waiter-wise speed: orders taken, time from order to serve-start and to bill. */
 export default function WaiterPerformance({ bills }: { bills: BillLite[] }) {
   const active = useMemo(() => bills.filter(b => !b.is_deleted), [bills]);
@@ -44,13 +60,20 @@ export default function WaiterPerformance({ bills }: { bills: BillLite[] }) {
     });
   }, [active]);
 
+  const [rush, setRush] = useState<RushKey>('all');
+
   const rows = useMemo(() => {
     const byBill = new Map<string, OrderRow[]>();
     orders.forEach(o => { if (o.bill_id) byBill.set(o.bill_id, [...(byBill.get(o.bill_id) || []), o]); });
-    const map = new Map<string, { bills: number; tableBills: number; orders: number; toPrep: number[]; toBill: number[] }>();
+    const map = new Map<string, { date: string; staff: string; bills: number; tableBills: number; orders: number; toPrep: number[]; toBill: number[] }>();
     active.forEach(b => {
-      const k = b.created_by || 'unknown';
-      const r = map.get(k) || { bills: 0, tableBills: 0, orders: 0, toPrep: [], toBill: [] };
+      if (!b.created_at) return;
+      const slot = rushOf(b.created_at);
+      if (rush !== 'all' && slot !== rush) return;
+      const staff = b.created_by || 'unknown';
+      const date = new Date(b.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const k = `${date}|${staff}`;
+      const r = map.get(k) || { date, staff, bills: 0, tableBills: 0, orders: 0, toPrep: [], toBill: [] };
       r.bills++;
       const os = byBill.get(b.id) || [];
       if (os.length) {
@@ -63,16 +86,28 @@ export default function WaiterPerformance({ bills }: { bills: BillLite[] }) {
       map.set(k, r);
     });
     return [...map.entries()].map(([id, r]) => ({ id, ...r, avgPrep: avg(r.toPrep), avgBill: avg(r.toBill) }))
-      .sort((a, b) => b.orders - a.orders || b.bills - a.bills);
-  }, [active, orders]);
+      .sort((a, b) => b.date.localeCompare(a.date) || b.orders - a.orders || b.bills - a.bills);
+  }, [active, orders, rush]);
 
-  if (!rows.length) return null;
+  if (!active.length) return null;
   return (
     <div className="space-y-2 mt-4">
-      <h3 className="text-sm font-semibold">⏱️ Waiter speed (orders taken → served → billed)</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">⏱️ Waiter speed (orders taken → served → billed)</h3>
+        <div className="flex gap-1">
+          {RUSHES.map(o => (
+            <button key={o.key} type="button" onClick={() => setRush(o.key)}
+              className={`px-2.5 py-1 rounded-full text-xs border ${rush === o.key ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground'}`}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {!rows.length && <p className="text-xs text-muted-foreground">No bills in this rush for the chosen dates.</p>}
       <div className="border rounded-lg overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead><tr className="bg-muted/50 border-b">
+            <th className="text-left px-3 py-2 text-xs font-medium">Shift date</th>
             <th className="text-left px-3 py-2 text-xs font-medium">Staff</th>
             <th className="text-right px-3 py-2 text-xs font-medium">Bills</th>
             <th className="text-right px-3 py-2 text-xs font-medium">Table orders</th>
@@ -82,7 +117,8 @@ export default function WaiterPerformance({ bills }: { bills: BillLite[] }) {
           <tbody>
             {rows.map(r => (
               <tr key={r.id} className="border-b last:border-0">
-                <td className="px-3 py-2">{r.id === 'unknown' ? 'Unknown' : names[r.id] || r.id.slice(0, 8)}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
+                <td className="px-3 py-2">{r.staff === 'unknown' ? 'Unknown' : names[r.staff] || r.staff.slice(0, 8)}</td>
                 <td className="px-3 py-2 text-right">{r.bills}</td>
                 <td className="px-3 py-2 text-right">{r.orders}</td>
                 <td className="px-3 py-2 text-right">{fmt(r.avgPrep)}</td>

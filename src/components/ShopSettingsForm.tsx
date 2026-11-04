@@ -243,7 +243,7 @@ export const ShopSettingsForm = () => {
                 setLogoUrl(data.logo_url || '');
                 if (data.logo_url && data.logo_url.startsWith('http')) {
                     const img = new Image();
-                    img.crossOrigin = 'Anonymous';
+                    img.crossOrigin = 'anonymous';
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         canvas.width = img.width;
