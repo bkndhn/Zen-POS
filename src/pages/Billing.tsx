@@ -733,7 +733,7 @@ const Billing = () => {
     try {
       let q = (supabase as any)
         .from('bills')
-        .select('bill_no, created_at, payment_mode, total_amount, net_amount, taxable_amount, cgst, sgst, igst, discount, round_off, status, is_deleted')
+        .select('bill_no, created_at, payment_mode, total_amount, total_tax, discount, round_off, is_deleted')
         .eq('admin_id', adminId)
         .gte('created_at', `${todayStr}T00:00:00`)
         .order('created_at', { ascending: true });
@@ -741,7 +741,16 @@ const Billing = () => {
       const { data, error } = await q;
       if (error) throw error;
       exportDailyAccountantReport({
-        bills: (data || []) as AccountantBill[],
+        bills: ((data || []) as any[]).map((b): AccountantBill => {
+          const tax = Number(b.total_tax ?? 0);
+          return {
+            ...b,
+            taxable_amount: Number(b.total_amount ?? 0) - tax,
+            cgst: tax / 2,
+            sgst: tax / 2,
+            igst: 0,
+          };
+        }),
         date: todayStr,
         shopName: (shopSettings as any)?.shop_name,
         gstin: (shopSettings as any)?.gstin,
