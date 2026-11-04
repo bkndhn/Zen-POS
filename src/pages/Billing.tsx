@@ -733,7 +733,7 @@ const Billing = () => {
     try {
       let q = (supabase as any)
         .from('bills')
-        .select('bill_no, created_at, payment_mode, payment_type, total_amount, net_amount, taxable_amount, cgst, sgst, igst, discount, round_off, status, is_deleted')
+        .select('bill_no, created_at, payment_mode, total_amount, net_amount, taxable_amount, cgst, sgst, igst, discount, round_off, status, is_deleted')
         .eq('admin_id', adminId)
         .gte('created_at', `${todayStr}T00:00:00`)
         .order('created_at', { ascending: true });
