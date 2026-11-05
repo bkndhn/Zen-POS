@@ -677,7 +677,8 @@ const WaiterCompanion: React.FC = () => {
                     name: item.name,
                     quantity: item.quantity,
                     unit: item.unit,
-                    instructions: item.instructions
+                    instructions: item.instructions,
+                    category: menuItems.find(m => m.id === item.id)?.category
                 }));
                 try {
                     await printTableOrderKOT({
@@ -765,7 +766,7 @@ const WaiterCompanion: React.FC = () => {
             await printTableOrderKOT({
                 order_number: `[REPRINT] ${billRef}`,
                 table_number: String(table.table_number),
-                items: kotItems.map(it => ({ name: it.name, quantity: it.quantity, unit: it.unit, instructions: it.notes })),
+                items: kotItems.map(it => ({ name: it.name, quantity: it.quantity, unit: it.unit, instructions: it.notes, category: menuItems.find(m => m.name === it.name)?.category })),
             });
             toast({ title: `KOT Reprinted`, description: `KOT Reprinted for Table T${table.table_number}` });
         } catch (err: any) {

@@ -70,6 +70,36 @@ export interface KOTPrintOptions {
   }) => void;
 }
 
+const DRINK_WORDS = /(drink|beverage|bar|cocktail|mocktail|beer|wine|liquor|juice|soda|shake|smoothie|lassi|coffee|tea|soft)/;
+
+/** Station for a category with no saved print station: drink-like names go to the bar. */
+export const inferStation = (categoryName: string): string =>
+  DRINK_WORDS.test((categoryName || '').toLowerCase()) ? 'bar' : 'kitchen';
+
+const CAT_MAP_CACHE_KEY = 'zenpos_category_station_map';
+
+/** Category → station map from the shop's categories; cached on the device for offline use. */
+export const loadCategoryStationMap = async (): Promise<Record<string, string>> => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data, error } = await supabase
+      .from('item_categories')
+      .select('name, print_station, is_deleted');
+    if (error) throw error;
+    const map: Record<string, string> = {};
+    (data || []).forEach((c: any) => {
+      if (c.is_deleted || !c.name) return;
+      const saved = String(c.print_station || '').toLowerCase();
+      // Default 'kitchen' on a drink category is treated as unset so drinks still reach the bar.
+      map[String(c.name).toLowerCase()] = saved && !(saved === 'kitchen' && inferStation(c.name) === 'bar') ? saved : inferStation(c.name);
+    });
+    localStorage.setItem(CAT_MAP_CACHE_KEY, JSON.stringify(map));
+    return map;
+  } catch {
+    try { return JSON.parse(localStorage.getItem(CAT_MAP_CACHE_KEY) || '{}'); } catch { return {}; }
+  }
+};
+
 /** Group items by station using categoryStationMap (categoryName → station). */
 export const groupItemsByStation = (
   items: KOTItem[],
@@ -78,7 +108,7 @@ export const groupItemsByStation = (
   const groups: Record<string, KOTItem[]> = {};
   for (const it of items) {
     const catKey = (it.category || '').toLowerCase();
-    const station = (categoryStationMap[catKey] || 'kitchen').toLowerCase();
+    const station = (categoryStationMap[catKey] || inferStation(catKey)).toLowerCase();
     if (!groups[station]) groups[station] = [];
     groups[station].push(it);
   }
@@ -289,7 +319,8 @@ export const printTableOrderKOT = async (order: any) => {
     name: it.name,
     quantity: it.quantity,
     unit: it.unit,
-    notes: it.instructions
+    notes: it.instructions,
+    category: it.category,
   }));
 
   const meta: KOTMeta = {
@@ -299,6 +330,37 @@ export const printTableOrderKOT = async (order: any) => {
     orderScope: order.order_scope || (order.seat_label ? 'seat' : 'table'),
     orderType: 'dine_in'
   };
+
+  // Split by station (drinks → Bar, food → Kitchen) when more than one station is involved
+  const catMap = items.some(i => i.category) ? await loadCategoryStationMap() : {};
+  const groups = groupItemsByStation(items, catMap);
+  const stations = Object.keys(groups);
+  if (stations.length > 1 || (stations[0] && stations[0] !== 'kitchen')) {
+    const { printerManager } = await import('./printerManager');
+    const { toast } = await import('sonner');
+    const canThermal = printerManager.isConnected() || printerManager.hasNativePrinterBridge();
+    const outcome: string[] = [];
+    for (const st of stations) {
+      const label = st.charAt(0).toUpperCase() + st.slice(1);
+      let ok = false;
+      if (canThermal || getStationDeviceName(st)) {
+        try { ok = await printerManager.printRawBytes(buildKOTBytes(st, groups[st], meta), getStationDeviceName(st) || undefined); } catch { ok = false; }
+      }
+      if (!ok) {
+        printBrowserKOT({
+          tableNumber: `${String(order.table_number || '')} · ${label}`,
+          seatText: order.seat_label ? `Seat ${order.seat_label}` : 'Whole Table',
+          orderScope: order.order_scope || 'table',
+          orderNumber: order.order_number,
+          items: groups[st],
+          customerNote: order.customer_note,
+        });
+      }
+      outcome.push(`${label}: ${ok ? 'printed' : 'browser print'}`);
+    }
+    toast.success('Station tickets sent', { description: outcome.join(' · ') });
+    return true;
+  }
 
   const kotBytes = buildKOTBytes('kitchen', items, meta);
   if (await tryThermalKOT(kotBytes)) return true;
