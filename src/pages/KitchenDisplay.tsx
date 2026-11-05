@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { toast } from '@/hooks/use-toast';
 import { getTimeElapsed, formatTimeAMPM, formatQuantityWithUnit } from '@/utils/timeUtils';
 import { cn } from '@/lib/utils';
+import { kitchenUrgency } from '@/utils/kitchenUrgency';
 import { kitchenOfflineManager } from '@/utils/kitchenOfflineManager';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
 import { RemoteOrdersKDS } from '@/components/RemoteOrdersKDS';
@@ -668,9 +669,7 @@ const KitchenDisplay = () => {
     // Helper: compute urgency level from created_at
     const getUrgencyColor = useCallback((createdAt: string) => {
         const elapsed = (currentTime.getTime() - new Date(createdAt).getTime()) / 60000;
-        if (elapsed > 20) return 'red' as const;
-        if (elapsed > 10) return 'orange' as const;
-        return 'green' as const;
+        return kitchenUrgency(elapsed);
     }, [currentTime]);
 
     const getElapsedMinutes = useCallback((createdAt: string) => {
@@ -1517,7 +1516,7 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
 }) => {
     // Compute elapsed time and urgency
     const elapsedMin = Math.floor((currentTime.getTime() - new Date(bill.created_at).getTime()) / 60000);
-    const urgency: 'green' | 'orange' | 'red' = elapsedMin > 20 ? 'red' : elapsedMin > 10 ? 'orange' : 'green';
+    const urgency = kitchenUrgency(elapsedMin);
 
     const borderClass: Record<string, string> = {
         green: 'border-green-400 shadow-green-500/10',

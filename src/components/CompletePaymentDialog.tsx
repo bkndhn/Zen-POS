@@ -16,6 +16,7 @@ import { Plus, Minus, Trash2, Percent, ChevronDown, ChevronUp, MessageCircle } f
 import { getShortUnit, formatStoredQuantity, isWeightOrVolumeUnit, convertToInventoryUnit } from '@/utils/timeUtils';
 import { isValidPhoneNumber } from '@/utils/whatsappBillShare';
 import { toast } from '@/hooks/use-toast';
+import { CustomerQuickLookup } from '@/components/CustomerQuickLookup';
 import { suggestedClearancePct } from '@/utils/expiryPricing';
 
 /** Must match the staff discount cap enforced in secure_create_bill. */
@@ -804,6 +805,10 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                     )}
                   </div>
                 </div>
+                <CustomerQuickLookup
+                  phone={customerMobile}
+                  onFoundName={(n) => setCustomerName(prev => prev.trim() ? prev : n)}
+                />
                 {whatsappShareMode === 'text' ? (
                   <p className="text-[10px] text-muted-foreground">Text bill will be sent after payment</p>
                 ) : (
