@@ -807,6 +807,7 @@ export const CompletePaymentDialog: React.FC<CompletePaymentDialogProps> = ({
                 </div>
                 <CustomerQuickLookup
                   phone={customerMobile}
+                  khataThisBill={paymentAmounts['Khata (Credit)'] || 0}
                   onFoundName={(n) => setCustomerName(prev => prev.trim() ? prev : n)}
                 />
                 {whatsappShareMode === 'text' ? (

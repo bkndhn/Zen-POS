@@ -229,6 +229,7 @@ const KitchenDisplay = lazy(() => import("./pages/KitchenDisplay"));
 const CustomerDisplay = lazy(() => import("./pages/CustomerDisplay"));
 const TableManagement = lazy(() => import("./pages/TableManagement"));
 const CRM = lazy(() => import("./pages/CRM"));
+const Khata = lazy(() => import("./pages/Khata"));
 const PublicMenu = lazy(() => import("./pages/PublicMenu"));
 const QRMenu = lazy(() => import("./pages/QRMenu"));
 const TableOrderBilling = lazy(() => import("./pages/TableOrderBilling"));
@@ -416,6 +417,7 @@ const App = () => {
                   <Route path="/kitchen" element={<Layout><ProtectedRoute requiredPermission="kitchen"><KitchenDisplay /></ProtectedRoute></Layout>} />
                   <Route path="/tables" element={<Layout><ProtectedRoute requiredPermission="tables"><TableManagement /></ProtectedRoute></Layout>} />
                   <Route path="/crm" element={<Layout><ProtectedRoute requiredPermission="customers"><CRM /></ProtectedRoute></Layout>} />
+                  <Route path="/khata" element={<Layout><ProtectedRoute requiredPermission="customers"><Khata /></ProtectedRoute></Layout>} />
                   <Route path="/qr-menu" element={<Layout><ProtectedRoute requiredPermission="qrMenu"><QRMenu /></ProtectedRoute></Layout>} />
                   <Route path="/online-orders" element={<Layout><ProtectedRoute requiredPermission="onlineOrders"><OnlineOrders /></ProtectedRoute></Layout>} />
                   <Route path="/table-billing" element={<Layout><ProtectedRoute requiredPermission="tableBilling"><TableOrderBilling /></ProtectedRoute></Layout>} />

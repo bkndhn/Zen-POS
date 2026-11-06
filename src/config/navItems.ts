@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   LayoutDashboard,
   ShoppingCart,
   Package,
@@ -68,6 +69,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { to: '/expenses',         icon: Receipt,         label: 'Expenses',         page: 'expenses',      bottomNav: true },
   { to: '/reports',          icon: BarChart3,       label: 'Reports',          page: 'reports',       bottomNav: true },
   { to: '/crm',              icon: UserCircle,      label: 'CRM',              page: 'customers',     bottomNav: true },
+  { to: '/khata',            icon: BookOpen,        label: 'Khata',            page: 'customers' },
   { to: '/qr-menu',          icon: QrCode,          label: 'QR Menu',          page: 'qrMenu',        bottomNav: true },
   { to: '/online-orders',    icon: Smartphone,      label: 'Online Orders',    shortLabel: 'Orders',  page: 'onlineOrders',  bottomNav: true },
   { to: '/users',            icon: Users,           label: 'Users',            page: 'users' },

@@ -7,6 +7,8 @@ interface Props {
   /** Called once with the saved name so the cashier doesn't retype it. */
   onFoundName?: (name: string) => void;
   duesThreshold?: number;
+  /** Amount of this bill going on credit, to show the balance after billing. */
+  khataThisBill?: number;
 }
 
 interface Found {
@@ -19,7 +21,7 @@ interface Found {
 }
 
 /** Shows visits, spend, loyalty and khata due for a 10-digit phone. Data is admin-scoped by RLS. */
-export const CustomerQuickLookup: React.FC<Props> = ({ phone, onFoundName, duesThreshold = 1000 }) => {
+export const CustomerQuickLookup: React.FC<Props> = ({ phone, onFoundName, duesThreshold = 1000, khataThisBill = 0 }) => {
   const { adminProfileId } = useAuth();
   const [found, setFound] = useState<Found | null>(null);
   const [favs, setFavs] = useState<string[]>([]);
@@ -70,6 +72,11 @@ export const CustomerQuickLookup: React.FC<Props> = ({ phone, onFoundName, duesT
           Khata due ₹{due.toLocaleString('en-IN')}
         </span>
       </div>
+      {khataThisBill > 0 && (
+        <div className="font-semibold">
+          Previous ₹{due.toLocaleString('en-IN')} + this bill ₹{khataThisBill.toLocaleString('en-IN')} = ₹{(due + khataThisBill).toLocaleString('en-IN')} due
+        </div>
+      )}
       {favs.length > 0 && <div className="text-muted-foreground">Usually orders: {favs.join(', ')}</div>}
       {due >= duesThreshold && (
         <div className="font-semibold text-destructive">⚠ Dues above ₹{duesThreshold.toLocaleString('en-IN')} — collect before more credit</div>
