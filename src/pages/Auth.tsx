@@ -12,6 +12,7 @@ import { clearAuthRateLimit, enforceAuthRateLimit, formatRetryAfter } from '@/ut
 import { loadAccounts, rememberAccount, forgetAccount, accountInitials, type RememberedAccount } from '@/utils/rememberedAccounts';
 import { X, UserPlus } from 'lucide-react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
+import { DemoAccountsPanel } from '@/components/DemoAccountsPanel';
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
 
@@ -388,6 +389,7 @@ const Auth = () => {
               </button>
             )}
           </form>
+          {!isForgotPassword && <DemoAccountsPanel />}
         </div>
       </div>
     </div>

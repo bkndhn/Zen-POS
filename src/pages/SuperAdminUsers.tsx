@@ -1258,6 +1258,25 @@ const SuperAdminUsers: React.FC = () => {
                 >
                   <Plus className="w-4 h-4" /> Add User
                 </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 font-bold gap-2 rounded-xl"
+                  onClick={async () => {
+                    const remove = window.confirm('OK = create/refresh the 3 demo shops (15 logins).\nCancel = skip.\n\nTo DELETE all demo accounts later, type "delete" in the next box.');
+                    const typed = remove ? '' : (window.prompt('Type "delete" to remove all demo accounts') || '');
+                    const action = remove ? 'create' : typed.trim().toLowerCase() === 'delete' ? 'delete' : null;
+                    if (!action) return;
+                    const { data, error } = await supabase.functions.invoke('seed-demo-accounts', { body: { action } });
+                    if (error || data?.error) {
+                      toast({ title: 'Demo accounts failed', description: data?.error || error?.message, variant: 'destructive' });
+                    } else {
+                      toast({ title: action === 'create' ? `Demo accounts ready (${data.accounts})` : `Deleted ${data.deleted} demo accounts` });
+                      fetchUsers();
+                    }
+                  }}
+                >
+                  Demo accounts
+                </Button>
               </div>
             </div>
 
