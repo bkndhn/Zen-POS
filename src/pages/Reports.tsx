@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import RemoteOrderStatusBoard from '@/components/reports/RemoteOrderStatusBoard';
 import WaiterPerformance from '@/components/reports/WaiterPerformance';
+import CashRegisterLive from '@/components/reports/CashRegisterLive';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -2185,6 +2186,7 @@ const Reports: React.FC = () => {
             <TabsTrigger value="food_cost" className="text-sm font-medium">Food Cost</TabsTrigger>
             <TabsTrigger value="shifts" className="text-sm font-medium">Shifts</TabsTrigger>
             <TabsTrigger value="live_orders" className="text-sm font-medium">Live Orders</TabsTrigger>
+            <TabsTrigger value="cash_register" className="text-sm font-medium">Cash Register</TabsTrigger>
           </TabsList>
         </div>
 
@@ -2193,6 +2195,7 @@ const Reports: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="live_orders" className="mt-4"><RemoteOrderStatusBoard /></TabsContent>
+        <TabsContent value="cash_register" className="mt-4"><CashRegisterLive /></TabsContent>
         <TabsContent value="shifts" className="mt-4">
           <ShiftsTabContent adminId={adminId} operatingBranchId={isAllBranchesView ? null : branchFilterId} />
         </TabsContent>

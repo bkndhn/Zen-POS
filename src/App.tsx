@@ -256,6 +256,10 @@ const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
 const TokenDisplay = lazy(() => import("./pages/TokenDisplay"));
 import { TermsAndConditions } from "./pages/TermsAndConditions";
+import { RouteMeta } from "./components/RouteMeta";
+import { CookieBanner } from "./components/CookieBanner";
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const ThankYou = lazy(() => import("./pages/ThankYou"));
 import { GlobalSettingsSync } from '@/components/GlobalSettingsSync';
 import { useAutoBackup } from '@/hooks/useAutoBackup';
 
@@ -398,6 +402,8 @@ const App = () => {
                   <GlobalSettingsSync />
                   <AutoBackupRunner />
                   <PushNotificationRunner />
+                  <RouteMeta />
+                  <CookieBanner />
                   <Suspense fallback={<SkeletonPageLoader />}>
 
                   <Routes>
@@ -446,7 +452,8 @@ const App = () => {
                   <Route path="/demo" element={<DemoBilling />} />
                   <Route path="/menu-tv/:adminId" element={<MenuTV />} />
                   <Route path="/terms" element={<TermsAndConditions />} />
-                  <Route path="/privacy" element={<TermsAndConditions />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/thank-you" element={<ThankYou />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </Suspense>
