@@ -237,6 +237,8 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
           </Card>
         )}
 
+        <OrderStageScene status={order.status} />
+
         {/* Animated Timeline */}
         <Card>
           <CardHeader className="pb-3">

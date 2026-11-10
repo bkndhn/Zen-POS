@@ -61,6 +61,46 @@ export const CopyMenuToBranchDialog: React.FC<CopyMenuToBranchDialogProps> = ({
     }
   };
 
+  /**
+   * Master-menu push: take every item's price/availability from this branch
+   * and apply it to the same-named item in every other branch. RLS keeps the
+   * update inside the owner's own shop.
+   */
+  const handlePushAll = async () => {
+    if (!sourceBranchId) return;
+    if (!window.confirm(`Push prices and on/off status from this branch to all ${candidates.length} other branches?`)) return;
+    setBusy(true);
+    try {
+      const { data: src, error } = await (supabase as any)
+        .from('items')
+        .select('name, price, is_active')
+        .eq('branch_id', sourceBranchId);
+      if (error) throw error;
+      const rows = (src || []) as { name: string; price: number; is_active: boolean }[];
+      const targetIds = candidates.map(b => b.id);
+      let updated = 0;
+      for (let i = 0; i < rows.length; i += 8) {
+        const chunk = rows.slice(i, i + 8);
+        const results = await Promise.all(chunk.map(r =>
+          (supabase as any)
+            .from('items')
+            .update({ price: r.price, is_active: r.is_active })
+            .eq('name', r.name)
+            .in('branch_id', targetIds)
+            .select('id')
+        ));
+        results.forEach((res: any) => { if (!res.error) updated += res.data?.length || 0; });
+      }
+      toast({ title: 'Pushed to all branches', description: `${updated} branch items updated from ${rows.length} items.` });
+      setOpen(false);
+      onCopied?.();
+    } catch (err: any) {
+      toast({ title: 'Push failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (candidates.length === 0) return null;
 
   return (
@@ -97,6 +137,14 @@ export const CopyMenuToBranchDialog: React.FC<CopyMenuToBranchDialogProps> = ({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Edited prices here? Push this branch's prices and on/off status to every other branch in one tap (matched by item name).
+          </p>
+          <Button variant="secondary" className="w-full" onClick={handlePushAll} disabled={busy}>
+            Push prices to all {candidates.length} branches
+          </Button>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>

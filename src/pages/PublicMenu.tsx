@@ -32,6 +32,7 @@ import { RemoteCheckout } from '@/components/RemoteCheckout';
 import { LiveOrderTracker } from '@/components/LiveOrderTracker';
 import { enableWebPush } from '@/utils/firebaseWeb';
 import { UpiPrePaymentDialog } from '@/components/UpiPrePaymentDialog';
+import { readMenuCache, writeMenuCache } from '@/utils/menuCache';
 
 
 // Types
@@ -841,8 +842,25 @@ const PublicMenu = () => {
     useEffect(() => {
         if (!adminId) return;
 
+        // Instant paint from the 60s device cache; network refresh still runs below.
+        const cached = readMenuCache<any>(adminId, branchId ?? null);
+        if (cached && refreshTrigger === 0) {
+            const c = cached.data;
+            setItems(c.items || []);
+            setShopSettings(c.settings || null);
+            setCategories(c.categories || []);
+            setBanners(c.banners || []);
+            setGstEnabled(!!c.gstEnabled);
+            if (c.taxRatesMap) setTaxRatesMap(c.taxRatesMap);
+            if (c.appSettings) setAppSettings(c.appSettings);
+            setError(null);
+            setLoading(false);
+            if (cached.fresh) return;
+        }
+
         const fetchMenuData = async () => {
             try {
+                let cacheTaxMap: Record<string, any> | null = null;
                 // Fetch items via anon-safe RPC (only exposes menu columns; no purchase_rate/stock)
                 const { data: itemsDataRaw, error: itemsError } = await (supabase as any)
                     .rpc('get_public_menu_items', { p_admin_id: adminId, p_branch_id: branchId ?? null });
@@ -892,6 +910,7 @@ const PublicMenu = () => {
                             ratesMap[r.id] = { rate: r.rate, name: r.name, cess: r.cess_rate || 0 };
                         });
                         setTaxRatesMap(ratesMap);
+                        cacheTaxMap = ratesMap;
                     } else {
                         console.error('Tax rates fetch error:', ratesError);
                     }
@@ -915,6 +934,17 @@ const PublicMenu = () => {
                     setError('Failed to load menu. Please try again.');
                 } else {
                     setError(null);
+                    if (!itemsError) {
+                        writeMenuCache(adminId, branchId ?? null, {
+                            items: mappedItems,
+                            settings: settingsData,
+                            categories: categoriesData,
+                            banners: bannersData,
+                            gstEnabled: enabled,
+                            taxRatesMap: cacheTaxMap,
+                            appSettings: appRow || null,
+                        });
+                    }
                 }
             } catch (err) {
                 console.error('Error fetching menu:', err);
@@ -3042,10 +3072,11 @@ const PublicMenu = () => {
             {/* Floating Cart Bar (when ordering mode + items in cart) */}
             {
                 isOrderingMode && cartItemCount > 0 && !showCart && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[80px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[92px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none zs-enter`}>
                         <button
+                            key={cartItemCount}
                             onClick={() => setShowCart(true)}
-                            className="pointer-events-auto w-full max-w-sm mx-auto flex items-center justify-between px-6 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-white transition-all active:scale-[0.96] floating-cart-bar-btn border border-white/20 backdrop-blur-xl"
+                            className="pointer-events-auto w-full max-w-sm mx-auto flex items-center justify-between px-6 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-white transition-all active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border border-white/20 backdrop-blur-xl"
                             style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
                         >
                             <div className="flex items-center gap-3">
@@ -3397,9 +3428,9 @@ const PublicMenu = () => {
 
             {/* Footer with Contact Info */}
             {!showRemoteTracker && (shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable) && (
-                <footer className="fixed bottom-0 left-0 right-0 text-white shadow-2xl backdrop-blur-sm z-[55]" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
-                    <div className="max-w-2xl mx-auto px-4 py-1.5">
-                        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+                <footer className="fixed bottom-3 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[min(92vw,640px)] text-white rounded-[999px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)] ring-1 ring-white/25 backdrop-blur-xl z-[55] zs-enter" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
+                    <div className="max-w-2xl mx-auto px-5 pt-2 pb-1.5">
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-nowrap overflow-x-auto">
                             {/* Call Button — deep links to the branch/client-isolated contact number */}
                             {shopSettings?.menu_show_phone !== false && shopSettings?.contact_number && (
                                 <a

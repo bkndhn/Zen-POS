@@ -1110,3 +1110,40 @@ All colors MUST be HSL.
     color: hsl(var(--muted-foreground));
   }
 }
+
+/* ---- Online-menu order stage scenes (OrderStageScene) ---- */
+@keyframes zs-enter { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes zs-toss { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-14deg); } }
+@keyframes zs-bit { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
+@keyframes zs-steam { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: .9; } 100% { opacity: 0; transform: translateY(-14px); } }
+@keyframes zs-flame { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(1.25); } }
+@keyframes zs-walk { 0% { transform: translateX(-26px); } 100% { transform: translateX(26px); } }
+@keyframes zs-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes zs-leg { 0%,100% { transform: rotate(14deg); } 50% { transform: rotate(-14deg); } }
+@keyframes zs-speed { 0% { opacity: 0; transform: translateX(10px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateX(-14px); } }
+@keyframes zs-ring { 0%,60%,100% { transform: rotate(0); } 10%,30%,50% { transform: rotate(-12deg); } 20%,40% { transform: rotate(12deg); } }
+@keyframes zs-ticket { from { transform: translateY(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes zs-pop { 0% { transform: scale(0); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes zs-check { from { stroke-dashoffset: 80; } to { stroke-dashoffset: 0; } }
+@keyframes zs-confetti { 0% { opacity: 0; transform: scale(.3); } 40% { opacity: 1; } 100% { opacity: 0; transform: scale(1.25); } }
+@keyframes zs-cart-bump { 0% { transform: scale(1); } 35% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.zs-enter { animation: zs-enter .32s cubic-bezier(.2,.8,.2,1) both; }
+.zs-toss { animation: zs-toss .7s ease-in-out infinite; }
+.zs-bit { animation: zs-bit .7s ease-in-out infinite; }
+.zs-bit2 { animation-delay: .1s; } .zs-bit3 { animation-delay: .2s; }
+.zs-steam { animation: zs-steam 1.2s ease-out infinite; }
+.zs-flame { animation: zs-flame .25s ease-in-out infinite; }
+.zs-walk { animation: zs-walk 1.6s ease-in-out infinite alternate; }
+.zs-bob { animation: zs-bob .4s ease-in-out infinite; }
+.zs-leg-a { animation: zs-leg .4s ease-in-out infinite; }
+.zs-leg-b { animation: zs-leg .4s ease-in-out infinite reverse; }
+.zs-speed { animation: zs-speed .6s linear infinite; }
+.zs-ring { animation: zs-ring 1.4s ease-in-out infinite; }
+.zs-ticket { animation: zs-ticket .5s ease-out both; }
+.zs-pop { animation: zs-pop .45s cubic-bezier(.2,.8,.2,1) both; }
+.zs-check { stroke-dasharray: 80; animation: zs-check .4s .3s ease-out both; }
+.zs-confetti { animation: zs-confetti 1.2s ease-out infinite; }
+.zs-cart-bump { animation: zs-cart-bump .3s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  [class^="zs-"], [class*=" zs-"] { animation: none !important; }
+}
