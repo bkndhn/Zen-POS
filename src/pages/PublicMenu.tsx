@@ -33,6 +33,8 @@ import { LiveOrderTracker } from '@/components/LiveOrderTracker';
 import { enableWebPush } from '@/utils/firebaseWeb';
 import { UpiPrePaymentDialog } from '@/components/UpiPrePaymentDialog';
 import { readMenuCache, writeMenuCache } from '@/utils/menuCache';
+import { LoyaltyStampCard } from '@/components/LoyaltyStampCard';
+import { CustomerReviewForm } from '@/components/CustomerReviewForm';
 
 
 // Types
@@ -510,6 +512,33 @@ const PublicMenu = () => {
     // Clear Cart Dialog state
     const [clearCartOpen, setClearCartOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+
+    // Coupon state
+    const [couponCode, setCouponCode] = useState('');
+    const [couponResult, setCouponResult] = useState<{
+        valid: boolean;
+        coupon_id?: string;
+        discount_type?: string;
+        discount_value?: number;
+        discount_amount?: number;
+        description?: string;
+        code?: string;
+        error?: string;
+    } | null>(null);
+    const [couponLoading, setCouponLoading] = useState(false);
+
+    // Loyalty state
+    const [loyaltyData, setLoyaltyData] = useState<{
+        enabled: boolean;
+        stamps_count: number;
+        total_orders: number;
+        free_items_available: number;
+        stamps_required: number;
+        reward_description?: string;
+    } | null>(null);
+
+    // Review form
+    const [showReviewForm, setShowReviewForm] = useState(false);
 
     // Banner swipe state
     const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -1287,6 +1316,11 @@ const PublicMenu = () => {
         return (featured.length > 0 ? featured : items).slice(0, 8);
     }, [items]);
 
+    // Final cart total after coupon discount
+    const finalCartTotal = couponResult?.valid
+        ? Math.max(0, cartTotal - (couponResult.discount_amount || 0))
+        : cartTotal;
+
     // Toggle category collapse
     const toggleCategory = useCallback((category: string) => {
         setCollapsedCategories(prev => {
@@ -1627,6 +1661,34 @@ const PublicMenu = () => {
             setOrderNote('');
             setShowCart(false);
             setShowMyOrders(true);
+
+            // WhatsApp order confirmation
+            if (shopSettings?.show_whatsapp && shopSettings?.whatsapp) {
+                sendWhatsAppConfirmation(orderItems, totalAmount);
+            }
+
+            // Clear coupon after order placed
+            setCouponResult(null);
+            setCouponCode('');
+
+            // Add loyalty stamp
+            if (adminId && sessionId) {
+                (supabase as any).rpc('add_loyalty_stamp', {
+                    p_admin_id: adminId,
+                    p_branch_id: branchId || null,
+                    p_customer_identifier: sessionId,
+                }).then(({ data }: any) => {
+                    if (data) {
+                        setLoyaltyData((prev: any) => prev ? { ...prev, ...data } : { enabled: true, ...data });
+                        if (data.stamp_just_earned_free) {
+                            toast({
+                                title: '🎉 Free Item Earned!',
+                                description: 'You have earned a free item! Show this screen to your server.'
+                            });
+                        }
+                    }
+                }).catch(console.error);
+            }
         } catch (err) {
             console.error('Order placement error:', err);
             toast({
@@ -1949,6 +2011,58 @@ const PublicMenu = () => {
                 });
             });
     };
+
+    // ── Coupon logic ──
+    const applyCoupon = useCallback(async () => {
+        if (!adminId || !couponCode.trim()) return;
+        setCouponLoading(true);
+        try {
+            const { data, error } = await (supabase as any).rpc('validate_and_redeem_coupon', {
+                p_admin_id: adminId,
+                p_code: couponCode.trim().toUpperCase(),
+                p_order_amount: cartTotal,
+                p_customer_identifier: sessionId || urlParam || 'anonymous'
+            });
+            if (error) throw error;
+            setCouponResult(data as any);
+            if (!(data as any).valid) {
+                toast({ title: 'Invalid Coupon', description: (data as any).error, variant: 'destructive' });
+            } else {
+                toast({ title: '🎉 Coupon Applied!', description: `You saved ₹${(data as any).discount_amount}` });
+            }
+        } catch (err) {
+            console.error('Coupon error:', err);
+            toast({ title: 'Error', description: 'Could not validate coupon. Try again.', variant: 'destructive' });
+        } finally {
+            setCouponLoading(false);
+        }
+    }, [adminId, couponCode, cartTotal, sessionId, urlParam]);
+
+    const removeCoupon = useCallback(() => {
+        setCouponCode('');
+        setCouponResult(null);
+    }, []);
+
+    // ── WhatsApp order confirmation ──
+    const sendWhatsAppConfirmation = useCallback((orderItems: any[], total: number) => {
+        const wa = shopSettings?.whatsapp?.replace(/[^0-9]/g, '');
+        if (!wa || !shopSettings?.show_whatsapp) return;
+        const lines = orderItems.map((i: any) => `  • ${i.name} x${i.quantity} — ₹${(i.price * i.quantity).toFixed(0)}`).join('%0A');
+        const tableInfo = tableNo ? `Table ${tableNo}` : 'Takeaway';
+        const msg = `🧾 *New Order Received* (%0AFrom: ${tableInfo})%0A%0A${lines}%0A%0A*Total: ₹${total.toFixed(2)}*%0A%0ASent via ZenPOS 🚀`;
+        window.open(`https://wa.me/${wa}?text=${msg}`, '_blank', 'noopener');
+    }, [shopSettings, tableNo]);
+
+    // ── Loyalty: fetch card on load ──
+    useEffect(() => {
+        if (!adminId || !sessionId) return;
+        (supabase as any).rpc('get_loyalty_card', {
+            p_admin_id: adminId,
+            p_customer_identifier: sessionId
+        }).then(({ data }: any) => {
+            if (data) setLoyaltyData(data);
+        }).catch(console.error);
+    }, [adminId, sessionId]);
 
     const submitPaymentReference = async () => {
         if (!paymentReference.trim()) return;
@@ -2384,6 +2498,16 @@ const PublicMenu = () => {
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
+
+                        {/* Loyalty Stamp Card */}
+            {loyaltyData?.enabled && (
+                <div className="max-w-2xl mx-auto px-4 pt-3">
+                    <LoyaltyStampCard
+                        loyalty={loyaltyData}
+                        primaryColor={shopSettings?.menu_primary_color}
+                    />
                 </div>
             )}
 
@@ -3074,6 +3198,12 @@ const PublicMenu = () => {
                 isOrderingMode && showCart && cart.length > 0 && (
                     <div className="fixed inset-0 z-[60] bg-black/50 flex items-end" onClick={() => setShowCart(false)}>
                         <div className="w-full max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                            {/* Loyalty in cart */}
+                            {loyaltyData?.enabled && (
+                                <div className="px-4 pt-3 pb-1">
+                                    <LoyaltyStampCard loyalty={loyaltyData} primaryColor={shopSettings?.menu_primary_color} compact />
+                                </div>
+                            )}
                             <div className="flex items-center justify-between p-4 border-b">
                                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <ShoppingCart className="w-5 h-5" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }} />
@@ -3159,6 +3289,39 @@ const PublicMenu = () => {
                                 </div>
                             </div>
 
+                            {/* Coupon Code Row */}
+                            {isOrderingMode && (
+                                <div className="px-4 pb-2 border-t border-gray-100 dark:border-zinc-700 pt-3">
+                                    {couponResult?.valid ? (
+                                        <div className="flex items-center justify-between p-2.5 rounded-xl border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-700">
+                                            <div>
+                                                <p className="text-xs font-bold text-green-700 dark:text-green-400">🎟 {couponResult.code} Applied!</p>
+                                                <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">-₹{couponResult.discount_amount?.toFixed(2)} discount</p>
+                                            </div>
+                                            <button onClick={removeCoupon} className="text-xs text-red-500 hover:text-red-700 font-semibold transition-colors">Remove</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={couponCode}
+                                                onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                                                placeholder="Promo code"
+                                                className="h-9 text-sm uppercase font-mono tracking-wider"
+                                                onKeyDown={e => e.key === 'Enter' && applyCoupon()}
+                                            />
+                                            <button
+                                                onClick={applyCoupon}
+                                                disabled={couponLoading || !couponCode.trim()}
+                                                className="px-4 h-9 rounded-lg text-white text-sm font-bold disabled:opacity-50 flex-shrink-0 transition-all active:scale-95 !bg-transparent"
+                                                style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}
+                                            >
+                                                {couponLoading ? '...' : 'Apply'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Cart summary + Place Order */}
                             <div className="p-4 border-t bg-white space-y-2">
                                 {cartEtaMinutes > 0 && (
@@ -3192,7 +3355,13 @@ const PublicMenu = () => {
                                     <span className="text-sm text-gray-600 font-semibold">
                                         {cartItemCount} {cartItemCount !== 1 ? (t('menu.items') || 'items') : (t('menu.item') || 'item')}
                                     </span>
-                                    <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{cartTotal.toFixed(2)}</span>
+                                    {couponResult?.valid && (
+                                    <div className="flex justify-between text-xs text-green-600 dark:text-green-400 font-semibold -mt-1 mb-1">
+                                        <span>🎟 Coupon ({couponResult.code}):</span>
+                                        <span>-₹{(couponResult.discount_amount || 0).toFixed(2)}</span>
+                                    </div>
+                                )}
+                                <span className="text-lg font-bold" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>₹{finalCartTotal.toFixed(2)}</span>
                                 </div>
                                 <Button
                                     onClick={isRemoteMode
@@ -3208,11 +3377,11 @@ const PublicMenu = () => {
                                     {isPlacingOrder ? (
                                         <><Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('menu.placingOrder') || 'Placing Order...'}</>
                                     ) : isRemoteMode ? (
-                                        <><Send className="w-5 h-5 mr-2" /> Proceed to Checkout ₹{cartTotal.toFixed(2)}</>
+                                        <><Send className="w-5 h-5 mr-2" /> Proceed to Checkout ₹{finalCartTotal.toFixed(2)}</>
                                     ) : (isTableMode && requireTablePayment) ? (
-                                        <><CreditCard className="w-5 h-5 mr-2" /> Pay & Place Order ₹{cartTotal.toFixed(2)}</>
+                                        <><CreditCard className="w-5 h-5 mr-2" /> Pay & Place Order ₹{finalCartTotal.toFixed(2)}</>
                                     ) : (
-                                        <><Send className="w-5 h-5 mr-2" /> {t('menu.placeOrder') || 'Place Order'} ₹{cartTotal.toFixed(2)}</>
+                                        <><Send className="w-5 h-5 mr-2" /> {t('menu.placeOrder') || 'Place Order'} ₹{finalCartTotal.toFixed(2)}</>
                                     )}
                                 </Button>
 
@@ -3349,6 +3518,41 @@ const PublicMenu = () => {
                     </div>
                 )
             }
+
+            {/* Customer Review Trigger — shown after session ends (remote mode) or for all */}
+            {!isTableMode && sessionOrders.length === 0 && (
+                <div className="max-w-2xl mx-auto px-4 pt-4 pb-2">
+                    <button
+                        onClick={() => setShowReviewForm(true)}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 border-dashed text-sm font-semibold transition-all hover:border-gray-400"
+                        style={{ borderColor: `${shopSettings?.menu_primary_color || '#ea580c'}40`, color: shopSettings?.menu_primary_color || '#ea580c' }}
+                    >
+                        ⭐ Enjoyed your meal? Leave a review!
+                    </button>
+                </div>
+            )}
+
+            {/* Review Form Dialog */}
+            {showReviewForm && (
+                <div className="fixed inset-0 z-[160] flex items-end" onClick={() => setShowReviewForm(false)}>
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                    <div
+                        className="relative w-full max-w-lg mx-auto rounded-t-3xl bg-white dark:bg-zinc-900 sheet-slide-up overflow-hidden max-h-[90vh] overflow-y-auto"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-center pt-3 pb-1">
+                            <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-zinc-600" />
+                        </div>
+                        <CustomerReviewForm
+                            adminId={adminId || ''}
+                            branchId={branchId}
+                            primaryColor={shopSettings?.menu_primary_color}
+                            shopName={shopSettings?.shop_name}
+                            onClose={() => setShowReviewForm(false)}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* ========== HELP / NEED SERVICE BUTTON ========== */}
             {isTableMode && !isSessionComplete && (
