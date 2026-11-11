@@ -3082,7 +3082,7 @@ const PublicMenu = () => {
             {/* Floating Cart Bar (when ordering mode + items in cart) */}
             {
                 isOrderingMode && cartItemCount > 0 && !showCart && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[64px]' : 'bottom-6'} left-0 right-0 z-50 px-3 pointer-events-none zs-enter`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-6'} left-0 right-0 z-50 px-3 pointer-events-none zs-enter`}>
                         <Button
                             key={cartItemCount}
                             onClick={() => setShowCart(true)}
@@ -3120,7 +3120,7 @@ const PublicMenu = () => {
             {/* My Orders Toggle Button (table mode, no cart) */}
             {
                 isTableMode && sessionOrders.length > 0 && cartItemCount === 0 && !showMyOrders && !isSessionComplete && !isAllServed && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[72px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <button
                             onClick={() => setShowMyOrders(true)}
                             className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3 rounded-2xl shadow-lg text-white"
@@ -3143,7 +3143,7 @@ const PublicMenu = () => {
             {/* All Orders Served — Re-order or Request Bill */}
             {
                 isTableMode && isAllServed && cartItemCount === 0 && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[72px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div
                             className="w-full max-w-2xl mx-auto rounded-2xl shadow-xl p-4 text-center border"
                             style={{
@@ -3191,7 +3191,7 @@ const PublicMenu = () => {
             {/* Session Complete — Start New Order */}
             {
                 isTableMode && isSessionComplete && cartItemCount === 0 && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[72px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div className="w-full max-w-2xl mx-auto bg-green-50 border border-green-200 rounded-2xl shadow-lg p-4 text-center">
                             <p className="text-green-800 font-semibold text-sm mb-1">{t('menu.billGenerated') || 'Bill generated!'}</p>
                             <p className="text-green-600 text-xs mb-3">{t('menu.canStillOrder') || 'You can still order more items if you wish.'}</p>
