@@ -17,7 +17,8 @@ export function readMenuCache<T>(adminId: string, branchId: string | null, now =
     const raw = sessionStorage.getItem(keyFor(adminId, branchId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedMenu<T>;
-    if (!parsed || typeof parsed.savedAt !== 'number') return null;
+    if (!parsed || typeof parsed.savedAt !== 'number' || !Number.isFinite(parsed.savedAt)
+      || parsed.savedAt > now || !parsed.data || typeof parsed.data !== 'object') return null;
     return { data: parsed.data, fresh: now - parsed.savedAt < MENU_CACHE_TTL_MS };
   } catch {
     return null;

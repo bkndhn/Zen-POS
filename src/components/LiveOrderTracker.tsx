@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { enableWebPush } from '@/utils/firebaseWeb';
 import { useTranslation } from 'react-i18next';
 import QRCode from 'qrcode';
+import { OrderStageScene } from '@/components/OrderStageScene';
 
 interface LiveOrderTrackerProps {
   orderId: string;
@@ -134,7 +135,7 @@ export const LiveOrderTracker: React.FC<LiveOrderTrackerProps> = ({ orderId, onC
     const interval = setInterval(() => fetchOrder(false), 5000);
 
     const channel = supabase
-      .channel(`order_${orderId}`)
+      .channel(`order_${orderId}_${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'remote_orders', filter: `id=eq.${orderId}` },

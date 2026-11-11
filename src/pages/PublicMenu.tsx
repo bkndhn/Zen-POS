@@ -841,6 +841,7 @@ const PublicMenu = () => {
     // Fetch menu data once adminId is resolved
     useEffect(() => {
         if (!adminId) return;
+        let cancelled = false;
 
         // Instant paint from the 60s device cache; network refresh still runs below.
         const cached = readMenuCache<any>(adminId, branchId ?? null);
@@ -855,20 +856,26 @@ const PublicMenu = () => {
             if (c.appSettings) setAppSettings(c.appSettings);
             setError(null);
             setLoading(false);
-            if (cached.fresh) return;
+            // Always revalidate public prices and availability, even within the TTL.
         }
 
         const fetchMenuData = async () => {
             try {
                 let cacheTaxMap: Record<string, any> | null = null;
-                // Fetch items via anon-safe RPC (only exposes menu columns; no purchase_rate/stock)
-                const { data: itemsDataRaw, error: itemsError } = await (supabase as any)
-                    .rpc('get_public_menu_items', { p_admin_id: adminId, p_branch_id: branchId ?? null });
+                // Independent public-safe reads run together, not one network roundtrip at a time.
+                const [itemsResult, bannersResult, settingsResult, categoriesResult, watermarkResult] = await Promise.all([
+                    (supabase as any).rpc('get_public_menu_items', { p_admin_id: adminId, p_branch_id: branchId ?? null }),
+                    (supabase as any).rpc('get_public_promo_banners', { p_admin_id: adminId, p_branch_id: branchId ?? null }),
+                    (supabase as any).rpc('get_public_shop_settings_for_branch', { p_admin_id: adminId, p_branch_id: branchId ?? null }),
+                    (supabase as any).rpc('get_public_menu_categories', { p_admin_id: adminId, p_branch_id: branchId ?? null }),
+                    (supabase as any).rpc('get_public_watermark_info'),
+                ]);
+                if (cancelled) return;
+                const { data: itemsDataRaw, error: itemsError } = itemsResult;
                 const itemsData = (itemsDataRaw || []).filter((item: any) => item.is_saleable !== false);
 
                 // Fetch promotional banners via scoped RPC (branch-aware)
-                const { data: allBannersData } = await (supabase as any)
-                    .rpc('get_public_promo_banners', { p_admin_id: adminId, p_branch_id: branchId ?? null });
+                const { data: allBannersData } = bannersResult;
                 const bannersData = branchId
                     ? (allBannersData || []).filter((b: any) => !b.branch_id || b.branch_id === branchId)
                     : (allBannersData || []);
@@ -879,16 +886,14 @@ const PublicMenu = () => {
                 }
 
                 // Fetch shop settings (branch-aware, falls back to main branch)
-                const { data: settingsData, error: settingsError } = await (supabase as any)
-                    .rpc('get_public_shop_settings_for_branch', { p_admin_id: adminId, p_branch_id: branchId });
+                const { data: settingsData, error: settingsError } = settingsResult;
 
                 if (settingsError && (settingsError as any).code !== 'PGRST116') {
                     console.error('Settings error:', settingsError);
                 }
 
                 // Fetch categories via anon-safe RPC
-                const { data: catsRaw, error: categoriesError } = await (supabase as any)
-                    .rpc('get_public_menu_categories', { p_admin_id: adminId, p_branch_id: branchId ?? null });
+                const { data: catsRaw, error: categoriesError } = categoriesResult;
                 const categoriesData = catsRaw || [];
 
                 if (categoriesError) {
@@ -904,6 +909,7 @@ const PublicMenu = () => {
                         p_admin_id: adminId,
                         p_branch_id: branchId || null
                     });
+                    if (cancelled) return;
                     if (!ratesError && rates) {
                         const ratesMap: Record<string, any> = {};
                         (rates || []).forEach((r: any) => {
@@ -914,6 +920,8 @@ const PublicMenu = () => {
                     } else {
                         console.error('Tax rates fetch error:', ratesError);
                     }
+                } else {
+                    setTaxRatesMap({});
                 }
 
                 const mappedItems = (itemsData || []).map((i: any) => ({
@@ -926,7 +934,7 @@ const PublicMenu = () => {
                 setBanners(bannersData || []);
                 
                 // Fetch App Settings (public-safe RPC)
-                const { data: appData } = await (supabase as any).rpc('get_public_watermark_info');
+                const { data: appData } = watermarkResult;
                 const appRow = Array.isArray(appData) ? appData[0] : appData;
                 if (appRow) setAppSettings(appRow);
 
@@ -947,14 +955,16 @@ const PublicMenu = () => {
                     }
                 }
             } catch (err) {
+                if (cancelled) return;
                 console.error('Error fetching menu:', err);
                 setError('Failed to load menu. Please try again.');
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
 
         fetchMenuData();
+        return () => { cancelled = true; };
     }, [adminId, branchId, refreshTrigger]);
 
     // Real-time subscription for item updates (active only when user has items in their cart)
@@ -3073,23 +3083,23 @@ const PublicMenu = () => {
             {
                 isOrderingMode && cartItemCount > 0 && !showCart && (
                     <div className={`fixed ${hasStickyFooter ? 'bottom-[92px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none zs-enter`}>
-                        <button
+                        <Button
                             key={cartItemCount}
                             onClick={() => setShowCart(true)}
-                            className="pointer-events-auto w-full max-w-sm mx-auto flex items-center justify-between px-6 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-white transition-all active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border border-white/20 backdrop-blur-xl"
-                            style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}dd, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}ee)` : 'linear-gradient(135deg, rgba(234,88,12,0.9), rgba(220,38,38,0.9))' }}
+                            aria-label={`View cart, ${cartItemCount} items, ₹${cartTotal.toFixed(0)}`}
+                            className="pointer-events-auto w-full max-w-sm mx-auto h-16 flex items-center justify-between gap-3 px-5 rounded-full shadow-xl bg-primary text-primary-foreground transition-transform active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border border-primary-foreground/20 backdrop-blur-xl"
                         >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative">
                                     <ShoppingCart className="w-5 h-5" />
-                                    <span className="absolute -top-2 -right-2 bg-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                    <span className="absolute -top-2 -right-2 bg-primary-foreground text-primary text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                                         {cartItemCount}
                                     </span>
                                 </div>
-                                <span className="font-semibold">{cartItemCount} item{cartItemCount !== 1 ? 's' : ''} in cart</span>
+                                <span className="font-semibold truncate">{cartItemCount} item{cartItemCount !== 1 ? 's' : ''} in cart</span>
                             </div>
-                            <span className="font-bold text-lg">₹{cartTotal.toFixed(0)} →</span>
-                        </button>
+                            <span className="font-bold text-lg shrink-0">₹{cartTotal.toFixed(0)} →</span>
+                        </Button>
                     </div>
                 )
             }

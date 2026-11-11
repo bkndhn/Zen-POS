@@ -31,7 +31,7 @@ const LABELS: Record<SceneStage, string> = {
   placed: 'Order received — sending to kitchen',
   cooking: 'Chef is cooking your food',
   serving: 'On its way to you',
-  done: 'Served & paid — enjoy!',
+  done: 'Order completed — enjoy!',
   cancelled: 'Order cancelled',
 };
 
@@ -119,7 +119,7 @@ const Done = () => (
 export const OrderStageScene: React.FC<{ status?: string; className?: string }> = ({ status, className }) => {
   const stage = stageFromStatus(status);
   return (
-    <div className={cn('rounded-3xl bg-gradient-to-b from-muted/60 to-background border border-border p-3 text-center overflow-hidden', className)}>
+    <div className={cn('py-3 text-center overflow-hidden', className)}>
       <svg key={stage} viewBox="0 0 200 180" className="w-full max-w-[220px] h-auto mx-auto zs-enter" role="img" aria-label={LABELS[stage]}>
         {stage === 'placed' && <Placed />}
         {stage === 'cooking' && <Chef />}

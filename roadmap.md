@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Finish public ordering animations, safe 60-second device caching, and mobile cart verification (isolated test data; real payments remain unverified)
+- [ ] Actual CDN edge caching (blocked: needs a configured CDN endpoint; device caching is not edge caching)
 - [x] Quick calculator checkout using the existing billing rules and local durable save
 - [x] Automatic offline bill replay with original bill numbers and atomic bill/stock creation
 - [x] Receipt width, margin, feed and cutter calibration with a test ticket
