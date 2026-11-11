@@ -426,7 +426,6 @@ const PublicMenu = () => {
     const [searchParams] = useSearchParams();
     const tableNo = searchParams.get('table');
     const branchParam = searchParams.get('branch');
-    const branchParam = searchParams.get('branch');
 
     const [adminId, setAdminId] = useState<string | null>(null);
     const [branchId, setBranchId] = useState<string | null>(null);
@@ -555,10 +554,6 @@ const PublicMenu = () => {
     const [pwaPromptDismissed, setPwaPromptDismissed] = useState(
         () => !!localStorage.getItem('pwa_prompt_dismissed')
     );
-
-    // Multi-outlet branch selector
-    const [availableBranches, setAvailableBranches] = useState<{id: string; name: string; address?: string}[]>([]);
-    const [showBranchSheet, setShowBranchSheet] = useState(false);
 
     // Multi-outlet branch selector
     const [availableBranches, setAvailableBranches] = useState<{id: string; name: string; address?: string}[]>([]);
@@ -2628,79 +2623,6 @@ const PublicMenu = () => {
                 </div>
             )}
 
-
-            {/* Multi-outlet Branch Selector */}
-            {availableBranches.length > 1 && (
-                <div className="max-w-2xl mx-auto px-4 pt-3 pb-1">
-                    <button
-                        onClick={() => setShowBranchSheet(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm border backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        style={{
-                            background: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}18` : '#f0fdf4',
-                            borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}44` : '#bbf7d0',
-                            color: shopSettings?.menu_primary_color || '#16a34a',
-                        }}
-                    >
-                        <span>🏪</span>
-                        <span>{availableBranches.find(b => b.id === branchId)?.name || 'Select Branch'}</span>
-                        <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                </div>
-            )}
-
-            {/* Branch Bottom-Sheet */}
-            {showBranchSheet && (
-                <div
-                    className="fixed inset-0 z-[200] flex flex-col justify-end"
-                    onClick={() => setShowBranchSheet(false)}
-                >
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                    <div
-                        className="relative bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl p-4 pb-8 max-h-[70vh] overflow-y-auto"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-600 mx-auto mb-4" />
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                            <span>🏪</span> Choose a Branch
-                        </h3>
-                        <div className="flex flex-col gap-2">
-                            {availableBranches.map(branch => (
-                                <button
-                                    key={branch.id}
-                                    onClick={() => {
-                                        setShowBranchSheet(false);
-                                        const url = new URL(window.location.href);
-                                        url.searchParams.set('branch', branch.id);
-                                        window.location.href = url.toString();
-                                    }}
-                                    className="flex items-start gap-3 p-3 rounded-xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
-                                    style={{
-                                        background: branch.id === branchId
-                                            ? (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}18` : '#f0fdf4')
-                                            : undefined,
-                                        borderColor: branch.id === branchId
-                                            ? (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}66` : '#86efac')
-                                            : '#e5e7eb',
-                                    }}
-                                >
-                                    <span className="text-xl mt-0.5">🏪</span>
-                                    <div>
-                                        <p className="font-semibold text-sm text-gray-900 dark:text-white">{branch.name}</p>
-                                        {branch.address && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{branch.address}</p>
-                                        )}
-                                        {branch.id === branchId && (
-                                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                                style={{ background: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}22` : '#dcfce7', color: shopSettings?.menu_primary_color || '#16a34a' }}
-                                            >✓ Current</span>
-                                        )}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Multi-outlet Branch Selector */}
             {availableBranches.length > 1 && (
