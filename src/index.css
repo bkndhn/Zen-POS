@@ -1147,3 +1147,10 @@ All colors MUST be HSL.
 @media (prefers-reduced-motion: reduce) {
   [class^="zs-"], [class*=" zs-"] { animation: none !important; }
 }
+
+/* Item detail bottom-sheet slide-up */
+@keyframes slide-up-sheet {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+.sheet-slide-up { animation: slide-up-sheet 0.32s cubic-bezier(0.32, 0.72, 0, 1) both; }

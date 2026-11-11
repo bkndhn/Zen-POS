@@ -509,6 +509,7 @@ const PublicMenu = () => {
     
     // Clear Cart Dialog state
     const [clearCartOpen, setClearCartOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
     // Banner swipe state
     const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -1244,6 +1245,47 @@ const PublicMenu = () => {
         (rawShopSettings.operating_hours as OperatingHours)?.showTimingsToCustomers !== false
     );
     const hasStickyFooter = Boolean(shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable);
+
+    // Category emoji map
+    const getCategoryEmoji = (cat: string): string => {
+        const map: Record<string, string> = {
+            'starters': '🍗', 'starter': '🍗', 'appetizer': '🥗', 'appetizers': '🥗',
+            'mains': '🍛', 'main': '🍛', 'main course': '🍛',
+            'biryani': '🍚', 'rice': '🍚', 'fried rice': '🍚',
+            'breads': '🫓', 'bread': '🫓', 'roti': '🫓', 'naan': '🫓', 'chapati': '🫓',
+            'curries': '🍲', 'curry': '🍲', 'gravies': '🍲', 'gravy': '🍲',
+            'desserts': '🍰', 'dessert': '🍰', 'sweets': '🍮', 'sweet': '🍮',
+            'drinks': '🥤', 'drink': '🥤', 'beverages': '🧃', 'beverage': '🧃',
+            'juices': '🧃', 'juice': '🧃', 'shakes': '🥛', 'shake': '🥛',
+            'coffee': '☕', 'tea': '🍵', 'lassi': '🥛',
+            'snacks': '🍟', 'snack': '🍟', 'fast food': '🍔',
+            'pizza': '🍕', 'pasta': '🍝', 'noodles': '🍜',
+            'seafood': '🦐', 'fish': '🐟', 'chicken': '🍗', 'mutton': '🥩',
+            'veg': '🥦', 'vegetarian': '🥦', 'non-veg': '🥩', 'nonveg': '🥩',
+            'salads': '🥗', 'salad': '🥗', 'soups': '🍜', 'soup': '🍜',
+            'combo': '🍱', 'combos': '🍱', 'meals': '🍱', 'meal': '🍱',
+            'specials': '⭐', 'special': '⭐', "chef's special": '👨‍🍳',
+            'parotta': '🫓', 'dosa': '🥞', 'idly': '⚪', 'idli': '⚪',
+            'egg': '🍳', 'eggs': '🍳',
+            'chinese': '🥡', 'north indian': '🍛', 'south indian': '🥘',
+            'tandoor': '🔥', 'tandoori': '🔥', 'kebab': '🍢', 'kebabs': '🍢',
+            'rolls': '🌯', 'roll': '🌯', 'wrap': '🌯', 'wraps': '🌯',
+            'burger': '🍔', 'burgers': '🍔', 'sandwich': '🥪', 'sandwiches': '🥪',
+            'ice cream': '🍦', 'ice-cream': '🍦',
+            'today': '📅', 'daily': '📅',
+        };
+        const key = cat.toLowerCase();
+        for (const [k, v] of Object.entries(map)) {
+            if (key === k || key.includes(k)) return v;
+        }
+        return '🍽️';
+    };
+
+    // Must Try: featured items first, fallback to first 8 items
+    const mustTryItems = useMemo(() => {
+        const featured = items.filter(i => (i as any).is_featured === true);
+        return (featured.length > 0 ? featured : items).slice(0, 8);
+    }, [items]);
 
     // Toggle category collapse
     const toggleCategory = useCallback((category: string) => {
@@ -2272,22 +2314,26 @@ const PublicMenu = () => {
                     }}
                 >
                     <div className="max-w-2xl mx-auto px-4 py-2.5">
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
                             {[
-                                { id: 'all' as string, label: t('menu.all') || 'All', count: items.length },
-                                ...itemCategories.map(cat => ({ id: cat as string, label: cat, count: items.filter(i => i.category === cat).length }))
-                            ].map(c => {
+                                { id: 'all' as string, label: t('menu.all') || 'All', count: items.length, emoji: '🍽️' },
+                                ...itemCategories.map(cat => ({
+                                    id: cat as string,
+                                    label: cat,
+                                    count: items.filter(i => i.category === cat).length,
+                                    emoji: getCategoryEmoji(cat)
+                                }))
+                            ].map((c) => {
                                 const active = selectedCategory === c.id;
                                 return (
                                     <button
                                         key={c.id}
                                         onClick={() => setSelectedCategory(c.id)}
-                                        aria-pressed={active}
                                         className={cn(
-                                            "group flex-shrink-0 flex items-center gap-1.5 rounded-full h-9 pl-4 pr-2.5 text-xs font-bold transition-all duration-300 border active:scale-95",
+                                            "flex-shrink-0 flex flex-col items-center gap-1 px-3 pt-2 pb-1.5 rounded-2xl text-xs font-semibold transition-all duration-200 min-w-[64px] group border",
                                             active
-                                                ? "text-white border-transparent shadow-lg scale-105"
-                                                : "bg-white/80 dark:bg-slate-800/80 text-gray-600 dark:text-gray-300 border-gray-200/80 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-md hover:-translate-y-px backdrop-blur-sm"
+                                                ? "text-white border-transparent shadow-md scale-[1.03]"
+                                                : "bg-white/70 dark:bg-slate-800/70 text-gray-600 dark:text-gray-300 border-gray-200/60 dark:border-slate-700 hover:border-gray-300"
                                         )}
                                         style={active ? {
                                             background: shopSettings?.menu_primary_color
@@ -2296,15 +2342,12 @@ const PublicMenu = () => {
                                             boxShadow: `0 6px 16px -4px ${shopSettings?.menu_primary_color || '#ea580c'}66`
                                         } : {}}
                                     >
-                                        <span className="whitespace-nowrap">{c.label}</span>
-                                        <span
-                                            className={cn(
-                                                "min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-[10px] font-extrabold tabular-nums transition-colors",
-                                                active
-                                                    ? "bg-white/25 text-white"
-                                                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-slate-600"
-                                            )}
-                                        >
+                                        <span className="text-xl leading-none">{c.emoji}</span>
+                                        <span className="whitespace-nowrap leading-tight">{c.label}</span>
+                                        <span className={cn(
+                                            "min-w-[20px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-extrabold tabular-nums",
+                                            active ? "bg-white/25 text-white" : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400"
+                                        )}>
                                             {c.count}
                                         </span>
                                     </button>
@@ -2391,19 +2434,41 @@ const PublicMenu = () => {
             )}
 
 
-            {/* Hero Cover Photo */}
-            {(rawShopSettings as any)?.cover_photo_url && (
-                <div className="relative w-full h-48 sm:h-64 object-cover overflow-hidden bg-black/10">
-                    <img 
-                        src={getCDNUrl((rawShopSettings as any).cover_photo_url)} 
-                        alt="Cover" 
-                        className="w-full h-full object-cover"
-                        loading="eager"
-                    />
-                    {/* Optional gradient overlay to make things pop */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                </div>
-            )}
+            {/* Cinematic Hero */}
+            <div className="relative w-full overflow-hidden" style={{ height: (rawShopSettings as any)?.cover_photo_url ? '220px' : '0px', transition: 'height 0.4s ease' }}>
+                {(rawShopSettings as any)?.cover_photo_url && (
+                    <>
+                        <img
+                            src={getCDNUrl((rawShopSettings as any).cover_photo_url)}
+                            alt="Cover"
+                            className="w-full h-full object-cover"
+                            loading="eager"
+                            onError={(e) => handleImageError(e, (rawShopSettings as any).cover_photo_url)}
+                        />
+                        {/* cinematic gradient: dark bottom for text, subtle top vignette */}
+                        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.0) 40%, rgba(0,0,0,0.65) 100%)' }} />
+                        {/* store status badge - top right */}
+                        {storeStatus && (
+                            <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white backdrop-blur-md border border-white/20 shadow-lg ${storeStatus.status === 'open' ? 'bg-green-500/80' : storeStatus.status === 'break' ? 'bg-amber-500/80' : 'bg-red-500/80'}`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                {storeStatus.status === 'open' ? 'Open' : storeStatus.status === 'break' ? 'On Break' : 'Closed'}
+                            </div>
+                        )}
+                        {/* shop name + address overlay at bottom */}
+                        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
+                            <h2 className="text-white text-xl font-black leading-tight drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+                                {shopSettings?.shop_name || ''}
+                            </h2>
+                            {shopSettings?.address && (
+                                <p className="text-white/80 text-xs mt-0.5 flex items-center gap-1 drop-shadow">
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{shopSettings.address}</span>
+                                </p>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
 
             {/* Promotional Banners Carousel */}
             {
@@ -2493,6 +2558,72 @@ const PublicMenu = () => {
                 )
             }
 
+            {/* Must Try Strip */}
+            {mustTryItems.length > 0 && !searchQuery && (
+                <div className="max-w-2xl mx-auto px-4 pt-5 pb-1">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-base font-black flex items-center gap-2" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
+                            🔥 Must Try
+                        </h2>
+                        <button
+                            onClick={() => setSelectedCategory('all')}
+                            className="text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity"
+                            style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}
+                        >
+                            See All →
+                        </button>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                        {mustTryItems.map(item => (
+                            <div
+                                key={item.id}
+                                className="flex-shrink-0 w-[130px] rounded-2xl overflow-hidden shadow-md border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer active:scale-[0.97] transition-all hover:shadow-lg"
+                                onClick={() => setSelectedItem(item)}
+                            >
+                                {/* Image */}
+                                <div className="h-[90px] bg-gray-100 dark:bg-slate-700 relative overflow-hidden">
+                                    {item.image_url ? (
+                                        <img
+                                            src={item.image_url}
+                                            alt={item.name}
+                                            className="w-full h-full object-cover"
+                                            loading="lazy"
+                                            onError={(e) => handleImageError(e, item.image_url)}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-3xl">
+                                            {getCategoryEmoji(item.category || '')}
+                                        </div>
+                                    )}
+                                    {/* Price badge */}
+                                    <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full text-white text-[10px] font-bold backdrop-blur-sm"
+                                        style={{ background: `${shopSettings?.menu_primary_color || '#ea580c'}cc` }}>
+                                        ₹{item.price}
+                                    </div>
+                                </div>
+                                {/* Name + ADD */}
+                                <div className="p-2">
+                                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 line-clamp-2 leading-tight mb-1.5">{item.name}</p>
+                                    {isOrderingMode && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); addToCart(item, e); }}
+                                            className="w-full h-7 rounded-lg text-white text-[11px] font-bold transition-all active:scale-95 !bg-transparent"
+                                            style={{
+                                                background: shopSettings?.menu_primary_color
+                                                    ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
+                                                    : 'linear-gradient(135deg, #ea580c, #dc2626)'
+                                            }}
+                                        >
+                                            + Add
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Menu Items */}
             <main className="max-w-2xl mx-auto px-4 py-4 pb-36">
 
@@ -2576,8 +2707,9 @@ const PublicMenu = () => {
                                             {categoryItems.map(item => (
                                                 <div
                                                     key={item.id}
+                                                    onClick={() => setSelectedItem(item)}
                                                     className={cn(
-                                                        "flex-shrink-0 w-[140px] snap-start bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 overflow-hidden flex flex-col",
+                                                        "flex-shrink-0 w-[140px] snap-start bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border hover:shadow-[0_20px_50px_rgba(8,112,184,0.07)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 overflow-hidden flex flex-col cursor-pointer",
                                                         shopSettings?.menu_primary_color ? 'border-gray-200/50 dark:border-gray-700/50' : 'border-gray-100/50 dark:border-gray-800/50'
                                                     )}
                                                 >
@@ -2671,8 +2803,9 @@ const PublicMenu = () => {
                                             return (
                                             <div
                                                 key={item.id}
+                                                onClick={() => setSelectedItem(item)}
                                                 className={cn(
-                                                    `bg-white dark:bg-slate-800 transition-all duration-300 overflow-hidden group ${borderRadiusClass} ${shadowClass}`,
+                                                    `bg-white dark:bg-slate-800 transition-all duration-300 overflow-hidden group cursor-pointer ${borderRadiusClass} ${shadowClass}`,
                                                     useHorizontalLayout ? "flex items-center p-3.5 gap-3.5" : "flex flex-col"
                                                 )}
                                                 style={{ borderColor: shadowStyle !== 'glow' && shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}15` : undefined }}
@@ -3827,6 +3960,98 @@ const PublicMenu = () => {
                 />
             )}
             
+            {/* Item Detail Bottom-Sheet */}
+            {selectedItem && (
+                <div
+                    className="fixed inset-0 z-[160] flex items-end"
+                    onClick={() => setSelectedItem(null)}
+                >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                    {/* Sheet */}
+                    <div
+                        className="relative w-full max-w-lg mx-auto rounded-t-3xl sheet-slide-up overflow-hidden bg-white dark:bg-zinc-900 max-h-[88vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Handle */}
+                        <div className="flex justify-center pt-3 pb-1">
+                            <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-zinc-600" />
+                        </div>
+                        {/* Item image */}
+                        {selectedItem.image_url && (
+                            <div className="h-52 w-full overflow-hidden">
+                                <img
+                                    src={selectedItem.image_url}
+                                    alt={selectedItem.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => handleImageError(e, selectedItem.image_url)}
+                                />
+                            </div>
+                        )}
+                        {/* Content */}
+                        <div className="p-5 pb-8">
+                            {/* Veg/nonveg dot */}
+                            <div className="flex items-start justify-between gap-3">
+                                <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{selectedItem.name}</h2>
+                                {selectedItem.is_veg !== undefined && (
+                                    <span className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${selectedItem.is_veg ? 'border-green-500' : 'border-red-500'}`}>
+                                        <span className={`w-2.5 h-2.5 rounded-full ${selectedItem.is_veg ? 'bg-green-500' : 'bg-red-500'}`} />
+                                    </span>
+                                )}
+                            </div>
+                            {selectedItem.description && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">{selectedItem.description}</p>
+                            )}
+                            {/* Price */}
+                            <div className="mt-3 text-2xl font-black" style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                ₹{selectedItem.price}
+                                {selectedItem.unit && selectedItem.base_value && selectedItem.base_value > 1 && (
+                                    <span className="text-sm font-medium text-gray-400 ml-1">/ {selectedItem.base_value} {selectedItem.unit}</span>
+                                )}
+                            </div>
+                            {/* Cooking time */}
+                            {selectedItem.cooking_time_mins && (
+                                <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    ~{selectedItem.cooking_time_mins} min prep time
+                                </div>
+                            )}
+                            {/* Category */}
+                            {selectedItem.category && (
+                                <div className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                                    {getCategoryEmoji(selectedItem.category)} {selectedItem.category}
+                                </div>
+                            )}
+                            {/* ADD button */}
+                            {isOrderingMode && (
+                                <button
+                                    onClick={(e) => {
+                                        if (selectedItem.modifiers && selectedItem.modifiers.length > 0) {
+                                            setSelectedItem(null);
+                                            setCustomizerItem({ item: selectedItem });
+                                        } else {
+                                            addToCart(selectedItem, e);
+                                            setSelectedItem(null);
+                                        }
+                                    }}
+                                    className="mt-5 w-full h-14 rounded-2xl text-white font-bold text-base transition-all active:scale-[0.98] !bg-transparent"
+                                    style={{
+                                        background: shopSettings?.menu_primary_color
+                                            ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
+                                            : 'linear-gradient(135deg, #ea580c, #dc2626)',
+                                        boxShadow: `0 8px 20px -4px ${shopSettings?.menu_primary_color || '#ea580c'}50`
+                                    }}
+                                >
+                                    {selectedItem.modifiers && selectedItem.modifiers.length > 0
+                                        ? `Customize — ₹${selectedItem.price}`
+                                        : `Add to Cart — ₹${selectedItem.price}`}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ItemCustomizerDialog isOpen={!!customizerItem} primaryColor={shopSettings?.menu_primary_color}
                 onClose={() => setCustomizerItem(null)}
                 item={customizerItem?.item || null}
