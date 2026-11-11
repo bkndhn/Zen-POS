@@ -42,6 +42,7 @@ import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
 import { QuickBillSettings } from '@/components/QuickBillSettings';
 import { KhataSettings } from '@/components/KhataSettings';
 import { PortalAnalyticsSettings } from '@/components/PortalAnalyticsSettings';
+import { PortalThemeSelector } from '@/components/PortalThemeSelector';
 
 interface AdditionalCharge {
   id: string;
@@ -859,6 +860,11 @@ const Settings = () => {
               {/* Remote Ordering Settings */}
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Remote Ordering Settings failed to load. Try refreshing.</div>}>
             <SearchableSection title="Remote & QR Orders" keywords="remote online orders qr menu" searchQuery={searchQuery}><RemoteOrderSettings /></SearchableSection>
+          </ErrorBoundary>
+
+              {/* Public Portal: Theme Style */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Portal Theme Settings failed to load. Try refreshing.</div>}>
+            <SearchableSection title="Portal Theme Style" keywords="portal theme style visual design color preset restaurant skin appearance hero thumbnail" searchQuery={searchQuery}><PortalThemeSelector /></SearchableSection>
           </ErrorBoundary>
 
               {/* Public Portal: Analytics, PWA, Chatbot */}
