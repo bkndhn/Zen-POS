@@ -7,3 +7,4 @@
 - Online-menu payment choice (shop_settings.remote_payment_methods) is enforced by a BEFORE INSERT trigger on remote_orders, and the checkout UI only mirrors it via src/utils/remotePaymentMethods.ts, because customers can bypass the UI and insert directly.
 - Read .agents/AGENTS.md for existing product naming conventions.
 - Public menu device caching must revalidate through public-safe RPCs; session storage is not CDN edge caching and must never contain private operational data.
+- Portal theme settings reuse useBranchSettings for owner identity, active-branch persistence and inheritance rather than issuing separate settings queries.

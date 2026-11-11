@@ -2190,7 +2190,6 @@ const SuperAdminUsers: React.FC = () => {
                     if (!title || !body) return alert('Title and body are required!');
                     
                     try {
-                      // @ts-expect-error -- admin_send_custom_push RPC not in generated types
                       const { data, error } = await supabase.rpc('admin_send_custom_push', {
                         p_title: title,
                         p_body: body,

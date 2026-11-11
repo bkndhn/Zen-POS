@@ -483,6 +483,8 @@ const PublicMenu = () => {
         return rawShopSettings;
     }, [rawShopSettings, isDarkMode]);
 
+    const portalTheme = getPortalTheme(shopSettings?.portal_theme_id);
+
     const [banners, setBanners] = useState<PromoBanner[]>([]);
     const [showPromoModal, setShowPromoModal] = useState(false);
     const [appSettings, setAppSettings] = useState<{show_powered_by_watermark?: boolean, powered_by_contact?: string} | null>(null);

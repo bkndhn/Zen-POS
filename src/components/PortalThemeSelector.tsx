@@ -1,55 +1,32 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useBranchContext } from '@/hooks/useBranchContext';
+import { useBranchSettings } from '@/hooks/useBranchSettings';
 import { PORTAL_THEMES, getPortalTheme, PortalTheme } from '@/lib/portalThemes';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function PortalThemeSelector() {
-  const { user } = useAuth();
-  const { mainBranchId } = useBranchContext();
+  const { data: settings, loading, saving, save } = useBranchSettings<{ portal_theme_id: string | null }>('shop_settings');
   const [selectedId, setSelectedId] = useState<string>('emerald-fresh');
   const [savedId, setSavedId] = useState<string>('emerald-fresh');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   // Load current theme from shop_settings
   useEffect(() => {
-    if (!user?.id) return;
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from('shop_settings')
-        .select('portal_theme_id')
-        .eq('admin_id', user.id)
-        .eq('branch_id', mainBranchId ?? '')
-        .maybeSingle();
-      const id = (data as any)?.portal_theme_id ?? 'emerald-fresh';
-      setSelectedId(id);
-      setSavedId(id);
-      setLoading(false);
-    };
-    load();
-  }, [user?.id, mainBranchId]);
+    if (loading) return;
+    const id = settings?.portal_theme_id ?? 'emerald-fresh';
+    setSelectedId(id);
+    setSavedId(id);
+  }, [settings, loading]);
 
   const handleSave = useCallback(async () => {
-    if (!user?.id) return;
-    setSaving(true);
-    const { error } = await supabase
-      .from('shop_settings')
-      .update({ portal_theme_id: selectedId } as any)
-      .eq('admin_id', user.id)
-      .eq('branch_id', mainBranchId ?? '');
+    const { error } = await save({ portal_theme_id: selectedId });
     if (error) {
       toast.error('Failed to save theme: ' + error.message);
     } else {
       setSavedId(selectedId);
       toast.success('Portal theme saved! Customers will see the new look immediately.');
     }
-    setSaving(false);
-  }, [user?.id, mainBranchId, selectedId]);
+  }, [save, selectedId]);
 
   if (loading) {
     return (

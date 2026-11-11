@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Repair portal theme selector imports, settings wiring and related preview compilation blockers
 - [x] Finish public ordering animations, safe 60-second device caching, and mobile cart verification (isolated test data; real payments remain unverified)
 - [ ] Actual CDN edge caching (blocked: needs a configured CDN endpoint; device caching is not edge caching)
 - [x] Quick calculator checkout using the existing billing rules and local durable save
