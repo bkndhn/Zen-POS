@@ -1480,6 +1480,7 @@ const PublicMenu = () => {
     }, []);
 
     const addToCart = useCallback((item: MenuItem, e?: React.MouseEvent) => {
+        e?.stopPropagation();
         if (storeStatus && storeStatus.status !== 'open') {
             toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
             return;
@@ -1519,7 +1520,8 @@ const PublicMenu = () => {
     }, []);
 
     // Update quantity
-    const updateQuantity = useCallback((cartOrMenuItemId: string, delta: number) => {
+    const updateQuantity = useCallback((cartOrMenuItemId: string, delta: number, e?: React.MouseEvent) => {
+        e?.stopPropagation();
         if (delta > 0 && storeStatus && storeStatus.status !== 'open') {
             toast({ title: storeStatus.message, description: 'Store is currently not accepting orders.', variant: 'destructive' });
             return;
@@ -3009,19 +3011,19 @@ const PublicMenu = () => {
                                                             </span>
                                                         </div>
                                                         {isOrderingMode && (
-                                                            <div className="mt-1.5">
+                                                            <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
                                                                 {getCartQuantity(item.id) > 0 ? (
                                                                     <div className="flex items-center justify-center gap-1">
-                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
+                                                                        <button onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1, e); }} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                             <Minus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                         <span className="text-sm font-bold w-6 text-center text-gray-900 dark:text-gray-100">{getCartQuantity(item.id)}</span>
-                                                                        <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => { e.stopPropagation(); addToCart(item, e); }} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             <Plus className="w-3.5 h-3.5" />
                                                                         </button>
                                                                     </div>
                                                                 ) : (
-                                                                    <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                    <button onClick={(e) => { e.stopPropagation(); addToCart(item, e); }} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                         {t('common.add') || 'ADD'}
                                                                     </button>
                                                                 )}
@@ -3107,21 +3109,23 @@ const PublicMenu = () => {
                                                                     </span>
                                                                 </span>
                                                                 {isOrderingMode && (
-                                                                    getCartQuantity(item.id) > 0 ? (
+                                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                                    {getCartQuantity(item.id) > 0 ? (
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
+                                                                            <button onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1, e); }} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center text-gray-900 dark:text-gray-100">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => { e.stopPropagation(); addToCart(item, e); }} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => { e.stopPropagation(); addToCart(item, e); }} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             {t('common.add') || 'ADD'}
                                                                         </button>
-                                                                    )
+                                                                    )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -3194,19 +3198,19 @@ const PublicMenu = () => {
                                                                 </span>
                                                             </div>
                                                             {isOrderingMode && (
-                                                                <div className="mt-2">
+                                                                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                                                                     {getCartQuantity(item.id) > 0 ? (
                                                                         <div className="flex items-center justify-center gap-1.5">
-                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
+                                                                            <button onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1, e); }} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-90 transition-transform">
                                                                                 <Minus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <span className="text-sm font-bold w-6 text-center text-gray-900 dark:text-gray-100">{getCartQuantity(item.id)}</span>
-                                                                            <button onClick={(e) => addToCart(item, e)} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                            <button onClick={(e) => { e.stopPropagation(); addToCart(item, e); }} className="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-90 transition-transform" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <button onClick={(e) => addToCart(item, e)} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
+                                                                        <button onClick={(e) => { e.stopPropagation(); addToCart(item, e); }} className="px-4 py-1.5 rounded-full text-white text-xs font-semibold shadow-sm hover:shadow-md active:scale-95 transition-all" style={{ background: shopSettings?.menu_primary_color || '#ea580c' }}>
                                                                             {t('common.add') || 'ADD'}
                                                                         </button>
                                                                     )}
@@ -3466,9 +3470,16 @@ const PublicMenu = () => {
                             {/* Cart summary + Place Order */}
                             <div className="p-4 border-t bg-white space-y-2">
                                 {cartEtaMinutes > 0 && (
-                                    <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
+                                    <div
+                                        className="flex items-center justify-between rounded-xl px-3 py-2 transition-colors"
+                                        style={{
+                                            backgroundColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}14` : 'rgba(16, 185, 129, 0.08)',
+                                            color: shopSettings?.menu_primary_color || '#059669',
+                                            border: `1px solid ${shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}30` : 'rgba(16, 185, 129, 0.2)'}`
+                                        }}
+                                    >
                                         <span className="flex items-center gap-1.5 text-xs font-semibold">
-                                            <Clock className="h-3.5 w-3.5" />
+                                            <Clock className="h-3.5 w-3.5" style={{ color: shopSettings?.menu_primary_color || '#059669' }} />
                                             {t('menu.estimatedTime', 'Estimated time')}
                                         </span>
                                         <span className="text-sm font-bold tabular-nums">~{formatMins(cartEtaMinutes)}</span>
