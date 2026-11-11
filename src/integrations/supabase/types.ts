@@ -4186,6 +4186,8 @@ export type Database = {
           business_type: string
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
+          chatbot_enabled: boolean
+          chatbot_greeting: string | null
           composition_rate: number | null
           contact_number: string | null
           cover_photo_url: string | null
@@ -4202,6 +4204,7 @@ export type Database = {
           facebook: string | null
           fcm_enabled: boolean | null
           fcm_unlocked: boolean | null
+          ga_measurement_id: string | null
           google_review_url: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -4236,14 +4239,17 @@ export type Database = {
           menu_show_shop_name: boolean | null
           menu_slug: string | null
           menu_text_color: string | null
+          meta_pixel_id: string | null
           native_app_unlocked: boolean | null
           offline_grace_days: number | null
           operating_hours: Json | null
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
+          portal_theme_id: string | null
           printer_width: string | null
           promo_reel_image_url: string | null
           promo_reel_url: string | null
+          pwa_enabled: boolean
           qr_payment_enabled: boolean
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
@@ -4315,6 +4321,8 @@ export type Database = {
           business_type?: string
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
+          chatbot_enabled?: boolean
+          chatbot_greeting?: string | null
           composition_rate?: number | null
           contact_number?: string | null
           cover_photo_url?: string | null
@@ -4331,6 +4339,7 @@ export type Database = {
           facebook?: string | null
           fcm_enabled?: boolean | null
           fcm_unlocked?: boolean | null
+          ga_measurement_id?: string | null
           google_review_url?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -4365,14 +4374,17 @@ export type Database = {
           menu_show_shop_name?: boolean | null
           menu_slug?: string | null
           menu_text_color?: string | null
+          meta_pixel_id?: string | null
           native_app_unlocked?: boolean | null
           offline_grace_days?: number | null
           operating_hours?: Json | null
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
+          portal_theme_id?: string | null
           printer_width?: string | null
           promo_reel_image_url?: string | null
           promo_reel_url?: string | null
+          pwa_enabled?: boolean
           qr_payment_enabled?: boolean
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
@@ -4444,6 +4456,8 @@ export type Database = {
           business_type?: string
           calci_billing_enabled?: boolean | null
           calci_shortcodes?: Json | null
+          chatbot_enabled?: boolean
+          chatbot_greeting?: string | null
           composition_rate?: number | null
           contact_number?: string | null
           cover_photo_url?: string | null
@@ -4460,6 +4474,7 @@ export type Database = {
           facebook?: string | null
           fcm_enabled?: boolean | null
           fcm_unlocked?: boolean | null
+          ga_measurement_id?: string | null
           google_review_url?: string | null
           gst_enabled?: boolean | null
           gstin?: string | null
@@ -4494,14 +4509,17 @@ export type Database = {
           menu_show_shop_name?: boolean | null
           menu_slug?: string | null
           menu_text_color?: string | null
+          meta_pixel_id?: string | null
           native_app_unlocked?: boolean | null
           offline_grace_days?: number | null
           operating_hours?: Json | null
           packaging_fee_mode?: string | null
           packaging_fee_value?: number | null
+          portal_theme_id?: string | null
           printer_width?: string | null
           promo_reel_image_url?: string | null
           promo_reel_url?: string | null
+          pwa_enabled?: boolean
           qr_payment_enabled?: boolean
           quick_bill_enabled?: boolean | null
           receipt_qr_enabled?: boolean
@@ -5712,6 +5730,8 @@ export type Database = {
           business_type: string
           calci_billing_enabled: boolean | null
           calci_shortcodes: Json | null
+          chatbot_enabled: boolean
+          chatbot_greeting: string | null
           composition_rate: number | null
           contact_number: string | null
           cover_photo_url: string | null
@@ -5728,6 +5748,7 @@ export type Database = {
           facebook: string | null
           fcm_enabled: boolean | null
           fcm_unlocked: boolean | null
+          ga_measurement_id: string | null
           google_review_url: string | null
           gst_enabled: boolean | null
           gstin: string | null
@@ -5762,14 +5783,17 @@ export type Database = {
           menu_show_shop_name: boolean | null
           menu_slug: string | null
           menu_text_color: string | null
+          meta_pixel_id: string | null
           native_app_unlocked: boolean | null
           offline_grace_days: number | null
           operating_hours: Json | null
           packaging_fee_mode: string | null
           packaging_fee_value: number | null
+          portal_theme_id: string | null
           printer_width: string | null
           promo_reel_image_url: string | null
           promo_reel_url: string | null
+          pwa_enabled: boolean
           qr_payment_enabled: boolean
           quick_bill_enabled: boolean | null
           receipt_qr_enabled: boolean
