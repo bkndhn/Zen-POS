@@ -156,7 +156,7 @@ export const CustomerReviewForm = ({
           placeholder="The biryani was amazing! Great service..."
           rows={3}
           className="w-full border rounded-lg px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 dark:border-zinc-700"
-          style={{ ringColor: color }}
+          style={{ borderColor: color }}
         />
       </div>
 

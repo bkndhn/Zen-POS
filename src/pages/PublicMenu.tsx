@@ -59,6 +59,8 @@ interface MenuItem {
     special_instructions?: string;
     notes?: string;
     cooking_time_mins?: number | null;
+    is_veg?: boolean | null;
+    description?: string | null;
 }
 
 interface PromoBanner {
@@ -1335,11 +1337,6 @@ const PublicMenu = () => {
         return (featured.length > 0 ? featured : items).slice(0, 8);
     }, [items]);
 
-    // Final cart total after coupon discount
-    const finalCartTotal = couponResult?.valid
-        ? Math.max(0, cartTotal - (couponResult.discount_amount || 0))
-        : cartTotal;
-
     // Toggle category collapse
     const toggleCategory = useCallback((category: string) => {
         setCollapsedCategories(prev => {
@@ -1409,6 +1406,11 @@ const PublicMenu = () => {
     }, [cart, gstEnabled, taxRatesMap]);
 
     const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity / (item.base_value || 1)), 0), [cart]);
+
+    // Final cart total after coupon discount
+    const finalCartTotal = couponResult?.valid
+        ? Math.max(0, cartTotal - (couponResult.discount_amount || 0))
+        : cartTotal;
 
     // Handle item click for customization or simple add
     const confirmAddToCart = useCallback((customizedItem: CartItem, e?: React.MouseEvent) => {
