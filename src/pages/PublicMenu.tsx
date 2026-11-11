@@ -35,6 +35,8 @@ import { UpiPrePaymentDialog } from '@/components/UpiPrePaymentDialog';
 import { readMenuCache, writeMenuCache } from '@/utils/menuCache';
 import { LoyaltyStampCard } from '@/components/LoyaltyStampCard';
 import { CustomerReviewForm } from '@/components/CustomerReviewForm';
+import { MenuChatbot } from '@/components/MenuChatbot';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 
 // Types
@@ -112,6 +114,12 @@ interface ShopSettings {
     store_status_override?: string;
     operating_hours?: any;
     allow_qr_menu?: boolean;
+    // P2: Analytics & Growth
+    ga_measurement_id?: string;
+    meta_pixel_id?: string;
+    pwa_enabled?: boolean;
+    chatbot_enabled?: boolean;
+    chatbot_greeting?: string;
 }
 
 
@@ -417,6 +425,8 @@ const PublicMenu = () => {
     const { adminId: urlParam } = useParams<{ adminId: string }>();
     const [searchParams] = useSearchParams();
     const tableNo = searchParams.get('table');
+    const branchParam = searchParams.get('branch');
+    const branchParam = searchParams.get('branch');
 
     const [adminId, setAdminId] = useState<string | null>(null);
     const [branchId, setBranchId] = useState<string | null>(null);
@@ -539,6 +549,20 @@ const PublicMenu = () => {
 
     // Review form
     const [showReviewForm, setShowReviewForm] = useState(false);
+
+    // PWA install
+    const { isInstallable, promptInstall } = usePWAInstall();
+    const [pwaPromptDismissed, setPwaPromptDismissed] = useState(
+        () => !!localStorage.getItem('pwa_prompt_dismissed')
+    );
+
+    // Multi-outlet branch selector
+    const [availableBranches, setAvailableBranches] = useState<{id: string; name: string; address?: string}[]>([]);
+    const [showBranchSheet, setShowBranchSheet] = useState(false);
+
+    // Multi-outlet branch selector
+    const [availableBranches, setAvailableBranches] = useState<{id: string; name: string; address?: string}[]>([]);
+    const [showBranchSheet, setShowBranchSheet] = useState(false);
 
     // Banner swipe state
     const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -2064,6 +2088,53 @@ const PublicMenu = () => {
         }).catch(console.error);
     }, [adminId, sessionId]);
 
+    // Multi-outlet: fetch sibling branches when adminId is known
+    useEffect(() => {
+        if (!adminId) return;
+        (async () => {
+            try {
+                // Override branch from ?branch= URL param
+                if (branchParam) setBranchId(branchParam);
+                const { data } = await (supabase as any)
+                    .from('branches')
+                    .select('id, name, address')
+                    .eq('admin_id', adminId)
+                    .order('is_main', { ascending: false });
+                if (Array.isArray(data) && data.length > 1) {
+                    setAvailableBranches(data as {id: string; name: string; address?: string}[]);
+                }
+            } catch { /* ignore */ }
+        })();
+    }, [adminId, branchParam]);
+
+    // ── Google Analytics + Meta Pixel injection ──
+    useEffect(() => {
+        if (!shopSettings) return;
+
+        // Google Analytics
+        const gaId = shopSettings.ga_measurement_id;
+        if (gaId && !document.getElementById('ga-script')) {
+            const script1 = document.createElement('script');
+            script1.id = 'ga-script';
+            script1.async = true;
+            script1.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+            document.head.appendChild(script1);
+            const script2 = document.createElement('script');
+            script2.id = 'ga-inline';
+            script2.text = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}',{page_title:'${shopSettings.shop_name||"Menu"}',send_page_view:true});`;
+            document.head.appendChild(script2);
+        }
+
+        // Meta Pixel
+        const pixelId = shopSettings.meta_pixel_id;
+        if (pixelId && !document.getElementById('fb-pixel')) {
+            const script3 = document.createElement('script');
+            script3.id = 'fb-pixel';
+            script3.text = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','ViewContent',{content_name:'${shopSettings.shop_name||"Menu"}',content_type:'restaurant_menu'});`;
+            document.head.appendChild(script3);
+        }
+    }, [shopSettings?.ga_measurement_id, shopSettings?.meta_pixel_id]);
+
     const submitPaymentReference = async () => {
         if (!paymentReference.trim()) return;
         setIsSubmittingReference(true);
@@ -2557,6 +2628,152 @@ const PublicMenu = () => {
                 </div>
             )}
 
+
+            {/* Multi-outlet Branch Selector */}
+            {availableBranches.length > 1 && (
+                <div className="max-w-2xl mx-auto px-4 pt-3 pb-1">
+                    <button
+                        onClick={() => setShowBranchSheet(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm border backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        style={{
+                            background: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}18` : '#f0fdf4',
+                            borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}44` : '#bbf7d0',
+                            color: shopSettings?.menu_primary_color || '#16a34a',
+                        }}
+                    >
+                        <span>🏪</span>
+                        <span>{availableBranches.find(b => b.id === branchId)?.name || 'Select Branch'}</span>
+                        <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                </div>
+            )}
+
+            {/* Branch Bottom-Sheet */}
+            {showBranchSheet && (
+                <div
+                    className="fixed inset-0 z-[200] flex flex-col justify-end"
+                    onClick={() => setShowBranchSheet(false)}
+                >
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div
+                        className="relative bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl p-4 pb-8 max-h-[70vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-600 mx-auto mb-4" />
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <span>🏪</span> Choose a Branch
+                        </h3>
+                        <div className="flex flex-col gap-2">
+                            {availableBranches.map(branch => (
+                                <button
+                                    key={branch.id}
+                                    onClick={() => {
+                                        setShowBranchSheet(false);
+                                        const url = new URL(window.location.href);
+                                        url.searchParams.set('branch', branch.id);
+                                        window.location.href = url.toString();
+                                    }}
+                                    className="flex items-start gap-3 p-3 rounded-xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                                    style={{
+                                        background: branch.id === branchId
+                                            ? (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}18` : '#f0fdf4')
+                                            : undefined,
+                                        borderColor: branch.id === branchId
+                                            ? (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}66` : '#86efac')
+                                            : '#e5e7eb',
+                                    }}
+                                >
+                                    <span className="text-xl mt-0.5">🏪</span>
+                                    <div>
+                                        <p className="font-semibold text-sm text-gray-900 dark:text-white">{branch.name}</p>
+                                        {branch.address && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{branch.address}</p>
+                                        )}
+                                        {branch.id === branchId && (
+                                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                                style={{ background: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}22` : '#dcfce7', color: shopSettings?.menu_primary_color || '#16a34a' }}
+                                            >✓ Current</span>
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Multi-outlet Branch Selector */}
+            {availableBranches.length > 1 && (
+                <div className="max-w-2xl mx-auto px-4 pt-3 pb-1">
+                    <button
+                        onClick={() => setShowBranchSheet(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm border backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        style={{
+                            background: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}18` : '#f0fdf4',
+                            borderColor: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}44` : '#bbf7d0',
+                            color: shopSettings?.menu_primary_color || '#16a34a',
+                        }}
+                    >
+                        <span>🏪</span>
+                        <span>{availableBranches.find(b => b.id === branchId)?.name || 'Select Branch'}</span>
+                        <svg className="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                </div>
+            )}
+
+            {/* Branch Bottom-Sheet */}
+            {showBranchSheet && (
+                <div
+                    className="fixed inset-0 z-[200] flex flex-col justify-end"
+                    onClick={() => setShowBranchSheet(false)}
+                >
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                    <div
+                        className="relative bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl p-4 pb-8 max-h-[70vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-600 mx-auto mb-4" />
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <span>🏪</span> Choose a Branch
+                        </h3>
+                        <div className="flex flex-col gap-2">
+                            {availableBranches.map(branch => (
+                                <button
+                                    key={branch.id}
+                                    onClick={() => {
+                                        setShowBranchSheet(false);
+                                        const url = new URL(window.location.href);
+                                        url.searchParams.set('branch', branch.id);
+                                        window.location.href = url.toString();
+                                    }}
+                                    className="flex items-start gap-3 p-3 rounded-xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                                    style={{
+                                        background: branch.id === branchId
+                                            ? (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}18` : '#f0fdf4')
+                                            : undefined,
+                                        borderColor: branch.id === branchId
+                                            ? (shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}66` : '#86efac')
+                                            : '#e5e7eb',
+                                    }}
+                                >
+                                    <span className="text-xl mt-0.5">🏪</span>
+                                    <div>
+                                        <p className="font-semibold text-sm text-gray-900 dark:text-white">{branch.name}</p>
+                                        {branch.address && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{branch.address}</p>
+                                        )}
+                                        {branch.id === branchId && (
+                                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                                style={{ background: shopSettings?.menu_primary_color ? `${shopSettings.menu_primary_color}22` : '#dcfce7', color: shopSettings?.menu_primary_color || '#16a34a' }}
+                                            >✓ Current</span>
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Cinematic Hero */}
             <div className="relative w-full overflow-hidden" style={{ height: (rawShopSettings as any)?.cover_photo_url ? '220px' : '0px', transition: 'height 0.4s ease' }}>
@@ -3889,6 +4106,31 @@ const PublicMenu = () => {
                 </footer>
             )}
 
+            {/* PWA Install Banner */}
+            {isInstallable && !pwaPromptDismissed && (shopSettings?.pwa_enabled !== false) && (
+                <div className="fixed bottom-[64px] left-0 right-0 z-[44] px-3 zs-enter">
+                    <div className="max-w-2xl mx-auto flex items-center gap-3 p-3 rounded-2xl shadow-xl border border-white/20 text-white"
+                        style={{ background: `linear-gradient(135deg, ${shopSettings?.menu_primary_color || '#ea580c'}, ${shopSettings?.menu_secondary_color || shopSettings?.menu_primary_color || '#dc2626'})` }}>
+                        <div className="text-2xl flex-shrink-0">📲</div>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm leading-tight">Add to Home Screen</p>
+                            <p className="text-xs opacity-80">Get quick access to our menu anytime!</p>
+                        </div>
+                        <button
+                            onClick={async () => { await promptInstall(); setPwaPromptDismissed(true); localStorage.setItem('pwa_prompt_dismissed','1'); }}
+                            className="px-3 py-1.5 rounded-xl bg-white font-bold text-xs flex-shrink-0"
+                            style={{ color: shopSettings?.menu_primary_color || '#ea580c' }}
+                        >
+                            Install
+                        </button>
+                        <button
+                            onClick={() => { setPwaPromptDismissed(true); localStorage.setItem('pwa_prompt_dismissed','1'); }}
+                            className="text-white/60 hover:text-white p-1 flex-shrink-0"
+                        >✕</button>
+                    </div>
+                </div>
+            )}
+
             {/* Powered by ZenPOS Promo Modal */}
             <ZenPosPromoModal open={showPromoModal} onOpenChange={setShowPromoModal} />
 
@@ -4254,6 +4496,16 @@ const PublicMenu = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* AI Menu Chatbot */}
+            {shopSettings?.chatbot_enabled && items.length > 0 && (
+                <MenuChatbot
+                    items={items}
+                    shopName={shopSettings?.shop_name}
+                    primaryColor={shopSettings?.menu_primary_color}
+                    greeting={shopSettings?.chatbot_greeting}
+                />
             )}
 
             <ItemCustomizerDialog isOpen={!!customizerItem} primaryColor={shopSettings?.menu_primary_color}

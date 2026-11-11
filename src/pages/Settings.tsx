@@ -41,6 +41,7 @@ import { CalciBillingSettings } from '@/components/CalciBillingSettings';
 import { CalciQuickKeysSettings } from '@/components/CalciQuickKeysSettings';
 import { QuickBillSettings } from '@/components/QuickBillSettings';
 import { KhataSettings } from '@/components/KhataSettings';
+import { PortalAnalyticsSettings } from '@/components/PortalAnalyticsSettings';
 
 interface AdditionalCharge {
   id: string;
@@ -100,7 +101,8 @@ const Settings = () => {
     { id: 'remote-orders', title: 'Remote Ordering (QR Menu & Aggregators)', tab: 'integrations', keywords: 'remote online orders zomato swiggy qr menu aggregator webhook' },
     { id: 'payment-gateway', title: 'Payment Gateway (Auto-collection)', tab: 'integrations', keywords: 'payment gateway razorpay payu stripe upi dynamic auto collect' },
     { id: 'branches', title: 'Branch Management', tab: 'branches', keywords: 'branch locations multi stores add edit delete branches' },
-    { id: 'local-backup', title: 'Local Backup & Privacy', tab: 'preferences', keywords: 'local backup privacy wipe self destruct storage pin lock' }
+    { id: 'local-backup', title: 'Local Backup & Privacy', tab: 'preferences', keywords: 'local backup privacy wipe self destruct storage pin lock' },
+    { id: 'portal-analytics', title: 'Public Portal (Analytics, PWA, Chatbot)', tab: 'integrations', keywords: 'portal public menu google analytics ga meta pixel facebook pwa install chatbot ai chat' }
   ];
 
   const handleSearch = (q: string) => {
@@ -858,6 +860,12 @@ const Settings = () => {
           <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Remote Ordering Settings failed to load. Try refreshing.</div>}>
             <SearchableSection title="Remote & QR Orders" keywords="remote online orders qr menu" searchQuery={searchQuery}><RemoteOrderSettings /></SearchableSection>
           </ErrorBoundary>
+
+              {/* Public Portal: Analytics, PWA, Chatbot */}
+          <ErrorBoundary fallback={<div className="p-4 text-sm text-muted-foreground border rounded-lg">Portal Analytics Settings failed to load. Try refreshing.</div>}>
+            <SearchableSection title="Public Portal (Analytics, PWA, Chatbot)" keywords="portal public menu google analytics ga meta pixel facebook pwa install chatbot ai chat" searchQuery={searchQuery}><PortalAnalyticsSettings /></SearchableSection>
+          </ErrorBoundary>
+
               {profile?.role === 'admin' && <StorageUsageSettings />}
             </div>
 
