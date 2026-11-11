@@ -25,7 +25,6 @@ import { getCDNUrl, handleImageError } from '@/utils/imageUtils';
 import { useTranslation } from 'react-i18next';
 import { getStoreStatus, StoreStatusInfo } from '@/utils/operatingHoursUtils';
 import { getAppBaseUrl } from '@/utils/urlUtils';
-import { getPortalTheme, getThumbBg } from '@/lib/portalThemes';
 import { StoreTimingsModal } from '@/components/StoreTimingsModal';
 import { ZenPosPromoModal } from '@/components/ZenPosPromoModal';
 import { OperatingHours } from '@/types/operatingHours';
@@ -123,7 +122,6 @@ interface ShopSettings {
     pwa_enabled?: boolean;
     chatbot_enabled?: boolean;
     chatbot_greeting?: string;
-    portal_theme_id?: string;
 }
 
 
@@ -2706,8 +2704,8 @@ const PublicMenu = () => {
             )}
 
             {/* Cinematic Hero */}
-            <div className="relative w-full overflow-hidden" style={{ height: '220px', transition: 'height 0.4s ease' }}>
-                {(rawShopSettings as any)?.cover_photo_url ? (
+            <div className="relative w-full overflow-hidden" style={{ height: (rawShopSettings as any)?.cover_photo_url ? '220px' : '0px', transition: 'height 0.4s ease' }}>
+                {(rawShopSettings as any)?.cover_photo_url && (
                     <>
                         <img
                             src={getCDNUrl((rawShopSettings as any).cover_photo_url)}
@@ -2738,41 +2736,6 @@ const PublicMenu = () => {
                             )}
                         </div>
                     </>
-                ) : (
-                    /* Themed default hero when no cover photo */
-                    <div
-                        style={{
-                            background: portalTheme.heroBg,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 6,
-                            padding: '20px 16px',
-                            position: 'relative'
-                        }}
-                    >
-                        {storeStatus && (
-                            <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white backdrop-blur-md border border-white/20 shadow-lg ${storeStatus.status === 'open' ? 'bg-green-500/80' : storeStatus.status === 'break' ? 'bg-amber-500/80' : 'bg-red-500/80'}`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                {storeStatus.status === 'open' ? 'Open' : storeStatus.status === 'break' ? 'On Break' : 'Closed'}
-                            </div>
-                        )}
-                        <span style={{ fontSize: 44, lineHeight: 1 }}>{portalTheme.emoji}</span>
-                        <h2 style={{ color: portalTheme.heroTextColor, fontWeight: 800, fontSize: 22, margin: 0, textAlign: 'center', lineHeight: 1.2 }}>
-                            {shopSettings?.shop_name || 'Our Menu'}
-                        </h2>
-                        {shopSettings?.address && (
-                            <p style={{ color: portalTheme.heroSubColor, fontSize: 12, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                📍 <span>{shopSettings.address}</span>
-                            </p>
-                        )}
-                        <p style={{ color: portalTheme.heroSubColor, fontSize: 11, margin: 0, opacity: 0.8, fontStyle: 'italic' }}>
-                            {portalTheme.tagline}
-                        </p>
-                    </div>
                 )}
             </div>
 
@@ -3029,13 +2992,9 @@ const PublicMenu = () => {
                                                         ) : item.image_url ? (
                                                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" draggable={false} onContextMenu={(e) => e.preventDefault()} onError={(e) => handleImageError(e, item.image_url)} />
                                                         ) : (
-                                                                <div className="w-full h-full flex items-center justify-center flex-col gap-0.5" style={{ background: getThumbBg(portalTheme, item.category) }}>
-                                                                    {portalTheme.thumb.showEmoji
-                                                                        ? <span style={{ fontSize: 24 }}>{getCategoryEmoji(item.category || '')}</span>
-                                                                        : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={portalTheme.thumb.textColor} strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                                                                    }
-                                                                    <span style={{ fontSize: 8, fontWeight: 700, color: portalTheme.thumb.textColor, opacity: 0.75, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{(item.category || '').slice(0, 8)}</span>
-                                                                </div>
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                                                                <Utensils className="w-10 h-10" />
+                                                            </div>
                                                         )}
                                                     </div>
                                                     <div className="p-2 text-center flex flex-col flex-1 justify-between">
@@ -3209,12 +3168,8 @@ const PublicMenu = () => {
                                                                     onError={(e) => handleImageError(e, item.image_url)}
                                                                 />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center flex-col gap-1" style={{ background: getThumbBg(portalTheme, item.category) }}>
-                                                                    {portalTheme.thumb.showEmoji
-                                                                        ? <span style={{ fontSize: 32 }}>{getCategoryEmoji(item.category || '')}</span>
-                                                                        : <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={portalTheme.thumb.textColor} strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                                                                    }
-                                                                    <span style={{ fontSize: 9, fontWeight: 700, color: portalTheme.thumb.textColor, opacity: 0.75, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{(item.category || '').slice(0, 10)}</span>
+                                                                <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                                                                    <Utensils className="w-12 h-12" />
                                                                 </div>
                                                             )}
                                                         </div>
