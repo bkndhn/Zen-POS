@@ -42,9 +42,9 @@ const OfflineStatusBanner: React.FC = () => {
             if (retryCount === 0) {
                 await offlineManager.resetSyncRetries();
                 await offlineManager.resetWriteQueueRetries();
-                // @ts-expect-error
+                // @ts-expect-error -- backend is an internal private field not exposed in types
                 if (offlineManager.backend?.isReady()) {
-                    // @ts-expect-error
+                    // @ts-expect-error -- releaseStaleClaims is an internal method not in the public interface
                     await offlineManager.backend.releaseStaleClaims(0);
                 }
             }

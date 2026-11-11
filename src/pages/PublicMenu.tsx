@@ -3097,7 +3097,7 @@ const PublicMenu = () => {
                             key={cartItemCount}
                             onClick={() => setShowCart(true)}
                             aria-label={`View cart, ${cartItemCount} items, ₹${cartTotal.toFixed(0)}`}
-                            className="pointer-events-auto w-full max-w-sm mx-auto h-16 flex items-center justify-between gap-3 px-5 rounded-full transition-transform active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border-0"
+                            className="pointer-events-auto w-full max-w-sm mx-auto h-16 flex items-center justify-between gap-3 px-5 rounded-full transition-transform active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border-0 !bg-transparent hover:!bg-transparent"
                             style={{
                                 background: shopSettings?.menu_primary_color
                                     ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
@@ -3850,7 +3850,7 @@ const PublicMenu = () => {
                         </AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={confirmClearCart}
-                            className="w-1/2 rounded-xl h-14 text-base font-bold text-white transition-all"
+                            className="w-1/2 rounded-xl h-14 text-base font-bold text-white transition-all !bg-transparent hover:!bg-transparent"
                             style={{
                                 background: shopSettings?.menu_primary_color
                                     ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
