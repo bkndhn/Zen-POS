@@ -1096,27 +1096,37 @@ const PublicMenu = () => {
         setIsPaused(true);
     };
 
-    // Update status bar color to match public menu theme
+    // Update status bar + CSS variables to match public menu theme
+    // This ensures every element using var(--menu-primary) or var(--primary)
+    // re-paints instantly whenever the owner changes the portal colour in Settings.
     useEffect(() => {
-        const originalColor = document.querySelector('meta[name="theme-color"]')?.getAttribute('content') || '#db2777';
-        const menuColor = shopSettings?.menu_primary_color || '#f97316';
+        const root = document.documentElement;
+        const primary   = shopSettings?.menu_primary_color   || '#10b981';
+        const secondary = shopSettings?.menu_secondary_color || primary;
 
-        // Update theme-color meta tag for status bar
-        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        // --- CSS custom properties (picked up by all inline var() references) ---
+        const prevPrimary   = root.style.getPropertyValue('--menu-primary');
+        const prevSecondary = root.style.getPropertyValue('--menu-secondary');
+        root.style.setProperty('--menu-primary',   primary);
+        root.style.setProperty('--menu-secondary', secondary);
+
+        // --- meta theme-color (Android status bar) ---
+        const originalMeta = document.querySelector('meta[name="theme-color"]')?.getAttribute('content') || '#db2777';
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
         if (!metaThemeColor) {
             metaThemeColor = document.createElement('meta');
             metaThemeColor.setAttribute('name', 'theme-color');
             document.head.appendChild(metaThemeColor);
         }
-        metaThemeColor.setAttribute('content', menuColor);
+        metaThemeColor.setAttribute('content', primary);
 
-        // Restore original color on unmount
         return () => {
-            if (metaThemeColor) {
-                metaThemeColor.setAttribute('content', originalColor);
-            }
+            // Restore previous values on unmount (admin preview safety)
+            root.style.setProperty('--menu-primary',   prevPrimary   || '');
+            root.style.setProperty('--menu-secondary', prevSecondary || '');
+            if (metaThemeColor) metaThemeColor.setAttribute('content', originalMeta);
         };
-    }, [shopSettings?.menu_primary_color]);
+    }, [shopSettings?.menu_primary_color, shopSettings?.menu_secondary_color]);
 
     // Item Media component with download protection
     const ItemMedia = ({ item }: { item: MenuItem }) => {
