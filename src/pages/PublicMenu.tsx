@@ -481,7 +481,6 @@ const PublicMenu = () => {
         return rawShopSettings;
     }, [rawShopSettings, isDarkMode]);
 
-    const portalTheme = getPortalTheme(shopSettings?.portal_theme_id);
 
     const [banners, setBanners] = useState<PromoBanner[]>([]);
     const [showPromoModal, setShowPromoModal] = useState(false);
