@@ -3082,17 +3082,30 @@ const PublicMenu = () => {
             {/* Floating Cart Bar (when ordering mode + items in cart) */}
             {
                 isOrderingMode && cartItemCount > 0 && !showCart && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[64px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none zs-enter`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[64px]' : 'bottom-6'} left-0 right-0 z-50 px-3 pointer-events-none zs-enter`}>
                         <Button
                             key={cartItemCount}
                             onClick={() => setShowCart(true)}
                             aria-label={`View cart, ${cartItemCount} items, ₹${cartTotal.toFixed(0)}`}
-                            className="pointer-events-auto w-full max-w-sm mx-auto h-16 flex items-center justify-between gap-3 px-5 rounded-full shadow-xl bg-primary text-primary-foreground transition-transform active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border border-primary-foreground/20 backdrop-blur-xl"
+                            className="pointer-events-auto w-full max-w-sm mx-auto h-16 flex items-center justify-between gap-3 px-5 rounded-full transition-transform active:scale-[0.96] zs-cart-bump floating-cart-bar-btn border-0"
+                            style={{
+                                background: shopSettings?.menu_primary_color
+                                    ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
+                                    : 'linear-gradient(135deg, #10b981, #059669)',
+                                boxShadow: `0 12px 28px -6px ${shopSettings?.menu_primary_color || '#10b981'}80`,
+                                color: '#ffffff'
+                            }}
                         >
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="relative">
                                     <ShoppingCart className="w-5 h-5" />
-                                    <span className="absolute -top-2 -right-2 bg-primary-foreground text-primary text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                                    <span
+                                        className="absolute -top-2 -right-2 text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
+                                        style={{
+                                            backgroundColor: '#ffffff',
+                                            color: shopSettings?.menu_primary_color || '#10b981'
+                                        }}
+                                    >
                                         {cartItemCount}
                                     </span>
                                 </div>
@@ -3110,7 +3123,12 @@ const PublicMenu = () => {
                     <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <button
                             onClick={() => setShowMyOrders(true)}
-                            className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3 rounded-2xl shadow-lg bg-blue-600 text-white"
+                            className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3 rounded-2xl shadow-lg text-white"
+                            style={{
+                                background: shopSettings?.menu_primary_color
+                                    ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
+                                    : 'linear-gradient(135deg, #10b981, #059669)'
+                            }}
                         >
                             <div className="flex items-center gap-2">
                                 <ChefHat className="w-5 h-5" />
@@ -3822,7 +3840,13 @@ const PublicMenu = () => {
                         </AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={confirmClearCart}
-                            className="w-1/2 rounded-xl h-14 text-base font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 transition-all"
+                            className="w-1/2 rounded-xl h-14 text-base font-bold text-white transition-all"
+                            style={{
+                                background: shopSettings?.menu_primary_color
+                                    ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color})`
+                                    : 'linear-gradient(135deg, #10b981, #059669)',
+                                boxShadow: `0 4px 14px -2px ${shopSettings?.menu_primary_color || '#10b981'}50`
+                            }}
                         >
                             {t('common.clear', 'Clear Cart')}
                         </AlertDialogAction>
