@@ -3082,7 +3082,7 @@ const PublicMenu = () => {
             {/* Floating Cart Bar (when ordering mode + items in cart) */}
             {
                 isOrderingMode && cartItemCount > 0 && !showCart && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[92px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none zs-enter`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[64px]' : 'bottom-6'} left-0 right-0 z-50 px-4 pointer-events-none zs-enter`}>
                         <Button
                             key={cartItemCount}
                             onClick={() => setShowCart(true)}
@@ -3107,7 +3107,7 @@ const PublicMenu = () => {
             {/* My Orders Toggle Button (table mode, no cart) */}
             {
                 isTableMode && sessionOrders.length > 0 && cartItemCount === 0 && !showMyOrders && !isSessionComplete && !isAllServed && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <button
                             onClick={() => setShowMyOrders(true)}
                             className="w-full max-w-2xl mx-auto flex items-center justify-between px-5 py-3 rounded-2xl shadow-lg bg-blue-600 text-white"
@@ -3125,7 +3125,7 @@ const PublicMenu = () => {
             {/* All Orders Served — Re-order or Request Bill */}
             {
                 isTableMode && isAllServed && cartItemCount === 0 && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div
                             className="w-full max-w-2xl mx-auto rounded-2xl shadow-xl p-4 text-center border"
                             style={{
@@ -3173,7 +3173,7 @@ const PublicMenu = () => {
             {/* Session Complete — Start New Order */}
             {
                 isTableMode && isSessionComplete && cartItemCount === 0 && (
-                    <div className={`fixed ${hasStickyFooter ? 'bottom-[76px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
+                    <div className={`fixed ${hasStickyFooter ? 'bottom-[60px]' : 'bottom-4'} left-0 right-0 z-50 px-4`}>
                         <div className="w-full max-w-2xl mx-auto bg-green-50 border border-green-200 rounded-2xl shadow-lg p-4 text-center">
                             <p className="text-green-800 font-semibold text-sm mb-1">{t('menu.billGenerated') || 'Bill generated!'}</p>
                             <p className="text-green-600 text-xs mb-3">{t('menu.canStillOrder') || 'You can still order more items if you wish.'}</p>
@@ -3438,7 +3438,7 @@ const PublicMenu = () => {
 
             {/* Footer with Contact Info */}
             {!showRemoteTracker && (shopSettings?.menu_show_phone || shopSettings?.menu_show_address || shopSettings?.shop_latitude || shopSettings?.show_whatsapp || shopSettings?.show_facebook || shopSettings?.show_instagram || timingsAvailable) && (
-                <footer className="fixed bottom-3 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[min(92vw,640px)] text-white rounded-[999px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)] ring-1 ring-white/25 backdrop-blur-xl z-[55] zs-enter" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #ea580cf0, #dc2626e0)' }}>
+                <footer className="fixed bottom-0 left-0 right-0 w-full text-white shadow-2xl backdrop-blur-md z-[45] border-t border-white/10 zs-enter" style={{ background: shopSettings?.menu_primary_color ? `linear-gradient(135deg, ${shopSettings.menu_primary_color}f0, ${shopSettings.menu_secondary_color || shopSettings.menu_primary_color}e0)` : 'linear-gradient(135deg, #10b981f0, #059669e0)' }}>
                     <div className="max-w-2xl mx-auto px-5 pt-2 pb-1.5">
                         <div className="flex items-center justify-center gap-2 sm:gap-3 flex-nowrap overflow-x-auto">
                             {/* Call Button — deep links to the branch/client-isolated contact number */}
@@ -3546,7 +3546,7 @@ const PublicMenu = () => {
                     }}
                     className={cn(
                         `fixed right-4 z-40 w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 animate-bounce`,
-                        cartItemCount > 0 || (isTableMode && sessionOrders.length > 0 && !showMyOrders) ? (hasStickyFooter ? 'bottom-[148px]' : 'bottom-[88px]') : (hasStickyFooter ? 'bottom-24' : 'bottom-4'),
+                        cartItemCount > 0 || (isTableMode && sessionOrders.length > 0 && !showMyOrders) ? (hasStickyFooter ? 'bottom-[132px]' : 'bottom-[88px]') : (hasStickyFooter ? 'bottom-20' : 'bottom-4'),
                         shopSettings?.menu_glassmorphism ? "backdrop-blur-md bg-white/90 border border-white/40" : "bg-white border border-gray-200"
                     )}
                 >
@@ -3817,12 +3817,12 @@ const PublicMenu = () => {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-row gap-3 justify-end mt-6 sm:mt-8 sm:space-x-0">
-                        <AlertDialogCancel className="w-1/2 rounded-2xl h-14 text-base font-bold mt-0 border border-gray-200 dark:border-zinc-700 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 transition-all">
+                        <AlertDialogCancel className="w-1/2 rounded-xl h-14 text-base font-bold mt-0 border border-zinc-200 dark:border-zinc-700 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-200 transition-all">
                             {t('common.cancel', 'Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={confirmClearCart}
-                            className="w-1/2 rounded-2xl h-14 text-base font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20 transition-all"
+                            className="w-1/2 rounded-xl h-14 text-base font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 transition-all"
                         >
                             {t('common.clear', 'Clear Cart')}
                         </AlertDialogAction>

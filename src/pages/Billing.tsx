@@ -3777,7 +3777,7 @@ const Billing = () => {
             try {
               await (supabase as any)
                 .from('tables')
-                .update({ status: 'available', current_bill_id: null })
+                .update({ status: 'available', is_occupied: false, current_bill_id: null })
                 .eq('admin_id', adminId)
                 .eq('table_number', selectedTableNumber);
 
