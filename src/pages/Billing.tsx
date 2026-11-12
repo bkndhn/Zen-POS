@@ -313,7 +313,7 @@ const BillingGridItemCard = React.memo(({
 
       <div className="flex-1 flex flex-col min-h-0 px-0.5">
         <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0 text-gray-900 dark:text-white">{item.name}</h3>
-        <p className="text-foreground dark:text-white font-bold" className="mb-1 flex-shrink-0 font-bold text-sm num-tabular">
+        <p className="mb-1 flex-shrink-0 font-bold text-sm num-tabular text-foreground">
           ₹{getChannelPrice(item, orderChannel).toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
         </p>
 
@@ -451,7 +451,7 @@ const BillingListItemCard = React.memo(({
                     {isLowStock(item) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning text-warning-foreground">Low stock</span>}
                   </div>
                 )}
-                <p className="text-foreground dark:text-white font-bold" className="text-lg font-bold">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
+                <p className="text-lg font-bold text-foreground">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
               </div>
             </div>
 
@@ -4559,7 +4559,7 @@ const Billing = () => {
             </div>
 
             <div className="flex justify-end mt-3 pt-2 border-t border-border dark:border-border">
-              <span className="text-foreground dark:text-white font-bold" className="text-sm font-bold">
+              <span className="text-sm font-bold text-foreground">
                 Total: ₹{((item.quantity / (item.base_value || 1)) * item.price).toFixed(0)}
               </span>
             </div>
@@ -4577,7 +4577,7 @@ const Billing = () => {
             </div>
             <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-border dark:border-[#282C32] text-gray-900 dark:text-white">
               <span>Total</span>
-              <span className="tabular-nums" className="text-foreground dark:text-white font-bold">₹{total.toFixed(0)}</span>
+              <span className="tabular-nums font-bold text-foreground">₹{total.toFixed(0)}</span>
             </div>
           </div>
           <Button

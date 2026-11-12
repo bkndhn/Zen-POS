@@ -844,7 +844,7 @@ const DemoBilling: React.FC = () => {
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${item.veg ? 'bg-emerald-500' : 'bg-red-500'}`} />
                     </span>
-                    <p className="text-sm font-semibold text-white leading-snug line-clamp-2">{item.name}</p>
+                    <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">{item.name}</p>
                   </div>
 
                   <div className="flex items-center justify-between pt-0.5">

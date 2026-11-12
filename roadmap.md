@@ -45,3 +45,4 @@
 - [x] Fix online-menu order numbers (every recent order was numbered "1")
 - [x] Home page: how it works, FAQ, delivery & shift highlights
 - [ ] Signed-in shift walkthrough (open → cash bill → close → Reports → Shifts) (blocked: preview cannot sign in to this backend; steps given to user)
+- [x] Recheck Billing, Demo, Waiter, Dashboard and Kitchen pages after recent theme changes
