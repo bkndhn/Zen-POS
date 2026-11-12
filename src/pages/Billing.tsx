@@ -157,9 +157,8 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
         <button
           type="button"
           onClick={() => onSelectCategory('all')}
-          style={selectedCategory === 'all' ? { background: 'hsl(var(--primary))' } : undefined}
           className={`whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === 'all'
-            ? 'text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
+            ? 'bg-primary text-primary-foreground rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
             }`}
         >
@@ -170,9 +169,8 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
             key={category.id}
             type="button"
             onClick={() => onSelectCategory(category.name)}
-            style={selectedCategory === category.name ? { background: 'hsl(var(--primary))' } : undefined}
             className={`whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === category.name
-              ? 'text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
+              ? 'bg-primary text-primary-foreground rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
               }`}
           >
@@ -325,7 +323,7 @@ const BillingGridItemCard = React.memo(({
               <Minus className="h-3 w-3" />
             </Button>
             <span className="font-bold min-w-[1.5rem] text-center text-base dark:text-white">{cartQuantity}</span>
-            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, 1)}  className="h-7 w-7 p-0 rounded-full text-white border-0 hover:scale-105 transition-transform font-bold">
+            <Button size="sm" variant="default" onClick={() => onUpdateQuantity(item.id, 1)} className="h-7 w-7 p-0 rounded-full border-0 hover:scale-105 transition-transform font-bold">
               <Plus className="h-3 w-3" />
             </Button>
           </div>
@@ -354,7 +352,7 @@ const BillingGridItemCard = React.memo(({
                 })}
               </div>
             )}
-            <Button onClick={() => onAddToCart(item)}  className="w-full h-9 text-white rounded-full font-bold hover:scale-105 transition-transform shadow-sm text-xs">
+            <Button variant="default" onClick={() => onAddToCart(item)} className="w-full h-9 rounded-full font-bold hover:scale-105 transition-transform shadow-sm text-xs">
               + Add
             </Button>
           </div>
@@ -498,7 +496,7 @@ const BillingListItemCard = React.memo(({
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => onAddToCart(item)}  className="text-white rounded-full font-bold hover:scale-105 transition-transform shadow-sm h-9 px-4 text-xs">
+              <Button variant="default" onClick={() => onAddToCart(item)} className="rounded-full font-bold hover:scale-105 transition-transform shadow-sm h-9 px-4 text-xs">
                 + Add
               </Button>
             )}
@@ -4409,15 +4407,15 @@ const Billing = () => {
       <div className="fixed bottom-[72px] left-0 right-0 md:hidden z-[9999] px-3 pb-2 pointer-events-none">
         <div className="bg-card dark:bg-card border border-border rounded-xl shadow-2xl px-4 py-3 pointer-events-auto">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-white">
+            <div className="flex items-center gap-3 text-foreground">
               <ShoppingCart className="w-5 h-5 text-[hsl(var(--primary))]" />
-              <span className="font-bold text-lg">
+              <span className="font-bold text-lg text-foreground">
                 {cart.filter(i => i.quantity > 0).length} {cart.filter(i => i.quantity > 0).length === 1 ? 'item' : 'items'}
               </span>
-              <span className="text-foreground dark:text-white font-bold" className="font-bold text-xl">₹{total.toFixed(2)}</span>
+              <span className="font-bold text-xl text-foreground">₹{total.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={clearCart} className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full">
+              <Button variant="ghost" size="sm" onClick={clearCart} className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full">
                 <Trash2 className="w-5 h-5" />
               </Button>
               <Button 
