@@ -133,6 +133,7 @@ const KitchenDisplay = () => {
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
     const [timeFilter, setTimeFilter] = useState<'all' | '15' | '30' | '60'>('all');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
+    const [stationFilter, setStationFilter] = useState<'all' | 'kitchen' | 'bar'>('all');
     const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
     // Recently processed bills/orders for undo (last 5 minutes)
@@ -619,9 +620,28 @@ const KitchenDisplay = () => {
       return minutes <= Number(timeFilter);
     };
     const matchesStatus = (s: string) => statusFilter === 'all' || s === statusFilter;
+    // Station filter: 'bar' = items contain category 'Beverages'/'Bar'/'Drinks', 'kitchen' = everything else
+    const isBarOrder = (items: Array<{ items?: { name?: string; category?: string } | null }> | Array<{ name?: string; category?: string }>) => {
+      return items.some((bi: any) => {
+        const cat = (bi.items?.category || bi.category || '').toLowerCase();
+        return cat === 'bar' || cat === 'beverages' || cat === 'drinks' || cat === 'cocktails';
+      });
+    };
+    const matchesStation = (items: any[]) => {
+      if (stationFilter === 'all') return true;
+      if (stationFilter === 'bar') return isBarOrder(items);
+      return !isBarOrder(items);
+    };
 
-    const filteredBills = bills.filter(b => withinWindow(b.created_at) && matchesStatus(b.kitchen_status));
-    const filteredTableOrders = tableOrders.filter(o => withinWindow(o.created_at) && matchesStatus(o.status));
+    const filteredBills = bills.filter(b => withinWindow(b.created_at) && matchesStatus(b.kitchen_status) && matchesStation(b.bill_items || []));
+    const filteredTableOrders = tableOrders.filter(o => withinWindow(o.created_at) && matchesStatus(o.status) && matchesStation(o.items || []));
+
+    // Count for station tab badges
+    const kitchenCount = bills.filter(b => matchesStatus(b.kitchen_status) && !isBarOrder(b.bill_items || [])).length +
+      tableOrders.filter(o => matchesStatus(o.status) && !isBarOrder(o.items || [])).length;
+    const barCount = bills.filter(b => matchesStatus(b.kitchen_status) && isBarOrder(b.bill_items || [])).length +
+      tableOrders.filter(o => matchesStatus(o.status) && isBarOrder(o.items || [])).length;
+
 
     // Extract unique item categories from all visible orders and compute bulk item counts with units
     const { allCategories, itemCountsMap, totalOrdersCount } = useMemo(() => {
@@ -1013,6 +1033,33 @@ const KitchenDisplay = () => {
                             Refresh
                         </Button>
                     </div>
+                </div>
+
+                {/* Station Tab Bar — All Orders | Kitchen N | Bar N */}
+                <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    {([
+                        { key: 'all', label: 'All Orders', count: bills.length + tableOrders.length },
+                        { key: 'kitchen', label: 'Kitchen', count: kitchenCount },
+                        { key: 'bar', label: 'Bar', count: barCount },
+                    ] as const).map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setStationFilter(tab.key)}
+                            className={cn(
+                                'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150',
+                                stationFilter === tab.key
+                                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                    : 'bg-muted/40 text-muted-foreground border-transparent hover:bg-muted'
+                            )}
+                        >
+                            {tab.label}
+                            {tab.count > 0 && (
+                                <span className={cn('inline-flex items-center justify-center rounded-full text-[10px] font-bold w-4 h-4',
+                                    stationFilter === tab.key ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-foreground'
+                                )}>{tab.count}</span>
+                            )}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Filters row */}
@@ -1486,6 +1533,30 @@ const KitchenDisplay = () => {
                     <KitchenAnalytics bills={bills} tableOrders={tableOrders} onClose={() => setIsAnalyticsOpen(false)} />
                 </>
             )}
+
+            {/* Sticky Bottom Status Bar */}
+            {(filteredBills.length + filteredTableOrders.length) > 0 && (() => {
+                const allOrders = [...filteredBills, ...filteredTableOrders];
+                const now = currentTime.getTime();
+                const elapsedMins = allOrders.map(o => Math.floor((now - new Date((o as any).created_at).getTime()) / 60000));
+                const avgMin = elapsedMins.length > 0 ? Math.round(elapsedMins.reduce((a, b) => a + b, 0) / elapsedMins.length) : 0;
+                const maxMin = elapsedMins.length > 0 ? Math.max(...elapsedMins) : 0;
+                const fmtMin = (m: number) => `${Math.floor(m / 60) > 0 ? Math.floor(m / 60) + ':' : ''}${String(m % 60).padStart(2, '0')}`;
+                return (
+                    <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/90 backdrop-blur-md border-t border-border/60 px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                            {filteredBills.length + filteredTableOrders.length} Open Orders
+                            {kitchenCount > 0 && <span className="ml-2 text-blue-400">{kitchenCount} Kitchen</span>}
+                            {barCount > 0 && <span className="ml-2 text-purple-400">{barCount} Bar</span>}
+                        </span>
+                        <span>
+                            Avg. Prep Time <span className="font-mono font-bold text-foreground">{fmtMin(avgMin)}</span>
+                            <span className="mx-2">|</span>
+                            Longest <span className={cn('font-mono font-bold', maxMin >= 15 ? 'text-red-400' : maxMin >= 10 ? 'text-orange-400' : 'text-green-400')}>{fmtMin(maxMin)}</span>
+                        </span>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
@@ -1538,6 +1609,9 @@ const KitchenOrderCard: React.FC<KitchenOrderCardProps> = ({
                     {bill.order_type === 'parcel' && (
                         <Badge className="bg-amber-500 text-white text-[10px]">📦 PARCEL</Badge>
                     )}
+                    <Badge className="bg-blue-900/60 text-blue-300 border border-blue-700/40 text-[10px] font-bold tracking-wide uppercase">
+                        🍳 KITCHEN
+                    </Badge>
                 </div>
                 <Badge className={cn('text-xs font-mono font-bold', badgeClass[urgency])}>
                     <Clock className="w-3 h-3 mr-1" />
