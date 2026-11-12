@@ -5510,6 +5510,10 @@ export type Database = {
       }
       calc_admin_branch_storage: { Args: { p_admin_id: string }; Returns: Json }
       calc_admin_storage_usage: { Args: { p_admin_id: string }; Returns: Json }
+      can_read_report_bills: {
+        Args: { p_admin_id: string; p_branch_id: string }
+        Returns: boolean
+      }
       check_admin_storage_allowance: {
         Args: { p_admin_id: string }
         Returns: Json
