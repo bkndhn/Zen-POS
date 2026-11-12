@@ -239,26 +239,6 @@ const WaiterCompanion: React.FC = () => {
         fetchTableOrders();
     }, [fetchTableOrders]);
 
-    useEffect(() => {
-        if (!adminId) return;
-        const ordersChannel = supabase
-            .channel(`waiter_table_orders_${adminId}`)
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'table_orders', filter: `admin_id=eq.${adminId}` },
-                () => { fetchTableOrders(); }
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'tables', filter: `admin_id=eq.${adminId}` },
-                () => { fetchTables(); }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(ordersChannel);
-        };
-    }, [adminId, fetchTableOrders, fetchTables]);
     const [gstSettings, setGstSettings] = useState<{
         enabled: boolean;
         taxRatesMap: Record<string, { rate: number; name: string; cess: number }>;
@@ -339,6 +319,27 @@ const WaiterCompanion: React.FC = () => {
             }
         }
     }, [adminId, operatingBranchId]);
+
+    useEffect(() => {
+        if (!adminId) return;
+        const ordersChannel = supabase
+            .channel(`waiter_table_orders_${adminId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'table_orders', filter: `admin_id=eq.${adminId}` },
+                () => { fetchTableOrders(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'tables', filter: `admin_id=eq.${adminId}` },
+                () => { fetchTables(); }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(ordersChannel);
+        };
+    }, [adminId, fetchTableOrders, fetchTables]);
 
     // Fetch active menu items
     const fetchMenu = useCallback(async () => {
