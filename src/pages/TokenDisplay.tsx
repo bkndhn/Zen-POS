@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
-import { Button } from '@/components/ui/button';
-import { Maximize, Volume2, VolumeX, ChefHat, BellRing, Wifi, WifiOff, Repeat } from 'lucide-react';
+import { Maximize, Settings, BellRing, Wifi, WifiOff, Repeat } from 'lucide-react';
 
 interface TokenBill {
   id: string;
@@ -25,27 +24,21 @@ const shortToken = (billNo: string) => {
   return m ? m[1] : billNo;
 };
 
-const playChime = () => {
+function playChime() {
   try {
-    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    [587, 880].forEach((freq, i) => {
+    const ctx = new AudioContext();
+    [[523, 0], [659, 0.2]].forEach(([freq, delay]) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
       osc.frequency.value = freq;
-      osc.type = 'sine';
-      const t = ctx.currentTime + i * 0.35;
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.65);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.15);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.15);
     });
-    setTimeout(() => ctx.close?.(), 1500);
   } catch { /* audio unavailable */ }
-};
+}
 
 const announce = (token: string) => {
   try {
@@ -102,7 +95,6 @@ const TokenDisplay = () => {
       setBills(Array.isArray(data) ? data : []);
       setOnline(true); setLastSync(new Date());
     } catch {
-      /* keep last known list when offline */
       setOnline(false);
     }
   }, [adminId, branchFilterId, isPublic]);
@@ -111,7 +103,7 @@ const TokenDisplay = () => {
 
   useEffect(() => { fetchBills(); }, [fetchBills]);
 
-  // Public TV: show the shop's own name (public, non-sensitive setting only)
+  // Public TV: show the shop's own name
   useEffect(() => {
     if (!isPublic || !publicAdminId) return;
     (supabase as any).rpc('get_public_shop_settings_by_profile', { p_profile_id: publicAdminId })
@@ -149,6 +141,7 @@ const TokenDisplay = () => {
     };
   }, [adminId, fetchBills, isPublic]);
 
+  // Clock — update every second
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
@@ -156,29 +149,19 @@ const TokenDisplay = () => {
 
   // Screen WakeLock — prevents TV display from sleeping
   useEffect(() => {
-    let wakeLock: any = null;
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await (navigator as any).wakeLock.request('screen');
-        }
-      } catch { /* not supported or denied */ }
+    let lock: WakeLockSentinel | null = null;
+    const acquire = async () => {
+      try { lock = await navigator.wakeLock?.request('screen'); } catch {}
     };
-    requestWakeLock();
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') requestWakeLock();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      wakeLock?.release?.();
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
+    acquire();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) acquire(); });
+    return () => { lock?.release(); };
   }, []);
 
   const preparing = bills.filter(b => b.kitchen_status !== 'ready');
   const ready = bills.filter(b => b.kitchen_status === 'ready');
 
-  // Announce newly ready tokens (skip the very first load)
+  // Announce newly ready tokens (skip very first load)
   useEffect(() => {
     const ids = new Set(ready.map(b => b.id));
     if (knownReady.current === null) { knownReady.current = ids; return; }
@@ -207,89 +190,199 @@ const TokenDisplay = () => {
   const label = (b: TokenBill) =>
     b.table_no ? `Table ${b.table_no}` : (b.order_type === 'dine_in' ? 'Dine In' : 'Takeaway');
 
+  // Stats
+  const totalOpen = bills.length;
+  const prepCount = preparing.length;
+  const readyCount = ready.length;
+  const avgPrepMins = prepCount > 0
+    ? Math.round(preparing.reduce((s, b) => s + waitMins(b.created_at, now), 0) / prepCount)
+    : 0;
+  const longestWait = bills.length > 0
+    ? Math.max(...bills.map(b => waitMins(b.created_at, now)))
+    : 0;
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="bg-gray-950 min-h-screen text-white flex flex-col">
+      {/* Audio unlock overlay */}
       {!audioUnlocked && (
         <button
           onClick={() => { setAudioUnlocked(true); playChime(); }}
-          className="fixed inset-0 z-50 bg-background/90 backdrop-blur flex flex-col items-center justify-center gap-4"
+          className="fixed inset-0 z-50 bg-gray-950/95 backdrop-blur flex flex-col items-center justify-center gap-4"
         >
-          <BellRing className="w-16 h-16 text-primary" />
+          <BellRing className="w-16 h-16 text-green-400" />
           <span className="text-2xl font-bold">Tap to start Token Display</span>
-          <span className="text-muted-foreground">This enables the pickup chime and voice calling</span>
+          <span className="text-gray-400">This enables the pickup chime and voice calling</span>
         </button>
       )}
 
-      <header className="flex flex-wrap items-center justify-between gap-2 px-4 md:px-6 py-3 md:py-4 border-b border-border bg-card">
-        <div className="min-w-0">
-          <h1 className="text-xl md:text-3xl font-bold truncate">{isPublic ? (publicShopName || 'ZenPOS') : (profile?.hotel_name || profile?.shop_name || 'ZenPOS')} · Order Status</h1>
-          <p className="text-xs md:text-sm text-muted-foreground flex items-center gap-1.5">
-            {online ? <Wifi className="w-3.5 h-3.5 text-success" /> : <WifiOff className="w-3.5 h-3.5 text-destructive" />}
-            {online ? 'Live' : 'Reconnecting… showing last known orders'}
-            {lastSync && <span>· updated {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>}
-          </p>
+      {/* Header */}
+      <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+        {/* Left: branding */}
+        <div>
+          <div className="text-white font-bold text-lg">🎫 ZenPOS Token Display</div>
+          <div className="text-gray-500 text-xs uppercase tracking-widest">Kitchen Display System</div>
         </div>
-        <div className="flex items-center gap-2 md:gap-3">
-          <span className="text-lg md:text-2xl font-mono tabular-nums">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+
+        {/* Center: order counts */}
+        <div className="flex items-center gap-6 text-sm">
+          <span className="text-blue-400 font-semibold">{prepCount} Preparing</span>
+          <span className="text-green-400 font-semibold">{readyCount} Ready</span>
+        </div>
+
+        {/* Right: controls */}
+        <div className="flex items-center gap-3">
+          {/* LIVE indicator */}
+          <div className="flex items-center gap-1.5">
+            {online ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-green-400 text-xs font-semibold">LIVE</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-red-400" />
+                <span className="text-red-400 text-xs font-semibold">OFFLINE</span>
+              </>
+            )}
+          </div>
+
+          {/* Clock */}
+          <span className="text-white font-mono text-sm tabular-nums">
+            {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+
+          {/* Copy TV link (non-public only) */}
           {!isPublic && adminId && (
-            <Button variant="outline" size="sm" onClick={() => {
-              const url = `${window.location.origin}/tokens/${adminId}`;
-              navigator.clipboard?.writeText(url).then(() => alert(`TV link copied:\n${url}`)).catch(() => prompt('TV link', url));
-            }}>Copy TV link</Button>
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/tokens/${adminId}`;
+                navigator.clipboard?.writeText(url).then(() => alert(`TV link copied:\n${url}`)).catch(() => prompt('TV link', url));
+              }}
+              className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 hover:bg-gray-700"
+            >
+              Copy TV link
+            </button>
           )}
+
+          {/* Repeat last call */}
           {lastCalled && (
-            <Button variant="outline" size="icon" aria-label="Call last token again" onClick={() => { playChime(); setTimeout(() => announce(lastCalled), 800); }}>
-              <Repeat />
-            </Button>
+            <button
+              aria-label="Call last token again"
+              onClick={() => { playChime(); setTimeout(() => announce(lastCalled), 800); }}
+              className="p-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300"
+            >
+              <Repeat className="w-4 h-4" />
+            </button>
           )}
-          <Button variant="outline" size="icon" onClick={toggleSound} aria-label="Toggle sound">
-            {soundOn ? <Volume2 /> : <VolumeX />}
-          </Button>
-          <Button variant="outline" size="icon" onClick={goFullscreen} aria-label="Fullscreen">
-            <Maximize />
-          </Button>
+
+          {/* Sound toggle */}
+          <button
+            onClick={toggleSound}
+            aria-label="Toggle sound"
+            className="p-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300"
+          >
+            {soundOn ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+          </button>
+
+          {/* Fullscreen */}
+          <button
+            onClick={goFullscreen}
+            aria-label="Fullscreen"
+            className="p-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300"
+          >
+            <Maximize className="w-4 h-4" />
+          </button>
+
+          {/* Settings gear (decorative / placeholder) */}
+          <button
+            aria-label="Settings"
+            className="p-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0">
-        <section className="p-4 md:p-6 border-b md:border-b-0 md:border-r border-border">
-          <h2 className="flex items-center gap-2 text-2xl md:text-3xl font-bold text-warning mb-4 md:mb-6">
-            <ChefHat className="w-8 h-8" /> Preparing <span className="text-base font-semibold text-muted-foreground">({preparing.length})</span>
+      {/* Two-column body */}
+      <main className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 overflow-auto">
+        {/* Preparing column */}
+        <section className="bg-gray-900/50 rounded-xl border border-blue-900/30 p-4 flex flex-col gap-3">
+          <h2 className="text-blue-300 font-bold text-lg flex items-center gap-2 mb-1">
+            👨‍🍳 Preparing <span className="text-gray-500 text-sm font-normal">({prepCount})</span>
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {preparing.map(b => {
-              const mins = waitMins(b.created_at, now);
-              return (
-                <div key={b.id} className={`rounded-2xl border-2 p-4 text-center ${mins >= 20 ? 'border-destructive/50 bg-destructive/10' : 'border-warning/40 bg-warning/10'}`}>
-                  <div className="text-5xl md:text-6xl font-black tabular-nums">{shortToken(b.bill_no)}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{label(b)}</div>
-                  <div className="text-xs font-semibold mt-1 text-muted-foreground">{b.kitchen_status === 'preparing' ? 'Cooking' : 'Received'} · {mins} min</div>
+          {preparing.length === 0 && (
+            <p className="text-gray-500 text-sm">No orders in the kitchen</p>
+          )}
+          {preparing.map(b => {
+            const elapsed = waitMins(b.created_at, now);
+            const urgencyClass = elapsed < 10
+              ? 'border-l-4 border-green-500'
+              : elapsed < 15
+              ? 'border-l-4 border-amber-500'
+              : 'border-l-4 border-red-500 ring-1 ring-red-500/20';
+            const timeColor = elapsed < 10 ? 'text-green-400' : elapsed < 15 ? 'text-amber-400' : 'text-red-400';
+            return (
+              <div key={b.id} className={`bg-gray-900 rounded-xl p-4 ${urgencyClass} shadow-lg flex flex-col gap-1`}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-white font-black text-4xl tabular-nums leading-none">
+                      {shortToken(b.bill_no)}
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">{label(b)}</div>
+                  </div>
+                  <div className={`font-mono text-sm font-semibold ${timeColor}`}>{elapsed} min</div>
                 </div>
-              );
-            })}
-            {preparing.length === 0 && <p className="text-muted-foreground col-span-full">No orders in the kitchen</p>}
-          </div>
+                <div className="text-gray-400 text-xs mt-1">
+                  {b.kitchen_status === 'preparing' ? 'Cooking' : 'Received'}
+                </div>
+              </div>
+            );
+          })}
         </section>
 
-        <section className="p-4 md:p-6">
-          <h2 className="flex items-center gap-2 text-2xl md:text-3xl font-bold text-success mb-4 md:mb-6">
-            <BellRing className="w-8 h-8" /> Ready for Pickup <span className="text-base font-semibold text-muted-foreground">({ready.length})</span>
+        {/* Ready column */}
+        <section className="bg-gray-900/50 rounded-xl border border-green-900/30 p-4 flex flex-col gap-3">
+          <h2 className="text-green-300 font-bold text-lg flex items-center gap-2 mb-1">
+            🔔 Ready for Pickup <span className="text-gray-500 text-sm font-normal">({readyCount})</span>
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {ready.map(b => (
-              <div key={b.id} className={`rounded-2xl border-2 border-success bg-success/15 p-4 text-center ${shortToken(b.bill_no) === lastCalled ? 'animate-pulse ring-4 ring-success/40' : ''}`}>
-                <div className="text-5xl md:text-6xl font-black tabular-nums text-success">{shortToken(b.bill_no)}</div>
-                <div className="text-sm text-muted-foreground mt-1">{label(b)}</div>
+          {ready.length === 0 && (
+            <p className="text-gray-500 text-sm">Nothing ready yet</p>
+          )}
+          {ready.map(b => {
+            const elapsed = waitMins(b.created_at, now);
+            const urgencyClass = elapsed < 10
+              ? 'border-l-4 border-green-500'
+              : elapsed < 15
+              ? 'border-l-4 border-amber-500'
+              : 'border-l-4 border-red-500 ring-1 ring-red-500/20';
+            const timeColor = elapsed < 10 ? 'text-green-400' : elapsed < 15 ? 'text-amber-400' : 'text-red-400';
+            return (
+              <div key={b.id} className={`bg-gray-900 rounded-xl p-4 ${urgencyClass} shadow-lg flex flex-col gap-1 ${shortToken(b.bill_no) === lastCalled ? 'ring-2 ring-green-400/40 animate-pulse' : ''}`}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-white font-black text-4xl tabular-nums leading-none">
+                      {shortToken(b.bill_no)}
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">{label(b)}</div>
+                  </div>
+                  <div className={`font-mono text-sm font-semibold ${timeColor}`}>{elapsed} min</div>
+                </div>
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
+                    ✅ Ready for Pickup
+                  </span>
+                </div>
               </div>
-            ))}
-            {ready.length === 0 && <p className="text-muted-foreground col-span-full">Nothing ready yet</p>}
-          </div>
+            );
+          })}
+
+          {/* Recently called history */}
           {calledHistory.length > 1 && (
-            <div className="mt-6">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">Recently called</p>
+            <div className="mt-4">
+              <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">Recently called</p>
               <div className="flex flex-wrap gap-2">
                 {calledHistory.map(t => (
-                  <span key={t} className="px-3 py-1 rounded-full bg-muted text-foreground font-bold tabular-nums">{t}</span>
+                  <span key={t} className="px-3 py-1 rounded-full bg-gray-800 text-gray-300 font-bold tabular-nums text-sm">{t}</span>
                 ))}
               </div>
             </div>
@@ -297,11 +390,17 @@ const TokenDisplay = () => {
         </section>
       </main>
 
-      {lastCalled && (
-        <footer className="px-6 py-4 bg-success/15 border-t border-success/40 text-xl md:text-2xl font-semibold text-center">
-          🔔 Token {lastCalled}, your order is ready for pickup
-        </footer>
-      )}
+      {/* Footer stats bar */}
+      <footer className="bg-gray-900 border-t border-gray-800 px-6 py-2 flex items-center gap-6 text-xs text-gray-400">
+        <span>Total Open: <span className="text-white font-semibold">{totalOpen}</span></span>
+        <span>Preparing: <span className="text-blue-400 font-semibold">{prepCount}</span></span>
+        <span>Ready: <span className="text-green-400 font-semibold">{readyCount}</span></span>
+        <span>Avg Prep: <span className="text-amber-400 font-semibold">{avgPrepMins} min</span></span>
+        <span>Longest Wait: <span className="text-red-400 font-semibold">{longestWait} min</span></span>
+        {lastSync && (
+          <span className="ml-auto">Updated: {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        )}
+      </footer>
     </div>
   );
 };
