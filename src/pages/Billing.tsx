@@ -2993,6 +2993,9 @@ const Billing = () => {
     // === INSTANT 4-LAYER SYNC ===
     // Layer 3: Window custom events - same tab (0ms)
     window.dispatchEvent(new CustomEvent('bills-updated'));
+    if (selectedTableNumber) {
+      window.dispatchEvent(new CustomEvent('table-status-changed', { detail: { tableNumber: selectedTableNumber, status: 'available' } }));
+    }
     const bc = new BroadcastChannel('zenpos-events');
     bc.postMessage({ type: 'bills-updated' });
     setTimeout(() => bc.close(), 100);
@@ -3590,6 +3593,9 @@ const Billing = () => {
 
         // Trigger local custom event to update reports dashboard
         window.dispatchEvent(new CustomEvent('bills-updated'));
+        if (selectedTableNumber) {
+          window.dispatchEvent(new CustomEvent('table-status-changed', { detail: { tableNumber: selectedTableNumber, status: 'available' } }));
+        }
         const bc = new BroadcastChannel('zenpos-events');
         bc.postMessage({ type: 'bills-updated' });
         setTimeout(() => bc.close(), 100);

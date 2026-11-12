@@ -980,6 +980,8 @@ const TableOrderBilling: React.FC = () => {
 
             // 5. Broadcast bill creation
             window.dispatchEvent(new CustomEvent('bills-updated'));
+            window.dispatchEvent(new CustomEvent('table-status-changed', { detail: { tableNumber, status: 'available' } }));
+            try { const bc = new BroadcastChannel('zenpos-events'); bc.postMessage({ type: 'bills-updated' }); bc.close(); } catch (_) { /* no-op */ }
 
             billsChannel?.postMessage({
                 type: 'new-bill',
