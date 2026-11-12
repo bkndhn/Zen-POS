@@ -159,7 +159,7 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
           onClick={() => onSelectCategory('all')}
           style={selectedCategory === 'all' ? { background: 'hsl(var(--primary))' } : undefined}
           className={`whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === 'all'
-            ? 'text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
+            ? 'text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
             }`}
         >
@@ -172,7 +172,7 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
             onClick={() => onSelectCategory(category.name)}
             style={selectedCategory === category.name ? { background: 'hsl(var(--primary))' } : undefined}
             className={`whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === category.name
-              ? 'text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
+              ? 'text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
               }`}
           >
@@ -300,7 +300,7 @@ const BillingGridItemCard = React.memo(({
               </span>
             )}
             {isFastMover && (
-              <span  className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm text-black">🔥 Fast</span>
+              <span  className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm text-white">🔥 Fast</span>
             )}
           </div>
         )}
@@ -325,7 +325,7 @@ const BillingGridItemCard = React.memo(({
               <Minus className="h-3 w-3" />
             </Button>
             <span className="font-bold min-w-[1.5rem] text-center text-base dark:text-white">{cartQuantity}</span>
-            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, 1)}  className="h-7 w-7 p-0 rounded-full text-black border-0 hover:scale-105 transition-transform font-bold">
+            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, 1)}  className="h-7 w-7 p-0 rounded-full text-white border-0 hover:scale-105 transition-transform font-bold">
               <Plus className="h-3 w-3" />
             </Button>
           </div>
@@ -354,7 +354,7 @@ const BillingGridItemCard = React.memo(({
                 })}
               </div>
             )}
-            <Button onClick={() => onAddToCart(item)}  className="w-full h-9 text-black rounded-full font-bold hover:scale-105 transition-transform shadow-sm text-xs">
+            <Button onClick={() => onAddToCart(item)}  className="w-full h-9 text-white rounded-full font-bold hover:scale-105 transition-transform shadow-sm text-xs">
               + Add
             </Button>
           </div>
@@ -449,7 +449,7 @@ const BillingListItemCard = React.memo(({
                     {expiryDays != null && (
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${expiryDays <= 1 ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'}`}>⚡ {expiryLabel(expiryDays)}</span>
                     )}
-                    {isFastMover && <span  className="text-[10px] font-bold px-1.5 py-0.5 rounded text-black">🔥 Fast</span>}
+                    {isFastMover && <span  className="text-[10px] font-bold px-1.5 py-0.5 rounded text-white">🔥 Fast</span>}
                     {isLowStock(item) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning text-warning-foreground">Low stock</span>}
                   </div>
                 )}
@@ -498,7 +498,7 @@ const BillingListItemCard = React.memo(({
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => onAddToCart(item)}  className="text-black rounded-full font-bold hover:scale-105 transition-transform shadow-sm h-9 px-4 text-xs">
+              <Button onClick={() => onAddToCart(item)}  className="text-white rounded-full font-bold hover:scale-105 transition-transform shadow-sm h-9 px-4 text-xs">
                 + Add
               </Button>
             )}
@@ -4219,7 +4219,7 @@ const Billing = () => {
             >
               <PauseCircle className="w-3.5 h-3.5" />
               <span>Park</span>
-              {heldBillCount > 0 && <span  className="text-black rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
+              {heldBillCount > 0 && <span  className="text-white rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
             </button>
           )}
           {/* Petty Cash / Quick Drawer Expense */}
@@ -4430,7 +4430,7 @@ const Billing = () => {
                   }
                 }} 
                 
-                className="h-9 px-5 text-black hover:opacity-90 font-bold rounded-full shadow-md"
+                className="h-9 px-5 text-white hover:opacity-90 font-bold rounded-full shadow-md"
               >
                 Pay
               </Button>
@@ -4592,7 +4592,7 @@ const Billing = () => {
               }
             }}
             
-            className="text-black font-bold rounded-xl py-3.5 w-full h-auto hover:opacity-90 transition-opacity shadow-sm"
+            className="text-white font-bold rounded-xl py-3.5 w-full h-auto hover:opacity-90 transition-opacity shadow-sm"
           >
             Pay ₹{total.toFixed(0)}
           </Button>

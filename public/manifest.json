@@ -1,17 +1,17 @@
 {
-  "name": "ZenPOS Menu",
-  "short_name": "Menu",
-  "description": "Order from your table — fast, easy, beautiful.",
+  "name": "ZenPOS",
+  "short_name": "ZenPOS",
+  "description": "Fast, Modern Billing & Operations for Restaurants and Hotels",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#10b981",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/brand/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "/brand/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
-  "categories": ["food", "shopping"],
+  "categories": ["business", "food", "productivity"],
   "lang": "en-IN",
   "screenshots": []
 }

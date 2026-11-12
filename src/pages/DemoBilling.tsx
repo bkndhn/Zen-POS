@@ -389,7 +389,7 @@ const OrderCheckoutContent: React.FC<{
               onClick={() => setSelectedDiscount(d)}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                 selectedDiscount.label === d.label
-                  ? 'bg-[hsl(var(--primary))] text-black shadow-2xs'
+                  ? 'bg-[hsl(var(--primary))] text-white shadow-2xs'
                   : 'bg-white text-gray-600 border border-gray-200 hover:border-amber-300 dark:bg-[#22262C] dark:text-gray-300 dark:border-[#323740]'
               }`}
             >
@@ -444,7 +444,7 @@ const OrderCheckoutContent: React.FC<{
             onClick={() => setPaymentMethod(tab.id)}
             className={`py-2 text-xs flex items-center justify-center gap-1.5 transition-all ${
               paymentMethod === tab.id
-                ? 'bg-[hsl(var(--primary))] text-black font-semibold rounded-lg shadow-2xs'
+                ? 'bg-[hsl(var(--primary))] text-white font-semibold rounded-lg shadow-2xs'
                 : 'border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 dark:border-[#323740] dark:text-gray-300 dark:hover:bg-[#22262C]'
             }`}
           >
@@ -637,7 +637,7 @@ const DemoBilling: React.FC = () => {
                   onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm transition-colors ${
                     isActive
-                      ? 'bg-[hsl(var(--primary))] text-black rounded-xl font-semibold shadow-sm'
+                      ? 'bg-[hsl(var(--primary))] text-white rounded-xl font-semibold shadow-sm'
                       : 'text-gray-400 hover:text-white rounded-xl'
                   }`}
                 >
@@ -683,7 +683,7 @@ const DemoBilling: React.FC = () => {
               onClick={() => setOrderType('dine')}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 orderType === 'dine'
-                  ? 'bg-[#14171A] text-white dark:bg-[hsl(var(--primary))] dark:text-black shadow-sm'
+                  ? 'bg-[#14171A] text-white dark:bg-[hsl(var(--primary))] dark:text-white shadow-sm'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-card dark:bg-card dark:text-gray-300 dark:border-border'
               }`}
             >
@@ -694,7 +694,7 @@ const DemoBilling: React.FC = () => {
               onClick={() => setOrderType('parcel')}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 orderType === 'parcel'
-                  ? 'bg-[#14171A] text-white dark:bg-[hsl(var(--primary))] dark:text-black shadow-sm'
+                  ? 'bg-[#14171A] text-white dark:bg-[hsl(var(--primary))] dark:text-white shadow-sm'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-card dark:bg-card dark:text-gray-300 dark:border-border'
               }`}
             >
@@ -709,7 +709,7 @@ const DemoBilling: React.FC = () => {
                     onClick={() => setTableNo(t)}
                     className={`shrink-0 w-7 h-7 rounded-full text-[11px] font-bold transition-all ${
                       tableNo === t
-                        ? 'bg-[hsl(var(--primary))] text-black shadow-xs'
+                        ? 'bg-[hsl(var(--primary))] text-white shadow-xs'
                         : 'bg-white text-gray-600 border border-gray-200 hover:border-amber-300 dark:bg-card dark:bg-card dark:text-gray-300 dark:border-border'
                     }`}
                   >
@@ -776,7 +776,7 @@ const DemoBilling: React.FC = () => {
               onClick={() => setSelectedCategory(cat)}
               className={`shrink-0 transition-all ${
                 selectedCategory === cat
-                  ? 'bg-[hsl(var(--primary))] text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
+                  ? 'bg-[hsl(var(--primary))] text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
                   : 'bg-muted/70 text-muted-foreground rounded-full px-4 py-1.5 text-sm hover:bg-muted dark:bg-card dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31]'
               }`}
             >
@@ -793,7 +793,7 @@ const DemoBilling: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setSearch(''); setSelectedCategory('All'); }}
-                className="mt-2 px-4 py-1.5 rounded-full bg-[hsl(var(--primary))] text-black text-xs font-semibold"
+                className="mt-2 px-4 py-1.5 rounded-full bg-[hsl(var(--primary))] text-white text-xs font-semibold"
               >
                 Show All Dishes
               </button>
@@ -822,12 +822,12 @@ const DemoBilling: React.FC = () => {
                 <div className="relative bg-muted/50 h-32 w-full flex items-center justify-center text-4xl">
                   <span>{emoji}</span>
                   {isBestseller && (
-                    <span className="absolute top-2 left-2 bg-[hsl(var(--primary))] text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                    <span className="absolute top-2 left-2 bg-[hsl(var(--primary))] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
                       Bestseller
                     </span>
                   )}
                   {inCart && (
-                    <span className="absolute top-2 right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[hsl(var(--primary))] text-black font-bold text-xs flex items-center justify-center shadow-md ring-2 ring-[#1C2024]">
+                    <span className="absolute top-2 right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[hsl(var(--primary))] text-white font-bold text-xs flex items-center justify-center shadow-md ring-2 ring-[#1C2024]">
                       {inCart.quantity}
                     </span>
                   )}
@@ -856,7 +856,7 @@ const DemoBilling: React.FC = () => {
                         e.stopPropagation();
                         addToCart(item);
                       }}
-                      className="w-8 h-8 rounded-full bg-[hsl(var(--primary))] text-black flex items-center justify-center font-bold hover:scale-105 transition-transform text-lg shrink-0 shadow-sm"
+                      className="w-8 h-8 rounded-full bg-[hsl(var(--primary))] text-white flex items-center justify-center font-bold hover:scale-105 transition-transform text-lg shrink-0 shadow-sm"
                     >
                       +
                     </button>
@@ -903,7 +903,7 @@ const DemoBilling: React.FC = () => {
                   onClick={() => setOrderType(type)}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     orderType === type
-                      ? 'bg-[hsl(var(--primary))] text-black'
+                      ? 'bg-[hsl(var(--primary))] text-white'
                       : 'bg-white text-gray-600 border border-gray-200 dark:bg-[#181B20] dark:text-gray-300 dark:border-[#323740]'
                   }`}
                 >
@@ -921,7 +921,7 @@ const DemoBilling: React.FC = () => {
                       onClick={() => setTableNo(t)}
                       className={`py-1 rounded-md text-xs font-bold transition-colors ${
                         tableNo === t
-                          ? 'bg-[hsl(var(--primary))] text-black'
+                          ? 'bg-[hsl(var(--primary))] text-white'
                           : 'bg-white text-gray-700 border border-gray-200 hover:border-amber-300 dark:bg-[#181B20] dark:text-gray-300 dark:border-[#323740]'
                       }`}
                     >
