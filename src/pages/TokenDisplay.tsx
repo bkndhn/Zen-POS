@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranchScopedQuery } from '@/hooks/useBranchScopedQuery';
-import { Maximize, Settings, BellRing, Wifi, WifiOff, Repeat } from 'lucide-react';
+import { Maximize, Settings, WifiOff, Repeat, Volume2, VolumeX } from 'lucide-react';
 
 interface TokenBill {
   id: string;
@@ -12,6 +12,15 @@ interface TokenBill {
   order_type: string | null;
   kitchen_status: string;
   created_at: string;
+}
+
+interface UnifiedToken {
+  key: string;
+  token: string;
+  label: string;
+  status: 'pending' | 'preparing' | 'ready';
+  created_at: string;
+  subtitle?: string;
 }
 
 const SOUND_KEY = 'zenpos_token_sound';
@@ -26,7 +35,9 @@ const shortToken = (billNo: string) => {
 
 function playChime() {
   try {
-    const ctx = new AudioContext();
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
     [[523, 0], [659, 0.2]].forEach(([freq, delay]) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -37,7 +48,7 @@ function playChime() {
       osc.start(ctx.currentTime + delay);
       osc.stop(ctx.currentTime + delay + 0.15);
     });
-  } catch { /* audio unavailable */ }
+  } catch {}
 }
 
 const announce = (token: string) => {
@@ -49,15 +60,23 @@ const announce = (token: string) => {
   } catch { /* speech unavailable */ }
 };
 
+const getUrgencyClasses = (elapsed: number) => {
+  if (elapsed < 10) return { border: 'border-l-4 border-green-500', timeColor: 'text-green-400' };
+  if (elapsed < 15) return { border: 'border-l-4 border-amber-500', timeColor: 'text-amber-400' };
+  return { border: 'border-l-4 border-red-500 ring-1 ring-red-500/20', timeColor: 'text-red-400' };
+};
+
 const TokenDisplay = () => {
   const { adminId: publicAdminId } = useParams<{ adminId: string }>();
-  const { adminProfileId, profile } = useAuth() as any;
+  const { adminProfileId } = useAuth() as any;
   const isPublic = !!publicAdminId;
   const adminId = publicAdminId || adminProfileId;
   const [bills, setBills] = useState<TokenBill[]>([]);
+  const [remoteOrders, setRemoteOrders] = useState<any[]>([]);
+  const [tableOrders, setTableOrders] = useState<any[]>([]);
   const [now, setNow] = useState(new Date());
-  const [soundOn, setSoundOn] = useState(() => localStorage.getItem(SOUND_KEY) !== 'false');
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [lastCalled, setLastCalled] = useState<string | null>(null);
   const [calledHistory, setCalledHistory] = useState<string[]>([]);
   const [online, setOnline] = useState(true);
@@ -99,9 +118,56 @@ const TokenDisplay = () => {
     }
   }, [adminId, branchFilterId, isPublic]);
 
-  fetchRef.current = fetchBills;
+  const fetchRemoteOrders = useCallback(async () => {
+    if (!adminId || isPublic) return;
+    try {
+      let q: any = (supabase as any)
+        .from('remote_orders')
+        .select('id, order_number, status, created_at, items, order_type, customer_name')
+        .eq('admin_id', adminId)
+        .in('status', ['pending', 'accepted', 'preparing', 'ready'])
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+      const { data } = await q;
+      setRemoteOrders(Array.isArray(data) ? data : []);
+    } catch {
+      /* remote_orders unavailable */
+    }
+  }, [adminId, branchFilterId, isPublic]);
 
-  useEffect(() => { fetchBills(); }, [fetchBills]);
+  const fetchTableOrders = useCallback(async () => {
+    if (!adminId || isPublic) return;
+    try {
+      let q: any = (supabase as any)
+        .from('table_orders')
+        .select('id, order_number, table_number, seat_label, status, created_at')
+        .eq('admin_id', adminId)
+        .in('status', ['pending', 'preparing', 'ready'])
+        .eq('is_billed', false)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (branchFilterId) q = q.eq('branch_id', branchFilterId);
+      const { data } = await q;
+      setTableOrders(Array.isArray(data) ? data : []);
+    } catch {
+      /* table_orders unavailable */
+    }
+  }, [adminId, branchFilterId, isPublic]);
+
+  fetchRef.current = () => {
+    fetchBills();
+    fetchRemoteOrders();
+    fetchTableOrders();
+  };
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([fetchBills(), fetchRemoteOrders(), fetchTableOrders()]).finally(() => {
+      if (active) setInitialLoaded(true);
+    });
+    return () => { active = false; };
+  }, [fetchBills, fetchRemoteOrders, fetchTableOrders]);
 
   // Public TV: show the shop's own name
   useEffect(() => {
@@ -131,15 +197,33 @@ const TokenDisplay = () => {
       .channel(`tokens-${adminId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bills', filter: `admin_id=eq.${adminId}` }, () => fetchBills())
       .subscribe();
-    const poll = setInterval(fetchBills, 20000);
-    const onLocal = () => fetchBills();
+    const remoteOrdersChannel = supabase
+      .channel(`token-remote-orders-${adminId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'remote_orders', filter: `admin_id=eq.${adminId}` }, () => fetchRemoteOrders())
+      .subscribe();
+    const tableOrdersChannel = supabase
+      .channel(`token-table-orders-${adminId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'table_orders', filter: `admin_id=eq.${adminId}` }, () => fetchTableOrders())
+      .subscribe();
+    const poll = setInterval(() => {
+      fetchBills();
+      fetchRemoteOrders();
+      fetchTableOrders();
+    }, 20000);
+    const onLocal = () => {
+      fetchBills();
+      fetchRemoteOrders();
+      fetchTableOrders();
+    };
     window.addEventListener('bills-updated', onLocal);
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(remoteOrdersChannel);
+      supabase.removeChannel(tableOrdersChannel);
       clearInterval(poll);
       window.removeEventListener('bills-updated', onLocal);
     };
-  }, [adminId, fetchBills, isPublic]);
+  }, [adminId, fetchBills, fetchRemoteOrders, fetchTableOrders, isPublic]);
 
   // Clock — update every second
   useEffect(() => {
@@ -158,28 +242,67 @@ const TokenDisplay = () => {
     return () => { lock?.release(); };
   }, []);
 
-  const preparing = bills.filter(b => b.kitchen_status !== 'ready');
-  const ready = bills.filter(b => b.kitchen_status === 'ready');
+  const allOrders = useMemo<UnifiedToken[]>(() => {
+    const billItems: UnifiedToken[] = bills.map(b => ({
+      key: `bill-${b.id}`,
+      token: shortToken(b.bill_no),
+      label: b.table_no ? `Table ${b.table_no}` : (b.order_type === 'dine_in' ? 'Dine In' : 'Takeaway'),
+      status: b.kitchen_status === 'ready' ? 'ready' : b.kitchen_status === 'preparing' ? 'preparing' : 'pending',
+      created_at: b.created_at,
+    }));
+
+    const remoteItems: UnifiedToken[] = remoteOrders.map(r => {
+      const tokenNum = shortToken(String(r.token_number ?? r.order_number ?? r.id.slice(-4)));
+      const tableNum = r.table_number;
+      return {
+        key: `remote-${r.id}`,
+        token: tokenNum,
+        label: tableNum ? `🪑 Table ${tableNum}` : `📱 Token #${tokenNum}`,
+        status: r.status === 'ready' ? 'ready' : r.status === 'preparing' ? 'preparing' : 'pending',
+        created_at: r.created_at || new Date().toISOString(),
+        subtitle: r.customer_name ? `Online · ${r.customer_name}` : 'Online Order',
+      };
+    });
+
+    const tableItems: UnifiedToken[] = tableOrders.map(t => ({
+      key: `table-${t.id}`,
+      token: String(t.order_number ?? shortToken(t.id)),
+      label: t.table_number
+        ? `🪑 Table ${t.table_number}${t.seat_label ? ` (${t.seat_label})` : ''}`
+        : '🪑 Table Order',
+      status: t.status === 'ready' ? 'ready' : t.status === 'preparing' ? 'preparing' : 'pending',
+      created_at: t.created_at || new Date().toISOString(),
+    }));
+
+    return [...billItems, ...remoteItems, ...tableItems].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, [bills, remoteOrders, tableOrders]);
+
+  const preparing = useMemo(() => allOrders.filter(o => o.status !== 'ready'), [allOrders]);
+  const ready = useMemo(() => allOrders.filter(o => o.status === 'ready'), [allOrders]);
 
   // Announce newly ready tokens (skip very first load)
   useEffect(() => {
-    const ids = new Set(ready.map(b => b.id));
+    const ids = new Set(ready.map(o => o.key));
+    if (!initialLoaded) { knownReady.current = ids; return; }
     if (knownReady.current === null) { knownReady.current = ids; return; }
-    const fresh = ready.filter(b => !knownReady.current!.has(b.id));
+    const fresh = ready.filter(o => !knownReady.current!.has(o.key));
     knownReady.current = ids;
     if (fresh.length === 0) return;
-    const token = shortToken(fresh[fresh.length - 1].bill_no);
+    const token = fresh[fresh.length - 1].token;
     setLastCalled(token);
-    setCalledHistory(prev => [...fresh.map(b => shortToken(b.bill_no)).reverse(), ...prev.filter(t => !fresh.some(f => shortToken(f.bill_no) === t))].slice(0, 6));
-    if (soundOn && audioUnlocked) {
+    setCalledHistory(prev => [...fresh.map(o => o.token).reverse(), ...prev.filter(t => !fresh.some(f => f.token === t))].slice(0, 6));
+    if (soundEnabled) {
       playChime();
-      setTimeout(() => fresh.forEach(b => announce(shortToken(b.bill_no))), 800);
+      setTimeout(() => fresh.forEach(o => announce(o.token)), 800);
     }
-  }, [ready, soundOn, audioUnlocked]);
+  }, [ready, soundEnabled, initialLoaded]);
 
   const toggleSound = () => {
-    const next = !soundOn;
-    setSoundOn(next);
+    const next = !soundEnabled;
+    if (next) playChime();
+    setSoundEnabled(next);
     localStorage.setItem(SOUND_KEY, String(next));
   };
 
@@ -187,39 +310,39 @@ const TokenDisplay = () => {
     document.documentElement.requestFullscreen?.().catch(() => {});
   };
 
-  const label = (b: TokenBill) =>
-    b.table_no ? `Table ${b.table_no}` : (b.order_type === 'dine_in' ? 'Dine In' : 'Takeaway');
-
   // Stats
-  const totalOpen = bills.length;
+  const totalOpen = allOrders.length;
   const prepCount = preparing.length;
   const readyCount = ready.length;
   const avgPrepMins = prepCount > 0
-    ? Math.round(preparing.reduce((s, b) => s + waitMins(b.created_at, now), 0) / prepCount)
+    ? Math.round(preparing.reduce((s, o) => s + waitMins(o.created_at, now), 0) / prepCount)
     : 0;
-  const longestWait = bills.length > 0
-    ? Math.max(...bills.map(b => waitMins(b.created_at, now)))
+  const longestWait = allOrders.length > 0
+    ? Math.max(...allOrders.map(o => waitMins(o.created_at, now)))
     : 0;
 
   return (
     <div className="bg-gray-950 min-h-screen text-white flex flex-col">
-      {/* Audio unlock overlay */}
-      {!audioUnlocked && (
-        <button
-          onClick={() => { setAudioUnlocked(true); playChime(); }}
-          className="fixed inset-0 z-50 bg-gray-950/95 backdrop-blur flex flex-col items-center justify-center gap-4"
-        >
-          <BellRing className="w-16 h-16 text-green-400" />
-          <span className="text-2xl font-bold">Tap to start Token Display</span>
-          <span className="text-gray-400">This enables the pickup chime and voice calling</span>
-        </button>
+      {/* Enable Sound banner */}
+      {!soundEnabled && (
+        <div className="bg-amber-500 text-black text-xs px-4 py-2 flex items-center justify-between">
+          <span>🔔 Enable sound for order-ready announcements</span>
+          <button
+            onClick={() => { playChime(); setSoundEnabled(true); }}
+            className="bg-black text-white px-3 py-1 rounded-full text-xs font-bold"
+          >
+            Enable Sound
+          </button>
+        </div>
       )}
 
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
         {/* Left: branding */}
         <div>
-          <div className="text-white font-bold text-lg">🎫 ZenPOS Token Display</div>
+          <div className="text-white font-bold text-lg">
+            🎫 {publicShopName ? `${publicShopName} · Token Display` : 'ZenPOS Token Display'}
+          </div>
           <div className="text-gray-500 text-xs uppercase tracking-widest">Kitchen Display System</div>
         </div>
 
@@ -268,7 +391,12 @@ const TokenDisplay = () => {
           {lastCalled && (
             <button
               aria-label="Call last token again"
-              onClick={() => { playChime(); setTimeout(() => announce(lastCalled), 800); }}
+              onClick={() => {
+                if (soundEnabled) {
+                  playChime();
+                  setTimeout(() => announce(lastCalled), 800);
+                }
+              }}
               className="p-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300"
             >
               <Repeat className="w-4 h-4" />
@@ -281,7 +409,7 @@ const TokenDisplay = () => {
             aria-label="Toggle sound"
             className="p-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300"
           >
-            {soundOn ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
           {/* Fullscreen */}
@@ -313,27 +441,23 @@ const TokenDisplay = () => {
           {preparing.length === 0 && (
             <p className="text-gray-500 text-sm">No orders in the kitchen</p>
           )}
-          {preparing.map(b => {
-            const elapsed = waitMins(b.created_at, now);
-            const urgencyClass = elapsed < 10
-              ? 'border-l-4 border-green-500'
-              : elapsed < 15
-              ? 'border-l-4 border-amber-500'
-              : 'border-l-4 border-red-500 ring-1 ring-red-500/20';
-            const timeColor = elapsed < 10 ? 'text-green-400' : elapsed < 15 ? 'text-amber-400' : 'text-red-400';
+          {preparing.map(o => {
+            const elapsed = waitMins(o.created_at, now);
+            const { border, timeColor } = getUrgencyClasses(elapsed);
             return (
-              <div key={b.id} className={`bg-gray-900 rounded-xl p-4 ${urgencyClass} shadow-lg flex flex-col gap-1`}>
+              <div key={o.key} className={`bg-gray-900 rounded-xl p-4 ${border} shadow-lg flex flex-col gap-1`}>
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-white font-black text-4xl tabular-nums leading-none">
-                      {shortToken(b.bill_no)}
+                      {o.token}
                     </div>
-                    <div className="text-gray-400 text-sm mt-1">{label(b)}</div>
+                    <div className="text-gray-400 text-sm mt-1">{o.label}</div>
                   </div>
                   <div className={`font-mono text-sm font-semibold ${timeColor}`}>{elapsed} min</div>
                 </div>
                 <div className="text-gray-400 text-xs mt-1">
-                  {b.kitchen_status === 'preparing' ? 'Cooking' : 'Received'}
+                  {o.status === 'preparing' ? 'Cooking' : 'Received'}
+                  {o.subtitle ? ` · ${o.subtitle}` : ''}
                 </div>
               </div>
             );
@@ -348,29 +472,27 @@ const TokenDisplay = () => {
           {ready.length === 0 && (
             <p className="text-gray-500 text-sm">Nothing ready yet</p>
           )}
-          {ready.map(b => {
-            const elapsed = waitMins(b.created_at, now);
-            const urgencyClass = elapsed < 10
-              ? 'border-l-4 border-green-500'
-              : elapsed < 15
-              ? 'border-l-4 border-amber-500'
-              : 'border-l-4 border-red-500 ring-1 ring-red-500/20';
-            const timeColor = elapsed < 10 ? 'text-green-400' : elapsed < 15 ? 'text-amber-400' : 'text-red-400';
+          {ready.map(o => {
+            const elapsed = waitMins(o.created_at, now);
+            const { border, timeColor } = getUrgencyClasses(elapsed);
             return (
-              <div key={b.id} className={`bg-gray-900 rounded-xl p-4 ${urgencyClass} shadow-lg flex flex-col gap-1 ${shortToken(b.bill_no) === lastCalled ? 'ring-2 ring-green-400/40 animate-pulse' : ''}`}>
+              <div key={o.key} className={`bg-gray-900 rounded-xl p-4 ${border} shadow-lg flex flex-col gap-1 ${o.token === lastCalled ? 'ring-2 ring-green-400/40 animate-pulse' : ''}`}>
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-white font-black text-4xl tabular-nums leading-none">
-                      {shortToken(b.bill_no)}
+                      {o.token}
                     </div>
-                    <div className="text-gray-400 text-sm mt-1">{label(b)}</div>
+                    <div className="text-gray-400 text-sm mt-1">{o.label}</div>
                   </div>
                   <div className={`font-mono text-sm font-semibold ${timeColor}`}>{elapsed} min</div>
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
                     ✅ Ready for Pickup
                   </span>
+                  {o.subtitle && (
+                    <span className="text-xs text-gray-400">{o.subtitle}</span>
+                  )}
                 </div>
               </div>
             );
