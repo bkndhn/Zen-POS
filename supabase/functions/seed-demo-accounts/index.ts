@@ -7,7 +7,8 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const PASSWORD = "ZenDemo@2026";
+// Random per-run password: demo logins are never usable from public code.
+const PASSWORD = crypto.randomUUID() + crypto.randomUUID();
 const SHOPS = [
   { key: "bistro", name: "Demo Zen Bistro" },
   { key: "spice", name: "Demo Royal Spice" },
@@ -52,7 +53,9 @@ Deno.serve(async (req) => {
 
     const ensure = async (em: string, meta: Record<string, unknown>) => {
       let id = existing.get(em);
-      if (!id) {
+      if (id) {
+        await admin.auth.admin.updateUserById(id, { password: PASSWORD });
+      } else {
         const { data, error } = await admin.auth.admin.createUser({ email: em, password: PASSWORD, email_confirm: true, user_metadata: meta });
         if (error) throw new Error(`${em}: ${error.message}`);
         id = data.user.id;

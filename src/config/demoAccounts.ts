@@ -1,6 +1,4 @@
-// TEMPORARY testing accounts. Remove this file, DemoAccountsPanel and the
-// seed-demo-accounts function (call it with action "delete" first) before launch.
-export const DEMO_PASSWORD = 'ZenDemo@2026';
+// Demo account metadata only. No passwords are stored in client code.
 
 export type DemoRole = 'admin' | 'manager' | 'cashier' | 'waiter' | 'kitchen';
 

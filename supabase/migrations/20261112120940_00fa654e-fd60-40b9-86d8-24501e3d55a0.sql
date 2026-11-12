@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.guard_purchase_tenant_refs() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.enforce_active_subscription_on_bill() FROM PUBLIC, anon, authenticated;
