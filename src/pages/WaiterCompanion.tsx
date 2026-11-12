@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { PrinterHealthBanner } from '@/components/PrinterHealthBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
@@ -16,10 +17,38 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, ShoppingCart, Plus, Minus, Trash2, Utensils, Clipboard, ChefHat, User, ChevronRight, X, AlertTriangle, LayoutGrid, List, ArrowRightLeft, Printer } from 'lucide-react';
+import {
+    Search,
+    ShoppingCart,
+    Plus,
+    Minus,
+    Trash2,
+    Utensils,
+    Clipboard,
+    ChefHat,
+    User,
+    ChevronRight,
+    ChevronDown,
+    X,
+    LayoutGrid,
+    List,
+    ArrowRightLeft,
+    Printer,
+    Sun,
+    Moon,
+    ArrowLeft,
+    MoreHorizontal,
+    Users,
+    Clock,
+    CheckCircle2,
+    RefreshCw,
+    Calendar,
+    Phone,
+} from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/useOffline';
 import { cn } from '@/lib/utils';
 import { formatQuantityWithUnit, getShortUnit, isWeightOrVolumeUnit, parseQuickChipQuantity } from '@/utils/timeUtils';
@@ -43,7 +72,21 @@ interface Table {
     seat_count: number;
     seat_configuration: any;
     seat_order_mode?: string | null;
+    floor_name?: string | null;
+    shape?: string | null;
+}
 
+interface WaiterTableOrder {
+    id: string;
+    table_number: string;
+    order_number: number;
+    status: string;
+    total_amount: number;
+    items: any;
+    created_at: string | null;
+    seat_label?: string | null;
+    seat_id?: string | null;
+    customer_note?: string | null;
 }
 
 interface MenuItem {
@@ -93,6 +136,12 @@ const getSeatLabels = (table: Pick<Table, 'seat_count' | 'seat_configuration'>):
     return Array.from({ length: table.seat_count || 0 }).map((_, idx) => `S${idx + 1}`);
 };
 
+const formatOrderElapsed = (iso?: string | null): string => {
+    if (!iso) return '0m';
+    const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+};
+
 
 const WaiterCompanion: React.FC = () => {
     const { profile , adminProfileId } = useAuth();
@@ -112,8 +161,17 @@ const WaiterCompanion: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [cart, setCart] = useState<CartItem[]>([]);
     const [customerNote, setCustomerNote] = useState('');
+    const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [activeTab, setActiveTab] = useState<'tables' | 'menu' | 'cart'>('tables');
+    const [activeTab, setActiveTab] = useState<'tables' | 'orders' | 'kitchen' | 'customers' | 'menu' | 'cart'>('tables');
+    const [selectedFloor, setSelectedFloor] = useState<string>('All Floors');
+    const [floorMenuOpen, setFloorMenuOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
+    const [tableOrders, setTableOrders] = useState<WaiterTableOrder[]>([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [isDark, setIsDark] = useState(() =>
+        typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+    );
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [gridCols, setGridCols] = useState<number>(() => {
         const saved = localStorage.getItem('waiter_grid_cols');
@@ -135,6 +193,72 @@ const WaiterCompanion: React.FC = () => {
     useEffect(() => {
         fetchReservations();
     }, [fetchReservations]);
+
+    useEffect(() => {
+        const syncTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
+    const toggleDarkMode = () => {
+        const root = document.documentElement;
+        const next = !root.classList.contains('dark');
+        root.classList.toggle('dark', next);
+        localStorage.setItem('hotel_pos_dark_mode', next ? 'true' : 'false');
+        setIsDark(next);
+        window.dispatchEvent(new CustomEvent('theme-changed'));
+    };
+
+    const fetchTableOrders = useCallback(async () => {
+        if (!adminId || !navigator.onLine) return;
+        setOrdersLoading(true);
+        try {
+            let q = supabase
+                .from('table_orders')
+                .select('id, table_number, order_number, status, total_amount, items, created_at, seat_label, seat_id, customer_note')
+                .eq('admin_id', adminId)
+                .eq('is_billed', false)
+                .neq('status', 'cancelled')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (operatingBranchId) {
+                q = q.eq('branch_id', operatingBranchId);
+            }
+            const { data, error } = await q;
+            if (!error && data) {
+                setTableOrders(data as WaiterTableOrder[]);
+            }
+        } catch (err) {
+            console.warn('Could not load table orders:', err);
+        } finally {
+            setOrdersLoading(false);
+        }
+    }, [adminId, operatingBranchId]);
+
+    useEffect(() => {
+        fetchTableOrders();
+    }, [fetchTableOrders]);
+
+    useEffect(() => {
+        if (!adminId) return;
+        const ordersChannel = supabase
+            .channel(`waiter_table_orders_${adminId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'table_orders', filter: `admin_id=eq.${adminId}` },
+                () => { fetchTableOrders(); }
+            )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'tables', filter: `admin_id=eq.${adminId}` },
+                () => { fetchTables(); }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(ordersChannel);
+        };
+    }, [adminId, fetchTableOrders, fetchTables]);
     const [gstSettings, setGstSettings] = useState<{
         enabled: boolean;
         taxRatesMap: Record<string, { rate: number; name: string; cess: number }>;
@@ -706,6 +830,7 @@ const WaiterCompanion: React.FC = () => {
             setCustomerNote('');
             setSelectedTable(null);
             setActiveTab('tables');
+            fetchTableOrders();
         } catch (err) {
             console.error('Order submission failed:', err);
             toast({ title: 'Order Failed', description: 'Could not push order to kitchen', variant: 'destructive' });
@@ -775,61 +900,61 @@ const WaiterCompanion: React.FC = () => {
         }
     };
 
+    const floorOptions = useMemo(() => {
+        const floors = new Set<string>();
+        tables.forEach(t => floors.add((t.floor_name || '').trim() || 'Main Floor'));
+        const list = Array.from(floors);
+        return list.length > 0 ? ['All Floors', ...list] : ['All Floors', 'Main Floor'];
+    }, [tables]);
+
+    const visibleTables = useMemo(() => {
+        if (selectedFloor === 'All Floors') return tables;
+        return tables.filter(t => ((t.floor_name || '').trim() || 'Main Floor') === selectedFloor);
+    }, [tables, selectedFloor]);
+
+    const kitchenActiveCount = useMemo(
+        () => tableOrders.filter(o => o.status === 'pending' || o.status === 'preparing').length,
+        [tableOrders]
+    );
+
+    const waiterInitials = useMemo(() => {
+        const name = (profile?.name || 'Waiter').trim();
+        const parts = name.split(/\s+/);
+        if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+        return name.slice(0, 2).toUpperCase();
+    }, [profile?.name]);
+
+    const cartBadgeCount = useMemo(
+        () => cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0),
+        [cart]
+    );
+
+    const renderSeatDot = (label: string, key: string | number) => (
+        <div
+            key={key}
+            className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 text-[8px] flex items-center justify-center font-bold text-gray-500 dark:text-gray-300 shrink-0"
+        >
+            {label}
+        </div>
+    );
+
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)] bg-background overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#F9F7F5] dark:bg-gray-950 overflow-hidden">
             <div className="px-2 pt-2 empty:hidden"><PrinterHealthBanner /></div>
-            {/* Mobile Step Header */}
-            <div className="sticky top-0 z-20 border-b border-border/50 bg-card/90 backdrop-blur-xl supports-[backdrop-filter]:bg-card/75 px-2 py-2 shadow-sm">
-                <div className="flex items-center gap-1.5">
-                    {([
-                        { key: 'tables' as const, step: 1, label: 'Table', disabled: false, badge: selectedTable ? selectedTable.table_number : null },
-                        { key: 'menu' as const, step: 2, label: 'Items', disabled: !selectedTable, badge: null },
-                        {
-                            key: 'cart' as const, step: 3, label: 'Cart', disabled: cart.length === 0,
-                            badge: cart.length > 0 ? String(cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)) : null
-                        },
-                    ]).map((t) => {
-                        const active = activeTab === t.key;
-                        return (
-                            <button
-                                key={t.key}
-                                type="button"
-                                disabled={t.disabled}
-                                onClick={() => setActiveTab(t.key)}
-                                className={cn(
-                                    'relative flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-bold transition-all duration-200 border',
-                                    active
-                                        ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-[1.02]'
-                                        : 'bg-muted/40 text-muted-foreground border-transparent hover:bg-muted active:scale-[0.97]',
-                                    t.disabled && 'opacity-40 pointer-events-none'
-                                )}
-                            >
-                                <span className={cn(
-                                    'grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-black tabular-nums',
-                                    active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-background text-muted-foreground'
-                                )}>
-                                    {t.step}
-                                </span>
-                                <span className="truncate">{t.label}</span>
-                                {t.badge && (
-                                    <span className={cn(
-                                        'ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums',
-                                        active ? 'bg-primary-foreground text-primary' : 'bg-primary/15 text-primary'
-                                    )}>
-                                        {t.badge}
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-                {/* Printer Status Pill */}
-                <div className="flex justify-end mt-1.5 px-0.5">
+
+            {/* ZenPOS Waiter Header */}
+            <header className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="text-xl font-black tracking-tight leading-none flex items-center shrink-0">
+                        <span className="text-gray-900 dark:text-white">Zen</span>
+                        <span className="text-[#C0392B]">POS</span>
+                    </div>
                     <span
                         className={cn(
+                            'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-semibold cursor-pointer truncate max-w-[145px]',
                             connectionState === 'connecting' || !isPrinterReady
-                                ? 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold cursor-pointer bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300'
-                                : 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold cursor-pointer bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300'
+                                ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                         )}
                         onClick={() => {
                             if (!isPrinterReady) {
@@ -839,91 +964,634 @@ const WaiterCompanion: React.FC = () => {
                             }
                         }}
                     >
-                        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: isPrinterReady ? '#10b981' : '#f59e0b' }} />
-                        {connectionState === 'connecting'
-                            ? '\uD83D\uDDB8 Connecting...'
-                            : isPrinterReady
-                                ? (deviceName ? `\uD83D\uDDB8 ${deviceName}` : '\uD83D\uDDB8 Printer Ready')
-                                : '\uD83D\uDDB8 Printer Offline'}
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0" style={{ background: isPrinterReady ? '#10b981' : '#f59e0b' }} />
+                        <span className="truncate">
+                            {connectionState === 'connecting'
+                                ? 'Connecting...'
+                                : isPrinterReady
+                                    ? (deviceName || 'Printer Ready')
+                                    : 'Printer Offline'}
+                        </span>
                     </span>
                 </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                    <button
+                        type="button"
+                        onClick={toggleDarkMode}
+                        aria-label="Toggle dark mode"
+                        className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700 bg-[#F9F7F5] dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    >
+                        {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <span className="hidden xs:inline text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-[110px]">
+                            {profile?.name || 'Waiter'}
+                        </span>
+                        <div
+                            className="w-8 h-8 rounded-full bg-[#C0392B]/15 text-[#C0392B] dark:bg-[#C0392B]/30 dark:text-red-300 flex items-center justify-center font-bold text-xs border border-[#C0392B]/20 shrink-0"
+                            title={profile?.name || 'Waiter'}
+                        >
+                            {waiterInitials}
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {/* Top Segment Switcher */}
+            <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-4 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('tables')}
+                    className={cn(
+                        'shrink-0 flex items-center transition-colors',
+                        (activeTab === 'tables' || activeTab === 'menu' || activeTab === 'cart')
+                            ? 'bg-[#C0392B] text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-xs'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full px-4 py-1.5 text-sm hover:bg-gray-200 dark:hover:bg-gray-700'
+                    )}
+                >
+                    Table Map
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setActiveTab('orders');
+                        fetchTableOrders();
+                    }}
+                    className={cn(
+                        'shrink-0 flex items-center transition-colors',
+                        activeTab === 'orders'
+                            ? 'bg-[#C0392B] text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-xs'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full px-4 py-1.5 text-sm hover:bg-gray-200 dark:hover:bg-gray-700'
+                    )}
+                >
+                    <span>Orders</span>
+                    <span
+                        className={cn(
+                            'bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ml-1',
+                            activeTab === 'orders' && 'ring-1 ring-white/70'
+                        )}
+                    >
+                        {tableOrders.length}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setActiveTab('kitchen');
+                        fetchTableOrders();
+                    }}
+                    className={cn(
+                        'shrink-0 flex items-center transition-colors',
+                        activeTab === 'kitchen'
+                            ? 'bg-[#C0392B] text-white rounded-full px-4 py-1.5 font-semibold text-sm shadow-xs'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full px-4 py-1.5 text-sm hover:bg-gray-200 dark:hover:bg-gray-700'
+                    )}
+                >
+                    <span>Kitchen</span>
+                    <span
+                        className={cn(
+                            'w-2 h-2 rounded-full bg-red-500 ml-1 animate-pulse',
+                            activeTab === 'kitchen' && 'ring-2 ring-white',
+                            kitchenActiveCount === 0 && activeTab !== 'kitchen' && 'opacity-60'
+                        )}
+                    />
+                </button>
             </div>
 
+            {/* Active Table Order Context Bar (shown while taking Menu / Cart order) */}
+            {selectedTable && (activeTab === 'menu' || activeTab === 'cart') && (
+                <div className="bg-white/95 dark:bg-gray-900/95 border-b border-gray-100 dark:border-gray-800 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setActiveTab('tables')}
+                            className="h-8 px-2.5 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:text-[#C0392B] rounded-lg"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                            Floor
+                        </Button>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#C0392B]/10 text-[#C0392B] dark:text-red-300 text-xs font-bold">
+                            Table {selectedTable.table_number}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('menu')}
+                            className={cn(
+                                'px-3 py-1 rounded-full text-xs font-semibold transition-colors',
+                                activeTab === 'menu'
+                                    ? 'bg-[#C0392B] text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                            )}
+                        >
+                            Items
+                        </button>
+                        <button
+                            type="button"
+                            disabled={cart.length === 0}
+                            onClick={() => setActiveTab('cart')}
+                            className={cn(
+                                'px-3 py-1 rounded-full text-xs font-semibold transition-colors flex items-center gap-1',
+                                activeTab === 'cart'
+                                    ? 'bg-[#C0392B] text-white'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300',
+                                cart.length === 0 && 'opacity-40 cursor-not-allowed'
+                            )}
+                        >
+                            <span>Cart</span>
+                            {cart.length > 0 && (
+                                <span className={cn(
+                                    'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                                    activeTab === 'cart' ? 'bg-white/20 text-white' : 'bg-[#C0392B] text-white'
+                                )}>
+                                    {cartBadgeCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Main Scrollable Workspace */}
-            <div className="flex-1 p-4 overflow-y-auto">
+            <div className="flex-1 p-4 pb-24 overflow-y-auto">
 
-                {/* TAB 1: TABLES SELECTOR */}
+                {/* TAB 1: INTERACTIVE TABLE MAP / FLOOR VIEW */}
                 {activeTab === 'tables' && (
                     <div className="space-y-4">
-                        <details className="rounded-xl border border-border bg-card p-2">
-                            <summary className="cursor-pointer text-sm font-bold">Online orders in progress</summary>
-                            <div className="mt-2"><RemoteOrderStatusBoard compact /></div>
-                        </details>
-                        <div className="flex items-center justify-between gap-2 mb-2 p-2 rounded-xl bg-muted/40 border border-border">
-                            <div className="flex items-center gap-2">
-                                <Utensils className="w-5 h-5 text-primary" />
-                                <h2 className="text-sm font-bold">Choose Dine-In Table</h2>
+                        {/* Floor/Section Selector + Status Legend Row */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 rounded-2xl px-3.5 py-2.5 border border-gray-100 dark:border-gray-800 shadow-xs">
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => setFloorMenuOpen(prev => !prev)}
+                                    className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg px-3 py-1.5 text-sm flex items-center gap-1 font-medium text-gray-800 dark:text-gray-100"
+                                >
+                                    <span>{selectedFloor}</span>
+                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                </button>
+                                {floorMenuOpen && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-20"
+                                            onClick={() => setFloorMenuOpen(false)}
+                                        />
+                                        <div className="absolute left-0 mt-1.5 w-44 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg py-1 z-30">
+                                            {floorOptions.map(floor => {
+                                                const count = floor === 'All Floors'
+                                                    ? tables.length
+                                                    : tables.filter(t => ((t.floor_name || '').trim() || 'Main Floor') === floor).length;
+                                                return (
+                                                    <button
+                                                        key={floor}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedFloor(floor);
+                                                            setFloorMenuOpen(false);
+                                                        }}
+                                                        className={cn(
+                                                            'w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800',
+                                                            selectedFloor === floor
+                                                                ? 'text-[#C0392B] font-bold bg-[#C0392B]/5'
+                                                                : 'text-gray-700 dark:text-gray-300'
+                                                        )}
+                                                    >
+                                                        <span>{floor}</span>
+                                                        <span className="text-[10px] text-gray-400">{count}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
                             </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setMoveDialogOpen(true)}
-                                className="h-8 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10 gap-1.5 shadow-2xs"
-                            >
-                                <ArrowRightLeft className="w-3.5 h-3.5" />
-                                Move Table / Seat
-                            </Button>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <span className="w-2 h-2 rounded-full bg-green-600 inline-block" />
+                                        Free
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <span className="w-2 h-2 rounded-full bg-[#C0392B] inline-block" />
+                                        Occupied
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                                        Reserved
+                                    </span>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setMoveDialogOpen(true)}
+                                    className="h-8 text-xs font-semibold border-[#C0392B]/30 text-[#C0392B] hover:bg-[#C0392B]/5 gap-1.5 bg-white dark:bg-gray-900 rounded-lg"
+                                >
+                                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                                    Move Table / Seat
+                                </Button>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {tables.map(table => {
-                                const upcomingRes = reservationManager.getUpcomingForTable(table.table_number, reservations);
-                                return (
-                                    <Card
-                                        key={table.id}
-                                        onClick={() => handleSelectTable(table)}
-                                        className={cn(
-                                            "premium-card cursor-pointer hover:shadow-md transition-all border-2",
-                                            selectedTable?.id === table.id ? "border-primary bg-primary/5 shadow-md" : "border-muted",
-                                            table.status === 'occupied' && "border-l-4 border-l-red-500",
-                                            table.status === 'cleaning' && "border-l-4 border-l-blue-500",
-                                            table.status === 'reserved' && "border-l-4 border-l-yellow-500",
-                                            upcomingRes && "ring-2 ring-yellow-500/60"
-                                        )}
-                                    >
-                                        <CardContent className="p-3.5 flex flex-col justify-between min-h-28">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <span className="text-2xl font-black">T{table.table_number}</span>
+
+                        {/* Visual Floor Map Grid */}
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs">
+                            {visibleTables.length === 0 ? (
+                                <div className="text-center py-14 px-4 text-gray-500 dark:text-gray-400 space-y-2">
+                                    <Utensils className="w-8 h-8 mx-auto opacity-40" />
+                                    <p className="text-sm font-medium">No tables found in this section.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 p-4">
+                                    {visibleTables.map((table, index) => {
+                                        const upcomingRes = reservationManager.getUpcomingForTable(table.table_number, reservations);
+                                        const rawSeatLabels = table.has_seats ? getSeatLabels(table) : [];
+                                        const seatLabels = rawSeatLabels.length > 0
+                                            ? rawSeatLabels
+                                            : Array.from({ length: Math.min(Math.max(table.capacity || 4, 2), 6) }, (_, idx) => `S${idx + 1}`);
+                                        const isSideSeated = (table.shape === 'rectangle' || index % 3 === 1) && seatLabels.length >= 2 && seatLabels.length <= 4;
+                                        const isMultiAllAround = seatLabels.length > 4;
+                                        const statusStr = table.status as string;
+                                        const statusBg =
+                                            statusStr === 'available' || statusStr === 'free'
+                                                ? 'bg-[#27AE60]'
+                                                : statusStr === 'occupied'
+                                                    ? 'bg-[#C0392B]'
+                                                    : statusStr === 'cleaning'
+                                                        ? 'bg-amber-500'
+                                                        : 'bg-gray-400';
+                                        const activeTableOrdersCount = tableOrders.filter(o => o.table_number === table.table_number).length;
+
+                                        const tableCenterBox = (
+                                            <div
+                                                className={cn(
+                                                    'w-16 h-16 rounded-xl flex flex-col items-center justify-center font-black text-white text-lg shadow-md transition-transform group-hover:scale-105 group-active:scale-95 relative select-none',
+                                                    statusBg,
+                                                    selectedTable?.id === table.id && 'ring-2 ring-offset-2 ring-[#C0392B] dark:ring-offset-gray-900',
+                                                    upcomingRes && 'ring-2 ring-yellow-400'
+                                                )}
+                                            >
+                                                <span>T{table.table_number}</span>
+                                                {activeTableOrdersCount > 0 && (
+                                                    <span className="text-[9px] font-semibold bg-black/25 px-1.5 rounded-full leading-tight mt-0.5">
+                                                        {activeTableOrdersCount} ord
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+
+                                        return (
+                                            <div
+                                                key={table.id}
+                                                onClick={() => handleSelectTable(table)}
+                                                className="group cursor-pointer flex flex-col items-center gap-1.5"
+                                            >
+                                                {isMultiAllAround ? (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <div className="flex gap-1">
+                                                            {seatLabels.slice(0, 2).map((s, idx) => renderSeatDot(s, `top-${idx}`))}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <div className="flex flex-col gap-1">
+                                                                {seatLabels[2] && renderSeatDot(seatLabels[2], 'left-0')}
+                                                            </div>
+                                                            {tableCenterBox}
+                                                            <div className="flex flex-col gap-1">
+                                                                {seatLabels[3] && renderSeatDot(seatLabels[3], 'right-0')}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                            {seatLabels.slice(4, 6).map((s, idx) => renderSeatDot(s, `bot-${idx}`))}
+                                                            {seatLabels.length > 6 && renderSeatDot(`+${seatLabels.length - 6}`, 'more')}
+                                                        </div>
+                                                    </div>
+                                                ) : isSideSeated ? (
+                                                    <div className="flex items-center gap-1 py-2">
+                                                        <div className="flex flex-col gap-1">
+                                                            {seatLabels.filter((_, idx) => idx % 2 === 0).map((s, idx) => renderSeatDot(s, `l-${idx}`))}
+                                                        </div>
+                                                        {tableCenterBox}
+                                                        <div className="flex flex-col gap-1">
+                                                            {seatLabels.filter((_, idx) => idx % 2 === 1).map((s, idx) => renderSeatDot(s, `r-${idx}`))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <div className="flex gap-1">
+                                                            {seatLabels.slice(0, Math.ceil(seatLabels.length / 2)).map((s, idx) => renderSeatDot(s, `t-${idx}`))}
+                                                        </div>
+                                                        {tableCenterBox}
+                                                        <div className="flex gap-1">
+                                                            {seatLabels.slice(Math.ceil(seatLabels.length / 2)).map((s, idx) => renderSeatDot(s, `b-${idx}`))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex flex-col items-center gap-0.5 text-center">
+                                                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 truncate max-w-[96px]">
+                                                        {table.table_name || `${table.capacity} Seats`}
+                                                    </span>
                                                     {upcomingRes && (
-                                                        <span className="text-[9px] block font-bold text-yellow-700 dark:text-yellow-300">
-                                                            ⭐ Res: {upcomingRes.reservation_time} ({upcomingRes.customer_name})
+                                                        <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded-full">
+                                                            ⭐ {upcomingRes.reservation_time}
                                                         </span>
                                                     )}
+                                                    {table.status === 'occupied' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleReprintKOT(table)}
+                                                            className="mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-[#C0392B] bg-white dark:bg-gray-800 border border-[#C0392B]/30 hover:bg-[#C0392B]/10 transition-colors"
+                                                        >
+                                                            <Printer className="w-2.5 h-2.5" />
+                                                            KOT
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <Badge variant={table.status === 'available' ? 'outline' : 'secondary'} className="text-[10px] uppercase font-bold">
-                                                    {table.status}
-                                                </Badge>
                                             </div>
-                                            <div className="text-xs text-muted-foreground flex justify-between items-center mt-2">
-                                                <span className="flex items-center gap-1 text-[11px] font-semibold"><User className="w-3.5 h-3.5" /> Max {table.capacity}</span>
-                                                {table.has_seats && <Badge variant="outline" className="text-[9px] font-bold">S1-S{table.seat_count}</Badge>}
-                                            </div>
-                                            {table.status === 'occupied' && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="mt-2 w-full h-7 text-[11px] gap-1 border-primary/30 text-primary hover:bg-primary/5"
-                                                    onClick={handleReprintKOT(table)}
-                                                >
-                                                    <Printer className="w-3 h-3" /> Reprint KOT
-                                                </Button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB: LIVE ORDERS */}
+                {activeTab === 'orders' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-900 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 shadow-xs">
+                            <div>
+                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Active Table Orders</h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Open dine-in tickets & online orders</p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={fetchTableOrders}
+                                disabled={ordersLoading}
+                                className="h-8 text-xs gap-1.5 rounded-lg"
+                            >
+                                <RefreshCw className={cn('w-3.5 h-3.5', ordersLoading && 'animate-spin')} />
+                                Refresh
+                            </Button>
+                        </div>
+
+                        {tableOrders.length === 0 ? (
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-8 text-center text-gray-500 dark:text-gray-400 space-y-2">
+                                <Clipboard className="w-8 h-8 mx-auto opacity-40" />
+                                <p className="text-sm font-medium">No open dine-in orders right now.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {tableOrders.map(order => {
+                                    const matchingTable = tables.find(t => t.table_number === order.table_number);
+                                    const orderItems = Array.isArray(order.items) ? order.items : [];
+                                    return (
+                                        <Card key={order.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xs">
+                                            <CardContent className="p-4 space-y-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="px-2.5 py-1 rounded-lg bg-[#C0392B] text-white text-xs font-black">
+                                                            T{order.table_number}
+                                                        </span>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-900 dark:text-white">
+                                                                Order #{order.order_number}
+                                                                {order.seat_label ? ` · Seat ${order.seat_label}` : ''}
+                                                            </p>
+                                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                                <Clock className="w-3 h-3" />
+                                                                {formatOrderElapsed(order.created_at)} ago
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge
+                                                        className={cn(
+                                                            'text-[10px] font-bold uppercase border-none',
+                                                            order.status === 'ready'
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                                : order.status === 'preparing'
+                                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                                                    : 'bg-red-100 text-[#C0392B] dark:bg-red-950/60 dark:text-red-300'
+                                                        )}
+                                                    >
+                                                        {order.status}
+                                                    </Badge>
+                                                </div>
+
+                                                <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1 border-t border-gray-100 dark:border-gray-800 pt-2">
+                                                    {orderItems.slice(0, 4).map((it: any, idx: number) => (
+                                                        <div key={idx} className="flex justify-between gap-2">
+                                                            <span className="truncate">{it.quantity ?? 1}× {it.name}</span>
+                                                            <span className="font-semibold text-gray-800 dark:text-gray-200 shrink-0">
+                                                                ₹{Number(it.total ?? (it.price || 0) * (it.quantity || 1)).toFixed(0)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                    {orderItems.length > 4 && (
+                                                        <p className="text-[11px] text-gray-400">+{orderItems.length - 4} more items</p>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+                                                    <span className="text-sm font-black text-gray-900 dark:text-white">
+                                                        ₹{Number(order.total_amount || 0).toFixed(0)}
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        {matchingTable && (
+                                                            <>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={handleReprintKOT(matchingTable)}
+                                                                    className="h-7 px-2 text-[11px] rounded-lg"
+                                                                >
+                                                                    <Printer className="w-3 h-3 mr-1" /> KOT
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    onClick={() => handleSelectTable(matchingTable)}
+                                                                    className="h-7 px-2.5 text-[11px] rounded-lg bg-[#C0392B] hover:bg-[#A93226] text-white"
+                                                                >
+                                                                    + Add
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <details className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-xs">
+                            <summary className="cursor-pointer text-sm font-bold text-gray-800 dark:text-gray-100">
+                                Online orders in progress
+                            </summary>
+                            <div className="mt-3"><RemoteOrderStatusBoard compact /></div>
+                        </details>
+                    </div>
+                )}
+
+                {/* TAB: KITCHEN LIVE STATUS */}
+                {activeTab === 'kitchen' && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2.5">
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl p-3 border border-gray-100 dark:border-gray-800 text-center">
+                                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Pending</p>
+                                <p className="text-xl font-black text-[#C0392B]">
+                                    {tableOrders.filter(o => o.status === 'pending').length}
+                                </p>
+                            </div>
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl p-3 border border-gray-100 dark:border-gray-800 text-center">
+                                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Preparing</p>
+                                <p className="text-xl font-black text-amber-500">
+                                    {tableOrders.filter(o => o.status === 'preparing').length}
+                                </p>
+                            </div>
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl p-3 border border-gray-100 dark:border-gray-800 text-center">
+                                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Ready</p>
+                                <p className="text-xl font-black text-[#27AE60]">
+                                    {tableOrders.filter(o => o.status === 'ready').length}
+                                </p>
+                            </div>
+                        </div>
+
+                        {tableOrders.length === 0 ? (
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-8 text-center text-gray-500 dark:text-gray-400 space-y-2">
+                                <ChefHat className="w-8 h-8 mx-auto opacity-40" />
+                                <p className="text-sm font-medium">Kitchen queue is clear.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {tableOrders.map(order => {
+                                    const orderItems = Array.isArray(order.items) ? order.items : [];
+                                    const isReady = order.status === 'ready';
+                                    const isPreparing = order.status === 'preparing';
+                                    return (
+                                        <Card
+                                            key={order.id}
+                                            className={cn(
+                                                'bg-white dark:bg-gray-900 rounded-2xl border shadow-xs',
+                                                isReady
+                                                    ? 'border-l-4 border-l-[#27AE60] border-gray-100 dark:border-gray-800'
+                                                    : isPreparing
+                                                        ? 'border-l-4 border-l-amber-500 border-gray-100 dark:border-gray-800'
+                                                        : 'border-l-4 border-l-[#C0392B] border-gray-100 dark:border-gray-800'
                                             )}
+                                        >
+                                            <CardContent className="p-4 space-y-2">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={cn(
+                                                            'px-2.5 py-1 rounded-lg text-white text-xs font-black',
+                                                            isReady ? 'bg-[#27AE60]' : isPreparing ? 'bg-amber-500' : 'bg-[#C0392B]'
+                                                        )}>
+                                                            T{order.table_number}
+                                                        </span>
+                                                        <span className="font-bold text-sm text-gray-900 dark:text-white">
+                                                            #{order.order_number}
+                                                            {order.seat_label ? ` · ${order.seat_label}` : ''}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                                                            {formatOrderElapsed(order.created_at)}
+                                                        </span>
+                                                        <Badge className={cn(
+                                                            'text-[10px] font-bold uppercase border-none',
+                                                            isReady
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                                : isPreparing
+                                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                                                    : 'bg-red-100 text-[#C0392B] dark:bg-red-950/60 dark:text-red-300'
+                                                        )}>
+                                                            {isReady ? 'Ready to Serve' : order.status}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                                    {orderItems.map((it: any, idx: number) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="px-2 py-1 rounded-lg bg-[#F9F7F5] dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-200"
+                                                        >
+                                                            {it.quantity ?? 1}× {it.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                {order.customer_note && (
+                                                    <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 rounded-lg px-2.5 py-1.5">
+                                                        Note: {order.customer_note}
+                                                    </p>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* TAB: CUSTOMERS & RESERVATIONS */}
+                {activeTab === 'customers' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-900 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 shadow-xs">
+                            <div>
+                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Reservations & Guests</h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Today&apos;s bookings & customer directory</p>
+                            </div>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => navigate('/crm')}
+                                className="h-8 text-xs rounded-lg bg-[#C0392B] hover:bg-[#A93226] text-white"
+                            >
+                                Open CRM
+                            </Button>
+                        </div>
+
+                        {reservations.length === 0 ? (
+                            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-8 text-center text-gray-500 dark:text-gray-400 space-y-2">
+                                <Users className="w-8 h-8 mx-auto opacity-40" />
+                                <p className="text-sm font-medium">No active reservations for today.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {reservations.map(res => (
+                                    <Card key={res.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xs">
+                                        <CardContent className="p-4 flex items-center justify-between gap-3">
+                                            <div className="space-y-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-gray-900 dark:text-white truncate">{res.customer_name}</span>
+                                                    <Badge className="bg-[#C0392B]/10 text-[#C0392B] border-none text-[10px] font-bold">
+                                                        T{res.table_number}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                                    <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3" /> {res.reservation_time}</span>
+                                                    <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {res.guest_count} guests</span>
+                                                    {res.customer_phone && (
+                                                        <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3" /> {res.customer_phone}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="capitalize text-[10px] shrink-0">
+                                                {res.status}
+                                            </Badge>
                                         </CardContent>
                                     </Card>
-                                );
-                            })}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -932,15 +1600,18 @@ const WaiterCompanion: React.FC = () => {
                     <div className="space-y-4 flex flex-col h-full">
                         {/* Seat Selector Row */}
                         {selectedTable.has_seats && (
-                            <div className="bg-card p-3 rounded-xl border border-muted shadow-sm">
-                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Assign Items to Seat</Label>
+                            <div className="bg-white dark:bg-gray-900 p-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs">
+                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest block mb-2">Assign Items to Seat</Label>
                                 <div className="flex gap-2 overflow-x-auto pb-1">
                                     {(selectedTable.seat_order_mode || 'both') !== 'seat' && (
                                         <Button
                                             variant={selectedSeatId === null ? 'default' : 'outline'}
                                             size="sm"
                                             onClick={() => setSelectedSeatId(null)}
-                                            className="h-8 rounded-full text-xs shrink-0"
+                                            className={cn(
+                                                'h-8 rounded-full text-xs shrink-0',
+                                                selectedSeatId === null && 'bg-[#C0392B] hover:bg-[#A93226] text-white border-[#C0392B]'
+                                            )}
                                         >
                                             Whole Table
                                         </Button>
@@ -951,7 +1622,10 @@ const WaiterCompanion: React.FC = () => {
                                             variant={selectedSeatId === seatLabel ? 'default' : 'outline'}
                                             size="sm"
                                             onClick={() => setSelectedSeatId(seatLabel)}
-                                            className="h-8 rounded-full text-xs shrink-0"
+                                            className={cn(
+                                                'h-8 rounded-full text-xs shrink-0',
+                                                selectedSeatId === seatLabel && 'bg-[#C0392B] hover:bg-[#A93226] text-white border-[#C0392B]'
+                                            )}
                                         >
                                             Seat {seatLabel}
                                         </Button>
@@ -960,17 +1634,16 @@ const WaiterCompanion: React.FC = () => {
                             </div>
                         )}
 
-
                         {/* Search & View Mode Filter */}
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
                                 <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                     <Input
                                         placeholder="Search food item..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-9 h-10 rounded-xl bg-card"
+                                        className="pl-9 h-10 rounded-xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                                     />
                                     {searchQuery && (
                                         <Button
@@ -983,14 +1656,14 @@ const WaiterCompanion: React.FC = () => {
                                         </Button>
                                     )}
                                 </div>
-                                <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-muted shrink-0 gap-1">
+                                <div className="flex items-center bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shrink-0 gap-1">
                                     <div className="flex items-center">
                                         <Button
                                             type="button"
                                             size="icon"
                                             variant={viewMode === 'grid' ? 'default' : 'ghost'}
                                             onClick={() => setViewMode('grid')}
-                                            className="h-8 w-8 rounded-lg p-0"
+                                            className={cn('h-8 w-8 rounded-lg p-0', viewMode === 'grid' && 'bg-[#C0392B] hover:bg-[#A93226] text-white')}
                                         >
                                             <LayoutGrid className="w-4 h-4" />
                                         </Button>
@@ -999,21 +1672,23 @@ const WaiterCompanion: React.FC = () => {
                                             size="icon"
                                             variant={viewMode === 'list' ? 'default' : 'ghost'}
                                             onClick={() => setViewMode('list')}
-                                            className="h-8 w-8 rounded-lg p-0"
+                                            className={cn('h-8 w-8 rounded-lg p-0', viewMode === 'list' && 'bg-[#C0392B] hover:bg-[#A93226] text-white')}
                                         >
                                             <List className="w-4 h-4" />
                                         </Button>
                                     </div>
                                     {viewMode === 'grid' && (
-                                        <div className="flex items-center border-l pl-1 gap-0.5">
+                                        <div className="flex items-center border-l border-gray-200 dark:border-gray-700 pl-1 gap-0.5">
                                             {[2, 3, 4].map(c => (
                                                 <button
                                                     key={c}
                                                     type="button"
                                                     onClick={() => handleSetGridCols(c)}
                                                     className={cn(
-                                                        "h-7 w-7 rounded-lg text-[11px] font-extrabold transition-all",
-                                                        gridCols === c ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"
+                                                        'h-7 w-7 rounded-lg text-[11px] font-extrabold transition-all',
+                                                        gridCols === c
+                                                            ? 'bg-[#C0392B] text-white shadow-sm'
+                                                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                                                     )}
                                                     title={`${c} per row`}
                                                 >
@@ -1031,22 +1706,27 @@ const WaiterCompanion: React.FC = () => {
                                     const count = cat === 'All'
                                         ? menuItems.length
                                         : menuItems.filter(i => (i.category || 'Other').toLowerCase() === cat.toLowerCase()).length;
+                                    const isSelected = selectedCategory === cat;
                                     return (
-                                        <Button
+                                        <button
                                             key={cat}
-                                            variant={selectedCategory === cat ? 'default' : 'secondary'}
-                                            size="sm"
+                                            type="button"
                                             onClick={() => setSelectedCategory(cat)}
-                                            className="h-8 rounded-full text-xs shrink-0 px-3.5 flex items-center gap-1 font-semibold"
+                                            className={cn(
+                                                'h-8 rounded-full text-xs shrink-0 px-3.5 flex items-center gap-1 font-semibold transition-colors',
+                                                isSelected
+                                                    ? 'bg-[#C0392B] text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                            )}
                                         >
                                             <span>{cat}</span>
                                             <span className={cn(
-                                                "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
-                                                selectedCategory === cat ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                                                'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
+                                                isSelected ? 'bg-white/20 text-white' : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300'
                                             )}>
                                                 ({count})
                                             </span>
-                                        </Button>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -1056,25 +1736,24 @@ const WaiterCompanion: React.FC = () => {
                         <div className="flex-1 overflow-y-auto min-h-[48vh] pb-24 space-y-3 pr-1">
                             {viewMode === 'grid' ? (
                                 <div className={cn(
-                                    "grid gap-2.5",
-                                    gridCols === 2 && "grid-cols-2",
-                                    gridCols === 3 && "grid-cols-3",
-                                    gridCols === 4 && "grid-cols-2 sm:grid-cols-4"
+                                    'grid gap-2.5',
+                                    gridCols === 2 && 'grid-cols-2',
+                                    gridCols === 3 && 'grid-cols-3',
+                                    gridCols === 4 && 'grid-cols-2 sm:grid-cols-4'
                                 )}>
                                     {filteredMenuItems.map(item => {
                                         const cartItem = cart.find(i => i.id === item.id && i.seatId === selectedSeatId);
                                         const isOutOfStock = item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= 0;
                                         const isLowStock = !isOutOfStock && item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= Number(item.minimum_stock_alert ?? 0);
                                         return (
-                                            <Card key={item.id} className={cn("premium-card overflow-hidden border border-muted shadow-sm transition-all flex flex-col justify-between group", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
+                                            <Card key={item.id} className={cn('bg-white dark:bg-gray-900 overflow-hidden border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xs transition-all flex flex-col justify-between group', isOutOfStock ? 'opacity-50' : 'hover:shadow-md')}>
                                                 <div className="relative">
-                                                    {/* Food image or fallback icon */}
-                                                    <div className="w-full h-24 bg-muted/30 relative flex items-center justify-center overflow-hidden">
+                                                    <div className="w-full h-24 bg-[#F9F7F5] dark:bg-gray-800 relative flex items-center justify-center overflow-hidden">
                                                         {item.image_url ? (
                                                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                                                         ) : (
-                                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                                                <Utensils className="w-5 h-5 text-primary/70" />
+                                                            <div className="w-10 h-10 rounded-full bg-[#C0392B]/10 flex items-center justify-center">
+                                                                <Utensils className="w-5 h-5 text-[#C0392B]" />
                                                             </div>
                                                         )}
                                                         {(item.selling_unit || item.unit) && (
@@ -1083,7 +1762,7 @@ const WaiterCompanion: React.FC = () => {
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    
+
                                                     {isOutOfStock && (
                                                         <div className="absolute top-2 right-2 z-10">
                                                             <Badge className="bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] px-1.5 py-0.5 border-none shadow-sm">
@@ -1100,15 +1779,14 @@ const WaiterCompanion: React.FC = () => {
                                                     )}
 
                                                     <div className="p-2.5">
-                                                        <h4 className="font-bold text-xs line-clamp-2 leading-snug">{item.name}</h4>
+                                                        <h4 className="font-bold text-xs line-clamp-2 leading-snug text-gray-900 dark:text-white">{item.name}</h4>
                                                         <div className="flex items-center justify-between mt-1">
-        <span className="text-primary font-black text-xs block">₹{item.price.toFixed(0)}</span>
-        {item.stock_quantity !== null && item.stock_quantity !== undefined && !isOutOfStock && !isLowStock && (
-            <span className="text-[9px] text-muted-foreground border px-1 rounded-sm bg-muted/50 whitespace-nowrap">Stk: {item.stock_quantity}</span>
-        )}
-    </div>
+                                                            <span className="text-[#C0392B] font-black text-xs block">₹{item.price.toFixed(0)}</span>
+                                                            {item.stock_quantity !== null && item.stock_quantity !== undefined && !isOutOfStock && !isLowStock && (
+                                                                <span className="text-[9px] text-gray-500 border border-gray-200 dark:border-gray-700 px-1 rounded-sm bg-gray-50 dark:bg-gray-800 whitespace-nowrap">Stk: {item.stock_quantity}</span>
+                                                            )}
+                                                        </div>
 
-                                                        {/* Quick Chips per Item */}
                                                         {item.quick_chips && item.quick_chips.length > 0 && (
                                                             <div className="flex gap-1 overflow-x-auto pt-1.5 pb-0.5 scrollbar-none">
                                                                 {item.quick_chips.map((chip: string) => (
@@ -1119,7 +1797,7 @@ const WaiterCompanion: React.FC = () => {
                                                                             e.stopPropagation();
                                                                             handleAddToCartWithChip(item, chip);
                                                                         }}
-                                                                        className="px-1.5 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[9px] font-extrabold border border-primary/20 whitespace-nowrap shrink-0 transition-colors"
+                                                                        className="px-1.5 py-0.5 rounded-md bg-[#C0392B]/10 hover:bg-[#C0392B]/20 text-[#C0392B] text-[9px] font-extrabold border border-[#C0392B]/20 whitespace-nowrap shrink-0 transition-colors"
                                                                     >
                                                                         {chip}
                                                                     </button>
@@ -1131,22 +1809,22 @@ const WaiterCompanion: React.FC = () => {
 
                                                 <div className="p-2.5 pt-0">
                                                     {cartItem ? (
-                                                        <div className="flex items-center justify-between bg-primary/10 rounded-xl p-1 border border-primary/20">
+                                                        <div className="flex items-center justify-between bg-[#C0392B]/10 rounded-xl p-1 border border-[#C0392B]/20">
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                className="rounded-lg h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                className="rounded-lg h-7 w-7 p-0 hover:bg-[#C0392B]/20 text-[#C0392B]"
                                                                 onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, -1); }}
                                                             >
                                                                 <Minus className="w-3.5 h-3.5" />
                                                             </Button>
-                                                            <span className="font-black text-xs text-primary">
+                                                            <span className="font-black text-xs text-[#C0392B]">
                                                                 {cartItem.quantity / (item.selling_quantity || item.base_value || 1)}
                                                             </span>
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                className="rounded-lg h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                className="rounded-lg h-7 w-7 p-0 hover:bg-[#C0392B]/20 text-[#C0392B]"
                                                                 onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, 1); }}
                                                             >
                                                                 <Plus className="w-3.5 h-3.5" />
@@ -1157,7 +1835,10 @@ const WaiterCompanion: React.FC = () => {
                                                             size="sm"
                                                             disabled={isOutOfStock}
                                                             onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
-                                                            className={cn("w-full rounded-xl h-8 text-xs font-bold gap-1", isOutOfStock ? "bg-muted text-muted-foreground" : "")}
+                                                            className={cn(
+                                                                'w-full rounded-xl h-8 text-xs font-bold gap-1',
+                                                                isOutOfStock ? 'bg-muted text-muted-foreground' : 'bg-[#C0392B] hover:bg-[#A93226] text-white'
+                                                            )}
                                                         >
                                                             <Plus className="w-3.5 h-3.5" /> Add
                                                         </Button>
@@ -1174,28 +1855,28 @@ const WaiterCompanion: React.FC = () => {
                                         const isOutOfStock = item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= 0;
                                         const isLowStock = !isOutOfStock && item.stock_quantity !== null && item.stock_quantity !== undefined && Number(item.stock_quantity) <= Number(item.minimum_stock_alert ?? 0);
                                         return (
-                                            <Card key={item.id} className={cn("premium-card overflow-hidden border border-muted shadow-sm transition-all", isOutOfStock ? "opacity-50" : "hover:shadow-md")}>
+                                            <Card key={item.id} className={cn('bg-white dark:bg-gray-900 overflow-hidden border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xs transition-all', isOutOfStock ? 'opacity-50' : 'hover:shadow-md')}>
                                                 <CardContent className="p-3 flex items-center justify-between">
                                                     <div className="flex items-center gap-3 min-w-0 pr-2">
-                                                        <div className="w-12 h-12 rounded-xl bg-muted/40 shrink-0 overflow-hidden flex items-center justify-center">
+                                                        <div className="w-12 h-12 rounded-xl bg-[#F9F7F5] dark:bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center">
                                                             {item.image_url ? (
                                                                 <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                                                             ) : (
-                                                                <Utensils className="w-5 h-5 text-primary/70" />
+                                                                <Utensils className="w-5 h-5 text-[#C0392B]" />
                                                             )}
                                                         </div>
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-2">
-                                                                <h4 className="font-bold text-sm truncate">{item.name}</h4>
+                                                                <h4 className="font-bold text-sm truncate text-gray-900 dark:text-white">{item.name}</h4>
                                                                 {isOutOfStock && <Badge className="bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] px-1 py-0 h-4 border-none shrink-0">SOLD OUT</Badge>}
                                                                 {isLowStock && <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-[9px] px-1 py-0 h-4 border-none shrink-0">Only {item.stock_quantity} left</Badge>}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className="text-primary font-black text-sm">₹{item.price.toFixed(0)}</span>
-    {item.stock_quantity !== null && item.stock_quantity !== undefined && !isOutOfStock && !isLowStock && (
-        <span className="text-[10px] text-muted-foreground border px-1.5 py-0.5 rounded-sm bg-muted/50 font-medium whitespace-nowrap">Stk: {item.stock_quantity}</span>
-    )}
-    {(item.selling_unit || item.unit) && (
+                                                                <span className="text-[#C0392B] font-black text-sm">₹{item.price.toFixed(0)}</span>
+                                                                {item.stock_quantity !== null && item.stock_quantity !== undefined && !isOutOfStock && !isLowStock && (
+                                                                    <span className="text-[10px] text-gray-500 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded-sm bg-gray-50 dark:bg-gray-800 font-medium whitespace-nowrap">Stk: {item.stock_quantity}</span>
+                                                                )}
+                                                                {(item.selling_unit || item.unit) && (
                                                                     <Badge variant="outline" className="text-[10px] scale-90 px-1 py-0 h-4">
                                                                         per {item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)}
                                                                     </Badge>
@@ -1211,7 +1892,7 @@ const WaiterCompanion: React.FC = () => {
                                                                                 e.stopPropagation();
                                                                                 handleAddToCartWithChip(item, chip);
                                                                             }}
-                                                                            className="px-1.5 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[9px] font-extrabold border border-primary/20 whitespace-nowrap shrink-0 transition-colors"
+                                                                            className="px-1.5 py-0.5 rounded-md bg-[#C0392B]/10 hover:bg-[#C0392B]/20 text-[#C0392B] text-[9px] font-extrabold border border-[#C0392B]/20 whitespace-nowrap shrink-0 transition-colors"
                                                                         >
                                                                             {chip}
                                                                         </button>
@@ -1222,20 +1903,20 @@ const WaiterCompanion: React.FC = () => {
                                                     </div>
 
                                                     {cartItem ? (
-                                                        <div className="flex items-center gap-2 bg-primary/10 rounded-full p-1 border border-primary/20">
+                                                        <div className="flex items-center gap-2 bg-[#C0392B]/10 rounded-full p-1 border border-[#C0392B]/20">
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                className="rounded-full h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                className="rounded-full h-7 w-7 p-0 hover:bg-[#C0392B]/20 text-[#C0392B]"
                                                                 onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, -1); }}
                                                             >
                                                                 <Minus className="w-3.5 h-3.5" />
                                                             </Button>
-                                                            <span className="font-black text-sm w-4 text-center text-primary">{cartItem.quantity / (item.selling_quantity || item.base_value || 1)}</span>
+                                                            <span className="font-black text-sm w-4 text-center text-[#C0392B]">{cartItem.quantity / (item.selling_quantity || item.base_value || 1)}</span>
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                className="rounded-full h-7 w-7 p-0 hover:bg-primary/20 hover:text-primary"
+                                                                className="rounded-full h-7 w-7 p-0 hover:bg-[#C0392B]/20 text-[#C0392B]"
                                                                 onClick={(e) => { e.stopPropagation(); handleUpdateQty(item.id, selectedSeatId, 1); }}
                                                             >
                                                                 <Plus className="w-3.5 h-3.5" />
@@ -1246,7 +1927,10 @@ const WaiterCompanion: React.FC = () => {
                                                             size="sm"
                                                             disabled={isOutOfStock}
                                                             onClick={(e) => { e.stopPropagation(); handleAddToCart(item); }}
-                                                            className={cn("rounded-full h-8 w-8 p-0", isOutOfStock ? "bg-muted text-muted-foreground" : "")}
+                                                            className={cn(
+                                                                'rounded-full h-8 w-8 p-0',
+                                                                isOutOfStock ? 'bg-muted text-muted-foreground' : 'bg-[#C0392B] hover:bg-[#A93226] text-white'
+                                                            )}
                                                         >
                                                             <Plus className="w-4 h-4" />
                                                         </Button>
@@ -1259,7 +1943,7 @@ const WaiterCompanion: React.FC = () => {
                             )}
 
                             {filteredMenuItems.length === 0 && (
-                                <div className="text-center py-12 text-muted-foreground text-sm space-y-2">
+                                <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm space-y-2">
                                     <Utensils className="w-8 h-8 mx-auto opacity-40" />
                                     <p>No menu items found matching search.</p>
                                 </div>
@@ -1271,10 +1955,10 @@ const WaiterCompanion: React.FC = () => {
                 {/* TAB 3: CART VIEW */}
                 {activeTab === 'cart' && selectedTable && (
                     <div className="space-y-4 flex flex-col h-full pb-20">
-                        <div className="flex items-center justify-between border-b pb-2">
+                        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
                             <div>
-                                <h3 className="font-bold text-base">Table {selectedTable.table_number} Order Cart</h3>
-                                <p className="text-xs text-muted-foreground">Confirm and push to kitchen display</p>
+                                <h3 className="font-bold text-base text-gray-900 dark:text-white">Table {selectedTable.table_number} Order Cart</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Confirm and push to kitchen display</p>
                             </div>
                             <Button
                                 variant="ghost"
@@ -1292,11 +1976,11 @@ const WaiterCompanion: React.FC = () => {
                         <div className="flex-1 overflow-y-auto max-h-[48vh] space-y-3 pr-1">
                             <div className="space-y-3 pr-1">
                                 {cart.map((item, idx) => (
-                                    <Card key={`${item.id}-${item.seatId}-${idx}`} className="premium-card p-3 border border-muted">
+                                    <Card key={`${item.id}-${item.seatId}-${idx}`} className="bg-white dark:bg-gray-900 p-3 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xs">
                                         <div className="flex items-start justify-between">
                                             <div className="min-w-0 pr-2">
                                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="font-bold text-sm">
+                                                    <span className="font-bold text-sm text-gray-900 dark:text-white">
                                                         {isWeightOrVolumeUnit(item.selling_unit || item.unit) ? (
                                                             `${item.quantity / (item.base_value || 1)} × ${formatQuantityWithUnit(item.base_value || 1, item.selling_unit || item.unit)} ${item.name}`
                                                         ) : (
@@ -1312,13 +1996,13 @@ const WaiterCompanion: React.FC = () => {
                                                         const badge = getKOTStatusBadgeInfo((item as any).status || 'unsent');
                                                         return (
                                                             <Badge variant={badge.variant} className={badge.className}>
-                                                                <span className={cn("w-1.5 h-1.5 rounded-full", badge.dotColor)} />
+                                                                <span className={cn('w-1.5 h-1.5 rounded-full', badge.dotColor)} />
                                                                 {badge.label}
                                                             </Badge>
                                                         );
                                                     })()}
                                                 </div>
-                                                <span className="text-xs text-muted-foreground block mt-0.5">₹{item.price.toFixed(0)} each ({item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)})</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">₹{item.price.toFixed(0)} each ({item.selling_quantity || item.base_value || 1} {getShortUnit(item.selling_unit || item.unit)})</span>
                                             </div>
 
                                             {/* Quantity controls */}
@@ -1347,12 +2031,12 @@ const WaiterCompanion: React.FC = () => {
 
                                         {/* Cooking instructions input */}
                                         <div className="mt-2.5 flex items-center gap-2">
-                                            <Clipboard className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                            <Clipboard className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                             <Input
                                                 placeholder="Add cooking instruction..."
                                                 value={item.instructions}
                                                 onChange={(e) => handleUpdateInstructions(item.id, item.seatId, e.target.value)}
-                                                className="h-7 text-xs rounded-md py-1 px-2 border-muted"
+                                                className="h-7 text-xs rounded-md py-1 px-2 border-gray-200 dark:border-gray-700"
                                             />
                                         </div>
                                     </Card>
@@ -1361,8 +2045,8 @@ const WaiterCompanion: React.FC = () => {
                         </div>
 
                         {/* Customer Overall Note */}
-                        <div className="space-y-1.5 bg-muted/20 p-3 rounded-xl border border-muted">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">Customer Note / Table Comment</label>
+                        <div className="space-y-1.5 bg-white dark:bg-gray-900 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Customer Note / Table Comment</label>
                             <Input
                                 placeholder="General order note (e.g. no ice in drinks)..."
                                 value={customerNote}
@@ -1372,8 +2056,8 @@ const WaiterCompanion: React.FC = () => {
                         </div>
 
                         {/* Bottom Total & Checkout Summary */}
-                        <div className="bg-card/95 backdrop-blur-md border-t border-border/60 pt-3 space-y-3 mt-auto rounded-b-2xl">
-                            <div className="space-y-1 text-xs text-muted-foreground px-1">
+                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 space-y-3 mt-auto rounded-2xl shadow-xs">
+                            <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 px-1">
                                 <div className="flex justify-between">
                                     <span>Subtotal:</span>
                                     <span>₹{cartSubtotal.toFixed(2)}</span>
@@ -1392,28 +2076,26 @@ const WaiterCompanion: React.FC = () => {
                                 ))}
                             </div>
                             <div className="flex justify-between items-center px-1">
-                                <span className="font-bold text-muted-foreground text-sm">Estimated Total:</span>
-                                <span className="text-xl font-black text-primary">₹{cartTotal.toFixed(0)}</span>
+                                <span className="font-bold text-gray-600 dark:text-gray-300 text-sm">Estimated Total:</span>
+                                <span className="text-xl font-black text-[#C0392B]">₹{cartTotal.toFixed(0)}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 pt-1">
-                                {/* 1. Original kitchen push — untouched behavior */}
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => handleSubmitOrder(false)}
                                     disabled={isSubmitting || cart.length === 0}
-                                    className="h-12 rounded-xl font-semibold flex items-center justify-center gap-1.5 text-xs sm:text-sm border-primary/40 hover:bg-primary/10 active:scale-[0.97] transition-all"
+                                    className="h-12 rounded-xl font-semibold flex items-center justify-center gap-1.5 text-xs sm:text-sm border-[#C0392B]/40 text-[#C0392B] hover:bg-[#C0392B]/5 active:scale-[0.97] transition-all"
                                 >
-                                    <ChefHat className="w-4 h-4 text-primary" />
+                                    <ChefHat className="w-4 h-4 text-[#C0392B]" />
                                     {isSubmitting ? 'Pushing...' : 'Send to Kitchen'}
                                 </Button>
 
-                                {/* 2. NEW: Send + thermal print KOT */}
                                 <Button
                                     type="button"
                                     onClick={() => handleSubmitOrder(true)}
                                     disabled={isSubmitting || cart.length === 0}
-                                    className="h-12 rounded-xl font-bold bg-primary hover:bg-primary/95 text-primary-foreground flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-md active:scale-[0.97] transition-all"
+                                    className="h-12 rounded-xl font-bold bg-[#C0392B] hover:bg-[#A93226] text-white flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-md active:scale-[0.97] transition-all"
                                 >
                                     <Printer className="w-4 h-4" />
                                     {isSubmitting ? 'Printing...' : 'Send & Print KOT'}
@@ -1423,11 +2105,118 @@ const WaiterCompanion: React.FC = () => {
                     </div>
                 )}
             </div>
-            
-            {/* Sticky Floating Cart Bar (Rendered via Portal to match POS page position exactly) */}
+
+            {/* Bottom Navigation Bar */}
+            <nav
+                aria-label="Waiter companion navigation"
+                className="fixed bottom-0 left-0 right-0 md:sticky md:bottom-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center justify-around py-2 px-4 z-[55] shrink-0"
+            >
+                {([
+                    {
+                        id: 'floor',
+                        label: 'Floor',
+                        icon: Utensils,
+                        active: activeTab === 'tables' || activeTab === 'menu' || activeTab === 'cart',
+                        onClick: () => setActiveTab('tables'),
+                    },
+                    {
+                        id: 'orders',
+                        label: 'Orders',
+                        icon: Clipboard,
+                        active: activeTab === 'orders',
+                        onClick: () => { setActiveTab('orders'); fetchTableOrders(); },
+                    },
+                    {
+                        id: 'customers',
+                        label: 'Customers',
+                        icon: Users,
+                        active: activeTab === 'customers',
+                        onClick: () => setActiveTab('customers'),
+                    },
+                    {
+                        id: 'more',
+                        label: 'More',
+                        icon: MoreHorizontal,
+                        active: moreOpen,
+                        onClick: () => setMoreOpen(true),
+                    },
+                ] as const).map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <button
+                            key={item.id}
+                            type="button"
+                            onClick={item.onClick}
+                            className={cn(
+                                'flex flex-col items-center justify-center gap-0.5 min-w-[56px] py-0.5 transition-colors',
+                                item.active ? 'text-[#C0392B]' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                            )}
+                        >
+                            <Icon className="w-5 h-5" />
+                            <span className={cn('text-[11px]', item.active ? 'font-semibold text-[#C0392B]' : 'font-medium')}>
+                                {item.label}
+                            </span>
+                            <span className={cn('w-1.5 h-1.5 rounded-full mt-0.5', item.active ? 'bg-[#C0392B]' : 'bg-transparent')} />
+                        </button>
+                    );
+                })}
+            </nav>
+
+            {/* More Actions & Navigation Sheet */}
+            <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+                <SheetContent side="bottom" className="rounded-t-3xl max-h-[75vh] overflow-y-auto bg-white dark:bg-gray-900">
+                    <SheetHeader>
+                        <SheetTitle className="text-left flex items-center gap-2">
+                            <span className="font-black text-gray-900 dark:text-white">Zen<span className="text-[#C0392B]">POS</span></span>
+                            <span className="text-xs font-medium text-gray-500">Quick Actions</span>
+                        </SheetTitle>
+                    </SheetHeader>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pb-4">
+                        <button
+                            type="button"
+                            onClick={() => { setMoreOpen(false); setMoveDialogOpen(true); }}
+                            className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-[#F9F7F5] dark:bg-gray-800/60 hover:border-[#C0392B]/40 text-left text-xs font-semibold text-gray-800 dark:text-gray-100"
+                        >
+                            <ArrowRightLeft className="w-4 h-4 text-[#C0392B] shrink-0" />
+                            Move Table / Seat
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setMoreOpen(false); setActiveTab('kitchen'); fetchTableOrders(); }}
+                            className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-[#F9F7F5] dark:bg-gray-800/60 hover:border-[#C0392B]/40 text-left text-xs font-semibold text-gray-800 dark:text-gray-100"
+                        >
+                            <ChefHat className="w-4 h-4 text-[#C0392B] shrink-0" />
+                            Kitchen Queue
+                        </button>
+                        {[
+                            { label: 'Table Billing', to: '/table-billing', icon: CheckCircle2 },
+                            { label: 'POS Billing', to: '/billing', icon: ShoppingCart },
+                            { label: 'Kitchen Display', to: '/kitchen', icon: ChefHat },
+                            { label: 'Table Setup', to: '/tables', icon: LayoutGrid },
+                            { label: 'Dashboard', to: '/dashboard', icon: Utensils },
+                            { label: 'CRM Customers', to: '/crm', icon: Users },
+                        ].map((link) => {
+                            const LinkIcon = link.icon;
+                            return (
+                                <button
+                                    key={link.to}
+                                    type="button"
+                                    onClick={() => { setMoreOpen(false); navigate(link.to); }}
+                                    className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-[#C0392B]/40 text-left text-xs font-semibold text-gray-800 dark:text-gray-100"
+                                >
+                                    <LinkIcon className="w-4 h-4 text-gray-500 shrink-0" />
+                                    {link.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Sticky Floating Cart Bar */}
             {activeTab !== 'cart' && cart.length > 0 && createPortal(
                 <div className="fixed bottom-[68px] left-0 right-0 z-[9999] px-3 pb-1 pointer-events-none animate-in slide-in-from-bottom-5 duration-300">
-                    <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-blue-400/30 flex items-center justify-between backdrop-blur-md pointer-events-auto">
+                    <div className="bg-gradient-to-r from-[#C0392B] via-[#A93226] to-[#922B21] text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-red-300/30 flex items-center justify-between backdrop-blur-md pointer-events-auto">
                         <div
                             onClick={() => setActiveTab('cart')}
                             className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
@@ -1438,7 +2227,7 @@ const WaiterCompanion: React.FC = () => {
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                     <span className="font-extrabold text-sm text-white truncate">
-                                        {cart.reduce((sum, i) => sum + (i.quantity / (i.base_value || 1)), 0)} items selected
+                                        {cartBadgeCount} items selected
                                     </span>
                                     {selectedTable?.table_number && (
                                         <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md text-white font-medium">
@@ -1467,7 +2256,7 @@ const WaiterCompanion: React.FC = () => {
                             <Button
                                 onClick={() => setActiveTab('cart')}
                                 size="sm"
-                                className="rounded-xl h-9 px-3 font-bold bg-white text-blue-700 hover:bg-white/90 shadow-md flex items-center gap-1 text-xs"
+                                className="rounded-xl h-9 px-3 font-bold bg-white text-[#C0392B] hover:bg-white/90 shadow-md flex items-center gap-1 text-xs"
                             >
                                 <span>View Cart</span>
                                 <ChevronRight className="w-4 h-4" />
