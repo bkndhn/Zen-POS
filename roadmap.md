@@ -46,3 +46,6 @@
 - [x] Home page: how it works, FAQ, delivery & shift highlights
 - [ ] Signed-in shift walkthrough (open → cash bill → close → Reports → Shifts) (blocked: preview cannot sign in to this backend; steps given to user)
 - [x] Recheck Billing, Demo, Waiter, Dashboard and Kitchen pages after recent theme changes
+- [x] Scale step 1: database lookup indexes for bills, orders, items, expenses
+- [ ] Scale step 2: monthly partitioning of bills/bill items (needs a planned quiet-hour window)
+- [ ] Scale step 3: batched push notifications and counter health monitor
