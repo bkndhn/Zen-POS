@@ -14,29 +14,30 @@ import {
 } from 'lucide-react';
 
 // ── Sample Data ──────────────────────────────────────────────────────────────
-const DEMO_CATEGORIES = ['All', 'Breakfast', 'Lunch', 'Snacks', 'Beverages', 'Desserts'];
+const DEMO_CATEGORIES = ['All', 'Starters', 'Mains', 'Tandoor & Bread', 'Rice & Biryani', 'Beverages', 'Desserts'];
 
 const DEMO_ITEMS = [
-  { id: '1', name: 'Idli (2 pcs)', price: 30, category: 'Breakfast', veg: true },
-  { id: '2', name: 'Masala Dosa', price: 60, category: 'Breakfast', veg: true },
-  { id: '3', name: 'Vada (2 pcs)', price: 35, category: 'Breakfast', veg: true },
-  { id: '4', name: 'Pongal', price: 50, category: 'Breakfast', veg: true },
-  { id: '5', name: 'Poori Set', price: 65, category: 'Breakfast', veg: true },
-  { id: '6', name: 'Meals (Veg)', price: 100, category: 'Lunch', veg: true },
-  { id: '7', name: 'Chicken Biryani', price: 180, category: 'Lunch', veg: false },
-  { id: '8', name: 'Mutton Biryani', price: 230, category: 'Lunch', veg: false },
-  { id: '9', name: 'Chapati (2 pcs)', price: 40, category: 'Lunch', veg: true },
-  { id: '10', name: 'Parotta (2 pcs)', price: 50, category: 'Lunch', veg: true },
-  { id: '11', name: 'Chicken 65', price: 160, category: 'Snacks', veg: false },
-  { id: '12', name: 'Gobi Manchurian', price: 110, category: 'Snacks', veg: true },
-  { id: '13', name: 'Samosa (2 pcs)', price: 30, category: 'Snacks', veg: true },
-  { id: '14', name: 'Bajji Plate', price: 40, category: 'Snacks', veg: true },
-  { id: '15', name: 'Tea', price: 15, category: 'Beverages', veg: true },
-  { id: '16', name: 'Filter Coffee', price: 20, category: 'Beverages', veg: true },
-  { id: '17', name: 'Fresh Lime Juice', price: 50, category: 'Beverages', veg: true },
-  { id: '18', name: 'Lassi', price: 45, category: 'Beverages', veg: true },
-  { id: '19', name: 'Gulab Jamun (2)', price: 40, category: 'Desserts', veg: true },
-  { id: '20', name: 'Ice Cream', price: 55, category: 'Desserts', veg: true },
+  { id: '1',  name: 'Chicken Tikka',       price: 280, category: 'Starters',       veg: false },
+  { id: '2',  name: 'Paneer Tikka',        price: 240, category: 'Starters',       veg: true  },
+  { id: '3',  name: 'Veg Spring Roll',     price: 160, category: 'Starters',       veg: true  },
+  { id: '4',  name: 'Fish Amritsari',      price: 320, category: 'Starters',       veg: false },
+  { id: '5',  name: 'Butter Chicken',      price: 320, category: 'Mains',          veg: false },
+  { id: '6',  name: 'Dal Makhani',         price: 220, category: 'Mains',          veg: true  },
+  { id: '7',  name: 'Paneer Butter Masala',price: 280, category: 'Mains',          veg: true  },
+  { id: '8',  name: 'Mutton Rogan Josh',   price: 380, category: 'Mains',          veg: false },
+  { id: '9',  name: 'Butter Naan',         price: 50,  category: 'Tandoor & Bread',veg: true  },
+  { id: '10', name: 'Laccha Paratha',      price: 60,  category: 'Tandoor & Bread',veg: true  },
+  { id: '11', name: 'Garlic Naan',         price: 70,  category: 'Tandoor & Bread',veg: true  },
+  { id: '12', name: 'Chicken Biryani',     price: 320, category: 'Rice & Biryani', veg: false },
+  { id: '13', name: 'Veg Biryani',         price: 240, category: 'Rice & Biryani', veg: true  },
+  { id: '14', name: 'Mutton Biryani',      price: 400, category: 'Rice & Biryani', veg: false },
+  { id: '15', name: 'Masala Chai',         price: 40,  category: 'Beverages',      veg: true  },
+  { id: '16', name: 'Mango Lassi',         price: 80,  category: 'Beverages',      veg: true  },
+  { id: '17', name: 'Cold Coffee',         price: 120, category: 'Beverages',      veg: true  },
+  { id: '18', name: 'Fresh Lime Soda',     price: 60,  category: 'Beverages',      veg: true  },
+  { id: '19', name: 'Gulab Jamun',         price: 100, category: 'Desserts',       veg: true  },
+  { id: '20', name: 'Rasgulla',            price: 90,  category: 'Desserts',       veg: true  },
+  { id: '21', name: 'Kulfi',              price: 80,  category: 'Desserts',       veg: true  },
 ];
 
 const TABLES = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'];

@@ -277,6 +277,101 @@ const LandingPage: React.FC = () => {
             <span className="flex items-center gap-1"><Check className="h-3.5 w-3.5 text-primary" /> No hardware lock-in</span>
           </div>
         </div>
+
+        {/* ── Multi-Device Showcase ───────────────────────────────────── */}
+        <div className="relative mt-20 mx-auto max-w-5xl px-6">
+          {/* Ambient glow */}
+          <div className="absolute inset-0 bg-amber-400/10 blur-3xl rounded-full pointer-events-none" />
+          
+          {/* Central Tablet POS */}
+          <div className="relative z-10 mx-auto max-w-3xl bg-gray-900 rounded-[2.5rem] p-3 shadow-2xl shadow-amber-500/20 border border-gray-700">
+            <div className="bg-white dark:bg-gray-100 rounded-[2rem] overflow-hidden" style={{minHeight:480}}>
+              <div className="flex h-full">
+                {/* Sidebar */}
+                <div className="w-36 bg-gray-900 flex flex-col p-4 gap-3 shrink-0">
+                  <div className="mb-2"><span className="text-amber-400 font-black text-lg">Zen</span><span className="text-white font-black text-lg">POS</span></div>
+                  <p className="text-gray-400 text-[9px]">Good food brings people together</p>
+                  {([['📊','POS',true],['📋','Orders',false],['🪑','Tables',false],['🍽️','Menu',false],['📈','Reports',false]] as [string,string,boolean][]).map(([icon,label,active])=>(
+                    <div key={label} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs ${active?'bg-amber-500 text-white font-bold':'text-gray-400 hover:text-white'}`}>
+                      <span>{icon}</span><span>{label}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Main content */}
+                <div className="flex-1 flex flex-col p-3 bg-gray-50">
+                  <div className="text-xs text-gray-500 mb-2">Search dishes...</div>
+                  <div className="flex gap-1 mb-3 flex-wrap">
+                    {(['All','Starters','Main Course','Beverages','Desserts'] as string[]).map((c,i)=>(
+                      <span key={c} className={`px-2 py-0.5 rounded-full text-[9px] font-medium ${i===0?'bg-amber-500 text-white':'bg-white text-gray-600 border'}`}>{c}</span>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 flex-1">
+                    {([['🍛','Chicken Biryani','₹320'],['🫓','Masala Dosa','₹180'],['🧆','Paneer Tikka','₹260'],['🫓','Butter Naan','₹60'],['🫘','Dal Makhani','₹190'],['🫔','Chole Bhature','₹160'],['🍵','Masala Chai','₹40'],['🍮','Gulab Jamun','₹100'],['⚪','Rasgulla','₹90']] as [string,string,string][]).map(([emoji,name,price])=>(
+                      <div key={name} className="bg-white rounded-xl p-2 shadow-sm border border-gray-100 relative">
+                        <div className="bg-amber-50 rounded-lg h-14 flex items-center justify-center text-2xl mb-1">{emoji}</div>
+                        <p className="text-[9px] font-semibold text-gray-800 leading-tight">{name}</p>
+                        <p className="text-[9px] text-amber-600 font-bold">{price}</p>
+                        <button className="absolute bottom-2 right-2 w-5 h-5 bg-amber-500 rounded-full text-white text-xs flex items-center justify-center font-bold">+</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Cart panel */}
+                <div className="w-44 bg-white border-l border-gray-200 flex flex-col p-3 shrink-0">
+                  <p className="font-bold text-xs text-gray-800 mb-1">🪑 Table 4 • Dine In</p>
+                  <p className="text-[9px] text-gray-500 mb-2">4 Guests</p>
+                  <div className="flex-1 space-y-1.5 overflow-hidden">
+                    {([['Chicken Biryani','1','₹320'],['Masala Dosa','1','₹180'],['Paneer Tikka','1','₹260'],['Masala Chai','2','₹80']] as [string,string,string][]).map(([n,q,p])=>(
+                      <div key={n} className="flex justify-between items-center">
+                        <div><p className="text-[8px] font-medium text-gray-800 leading-tight">{n}</p><p className="text-[8px] text-gray-400">{n==='Chicken Biryani'?'₹320':n==='Masala Dosa'?'₹180':n==='Paneer Tikka'?'₹260':'₹40'}</p></div>
+                        <div className="flex items-center gap-1"><span className="text-[8px] text-gray-500">×{q}</span><span className="text-[8px] font-bold text-amber-600">{p}</span></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t mt-2 pt-2">
+                    <div className="flex justify-between text-[8px] text-gray-500"><span>Subtotal</span><span>₹840</span></div>
+                    <div className="flex justify-between text-[8px] text-gray-500"><span>GST 5%</span><span>₹42</span></div>
+                    <div className="flex justify-between text-xs font-bold mt-1"><span>Total</span><span className="text-amber-600">₹882</span></div>
+                    <div className="flex gap-1 mt-2">
+                      {(['Cash','UPI','Card'] as string[]).map(m=><button key={m} className="flex-1 py-1 rounded text-[8px] border border-gray-200 font-medium text-gray-600">{m}</button>)}
+                    </div>
+                    <button className="w-full mt-1 py-1.5 bg-amber-500 text-white rounded-lg text-[9px] font-bold">Pay ₹882 →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Top-right KDS floating card */}
+          <div className="absolute top-0 right-0 translate-x-8 -translate-y-8 z-20 bg-gray-900 text-white rounded-2xl p-3 shadow-2xl border border-gray-700 w-44">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold">🍳 Kitchen</span>
+              <span className="flex items-center gap-1 text-[9px] text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>LIVE</span>
+            </div>
+            {([['Table 3','2:14','green'],['Table 7','9:14','amber'],['Table 11','16:58','red']] as [string,string,string][]).map(([t,time,c])=>(
+              <div key={t} className={`flex justify-between items-center px-2 py-1 rounded-lg mb-1 text-[9px] ${c==='green'?'bg-green-900/50 border border-green-700':c==='amber'?'bg-amber-900/50 border border-amber-700':'bg-red-900/50 border border-red-700 animate-pulse'}`}>
+                <span className="font-medium">{t}</span>
+                <span className={`font-mono font-bold ${c==='green'?'text-green-400':c==='amber'?'text-amber-400':'text-red-400'}`}>{time}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom-left Offline capsule */}
+          <div className="absolute bottom-0 left-0 -translate-x-6 translate-y-8 z-20 bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-2xl border border-amber-200 w-52">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">📶</div>
+              <div>
+                <p className="text-xs font-bold text-gray-800">Offline Ready</p>
+                <p className="text-[9px] text-gray-500">12 bills queued</p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              {(['⚡ Instant local print','🔄 Auto-synced on reconnect','🛡️ Zero data loss'] as string[]).map(t=>(
+                <p key={t} className="text-[9px] text-gray-600">{t}</p>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* How it works */}
