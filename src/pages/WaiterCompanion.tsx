@@ -36,6 +36,7 @@ import {
     X,
     LayoutGrid,
     List,
+    ArrowLeftRight,
     ArrowRightLeft,
     Printer,
     Sun,
@@ -340,6 +341,27 @@ const WaiterCompanion: React.FC = () => {
             supabase.removeChannel(ordersChannel);
         };
     }, [adminId, fetchTableOrders, fetchTables]);
+
+    useEffect(() => {
+        const handleTableStatusChanged = (event: Event) => {
+            const detail = (event as CustomEvent)?.detail;
+            fetchTables();
+            fetchTableOrders();
+            if (
+                detail?.fromTable &&
+                selectedTable?.table_number === detail.fromTable
+            ) {
+                setSelectedTable(null);
+                if (activeTab === 'menu' || activeTab === 'cart') {
+                    setActiveTab('tables');
+                }
+            }
+        };
+        window.addEventListener('table-status-changed', handleTableStatusChanged);
+        return () => {
+            window.removeEventListener('table-status-changed', handleTableStatusChanged);
+        };
+    }, [fetchTables, fetchTableOrders, selectedTable, activeTab]);
 
     // Fetch active menu items
     const fetchMenu = useCallback(async () => {
@@ -1062,8 +1084,8 @@ const WaiterCompanion: React.FC = () => {
 
             {/* Active Table Order Context Bar (shown while taking Menu / Cart order) */}
             {selectedTable && (activeTab === 'menu' || activeTab === 'cart') && (
-                <div className="bg-white/95 dark:bg-gray-900/95 border-b border-gray-100 dark:border-gray-800 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
-                    <div className="flex items-center gap-2 min-w-0">
+                <div className="bg-white/95 dark:bg-gray-900/95 border-b border-gray-100 dark:border-gray-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
                         <Button
                             type="button"
                             variant="ghost"
@@ -1077,6 +1099,18 @@ const WaiterCompanion: React.FC = () => {
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#C0392B]/10 text-[#C0392B] dark:text-red-300 text-xs font-bold">
                             Table {selectedTable.table_number}
                         </span>
+                        {(selectedTable.status === 'occupied' || tableOrders.some(o => o.table_number === selectedTable.table_number)) && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setMoveDialogOpen(true)}
+                                className="h-8 px-2.5 text-xs font-semibold rounded-lg border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                            >
+                                <ArrowLeftRight className="w-4 h-4 mr-2" />
+                                Move Table
+                            </Button>
+                        )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                         <button
@@ -1404,6 +1438,18 @@ const WaiterCompanion: React.FC = () => {
                                                     <div className="flex items-center gap-1.5">
                                                         {matchingTable && (
                                                             <>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setSelectedTable(matchingTable);
+                                                                        setMoveDialogOpen(true);
+                                                                    }}
+                                                                    className="h-7 px-2 text-[11px] rounded-lg border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                                                                >
+                                                                    <ArrowLeftRight className="w-3 h-3 mr-1" /> Move
+                                                                </Button>
                                                                 <Button
                                                                     type="button"
                                                                     variant="outline"
@@ -2110,7 +2156,8 @@ const WaiterCompanion: React.FC = () => {
             {/* Bottom Navigation Bar */}
             <nav
                 aria-label="Waiter companion navigation"
-                className="fixed bottom-0 left-0 right-0 md:sticky md:bottom-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center justify-around py-2 px-4 z-[55] shrink-0"
+                className="fixed bottom-0 left-0 right-0 md:sticky md:bottom-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center justify-around py-2 px-4 pb-safe z-[55] shrink-0"
+                style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}
             >
                 {([
                     {
@@ -2216,7 +2263,7 @@ const WaiterCompanion: React.FC = () => {
 
             {/* Sticky Floating Cart Bar */}
             {activeTab !== 'cart' && cart.length > 0 && createPortal(
-                <div className="fixed bottom-[68px] left-0 right-0 z-[9999] px-3 pb-1 pointer-events-none animate-in slide-in-from-bottom-5 duration-300">
+                <div className="fixed bottom-[72px] left-0 right-0 z-[9999] px-3 pb-1 pointer-events-none animate-in slide-in-from-bottom-5 duration-300">
                     <div className="bg-gradient-to-r from-[#C0392B] via-[#A93226] to-[#922B21] text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-red-300/30 flex items-center justify-between backdrop-blur-md pointer-events-auto">
                         <div
                             onClick={() => setActiveTab('cart')}
@@ -2295,7 +2342,12 @@ const WaiterCompanion: React.FC = () => {
             <TableMoveDialog
                 open={moveDialogOpen}
                 onOpenChange={setMoveDialogOpen}
-                onMoveSuccess={() => fetchTables()}
+                defaultFromTable={selectedTable?.table_number}
+                fromTableId={selectedTable?.id}
+                onMoveSuccess={() => {
+                    fetchTables();
+                    fetchTableOrders();
+                }}
             />
         </div>
     );

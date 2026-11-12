@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { ArrowRightLeft, MoveRight, Users, Utensils, CheckCircle2, AlertCircle } from 'lucide-react';
-import { executeTableMove } from '@/utils/tableMoveUtils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import { ArrowRightLeft, MoveRight, AlertCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '@/contexts/BranchContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ interface TableMoveDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultFromTable?: string;
+  fromTableId?: string;
   onMoveSuccess?: () => void;
 }
 
@@ -22,6 +23,7 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
   open,
   onOpenChange,
   defaultFromTable,
+  fromTableId,
   onMoveSuccess
 }) => {
   const { adminProfileId } = useAuth();
@@ -34,25 +36,49 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
   const [fromSeat, setFromSeat] = useState<string>('all');
   const [toSeat, setToSeat] = useState<string>('auto');
   const [availableSeats, setAvailableSeats] = useState<string[]>([]);
+  const [moveAll, setMoveAll] = useState<boolean>(true);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [showMergeConfirm, setShowMergeConfirm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [moving, setMoving] = useState<boolean>(false);
 
   // Load active occupied tables & configured table layout
   useEffect(() => {
-    if (!open || !operatingBranchId || !adminProfileId) return;
+    if (!open || !adminProfileId) return;
+
+    setMoveAll(true);
+    setFromSeat('all');
+    setToSeat('auto');
+    setShowMergeConfirm(false);
 
     const loadData = async () => {
       setLoading(true);
       try {
-        // Fetch active occupied tables with order details
-        const { data: activeOrders } = await (supabase as any)
-          .from('orders')
-          .select('id, table_number, seat_id, total_amount, status, created_at')
+        // Fetch all configured tables first so we can resolve IDs and statuses
+        let tablesQuery = (supabase as any)
+          .from('tables')
+          .select('id, table_number, table_name, capacity, status')
           .eq('admin_id', adminProfileId)
-          .eq('branch_id', operatingBranchId)
-          .in('status', ['pending', 'preparing', 'ready', 'served']);
+          .eq('is_active', true)
+          .order('table_number', { ascending: true });
+        if (operatingBranchId) {
+          tablesQuery = tablesQuery.eq('branch_id', operatingBranchId);
+        }
+        const { data: tablesData } = await tablesQuery;
 
-        // Group by table number
+        // Fetch active unbilled table orders
+        let ordersQuery = (supabase as any)
+          .from('table_orders')
+          .select('id, order_number, table_number, seat_id, seat_label, items, total_amount, status, created_at')
+          .eq('admin_id', adminProfileId)
+          .eq('is_billed', false)
+          .in('status', ['pending', 'preparing', 'ready', 'served']);
+        if (operatingBranchId) {
+          ordersQuery = ordersQuery.eq('branch_id', operatingBranchId);
+        }
+        const { data: activeOrders } = await ordersQuery;
+
+        // Group active orders by table number
         const tableMap: Record<string, { table_number: string; orders: any[]; seats: Set<string>; total: number }> = {};
         (activeOrders || []).forEach((o: any) => {
           const tNo = String(o.table_number);
@@ -61,38 +87,52 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
           }
           tableMap[tNo].orders.push(o);
           tableMap[tNo].total += Number(o.total_amount || 0);
-          if (o.seat_id) tableMap[tNo].seats.add(o.seat_id);
+          const seatVal = o.seat_id || o.seat_label;
+          if (seatVal) tableMap[tNo].seats.add(String(seatVal));
         });
 
-        const activeList = Object.values(tableMap).sort((a, b) => a.table_number.localeCompare(b.table_number, undefined, { numeric: true }));
+        // Include tables marked occupied even if they currently have 0 open orders
+        (tablesData || []).forEach((t: any) => {
+          const tNo = String(t.table_number);
+          if (t.status === 'occupied' && !tableMap[tNo]) {
+            tableMap[tNo] = { table_number: tNo, orders: [], seats: new Set(), total: 0 };
+          }
+        });
+
+        const activeList = Object.values(tableMap).sort((a, b) =>
+          a.table_number.localeCompare(b.table_number, undefined, { numeric: true })
+        );
         setActiveTablesList(activeList);
 
-        // Set default selected source table
-        if (defaultFromTable && tableMap[defaultFromTable]) {
-          setFromTable(defaultFromTable);
-        } else if (activeList.length > 0) {
-          setFromTable(activeList[0].table_number);
-        }
-
-        // Fetch all configured tables for destination picker
-        const { data: tablesData } = await (supabase as any)
-          .from('tables')
-          .select('id, table_number, table_name, capacity, status, is_occupied')
-          .eq('branch_id', operatingBranchId)
-          .order('table_number', { ascending: true });
-
-        const configured = (tablesData || []).sort((a: any, b: any) => 
-          String(a.table_number).localeCompare(String(b.table_number), undefined, { numeric: true })
-        );
+        const configured = (tablesData || [])
+          .map((t: any) => ({
+            ...t,
+            is_occupied: t.status === 'occupied' || Boolean(tableMap[String(t.table_number)]),
+          }))
+          .sort((a: any, b: any) =>
+            String(a.table_number).localeCompare(String(b.table_number), undefined, { numeric: true })
+          );
         setAllConfiguredTables(configured);
 
-        // Default to-table (first available table not equal to fromTable)
-        const firstAvailable = configured.find((t: any) => t.table_number !== defaultFromTable && !t.is_occupied);
+        const resolvedFromTable =
+          (fromTableId && configured.find((t: any) => t.id === fromTableId)?.table_number) ||
+          defaultFromTable;
+
+        let chosenFrom = '';
+        if (resolvedFromTable && tableMap[resolvedFromTable]) {
+          chosenFrom = resolvedFromTable;
+        } else if (activeList.length > 0) {
+          chosenFrom = activeList[0].table_number;
+        }
+        setFromTable(chosenFrom);
+
+        // Default to-table (first available table not equal to chosenFrom)
+        const firstAvailable = configured.find((t: any) => t.table_number !== chosenFrom && !t.is_occupied);
         if (firstAvailable) {
           setToTable(firstAvailable.table_number);
         } else if (configured.length > 0) {
-          const alt = configured.find((t: any) => t.table_number !== defaultFromTable);
-          if (alt) setToTable(alt.table_number);
+          const alt = configured.find((t: any) => t.table_number !== chosenFrom);
+          setToTable(alt ? alt.table_number : '');
         }
       } catch (err) {
         console.error('Error loading table move data:', err);
@@ -102,9 +142,9 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
     };
 
     loadData();
-  }, [open, operatingBranchId, adminProfileId, defaultFromTable]);
+  }, [open, operatingBranchId, adminProfileId, defaultFromTable, fromTableId]);
 
-  // Update available seats for source table
+  // Update available seats & default selected orders for source table
   useEffect(() => {
     if (!fromTable) return;
     const selectedObj = activeTablesList.find(t => t.table_number === fromTable);
@@ -114,55 +154,173 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
       setAvailableSeats([]);
       setFromSeat('all');
     }
+    setSelectedOrderIds((selectedObj?.orders || []).map((o: any) => o.id));
+    setShowMergeConfirm(false);
   }, [fromTable, activeTablesList]);
 
-  const handleExecuteMove = async () => {
-    if (!fromTable || !toTable) {
-      toast({ title: 'Invalid Selection', description: 'Please select both source and destination tables.', variant: 'destructive' });
-      return;
-    }
-    if (fromTable === toTable && (fromSeat === 'all' || fromSeat === toSeat)) {
-      toast({ title: 'Invalid Transfer', description: 'Source and destination tables must be different.', variant: 'destructive' });
-      return;
-    }
+  useEffect(() => {
+    setShowMergeConfirm(false);
+  }, [toTable, moveAll, fromSeat]);
 
+  const selectedSourceObj = useMemo(
+    () => activeTablesList.find(t => t.table_number === fromTable),
+    [activeTablesList, fromTable]
+  );
+
+  const selectedDestObj = useMemo(
+    () => allConfiguredTables.find(t => t.table_number === toTable),
+    [allConfiguredTables, toTable]
+  );
+
+  const isDestinationOccupied = Boolean(
+    selectedDestObj?.is_occupied ||
+    selectedDestObj?.status === 'occupied' ||
+    activeTablesList.some(t => t.table_number === toTable)
+  );
+
+  const ordersToMove = useMemo(() => {
+    const allOrders = selectedSourceObj?.orders || [];
+    if (moveAll) {
+      if (fromSeat === 'all') return allOrders;
+      return allOrders.filter((o: any) => (o.seat_id || o.seat_label) === fromSeat);
+    }
+    return allOrders.filter((o: any) => selectedOrderIds.includes(o.id));
+  }, [selectedSourceObj, moveAll, fromSeat, selectedOrderIds]);
+
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds(prev =>
+      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+    );
+  };
+
+  const performTableMove = async () => {
+    if (!adminProfileId) return;
     setMoving(true);
     try {
-      const res = await executeTableMove({
-        fromTable,
-        toTable,
-        fromSeat: fromSeat === 'all' ? null : fromSeat,
-        toSeat: toSeat === 'auto' ? null : toSeat,
-        adminId: adminProfileId!,
-        branchId: operatingBranchId!,
-      });
+      const targetOrderIds = ordersToMove.map((o: any) => o.id);
+      const sourceHasOrders = (selectedSourceObj?.orders?.length || 0) > 0;
 
-      if (res.success) {
-        toast({
-          title: '🔄 Table Moved Successfully',
-          description: res.message,
-        });
-        onOpenChange(false);
-        if (onMoveSuccess) onMoveSuccess();
-      } else {
-        toast({
-          title: 'Transfer Failed',
-          description: res.message,
-          variant: 'destructive',
-        });
+      if (sourceHasOrders && targetOrderIds.length === 0) {
+        toast.error('Please select at least one order to move.');
+        setMoving(false);
+        return;
       }
+
+      if (targetOrderIds.length > 0) {
+        const updatePayload: Record<string, any> = {
+          table_number: toTable,
+          updated_at: new Date().toISOString(),
+        };
+        if (toSeat !== 'auto') {
+          updatePayload.seat_id = toSeat;
+          updatePayload.seat_label = toSeat;
+        }
+
+        const { error: updateErr } = await (supabase as any)
+          .from('table_orders')
+          .update(updatePayload)
+          .in('id', targetOrderIds);
+
+        if (updateErr) throw updateErr;
+      }
+
+      // Check if source table has any remaining active unbilled orders
+      let leftoverQuery = (supabase as any)
+        .from('table_orders')
+        .select('id')
+        .eq('admin_id', adminProfileId)
+        .eq('table_number', fromTable)
+        .eq('is_billed', false)
+        .in('status', ['pending', 'preparing', 'ready', 'served']);
+      if (operatingBranchId) {
+        leftoverQuery = leftoverQuery.eq('branch_id', operatingBranchId);
+      }
+      const { data: sourceLeftovers } = await leftoverQuery;
+
+      const sourceTableRecord = allConfiguredTables.find(t => String(t.table_number) === String(fromTable));
+      const destTableRecord = allConfiguredTables.find(t => String(t.table_number) === String(toTable));
+
+      if (!sourceLeftovers || sourceLeftovers.length === 0) {
+        let srcUpdate = (supabase as any)
+          .from('tables')
+          .update({ status: 'available' })
+          .eq('admin_id', adminProfileId)
+          .eq('table_number', fromTable);
+        if (operatingBranchId) srcUpdate = srcUpdate.eq('branch_id', operatingBranchId);
+        await srcUpdate;
+      }
+
+      let dstUpdate = (supabase as any)
+        .from('tables')
+        .update({ status: 'occupied' })
+        .eq('admin_id', adminProfileId)
+        .eq('table_number', toTable);
+      if (operatingBranchId) dstUpdate = dstUpdate.eq('branch_id', operatingBranchId);
+      await dstUpdate;
+
+      // Best-effort update of pending service requests
+      try {
+        let srQuery = (supabase as any)
+          .from('service_requests')
+          .update({ table_number: toTable })
+          .eq('table_number', fromTable)
+          .eq('status', 'pending');
+        if (operatingBranchId) srQuery = srQuery.eq('branch_id', operatingBranchId);
+        await srQuery;
+      } catch {
+        // Non-fatal
+      }
+
+      const resolvedFromId = sourceTableRecord?.id || fromTable;
+      const resolvedToId = destTableRecord?.id || toTable;
+
+      window.dispatchEvent(new CustomEvent('table-status-changed', {
+        detail: { from: resolvedFromId, to: resolvedToId, fromTable, toTable }
+      }));
+      window.dispatchEvent(new CustomEvent('table-moved', {
+        detail: {
+          fromTable,
+          toTable,
+          fromSeat: fromSeat === 'all' ? null : fromSeat,
+          toSeat: toSeat === 'auto' ? null : toSeat,
+          orderIds: targetOrderIds
+        }
+      }));
+      window.dispatchEvent(new Event('bills-updated'));
+      window.dispatchEvent(new Event('orders-updated'));
+
+      toast.success(`Orders moved from Table ${fromTable} to Table ${toTable} ✓`);
+      setShowMergeConfirm(false);
+      onOpenChange(false);
+      if (onMoveSuccess) onMoveSuccess();
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to move table.',
-        variant: 'destructive',
-      });
+      toast.error(err.message || 'Failed to move table.');
     } finally {
       setMoving(false);
     }
   };
 
-  const selectedSourceObj = activeTablesList.find(t => t.table_number === fromTable);
+  const handleExecuteMove = async () => {
+    if (!fromTable || !toTable) {
+      toast.error('Please select both source and destination tables.');
+      return;
+    }
+    if (fromTable === toTable && (toSeat === 'auto' || (moveAll && fromSeat === 'all') || fromSeat === toSeat)) {
+      toast.error('Source and destination tables must be different.');
+      return;
+    }
+    if ((selectedSourceObj?.orders?.length || 0) > 0 && ordersToMove.length === 0) {
+      toast.error('Please select at least one order to move.');
+      return;
+    }
+
+    if (isDestinationOccupied && !showMergeConfirm) {
+      setShowMergeConfirm(true);
+      return;
+    }
+
+    await performTableMove();
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -192,7 +350,7 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
               <div className="text-center">
                 <span className="text-[10px] text-muted-foreground font-semibold uppercase block">From Source</span>
                 <span className="text-lg font-black text-primary">T{fromTable || '?'}</span>
-                {fromSeat !== 'all' && <span className="text-[11px] font-bold block text-muted-foreground">{fromSeat}</span>}
+                {moveAll && fromSeat !== 'all' && <span className="text-[11px] font-bold block text-muted-foreground">{fromSeat}</span>}
               </div>
 
               <MoveRight className="w-6 h-6 text-primary animate-pulse" />
@@ -226,7 +384,7 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
                   </Select>
                 </div>
 
-                <Select value={fromSeat} onValueChange={setFromSeat}>
+                <Select value={fromSeat} onValueChange={setFromSeat} disabled={!moveAll}>
                   <SelectTrigger className="h-10 text-xs font-medium">
                     <SelectValue placeholder="Seat" />
                   </SelectTrigger>
@@ -289,16 +447,116 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
               </div>
             </div>
 
+            {/* Move All vs Select Items/Orders Toggle */}
+            {selectedSourceObj && selectedSourceObj.orders.length > 0 && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-muted border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setMoveAll(true)}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-bold transition-colors ${
+                      moveAll
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Move all orders
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMoveAll(false)}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-bold transition-colors ${
+                      !moveAll
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Select items to move
+                  </button>
+                </div>
+
+                {!moveAll && (
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-xl border border-border bg-muted/30">
+                    {selectedSourceObj.orders.map((order: any) => {
+                      const checked = selectedOrderIds.includes(order.id);
+                      const itemsSummary = Array.isArray(order.items)
+                        ? order.items.map((it: any) => `${it.quantity ?? 1}× ${it.name}`).join(', ')
+                        : '';
+                      return (
+                        <label
+                          key={order.id}
+                          className="flex items-start gap-2.5 p-2 rounded-lg bg-background border border-border/70 cursor-pointer hover:border-primary/40 text-xs"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleOrderSelection(order.id)}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 font-semibold">
+                              <span>
+                                Order #{order.order_number}
+                                {(order.seat_label || order.seat_id) ? ` · ${order.seat_label || order.seat_id}` : ''}
+                              </span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                ₹{Math.round(Number(order.total_amount || 0))}
+                              </span>
+                            </div>
+                            {itemsSummary && (
+                              <p className="text-[11px] text-muted-foreground truncate">{itemsSummary}</p>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Transfer Details Card */}
             {selectedSourceObj && (
               <div className="p-3 rounded-xl bg-muted/60 text-xs space-y-1.5 border border-border">
                 <div className="flex justify-between font-semibold">
                   <span>Moving Orders:</span>
-                  <span className="font-bold text-primary">{selectedSourceObj.orders.length} Active Orders</span>
+                  <span className="font-bold text-primary">{ordersToMove.length} Active Orders</span>
                 </div>
                 <div className="flex justify-between font-semibold">
                   <span>Transfer Bill Value:</span>
-                  <span className="font-black text-emerald-600 dark:text-emerald-400">₹{Math.round(selectedSourceObj.total)}</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400">
+                    ₹{Math.round(ordersToMove.reduce((sum: number, o: any) => sum + Number(o.total_amount || 0), 0))}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Destination Occupied Merge Warning */}
+            {showMergeConfirm && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 space-y-2">
+                <div className="flex items-start gap-2 text-amber-800 dark:text-amber-200 text-xs font-semibold">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>Table {toTable} is currently occupied. Moving will merge orders.</span>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={moving}
+                    onClick={() => setShowMergeConfirm(false)}
+                    className="h-7 text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={moving}
+                    onClick={performTableMove}
+                    className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                  >
+                    {moving ? 'Merging...' : 'Confirm Merge'}
+                  </Button>
                 </div>
               </div>
             )}
@@ -309,13 +567,15 @@ export const TableMoveDialog: React.FC<TableMoveDialogProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={moving}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleExecuteMove} 
-            disabled={moving || activeTablesList.length === 0}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
-          >
-            {moving ? 'Transferring...' : 'Confirm Table & Seat Move'}
-          </Button>
+          {!showMergeConfirm && (
+            <Button
+              onClick={handleExecuteMove}
+              disabled={moving || activeTablesList.length === 0 || !toTable}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md"
+            >
+              {moving ? 'Transferring...' : 'Confirm Table & Seat Move'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
