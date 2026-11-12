@@ -321,7 +321,7 @@ const OrderCheckoutContent: React.FC<{
     <div className={`flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0 ${isMobileSheet ? 'max-h-[36vh]' : ''}`}>
       {cart.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center py-10 px-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#F2EDE4] dark:bg-[#22262C] flex items-center justify-center mb-3 text-amber-600">
+          <div className="w-12 h-12 rounded-2xl bg-muted dark:bg-[#22262C] flex items-center justify-center mb-3 text-amber-600">
             <ShoppingCart className="h-5 w-5" />
           </div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">No items in order</p>
@@ -330,9 +330,9 @@ const OrderCheckoutContent: React.FC<{
       ) : cart.map(item => (
         <div
           key={item.id}
-          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white dark:bg-[#22262C] border border-[#E2DFD7]/80 dark:border-[#2C313A] shadow-2xs"
+          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white dark:bg-[#22262C] border border-border/80 dark:border-[#2C313A] shadow-2xs"
         >
-          <div className="w-12 h-12 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-xl shrink-0">
+          <div className="w-12 h-12 rounded-lg bg-muted/50 border border-amber-100 flex items-center justify-center text-xl shrink-0">
             {ITEM_EMOJI[item.id] ?? '🍽️'}
           </div>
           <div className="min-w-0 flex-1">
@@ -379,7 +379,7 @@ const OrderCheckoutContent: React.FC<{
 
     {/* Discount Pills */}
     {cart.length > 0 && (
-      <div className="px-4 py-2.5 border-t border-[#E2DFD7] dark:border-[#262B31] shrink-0">
+      <div className="px-4 py-2.5 border-t border-border dark:border-border shrink-0">
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5 font-medium">Quick Discount</p>
         <div className="flex gap-1.5 flex-wrap">
           {DISCOUNTS.map(d => (
@@ -389,7 +389,7 @@ const OrderCheckoutContent: React.FC<{
               onClick={() => setSelectedDiscount(d)}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
                 selectedDiscount.label === d.label
-                  ? 'bg-[#F2A93B] text-black shadow-2xs'
+                  ? 'bg-[hsl(var(--primary))] text-black shadow-2xs'
                   : 'bg-white text-gray-600 border border-gray-200 hover:border-amber-300 dark:bg-[#22262C] dark:text-gray-300 dark:border-[#323740]'
               }`}
             >
@@ -401,9 +401,9 @@ const OrderCheckoutContent: React.FC<{
     )}
 
     {/* Summary Box, Tender Tabs & Pay CTA */}
-    <div className="p-4 border-t border-[#E2DFD7] dark:border-[#262B31] space-y-3 shrink-0">
+    <div className="p-4 border-t border-border dark:border-border space-y-3 shrink-0">
       {cart.length > 0 && (
-        <div className="bg-[#F2EDE4] dark:bg-[#22262C] p-4 rounded-xl space-y-1.5 text-sm">
+        <div className="bg-muted dark:bg-[#22262C] p-4 rounded-xl space-y-1.5 text-sm">
           <div className="flex justify-between text-gray-600 dark:text-gray-300">
             <span>Subtotal</span>
             <span className="tabular-nums">₹{subtotal}</span>
@@ -424,7 +424,7 @@ const OrderCheckoutContent: React.FC<{
             <span>GST @5%</span>
             <span className="tabular-nums">₹{gst}</span>
           </div>
-          <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-[#E2DFD7] dark:border-[#323740] text-gray-900 dark:text-white">
+          <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-border dark:border-[#323740] text-gray-900 dark:text-white">
             <span>Total</span>
             <span className="tabular-nums">₹{total}</span>
           </div>
@@ -444,7 +444,7 @@ const OrderCheckoutContent: React.FC<{
             onClick={() => setPaymentMethod(tab.id)}
             className={`py-2 text-xs flex items-center justify-center gap-1.5 transition-all ${
               paymentMethod === tab.id
-                ? 'bg-[#F2A93B] text-black font-semibold rounded-lg shadow-2xs'
+                ? 'bg-[hsl(var(--primary))] text-black font-semibold rounded-lg shadow-2xs'
                 : 'border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-100 dark:border-[#323740] dark:text-gray-300 dark:hover:bg-[#22262C]'
             }`}
           >
@@ -459,7 +459,7 @@ const OrderCheckoutContent: React.FC<{
         type="button"
         disabled={cart.length === 0}
         onClick={onPay}
-        style={{ background: '#F2A93B' }}
+        style={{ background: 'hsl(var(--primary))' }}
         className="w-full py-3.5 rounded-xl font-bold text-neutral-950 shadow-md flex items-center justify-center gap-2 transition-all hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Receipt className="h-4 w-4" />
@@ -582,13 +582,13 @@ const DemoBilling: React.FC = () => {
   return (
     <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col md:flex-row bg-[#F6F5F2] dark:bg-[#121518]">
       {/* Mobile Obsidian Top Bar */}
-      <div className="md:hidden bg-[#14171A] text-white px-4 py-2.5 flex items-center justify-between border-b border-[#262B31] shrink-0">
+      <div className="md:hidden bg-[#14171A] text-white px-4 py-2.5 flex items-center justify-between border-b border-border shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="text-lg tracking-tight leading-none">
             <span className="text-white font-black">Zen</span>
-            <span style={{ color: '#F2A93B' }} className="font-black">POS</span>
+            <span style={{ color: 'hsl(var(--primary))' }} className="font-black">POS</span>
           </div>
-          <Badge className="bg-[#F2A93B]/20 text-[#F2A93B] border border-[#F2A93B]/40 text-[10px] font-bold px-2 py-0.5 hover:bg-[#F2A93B]/20">
+          <Badge className="bg-[hsl(var(--primary))]/20 text-[hsl(var(--primary))] border border-[hsl(var(--primary))]/40 text-[10px] font-bold px-2 py-0.5 hover:bg-[hsl(var(--primary))]/20">
             DEMO
           </Badge>
         </div>
@@ -598,14 +598,14 @@ const DemoBilling: React.FC = () => {
             type="button"
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="w-8 h-8 rounded-lg bg-[#1C2024] border border-[#262B31] flex items-center justify-center text-gray-300 hover:text-white"
+            className="w-8 h-8 rounded-lg bg-card dark:bg-card border border-border flex items-center justify-center text-gray-300 hover:text-white"
           >
             {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
           </button>
           <button
             type="button"
             onClick={exitDemo}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-[#1C2024] border border-[#262B31]"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-card dark:bg-card border border-border"
           >
             <X className="h-3.5 w-3.5" /> Exit
           </button>
@@ -613,13 +613,13 @@ const DemoBilling: React.FC = () => {
       </div>
 
       {/* ── LEFT NAVIGATION RAIL ── */}
-      <aside className="hidden md:flex md:w-52 lg:w-56 bg-[#14171A] text-white flex-col justify-between p-4 border-r border-[#262B31] shrink-0">
+      <aside className="hidden md:flex md:w-52 lg:w-56 bg-[#14171A] text-white flex-col justify-between p-4 border-r border-border shrink-0">
         <div>
           {/* Brand */}
-          <div className="px-2 pt-1 pb-5 border-b border-[#262B31]/80 mb-4">
+          <div className="px-2 pt-1 pb-5 border-b border-border/80 mb-4">
             <div className="text-2xl tracking-tight leading-none">
               <span className="text-white font-black">Zen</span>
-              <span style={{ color: '#F2A93B' }} className="font-black">POS</span>
+              <span style={{ color: 'hsl(var(--primary))' }} className="font-black">POS</span>
             </div>
             <p className="text-[11px] italic text-gray-400 mt-1.5 leading-snug">
               Good food brings people together
@@ -637,7 +637,7 @@ const DemoBilling: React.FC = () => {
                   onClick={() => handleNavClick(item.id)}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-sm transition-colors ${
                     isActive
-                      ? 'bg-[#F2A93B] text-black rounded-xl font-semibold shadow-sm'
+                      ? 'bg-[hsl(var(--primary))] text-black rounded-xl font-semibold shadow-sm'
                       : 'text-gray-400 hover:text-white rounded-xl'
                   }`}
                 >
@@ -650,11 +650,11 @@ const DemoBilling: React.FC = () => {
         </div>
 
         {/* Bottom Demo Exit & Online Status */}
-        <div className="space-y-3 pt-4 border-t border-[#262B31]">
+        <div className="space-y-3 pt-4 border-t border-border">
           <button
             type="button"
             onClick={exitDemo}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-[#1C2024] border border-[#262B31] transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-card dark:bg-card border border-border transition-colors"
           >
             <span>Exit Demo</span>
             <LogOut className="h-3.5 w-3.5" />
@@ -675,7 +675,7 @@ const DemoBilling: React.FC = () => {
         {/* Top Demo + Order Type Bar */}
         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap shrink-0">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-nowrap py-0.5">
-            <Badge className="shrink-0 bg-[#F2A93B]/20 text-amber-800 dark:text-[#F2A93B] border border-[#F2A93B]/50 text-[11px] font-bold hover:bg-[#F2A93B]/20">
+            <Badge className="shrink-0 bg-[hsl(var(--primary))]/20 text-amber-800 dark:text-[hsl(var(--primary))] border border-[hsl(var(--primary))]/50 text-[11px] font-bold hover:bg-[hsl(var(--primary))]/20">
               DEMO MODE
             </Badge>
             <button
@@ -683,8 +683,8 @@ const DemoBilling: React.FC = () => {
               onClick={() => setOrderType('dine')}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 orderType === 'dine'
-                  ? 'bg-[#14171A] text-white dark:bg-[#F2A93B] dark:text-black shadow-sm'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-[#1C2024] dark:text-gray-300 dark:border-[#262B31]'
+                  ? 'bg-[#14171A] text-white dark:bg-[hsl(var(--primary))] dark:text-black shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-card dark:bg-card dark:text-gray-300 dark:border-border'
               }`}
             >
               <UtensilsCrossed className="h-3.5 w-3.5" /> Dine In
@@ -694,8 +694,8 @@ const DemoBilling: React.FC = () => {
               onClick={() => setOrderType('parcel')}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 orderType === 'parcel'
-                  ? 'bg-[#14171A] text-white dark:bg-[#F2A93B] dark:text-black shadow-sm'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-[#1C2024] dark:text-gray-300 dark:border-[#262B31]'
+                  ? 'bg-[#14171A] text-white dark:bg-[hsl(var(--primary))] dark:text-black shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-card dark:bg-card dark:text-gray-300 dark:border-border'
               }`}
             >
               <Package className="h-3.5 w-3.5" /> Parcel
@@ -709,8 +709,8 @@ const DemoBilling: React.FC = () => {
                     onClick={() => setTableNo(t)}
                     className={`shrink-0 w-7 h-7 rounded-full text-[11px] font-bold transition-all ${
                       tableNo === t
-                        ? 'bg-[#F2A93B] text-black shadow-xs'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:border-amber-300 dark:bg-[#1C2024] dark:text-gray-300 dark:border-[#262B31]'
+                        ? 'bg-[hsl(var(--primary))] text-black shadow-xs'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:border-amber-300 dark:bg-card dark:bg-card dark:text-gray-300 dark:border-border'
                     }`}
                   >
                     {t}
@@ -719,12 +719,12 @@ const DemoBilling: React.FC = () => {
               </div>
             )}
             {orderType === 'parcel' && (
-              <label className="shrink-0 flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap bg-white dark:bg-[#1C2024] px-2.5 py-1 rounded-full border border-gray-200 dark:border-[#262B31]">
+              <label className="shrink-0 flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap bg-white dark:bg-card dark:bg-card px-2.5 py-1 rounded-full border border-gray-200 dark:border-border">
                 <input
                   type="checkbox"
                   checked={packagingCharge}
                   onChange={e => setPackagingCharge(e.target.checked)}
-                  className="accent-[#F2A93B]"
+                  className="accent-[hsl(var(--primary))]"
                 />
                 +₹10 Packing
               </label>
@@ -732,14 +732,14 @@ const DemoBilling: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono bg-white dark:bg-[#1C2024] border border-gray-200 dark:border-[#262B31] px-2.5 py-1 rounded-full">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono bg-white dark:bg-card dark:bg-card border border-gray-200 dark:border-border px-2.5 py-1 rounded-full">
               Bill #{String(billCount).padStart(4, '0')}
             </span>
             <button
               type="button"
               onClick={toggleTheme}
               aria-label="Toggle dark mode"
-              className="w-8 h-8 rounded-full bg-white dark:bg-[#1C2024] border border-gray-200 dark:border-[#262B31] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:border-amber-400 transition-colors"
+              className="w-8 h-8 rounded-full bg-white dark:bg-card dark:bg-card border border-gray-200 dark:border-border flex items-center justify-center text-gray-600 dark:text-gray-300 hover:border-amber-400 transition-colors"
             >
               {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
             </button>
@@ -755,7 +755,7 @@ const DemoBilling: React.FC = () => {
               placeholder="Search dishes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full rounded-full border border-gray-200 pl-10 pr-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#F2A93B]/60 focus:border-[#F2A93B] dark:bg-[#1C2024] dark:border-[#262B31] dark:text-gray-200 dark:placeholder:text-gray-500"
+              className="w-full rounded-full border border-gray-200 pl-10 pr-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/60 focus:border-[hsl(var(--primary))] dark:bg-card dark:bg-card dark:border-border dark:text-gray-200 dark:placeholder:text-gray-500"
             />
           </div>
           <input
@@ -763,7 +763,7 @@ const DemoBilling: React.FC = () => {
             placeholder="Customer mobile (optional)"
             value={customerPhone}
             onChange={e => setCustomerPhone(e.target.value)}
-            className="w-full sm:w-52 rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#F2A93B]/60 focus:border-[#F2A93B] dark:bg-[#1C2024] dark:border-[#262B31] dark:text-gray-200 dark:placeholder:text-gray-500"
+            className="w-full sm:w-52 rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-500 placeholder:text-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/60 focus:border-[hsl(var(--primary))] dark:bg-card dark:bg-card dark:border-border dark:text-gray-200 dark:placeholder:text-gray-500"
           />
         </div>
 
@@ -776,8 +776,8 @@ const DemoBilling: React.FC = () => {
               onClick={() => setSelectedCategory(cat)}
               className={`shrink-0 transition-all ${
                 selectedCategory === cat
-                  ? 'bg-[#F2A93B] text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
-                  : 'bg-gray-100 text-gray-600 rounded-full px-4 py-1.5 text-sm hover:bg-gray-200 dark:bg-[#1C2024] dark:text-gray-300 dark:hover:bg-[#262B31]'
+                  ? 'bg-[hsl(var(--primary))] text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
+                  : 'bg-muted/70 text-muted-foreground rounded-full px-4 py-1.5 text-sm hover:bg-muted dark:bg-card dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31]'
               }`}
             >
               {cat}
@@ -793,7 +793,7 @@ const DemoBilling: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setSearch(''); setSelectedCategory('All'); }}
-                className="mt-2 px-4 py-1.5 rounded-full bg-[#F2A93B] text-black text-xs font-semibold"
+                className="mt-2 px-4 py-1.5 rounded-full bg-[hsl(var(--primary))] text-black text-xs font-semibold"
               >
                 Show All Dishes
               </button>
@@ -814,20 +814,20 @@ const DemoBilling: React.FC = () => {
                     addToCart(item);
                   }
                 }}
-                className={`relative rounded-2xl bg-[#1C2024] overflow-hidden border transition-all cursor-pointer select-none hover:shadow-lg active:scale-[0.98] ${
-                  inCart ? 'border-[#F2A93B] ring-1 ring-[#F2A93B]/50' : 'border-[#262B31] hover:border-[#F2A93B]/50'
+                className={`relative rounded-2xl bg-card dark:bg-card overflow-hidden border transition-all cursor-pointer select-none hover:shadow-lg active:scale-[0.98] ${
+                  inCart ? 'border-[hsl(var(--primary))] ring-1 ring-[hsl(var(--primary))]/50' : 'border-border hover:border-[hsl(var(--primary))]/50'
                 }`}
               >
                 {/* Image / Emoji Placeholder Area */}
-                <div className="relative bg-amber-50 h-32 w-full flex items-center justify-center text-4xl">
+                <div className="relative bg-muted/50 h-32 w-full flex items-center justify-center text-4xl">
                   <span>{emoji}</span>
                   {isBestseller && (
-                    <span className="absolute top-2 left-2 bg-[#F2A93B] text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                    <span className="absolute top-2 left-2 bg-[hsl(var(--primary))] text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
                       Bestseller
                     </span>
                   )}
                   {inCart && (
-                    <span className="absolute top-2 right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#F2A93B] text-black font-bold text-xs flex items-center justify-center shadow-md ring-2 ring-[#1C2024]">
+                    <span className="absolute top-2 right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[hsl(var(--primary))] text-black font-bold text-xs flex items-center justify-center shadow-md ring-2 ring-[#1C2024]">
                       {inCart.quantity}
                     </span>
                   )}
@@ -848,7 +848,7 @@ const DemoBilling: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-amber-400 font-bold text-base tabular-nums">₹{item.price}</span>
+                    <span className="text-foreground font-bold text-base tabular-nums">₹{item.price}</span>
                     <button
                       type="button"
                       aria-label={`Add ${item.name}`}
@@ -856,7 +856,7 @@ const DemoBilling: React.FC = () => {
                         e.stopPropagation();
                         addToCart(item);
                       }}
-                      className="w-8 h-8 rounded-full bg-[#EAA838] text-black flex items-center justify-center font-bold hover:scale-105 transition-transform text-lg shrink-0 shadow-sm"
+                      className="w-8 h-8 rounded-full bg-[hsl(var(--primary))] text-black flex items-center justify-center font-bold hover:scale-105 transition-transform text-lg shrink-0 shadow-sm"
                     >
                       +
                     </button>
@@ -869,11 +869,11 @@ const DemoBilling: React.FC = () => {
       </main>
 
       {/* ── RIGHT ORDER PANEL (Checkout Ledger) ── */}
-      <aside className="hidden lg:flex lg:w-80 xl:w-96 bg-[#FAF9F6] border-l border-[#E2DFD7] dark:bg-[#181B20] dark:border-[#262B31] flex-col shrink-0 min-h-0">
+      <aside className="hidden lg:flex lg:w-80 xl:w-96 bg-background border-l border-border dark:bg-[#181B20] dark:border-border flex-col shrink-0 min-h-0">
         {/* Table Header */}
-        <div className="p-4 border-b border-[#E2DFD7] dark:border-[#262B31] flex items-center justify-between gap-2 shrink-0">
+        <div className="p-4 border-b border-border dark:border-border flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-muted/500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Armchair className="h-4 w-4" />
             </div>
             <div className="min-w-0">
@@ -886,7 +886,7 @@ const DemoBilling: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowTablePicker(prev => !prev)}
-            className="text-amber-600 font-semibold text-sm border border-amber-300 rounded-lg px-3 py-1 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-950/40 transition-colors shrink-0"
+            className="text-amber-600 font-semibold text-sm border border-amber-300 rounded-lg px-3 py-1 hover:bg-muted/50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-950/40 transition-colors shrink-0"
           >
             Change
           </button>
@@ -894,7 +894,7 @@ const DemoBilling: React.FC = () => {
 
         {/* Inline Table / Order-Type Picker */}
         {showTablePicker && (
-          <div className="px-4 py-3 bg-[#F2EDE4] dark:bg-[#22262C] border-b border-[#E2DFD7] dark:border-[#262B31] space-y-2.5 shrink-0">
+          <div className="px-4 py-3 bg-muted dark:bg-[#22262C] border-b border-border dark:border-border space-y-2.5 shrink-0">
             <div className="flex items-center gap-2">
               {(['dine', 'parcel'] as const).map(type => (
                 <button
@@ -903,7 +903,7 @@ const DemoBilling: React.FC = () => {
                   onClick={() => setOrderType(type)}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     orderType === type
-                      ? 'bg-[#F2A93B] text-black'
+                      ? 'bg-[hsl(var(--primary))] text-black'
                       : 'bg-white text-gray-600 border border-gray-200 dark:bg-[#181B20] dark:text-gray-300 dark:border-[#323740]'
                   }`}
                 >
@@ -921,7 +921,7 @@ const DemoBilling: React.FC = () => {
                       onClick={() => setTableNo(t)}
                       className={`py-1 rounded-md text-xs font-bold transition-colors ${
                         tableNo === t
-                          ? 'bg-[#F2A93B] text-black'
+                          ? 'bg-[hsl(var(--primary))] text-black'
                           : 'bg-white text-gray-700 border border-gray-200 hover:border-amber-300 dark:bg-[#181B20] dark:text-gray-300 dark:border-[#323740]'
                       }`}
                     >
@@ -957,7 +957,7 @@ const DemoBilling: React.FC = () => {
                   type="checkbox"
                   checked={packagingCharge}
                   onChange={e => setPackagingCharge(e.target.checked)}
-                  className="accent-[#F2A93B]"
+                  className="accent-[hsl(var(--primary))]"
                 />
               </label>
             )}
@@ -966,7 +966,7 @@ const DemoBilling: React.FC = () => {
 
         {/* KOT Indicator */}
         {cart.length > 0 && (
-          <div className="px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/80 dark:border-amber-800/60 flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300 shrink-0">
+          <div className="px-4 py-1.5 bg-muted/50 dark:bg-amber-950/30 border-b border-amber-200/80 dark:border-amber-800/60 flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300 shrink-0">
             <ChefHat className="h-3.5 w-3.5 shrink-0" />
             <span className="font-medium">KOT auto-sent to kitchen on bill</span>
           </div>
@@ -990,15 +990,15 @@ const DemoBilling: React.FC = () => {
 
       {/* Mobile Sticky Bottom Cart Bar */}
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#14171A]/95 backdrop-blur-md border-t border-[#262B31] p-3 flex items-center justify-between shadow-2xl">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#14171A]/95 backdrop-blur-md border-t border-border p-3 flex items-center justify-between shadow-2xl">
           <div className="flex flex-col">
             <span className="text-xs text-gray-400 font-medium">{cart.length} item{cart.length !== 1 ? 's' : ''} in order</span>
-            <span className="text-base font-extrabold text-[#F2A93B] tabular-nums">₹{total}</span>
+            <span className="text-base font-extrabold text-[hsl(var(--primary))] tabular-nums">₹{total}</span>
           </div>
           <button
             type="button"
             onClick={() => setMobileCartOpen(true)}
-            style={{ background: '#F2A93B' }}
+            style={{ background: 'hsl(var(--primary))' }}
             className="flex items-center gap-1.5 px-4 h-10 rounded-xl font-bold text-sm text-neutral-950 shadow-md"
           >
             <ShoppingCart className="h-4 w-4" />
@@ -1009,8 +1009,8 @@ const DemoBilling: React.FC = () => {
 
       {/* Mobile Cart Sheet */}
       <Sheet open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
-        <SheetContent side="bottom" className="max-h-[88vh] p-0 flex flex-col rounded-t-2xl bg-[#FAF9F6] dark:bg-[#181B20] border-t border-[#E2DFD7] dark:border-[#262B31]">
-          <SheetHeader className="p-4 border-b border-[#E2DFD7] dark:border-[#262B31]">
+        <SheetContent side="bottom" className="max-h-[88vh] p-0 flex flex-col rounded-t-2xl bg-background dark:bg-[#181B20] border-t border-border dark:border-border">
+          <SheetHeader className="p-4 border-b border-border dark:border-border">
             <SheetTitle className="flex items-center justify-between text-base text-gray-900 dark:text-white">
               <span className="flex items-center gap-2">
                 <Armchair className="h-4 w-4 text-amber-600" />

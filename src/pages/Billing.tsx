@@ -157,10 +157,10 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
         <button
           type="button"
           onClick={() => onSelectCategory('all')}
-          style={selectedCategory === 'all' ? { background: '#F2A93B' } : undefined}
+          style={selectedCategory === 'all' ? { background: 'hsl(var(--primary))' } : undefined}
           className={`whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === 'all'
             ? 'text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-[#1C2024] dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
             }`}
         >
           {t('common.all')} ({totalActiveItems})
@@ -170,10 +170,10 @@ const CategoryScrollBar = React.memo(({ categories, selectedCategory, onSelectCa
             key={category.id}
             type="button"
             onClick={() => onSelectCategory(category.name)}
-            style={selectedCategory === category.name ? { background: '#F2A93B' } : undefined}
+            style={selectedCategory === category.name ? { background: 'hsl(var(--primary))' } : undefined}
             className={`whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === category.name
               ? 'text-black rounded-full px-4 py-1.5 font-semibold text-sm shadow-sm'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-[#1C2024] dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-gray-300 dark:hover:bg-[#262B31] rounded-full px-4 py-1.5 text-sm'
               }`}
           >
             {category.name} ({getCategoryCount(category.name)})
@@ -252,9 +252,9 @@ const BillingGridItemCard = React.memo(({
   const lowStock = isLowStock(item);
 
   return (
-    <div className={`relative bg-white dark:bg-[#1C2024] rounded-2xl border p-4 flex flex-col shadow-sm hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-[#F2A93B] ring-1 ring-[#F2A93B]/50 shadow-md' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-[#E2DFD7] dark:border-[#262B31] hover:border-[#F2A93B]/50'}`}>
+    <div className={`relative bg-white dark:bg-card rounded-2xl border p-4 flex flex-col shadow-sm hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 ${isInCart ? 'border-[hsl(var(--primary))] ring-1 ring-[hsl(var(--primary))]/50 shadow-md' : lowStock ? 'border-orange-500 dark:border-orange-400' : 'border-border dark:border-border hover:border-[hsl(var(--primary))]/50'}`}>
       {/* Image container with quantity badge */}
-      <div className="relative aspect-[4/3] mb-1 bg-amber-50 dark:bg-[#22262B] rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative aspect-[4/3] mb-1 bg-muted/50 dark:bg-[#22262B] rounded-lg overflow-hidden flex-shrink-0">
         {/* Quick-key badge */}
         {quickCode && (
           <span className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-zinc-900/80 text-amber-300 font-mono text-[10px] font-bold shadow-sm backdrop-blur-sm border border-amber-400/30">
@@ -300,7 +300,7 @@ const BillingGridItemCard = React.memo(({
               </span>
             )}
             {isFastMover && (
-              <span style={{ background: '#F2A93B' }} className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm text-black">🔥 Fast</span>
+              <span  className="text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm text-black">🔥 Fast</span>
             )}
           </div>
         )}
@@ -315,7 +315,7 @@ const BillingGridItemCard = React.memo(({
 
       <div className="flex-1 flex flex-col min-h-0 px-0.5">
         <h3 className="font-semibold text-sm mb-0.5 line-clamp-1 flex-shrink-0 text-gray-900 dark:text-white">{item.name}</h3>
-        <p style={{ color: '#F2A93B' }} className="mb-1 flex-shrink-0 font-bold text-sm num-tabular">
+        <p className="text-foreground dark:text-white font-bold" className="mb-1 flex-shrink-0 font-bold text-sm num-tabular">
           ₹{getChannelPrice(item, orderChannel).toFixed(2)} / {item.base_value && item.base_value > 1 ? `${item.base_value}${unitLabel}` : unitLabel}
         </p>
 
@@ -325,7 +325,7 @@ const BillingGridItemCard = React.memo(({
               <Minus className="h-3 w-3" />
             </Button>
             <span className="font-bold min-w-[1.5rem] text-center text-base dark:text-white">{cartQuantity}</span>
-            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, 1)} style={{ background: '#EAA838' }} className="h-7 w-7 p-0 rounded-full text-black border-0 hover:scale-105 transition-transform font-bold">
+            <Button size="sm" variant="outline" onClick={() => onUpdateQuantity(item.id, 1)}  className="h-7 w-7 p-0 rounded-full text-black border-0 hover:scale-105 transition-transform font-bold">
               <Plus className="h-3 w-3" />
             </Button>
           </div>
@@ -346,7 +346,7 @@ const BillingGridItemCard = React.memo(({
                           onAddToCartWithChip(item, chip);
                         }
                       }}
-                      className="px-2 py-0.5 text-[10px] font-semibold rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-[#F2A93B] hover:bg-[#F2A93B] hover:text-black shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
+                      className="px-2 py-0.5 text-[10px] font-semibold rounded-lg border border-amber-500/30 bg-muted/500/10 text-amber-700 dark:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))] hover:text-black shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
                     >
                       {chip}
                     </button>
@@ -354,7 +354,7 @@ const BillingGridItemCard = React.memo(({
                 })}
               </div>
             )}
-            <Button onClick={() => onAddToCart(item)} style={{ background: '#EAA838' }} className="w-full h-9 text-black rounded-full font-bold hover:scale-105 transition-transform shadow-sm text-xs">
+            <Button onClick={() => onAddToCart(item)}  className="w-full h-9 text-black rounded-full font-bold hover:scale-105 transition-transform shadow-sm text-xs">
               + Add
             </Button>
           </div>
@@ -405,14 +405,14 @@ const BillingListItemCard = React.memo(({
   }
   const isInCart = cartQuantity > 0;
   return (
-    <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border border-[#E2DFD7] dark:border-[#262B31] bg-white dark:bg-[#1C2024] rounded-2xl shadow-sm">
+    <Card className="hover:shadow-md hover:scale-[1.01] transition-all duration-200 border border-border dark:border-border bg-white dark:bg-card rounded-2xl shadow-sm">
       <CardContent className="p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-col gap-2 flex-1 min-w-0">
             {/* Top row: Image + Name/Price */}
             <div className="flex items-center space-x-3 min-w-0">
               {/* Image */}
-              <div className="w-12 h-12 bg-amber-50 dark:bg-[#22262B] rounded-lg overflow-hidden flex-shrink-0">
+              <div className="w-12 h-12 bg-muted/50 dark:bg-[#22262B] rounded-lg overflow-hidden flex-shrink-0">
                 {item.media_type === 'video' ? (
                   <video
                     src={item.video_url || item.image_url}
@@ -449,11 +449,11 @@ const BillingListItemCard = React.memo(({
                     {expiryDays != null && (
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${expiryDays <= 1 ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'}`}>⚡ {expiryLabel(expiryDays)}</span>
                     )}
-                    {isFastMover && <span style={{ background: '#F2A93B' }} className="text-[10px] font-bold px-1.5 py-0.5 rounded text-black">🔥 Fast</span>}
+                    {isFastMover && <span  className="text-[10px] font-bold px-1.5 py-0.5 rounded text-black">🔥 Fast</span>}
                     {isLowStock(item) && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-warning text-warning-foreground">Low stock</span>}
                   </div>
                 )}
-                <p style={{ color: '#F2A93B' }} className="text-lg font-bold">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
+                <p className="text-foreground dark:text-white font-bold" className="text-lg font-bold">₹{getChannelPrice(item, orderChannel)}/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}</p>
               </div>
             </div>
 
@@ -473,7 +473,7 @@ const BillingListItemCard = React.memo(({
                           onAddToCartWithChip(item, chip);
                         }
                       }}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-[#F2A93B] hover:bg-[#F2A93B] hover:text-black shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-amber-500/30 bg-muted/500/10 text-amber-700 dark:text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))] hover:text-black shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
                     >
                       {chip}
                     </button>
@@ -486,7 +486,7 @@ const BillingListItemCard = React.memo(({
           {/* Add / Quantity control - vertically centered right */}
           <div className="shrink-0 pl-1">
             {isInCart ? (
-              <div className="flex items-center space-x-2 bg-amber-500/15 dark:bg-[#22262B] rounded-full py-1 px-3">
+              <div className="flex items-center space-x-2 bg-muted/500/15 dark:bg-[#22262B] rounded-full py-1 px-3">
                 <Button variant="ghost" size="sm" onClick={() => onUpdateQuantity(item.id, -1)} className="h-6 w-6 p-0 rounded-full dark:text-white">
                   <Minus className="w-3 h-3" />
                 </Button>
@@ -498,7 +498,7 @@ const BillingListItemCard = React.memo(({
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => onAddToCart(item)} style={{ background: '#EAA838' }} className="text-black rounded-full font-bold hover:scale-105 transition-transform shadow-sm h-9 px-4 text-xs">
+              <Button onClick={() => onAddToCart(item)}  className="text-black rounded-full font-bold hover:scale-105 transition-transform shadow-sm h-9 px-4 text-xs">
                 + Add
               </Button>
             )}
@@ -3954,7 +3954,7 @@ const Billing = () => {
       <PrinterHealthBanner />
       {/* Happy Hour active banner */}
       {activeHappyHourRule && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-xs font-semibold mb-1">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 bg-muted/50 dark:bg-amber-950/30 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-xs font-semibold mb-1">
           <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
           <span>Happy Hour Active: <strong>{activeHappyHourRule.name}</strong> — {activeHappyHourRule.discount_percent}% off all items until {activeHappyHourRule.end_time?.slice(0,5) || ''}</span>
         </div>
@@ -4183,7 +4183,7 @@ const Billing = () => {
               >
                 <Keyboard className="w-3.5 h-3.5 text-amber-500" />
                 <span>Keys</span>
-                <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono font-bold bg-amber-500/15 text-amber-700 dark:text-[#F2A93B] border-amber-500/30">F1-F8</Badge>
+                <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono font-bold bg-muted/500/15 text-amber-700 dark:text-[hsl(var(--primary))] border-amber-500/30">F1-F8</Badge>
               </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl rounded-2xl">
@@ -4207,13 +4207,13 @@ const Billing = () => {
             <button
               type="button"
               onClick={() => setParkedOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-[#F2A93B] border border-amber-500/30 text-xs font-bold hover:bg-amber-500/25 transition-all shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/500/15 text-amber-700 dark:text-[hsl(var(--primary))] border border-amber-500/30 text-xs font-bold hover:bg-muted/500/25 transition-all shrink-0 cursor-pointer"
               title="Park this bill or recall a parked one (F8)"
               aria-label={`Parked bills: ${heldBillCount}`}
             >
               <PauseCircle className="w-3.5 h-3.5" />
               <span>Park</span>
-              {heldBillCount > 0 && <span style={{ background: '#F2A93B' }} className="text-black rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
+              {heldBillCount > 0 && <span  className="text-black rounded-full min-w-4 h-4 px-1 flex items-center justify-center text-[10px] font-extrabold">{heldBillCount}</span>}
             </button>
           )}
           {/* Petty Cash / Quick Drawer Expense */}
@@ -4317,7 +4317,7 @@ const Billing = () => {
       <div className="mb-3 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 w-4 h-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t('billing.searchItems')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24 rounded-full border border-gray-200 dark:border-[#262B31] px-4 py-2 bg-white dark:bg-[#1C2024] dark:text-white" />
+          <Input placeholder={t('billing.searchItems')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24 rounded-full border border-gray-200 dark:border-border px-4 py-2 bg-white dark:bg-card dark:text-white" />
           <div className="absolute right-1 top-1/2 -translate-y-1/2">
             <VoiceBillingButton
               items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
@@ -4325,7 +4325,7 @@ const Billing = () => {
             />
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={() => setIsCustomItemOpen(true)} className="shrink-0 border-dashed rounded-full dark:border-[#262B31]" title={t('billing.addCustomItem')}>
+        <Button variant="outline" size="icon" onClick={() => setIsCustomItemOpen(true)} className="shrink-0 border-dashed rounded-full dark:border-border" title={t('billing.addCustomItem')}>
           <Plus className="w-4 h-4" />
         </Button>
       </div>
@@ -4401,14 +4401,14 @@ const Billing = () => {
     {/* Mobile Floating Cart - Rendered via Portal to bypass overflow-x-hidden parent */}
     {cart.some(i => i.quantity > 0) && !paymentDialogOpen && createPortal(
       <div className="fixed bottom-[72px] left-0 right-0 md:hidden z-[9999] px-3 pb-2 pointer-events-none">
-        <div className="bg-[#14171A] border border-[#262B31] rounded-xl shadow-2xl px-4 py-3 pointer-events-auto">
+        <div className="bg-card dark:bg-card border border-border rounded-xl shadow-2xl px-4 py-3 pointer-events-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 text-white">
-              <ShoppingCart className="w-5 h-5 text-[#F2A93B]" />
+              <ShoppingCart className="w-5 h-5 text-[hsl(var(--primary))]" />
               <span className="font-bold text-lg">
                 {cart.filter(i => i.quantity > 0).length} {cart.filter(i => i.quantity > 0).length === 1 ? 'item' : 'items'}
               </span>
-              <span style={{ color: '#F2A93B' }} className="font-bold text-xl">₹{total.toFixed(2)}</span>
+              <span className="text-foreground dark:text-white font-bold" className="font-bold text-xl">₹{total.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={clearCart} className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full">
@@ -4423,7 +4423,7 @@ const Billing = () => {
                     setTimeout(() => setPaymentDialogOpen(true), 30);
                   }
                 }} 
-                style={{ background: '#F2A93B' }}
+                
                 className="h-9 px-5 text-black hover:opacity-90 font-bold rounded-full shadow-md"
               >
                 Pay
@@ -4436,11 +4436,11 @@ const Billing = () => {
     )}
 
     {/* Desktop Cart Section */}
-    <div className="hidden md:flex w-96 bg-[#FAF9F6] border-l border-[#E2DFD7] dark:bg-[#1A1D21] dark:border-[#282C32] shadow-2xl flex-col">
-      <div className="p-4 border-b border-[#E2DFD7] dark:border-[#282C32]">
+    <div className="hidden md:flex w-96 bg-muted/30 border-l border-border dark:bg-[#1A1D21] dark:border-[#282C32] shadow-2xl flex-col">
+      <div className="p-4 border-b border-border dark:border-[#282C32]">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold flex items-center text-gray-900 dark:text-white">
-            <ShoppingCart className="w-5 h-5 mr-2 text-[#F2A93B]" />
+            <ShoppingCart className="w-5 h-5 mr-2 text-[hsl(var(--primary))]" />
             Cart ({cart.filter(i => i.quantity > 0).length})
           </h2>
           {cart.some(i => i.quantity > 0) && <Button variant="ghost" size="sm" onClick={clearCart} className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30">
@@ -4450,7 +4450,7 @@ const Billing = () => {
       </div>
 
       {/* Channel selector (Store, Zomato, Swiggy) */}
-      <div className="px-4 py-2 border-b border-[#E2DFD7] dark:border-[#282C32] bg-[#F2EDE4]/60 dark:bg-[#22262B]/60">
+      <div className="px-4 py-2 border-b border-border dark:border-[#282C32] bg-muted/60 dark:bg-[#22262B]/60">
         <div className="flex rounded-lg bg-muted p-1 gap-1">
           <button
             onClick={() => handleChannelChange('store')}
@@ -4491,13 +4491,13 @@ const Billing = () => {
       {/* Cart Items */}
       <div className="flex-1 overflow-y-auto p-4">
         {cart.length === 0 ? <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#F2EDE4] dark:bg-[#22262B] flex items-center justify-center">
-            <ShoppingCart className="w-8 h-8 text-[#F2A93B]" />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted dark:bg-[#22262B] flex items-center justify-center">
+            <ShoppingCart className="w-8 h-8 text-[hsl(var(--primary))]" />
           </div>
           <p className="text-gray-600 dark:text-gray-300 font-medium">Your cart is empty</p>
           <p className="text-gray-400 text-sm mt-1">Add items to get started</p>
         </div> : <div className="space-y-3">
-          {cart.map(item => <div key={item.id} className={`${String(item.id).startsWith('calci-') ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-[#1C2024] border-[#E2DFD7] dark:border-[#262B31]'} rounded-2xl p-4 shadow-sm border transition-all hover:shadow-md`}>
+          {cart.map(item => <div key={item.id} className={`${String(item.id).startsWith('calci-') ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-card border-border dark:border-border'} rounded-2xl p-4 shadow-sm border transition-all hover:shadow-md`}>
             <div className="flex justify-between items-start mb-3">
               <h3 className="font-bold text-sm flex-1 text-gray-800 dark:text-white flex items-center gap-1.5 flex-wrap">
                 {String(item.id).startsWith('calci-') && <span className="inline-flex items-center mr-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-200 align-middle"><Calculator className="w-2.5 h-2.5 mr-0.5" />CALCI</span>}
@@ -4522,7 +4522,7 @@ const Billing = () => {
                 {(item as any).is_happy_hour && (item as any).original_price != null && (
                   <span className="text-xs font-medium text-muted-foreground line-through" data-testid="hh-original-price">₹{(item as any).original_price}</span>
                 )}
-                <span style={{ color: '#F2A93B' }}>
+                <span className="text-foreground dark:text-white font-bold">
                 ₹{item.price}</span>/{item.base_value && item.base_value > 1 ? `${item.base_value}${getShortUnit(item.unit)}` : getShortUnit(item.unit)}
               </span>
 
@@ -4554,8 +4554,8 @@ const Billing = () => {
               </div>
             </div>
 
-            <div className="flex justify-end mt-3 pt-2 border-t border-[#E2DFD7] dark:border-[#262B31]">
-              <span style={{ color: '#F2A93B' }} className="text-sm font-bold">
+            <div className="flex justify-end mt-3 pt-2 border-t border-border dark:border-border">
+              <span className="text-foreground dark:text-white font-bold" className="text-sm font-bold">
                 Total: ₹{((item.quantity / (item.base_value || 1)) * item.price).toFixed(0)}
               </span>
             </div>
@@ -4565,15 +4565,15 @@ const Billing = () => {
 
       {/* Checkout Summary & Pay CTA */}
       {cart.some(i => i.quantity > 0) && (
-        <div className="p-4 border-t border-[#E2DFD7] dark:border-[#282C32] space-y-3 shrink-0">
-          <div className="bg-[#F2EDE4] rounded-xl p-4 dark:bg-[#22262B] space-y-1.5 text-sm">
+        <div className="p-4 border-t border-border dark:border-[#282C32] space-y-3 shrink-0">
+          <div className="bg-muted rounded-xl p-4 dark:bg-[#22262B] space-y-1.5 text-sm">
             <div className="flex justify-between text-gray-600 dark:text-gray-300">
               <span>Items ({cart.filter(i => i.quantity > 0).length})</span>
               <span className="tabular-nums font-medium">₹{total.toFixed(0)}</span>
             </div>
-            <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-[#E2DFD7] dark:border-[#282C32] text-gray-900 dark:text-white">
+            <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-border dark:border-[#282C32] text-gray-900 dark:text-white">
               <span>Total</span>
-              <span className="tabular-nums" style={{ color: '#F2A93B' }}>₹{total.toFixed(0)}</span>
+              <span className="tabular-nums" className="text-foreground dark:text-white font-bold">₹{total.toFixed(0)}</span>
             </div>
           </div>
           <Button
@@ -4585,7 +4585,7 @@ const Billing = () => {
                 setTimeout(() => setPaymentDialogOpen(true), 30);
               }
             }}
-            style={{ background: '#F2A93B' }}
+            
             className="text-black font-bold rounded-xl py-3.5 w-full h-auto hover:opacity-90 transition-opacity shadow-sm"
           >
             Pay ₹{total.toFixed(0)}
