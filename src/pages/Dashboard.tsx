@@ -489,9 +489,25 @@ const Dashboard = () => {
       })
       .subscribe();
 
+    const tableOrdersChannel = supabase
+      .channel('dashboard-table-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'table_orders' }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+
+    const tablesChannel = supabase
+      .channel('dashboard-tables-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(billsChannel);
       supabase.removeChannel(expensesChannel);
+      supabase.removeChannel(tableOrdersChannel);
+      supabase.removeChannel(tablesChannel);
     };
   }, [fetchDashboardStats]);
 

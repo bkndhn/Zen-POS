@@ -465,6 +465,23 @@ const WaiterCompanion: React.FC = () => {
         };
     }, [adminId]);
 
+    // Listen for bill settlement → immediately release table occupancy on floor map
+    useEffect(() => {
+        const handleBillsUpdated = () => {
+            fetchTables();
+            fetchTableOrders();
+        };
+        window.addEventListener('bills-updated', handleBillsUpdated);
+        const bc = new BroadcastChannel('zenpos-events');
+        bc.onmessage = (event) => {
+            if (event.data?.type === 'bills-updated') handleBillsUpdated();
+        };
+        return () => {
+            window.removeEventListener('bills-updated', handleBillsUpdated);
+            bc.close();
+        };
+    }, [fetchTables, fetchTableOrders]);
+
     // Extract unique categories
     const categories = useMemo(() => {
         const cats = new Set<string>();
