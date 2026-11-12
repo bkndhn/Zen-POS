@@ -70,6 +70,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, profile, loading, adminProfileId } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const isStandaloneMobileNav = location.pathname.startsWith('/waiter') || 
+                                 location.pathname.startsWith('/display') ||
+                                 location.pathname.startsWith('/tokens');
   const [licenseState, setLicenseState] = useState<LicenseStatus | null>(null);
 
   // Native-feel: swipe from left edge to go back
@@ -330,7 +333,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <>
             <main
               className="flex-1 relative w-full overflow-hidden"
-              style={{ paddingBottom: 'max(68px, calc(58px + env(safe-area-inset-bottom, 0px)))' }}
+              style={{
+                paddingBottom: isStandaloneMobileNav
+                  ? 'env(safe-area-inset-bottom, 0px)'
+                  : 'max(68px, calc(58px + env(safe-area-inset-bottom, 0px)))',
+              }}
             >
               <PullToRefresh>
                 <div key={location.pathname} className="page-transition-enter">
@@ -339,7 +346,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               </PullToRefresh>
             </main>
 
-            <BottomNavigation />
+            {!isStandaloneMobileNav && <BottomNavigation />}
           </>
         )}
       </div>
