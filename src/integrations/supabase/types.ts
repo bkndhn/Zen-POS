@@ -1320,6 +1320,47 @@ export type Database = {
           },
         ]
       }
+      counter_connections: {
+        Row: {
+          admin_id: string
+          created_at: string
+          device_id: string
+          device_label: string
+          id: string
+          last_seen_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          device_id: string
+          device_label: string
+          id?: string
+          last_seen_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          device_id?: string
+          device_label?: string
+          id?: string
+          last_seen_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_connections_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_ledger: {
         Row: {
           admin_id: string
@@ -3602,33 +3643,45 @@ export type Database = {
       }
       push_queue: {
         Row: {
+          attempts: number
           body: string
+          claim_id: string | null
+          claimed_at: string | null
           created_at: string | null
           data: Json | null
           fcm_result: Json | null
           id: string
+          next_attempt_at: string
           processed: boolean | null
           title: string
           token: string | null
           user_id: string
         }
         Insert: {
+          attempts?: number
           body: string
+          claim_id?: string | null
+          claimed_at?: string | null
           created_at?: string | null
           data?: Json | null
           fcm_result?: Json | null
           id?: string
+          next_attempt_at?: string
           processed?: boolean | null
           title: string
           token?: string | null
           user_id: string
         }
         Update: {
+          attempts?: number
           body?: string
+          claim_id?: string | null
+          claimed_at?: string | null
           created_at?: string | null
           data?: Json | null
           fcm_result?: Json | null
           id?: string
+          next_attempt_at?: string
           processed?: boolean | null
           title?: string
           token?: string | null
@@ -5539,14 +5592,42 @@ export type Database = {
         }
         Returns: boolean
       }
-      claim_push_queue: {
-        Args: { batch_size?: number }
+      claim_push_batch: {
+        Args: { p_limit?: number }
         Returns: {
+          attempts: number
           body: string
+          claim_id: string | null
+          claimed_at: string | null
           created_at: string | null
           data: Json | null
           fcm_result: Json | null
           id: string
+          next_attempt_at: string
+          processed: boolean | null
+          title: string
+          token: string | null
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "push_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_push_queue: {
+        Args: { batch_size?: number }
+        Returns: {
+          attempts: number
+          body: string
+          claim_id: string | null
+          claimed_at: string | null
+          created_at: string | null
+          data: Json | null
+          fcm_result: Json | null
+          id: string
+          next_attempt_at: string
           processed: boolean | null
           title: string
           token: string | null
@@ -5648,6 +5729,15 @@ export type Database = {
           p_branch_id: string
           p_event: string
           p_payload: Json
+        }
+        Returns: undefined
+      }
+      finish_push_attempt: {
+        Args: {
+          p_claim_id: string
+          p_id: string
+          p_result: Json
+          p_retry: boolean
         }
         Returns: undefined
       }
@@ -6169,6 +6259,10 @@ export type Database = {
           p_branch_id?: string
           p_details?: Json
         }
+        Returns: undefined
+      }
+      report_counter_connection: {
+        Args: { p_device_id: string; p_device_label: string }
         Returns: undefined
       }
       resolve_branch_menu: {
