@@ -15,6 +15,7 @@ import { syncSubscriptionLicense, checkOfflineLicenseStatus, clearAllLicenseData
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, LogOut, CreditCard, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCounterConnection } from '@/hooks/useCounterConnection';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -77,6 +78,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Native-feel: swipe from left edge to go back
   useSwipeBack();
+  useCounterConnection();
 
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     return localStorage.getItem('hotel_pos_sidebar_collapsed') === 'true';

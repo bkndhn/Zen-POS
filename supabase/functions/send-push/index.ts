@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 /**
  * send-push — delivers FCM notifications to every device registered by a user.
@@ -10,11 +11,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
  *  - service_role bearer (from process-push-queue / cron / triggers) → may target any user_id
  *  - end-user bearer (test button in Settings)                       → may only target themselves
  */
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -234,6 +230,9 @@ Deno.serve(async (req) => {
     }
 
     if (!userId) return json({ error: 'Missing user_id to target push notification' }, 400);
+    // Direct customer tokens may only come from the trusted queue worker.
+    const directToken = isServiceRole && typeof payload.token === 'string' && payload.token.length <= 4096
+      ? payload.token : undefined;
 
     const rawData = payload.data ?? record.data ?? {};
     const fcmData: Record<string, string> = {};
@@ -250,7 +249,7 @@ Deno.serve(async (req) => {
     if (deviceError) return json({ error: deviceError.message }, 500);
     // Filter out muted devices in JS (resilient if fcm_muted column is absent on older DB)
     const activeDevices = (devices ?? []).filter((d: any) => !d.fcm_muted);
-    if (!activeDevices || activeDevices.length === 0) {
+    if (!directToken && (!activeDevices || activeDevices.length === 0)) {
       return json({ success: true, successCount: 0, failureCount: 0, message: 'No active non-muted devices found for user.' });
     }
 
@@ -262,7 +261,7 @@ Deno.serve(async (req) => {
     // Deduplicate tokens — a re-registered device can leave several identical
     // rows behind, which would otherwise deliver the same alert many times.
     const tokens = Array.from(
-      new Set(activeDevices.map((d: any) => d.device_token).filter(Boolean)),
+      new Set(directToken ? [directToken] : activeDevices.map((d: any) => d.device_token).filter(Boolean)),
     ) as string[];
 
     for (let i = 0; i < tokens.length; i += batchSize) {
@@ -277,7 +276,7 @@ Deno.serve(async (req) => {
     const failures = outcomes.filter((o) => !o.ok);
     const staleTokens = failures.filter((o) => o.unregistered).map((o) => o.token);
 
-    if (staleTokens.length > 0) {
+    if (!directToken && staleTokens.length > 0) {
       await admin.from('user_devices').delete().in('device_token', staleTokens);
     }
 

@@ -8,3 +8,5 @@
 - Read .agents/AGENTS.md for existing product naming conventions.
 - Public menu device caching must revalidate through public-safe RPCs; session storage is not CDN edge caching and must never contain private operational data.
 - Portal theme settings reuse useBranchSettings for owner identity, active-branch persistence and inheritance rather than issuing separate settings queries.
+- Notification workers use bounded parallel leased claims with claim-specific acknowledgement; retry only zero-success transient failures to avoid duplicating partial deliveries.
+- Counter connection heartbeats contain only device labels and timestamps, run independently of billing, and are owner-scoped by RLS; freshness is not proof of printer or payment health.

@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { runBounded, shouldRetryPush } from '../_shared/pushBatch.ts';
 
 /**
  * process-push-queue
@@ -8,11 +10,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
  * 2. No external auth is needed because this runs as a cron on Supabase infra
  * 3. The anon key from the incoming request is only used to accept the cron call
  */
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -43,10 +40,9 @@ Deno.serve(async (req) => {
     }
     if (!allowed) return json({ error: 'Unauthorized' }, 401);
 
-    // Atomically claim unprocessed rows (marks processed=true in one step)
-    // This prevents double-send when cron invocations overlap
+    // Leased claims survive worker crashes and exclude overlapping workers.
     const { data: queue, error: fetchError } = await supabase
-      .rpc('claim_push_queue', { batch_size: 50 });
+      .rpc('claim_push_batch', { p_limit: 50 });
 
     if (fetchError) throw fetchError;
     if (!queue || queue.length === 0) {
@@ -56,7 +52,7 @@ Deno.serve(async (req) => {
     let sent = 0;
     let failed = 0;
 
-    for (const item of queue) {
+    await runBounded(queue, 5, async (item: any) => {
       try {
         // Invoke send-push with service role so it can target any user_id
         const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
@@ -70,25 +66,34 @@ Deno.serve(async (req) => {
             title: item.title,
             body: item.body,
             data: item.data || {},
+            ...(item.token ? { token: item.token } : {}),
           }),
+          signal: AbortSignal.timeout(30_000),
         });
 
         const result = await response.json().catch(() => ({}));
         // Write FCM result back for debugging visibility
-        await supabase.from('push_queue').update({ fcm_result: result }).eq('id', item.id);
+        const retry = shouldRetryPush(response.status, result);
+        const { error: finishError } = await supabase.rpc('finish_push_attempt', {
+          p_id: item.id, p_claim_id: item.claim_id, p_retry: retry, p_result: result,
+        });
+        if (finishError) throw finishError;
 
-        if (!response.ok) {
+        if (!response.ok || result.success === false) {
           console.error(`[process-push-queue] send-push error for ${item.id}:`, JSON.stringify(result));
           failed++;
         } else {
-          console.log(`[process-push-queue] sent "${item.title}" -> user ${item.user_id} | result: ${JSON.stringify(result)}`);
           sent++;
         }
       } catch (e: any) {
         console.error(`[process-push-queue] Exception for ${item.id}:`, e.message);
         failed++;
+        await supabase.rpc('finish_push_attempt', {
+          p_id: item.id, p_claim_id: item.claim_id, p_retry: true,
+          p_result: { error: e?.message || 'Delivery interrupted' },
+        });
       }
-    }
+    });
 
     // Cleanup: Delete processed entries older than 48 hours
     await supabase
