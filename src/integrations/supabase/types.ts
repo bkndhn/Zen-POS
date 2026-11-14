@@ -898,6 +898,1166 @@ export type Database = {
           },
         ]
       }
+      bill_items_archive: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_items_archive_bill_date_bill_id_fkey"
+            columns: ["bill_date", "bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills_archive"
+            referencedColumns: ["date", "id"]
+          },
+        ]
+      }
+      bill_items_archive_202511: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202512: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202601: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202602: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202603: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202604: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202605: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202606: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202607: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202608: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202609: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202610: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202611: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202612: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
+      bill_items_archive_202701: {
+        Row: {
+          archive_updated_at: string
+          archived_at: string
+          base_value: number | null
+          bill_date: string
+          bill_id: string
+          billing_type: string | null
+          created_at: string
+          hsn_code: string | null
+          id: string
+          item_id: string | null
+          item_name_override: string | null
+          price: number
+          quantity: number
+          tax_amount: number | null
+          tax_rate: number | null
+          tax_rate_snapshot: number | null
+          tax_type: string | null
+          taxable_amount: number | null
+          total: number
+          unit: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date: string
+          bill_id: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price: number
+          quantity: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          archive_updated_at?: string
+          archived_at?: string
+          base_value?: number | null
+          bill_date?: string
+          bill_id?: string
+          billing_type?: string | null
+          created_at?: string
+          hsn_code?: string | null
+          id?: string
+          item_id?: string | null
+          item_name_override?: string | null
+          price?: number
+          quantity?: number
+          tax_amount?: number | null
+          tax_rate?: number | null
+          tax_rate_snapshot?: number | null
+          tax_type?: string | null
+          taxable_amount?: number | null
+          total?: number
+          unit?: string | null
+          variant_id?: string | null
+        }
+        Relationships: []
+      }
       bills: {
         Row: {
           additional_charges: Json | null
@@ -1039,6 +2199,2022 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bills_archive: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202511: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202512: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202601: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202602: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202603: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202604: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202605: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202606: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202607: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202608: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202609: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202610: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202611: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202612: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
+      }
+      bills_archive_202701: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          archive_updated_at: string
+          archived_at: string
+          bill_no: string
+          billing_type: string | null
+          branch_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          additional_charges?: Json | null
+          admin_id?: string | null
+          archive_updated_at?: string
+          archived_at?: string
+          bill_no?: string
+          billing_type?: string | null
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          customer_gstin?: string | null
+          customer_mobile?: string | null
+          customer_phone?: string | null
+          date?: string
+          discount?: number | null
+          doctor_name?: string | null
+          due_amount?: number | null
+          eta_minutes?: number | null
+          eta_updated_at?: string | null
+          id?: string
+          is_deleted?: boolean | null
+          is_edited?: boolean | null
+          kitchen_status?: string | null
+          order_type?: string | null
+          paid_amount?: number | null
+          payment_details?: Json | null
+          payment_mode?: Database["public"]["Enums"]["payment_method"]
+          payment_status?: string | null
+          prescription_image_url?: string | null
+          provider_id?: string | null
+          round_off?: number | null
+          service_status?: string | null
+          status_updated_at?: string | null
+          table_no?: string | null
+          tax_summary?: Json | null
+          total_amount?: number
+          total_tax?: number | null
+          whatsapp_sent?: boolean | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: []
       }
       blocked_devices: {
         Row: {
@@ -5561,6 +8737,17 @@ export type Database = {
         }
         Returns: Json
       }
+      bill_archive_eligible: {
+        Args: {
+          p_date: string
+          p_due: number
+          p_kitchen_status: string
+          p_payment_status: string
+          p_service_status: string
+          p_today: string
+        }
+        Returns: boolean
+      }
       calc_admin_branch_storage: { Args: { p_admin_id: string }; Returns: Json }
       calc_admin_storage_usage: { Args: { p_admin_id: string }; Returns: Json }
       can_read_report_bills: {
@@ -6180,6 +9367,20 @@ export type Database = {
           p_title: string
         }
         Returns: undefined
+      }
+      prepare_bill_archive_month: {
+        Args: { p_month: string }
+        Returns: undefined
+      }
+      preview_bill_archive: {
+        Args: { p_month: string }
+        Returns: {
+          eligible_unlinked: number
+          linked_blockers: number
+          month_start: string
+          old_bills: number
+          settled_completed: number
+        }[]
       }
       process_remote_order_auto_settle: {
         Args: { p_order_id: string }
