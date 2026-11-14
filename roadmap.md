@@ -47,7 +47,8 @@
 - [ ] Signed-in shift walkthrough (open → cash bill → close → Reports → Shifts) (blocked: preview cannot sign in to this backend; steps given to user)
 - [x] Recheck Billing, Demo, Waiter, Dashboard and Kitchen pages after recent theme changes
 - [x] Scale step 1: database lookup indexes for bills, orders, items, expenses
-- [ ] Scale step 2: monthly historical storage (blocked: approve revised safeguards; direct bill removal breaks existing references and historical readers; no live records moved)
+- [x] Scale step 2, stage 1: empty monthly bill/item storage, protected reads, server-only candidate preview; no live records moved and no schedule enabled
+- [ ] Scale step 2 activation: durable references and complete historical readers/edits/replay, followed by authenticated validation and an agreed quiet window (not enabled; approval covered preparation only)
 - [x] Scale step 3: bounded parallel notification delivery with recoverable queue claims
 - [x] Scale step 3: owner-only counter connection monitor, independent of billing and stock writes
 - [x] Verify scaling-step tests, access rules and deployment (162 tests passed; 13 skipped)
