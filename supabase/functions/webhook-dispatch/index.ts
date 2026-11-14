@@ -57,9 +57,10 @@ Deno.serve(async (req) => {
       if (!userRes?.user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const { data: myAdmin } = await userClient.rpc('get_my_admin_id');
       if (!myAdmin) return new Response(JSON.stringify({ error: 'No tenant' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      // Only shop owners (admin / super_admin) may fire test deliveries.
+      // Only the actual shop owner may fire test deliveries.
       const { data: myRole } = await userClient.rpc('get_my_role');
-      if (myRole !== 'admin' && myRole !== 'super_admin') {
+      const { data: myProfile } = await userClient.rpc('get_my_profile_id');
+      if (myRole !== 'admin' || myProfile !== myAdmin) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       adminId = myAdmin as string; // never trust client-supplied admin_id

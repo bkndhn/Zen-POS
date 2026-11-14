@@ -49,7 +49,7 @@ export const WebhookManager: React.FC = () => {
   const adminId = (profile?.role === 'admin' ? profile.id : adminProfileId) as string | undefined;
 
   const load = useCallback(async () => {
-    if (!adminId) return;
+    if (!adminId || profile?.role !== 'admin') return;
     const { data } = await supabase
       .from('client_webhook_endpoints')
       .select('*')
@@ -70,7 +70,7 @@ export const WebhookManager: React.FC = () => {
       .order('created_at', { ascending: false })
       .limit(10);
     setLogs((logRows as any) || []);
-  }, [adminId]);
+  }, [adminId, profile?.role]);
 
   useEffect(() => {
     load();

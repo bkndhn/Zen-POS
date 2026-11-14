@@ -11,3 +11,5 @@
 - Notification workers use bounded parallel leased claims with claim-specific acknowledgement; retry only zero-success transient failures to avoid duplicating partial deliveries.
 - Counter connection heartbeats contain only device labels and timestamps, run independently of billing, and are owner-scoped by RLS; freshness is not proof of printer or payment health.
 - Monthly bill archives remain preparation-only until historical readers, durable references, authorized edits and original-number replay are verified; never remove live bills or schedule moves before those gates pass.
+- Webhook destinations and signing keys are managed only by the actual shop owner through RLS, and user-triggered deliveries require matching owner identity; staff cannot redirect business events.
+- Purchase and return RPCs validate supplier/purchase tenant ownership before inserting, with tenant-reference triggers retained as defence in depth; stock transaction behaviour stays atomic.
