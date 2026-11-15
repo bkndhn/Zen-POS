@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { formatStoredQuantity, getShortUnit } from '@/utils/timeUtils';
 import { offlineManager } from '@/utils/offlineManager';
+import { PinLockGuard } from '@/components/PinLockGuard';
 
 interface Line { item_id: string; branch_id: string; item_name: string; unit: string; quantity: number; rate: number; }
 
@@ -221,4 +222,6 @@ const PurchaseReturns: React.FC = () => {
   );
 };
 
-export default PurchaseReturns;
+export default function ProtectedPurchaseReturns() {
+  return <PinLockGuard scope="all"><PurchaseReturns /></PinLockGuard>;
+}

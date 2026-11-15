@@ -10,8 +10,9 @@ import { isBiometricAvailable, authenticateWithBiometric } from '@/utils/biometr
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60_000; // 1 minute lockout after max attempts
 
-export const PinLockGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { operatingBranchId } = useBranch();
+export const PinLockGuard: React.FC<{ children: React.ReactNode; scope?: 'branch' | 'all' }> = ({ children, scope = 'branch' }) => {
+  const { operatingBranchId: selectedBranchId } = useBranch();
+  const operatingBranchId = scope === 'all' ? null : selectedBranchId;
   const branchKey = (base: string) => operatingBranchId ? `${base}_${operatingBranchId}` : base;
   
   // Device keeps only a marker; the PIN hash lives on the server and is checked there.

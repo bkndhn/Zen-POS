@@ -15,6 +15,7 @@ import { ShoppingBag, Plus, Trash2, X, Eye, FileSpreadsheet, DollarSign, Calenda
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { offlineManager } from '@/utils/offlineManager';
+import { PinLockGuard } from '@/components/PinLockGuard';
 
 interface Supplier {
   id: string;
@@ -1602,4 +1603,6 @@ Please confirm receipt of this order.`;
   );
 };
 
-export default Purchases;
+export default function ProtectedPurchases() {
+  return <PinLockGuard scope="all"><Purchases /></PinLockGuard>;
+}
