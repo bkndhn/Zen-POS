@@ -26,6 +26,11 @@ describe('monthly bill archive: public access boundaries', () => {
     expect(error?.code).toBe('42501');
   });
 
+  it('does not permit anonymous archive movement', async () => {
+    const { error } = await client.rpc('archive_closed_bills', { p_limit: 100 });
+    expect(error?.code).toBe('42501');
+  });
+
   // Safe even on a regression: this only prepares an empty monthly partition.
   it('does not permit public customers to prepare monthly storage', async () => {
     const { error } = await client.rpc('prepare_bill_archive_month', { p_month: '2026-11-01' });

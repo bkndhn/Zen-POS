@@ -8737,6 +8737,7 @@ export type Database = {
         }
         Returns: Json
       }
+      archive_closed_bills: { Args: { p_limit?: number }; Returns: Json }
       bill_archive_eligible: {
         Args: {
           p_date: string

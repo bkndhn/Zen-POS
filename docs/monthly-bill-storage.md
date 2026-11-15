@@ -2,7 +2,7 @@
 
 ## What is deployed
 
-Empty, monthly-partitioned `bills_archive` and `bill_items_archive` parent tables are ready. Initial months cover the previous 12 months through two months ahead. No live bills or items were copied, removed, or redirected. No archive mover, combined history view, or archive schedule is enabled.
+Empty, monthly-partitioned `bills_archive` and `bill_items_archive` parent tables are ready. Initial months cover the previous 12 months through two months ahead. No live bills or items were copied, removed, or redirected. A service-only archive worker is installed but fails closed; no combined history view or archive schedule is enabled.
 
 Archive client access is read-only through the parents, with tenant, branch, and existing Reports PIN checks. Super Admin is explicitly excluded. Child partitions have no client grants and deny direct client access. Maintenance functions are service-role-only and use a fixed search path.
 
@@ -15,6 +15,8 @@ Eligibility is conservative: older than 60 days (not exactly 60), payment status
 Use the existing Reports date range; all bills remain in the current tables. There is no change to receipts, exports, CRM, editing, stock, or offline replay. Archive reads are not yet connected to these pages because no history has moved.
 
 ## Why automatic moves are not enabled
+
+`archive_closed_bills(100)` is bounded to 100 bills, uses a nonblocking advisory lock, skips recent billing activity (10 minutes), locks candidates and their lines, excludes linked bills, compares full JSON content and exact row counts, and rolls back the whole batch on mismatches or constraint failures. It has one-second lock and 15-second statement timeouts. All five private verification gates default to false, and the service role cannot change them. A database assertion verified that the worker returns `blocked` and moves zero records. Full move/rollback fixture and signed-in tests are still required before activation.
 
 Existing foreign keys can prevent bill deletion or clear ledger links. Current reporting queries and item joins still use live tables. Original-number replay and overall bill numbering also need to find historical sales. A `UNION ALL` view alone does not preserve all these behaviours.
 
