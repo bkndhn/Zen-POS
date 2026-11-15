@@ -1,0 +1,5 @@
+ALTER FUNCTION public.can_read_purchase_history(uuid) SET SCHEMA private;
+ALTER POLICY purchase_history_pin_guard ON public.purchases USING(private.can_read_purchase_history(admin_id));
+ALTER POLICY purchase_items_history_pin_guard ON public.purchase_items USING(private.can_read_purchase_history(admin_id) AND EXISTS(SELECT 1 FROM public.purchases p WHERE p.id=purchase_id AND p.admin_id=purchase_items.admin_id));
+ALTER POLICY purchase_distributions_history_pin_guard ON public.purchase_distributions USING(private.can_read_purchase_history(admin_id) AND EXISTS(SELECT 1 FROM public.purchase_items i WHERE i.id=purchase_item_id AND i.admin_id=purchase_distributions.admin_id));
+ALTER POLICY purchase_payments_history_pin_guard ON public.purchase_payments USING(private.can_read_purchase_history(admin_id) AND EXISTS(SELECT 1 FROM public.purchases p WHERE p.id=purchase_id AND p.admin_id=purchase_payments.admin_id));
