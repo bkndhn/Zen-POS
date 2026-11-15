@@ -49,8 +49,9 @@
 - [x] Scale step 1: database lookup indexes for bills, orders, items, expenses
 - [x] Scale step 2, stage 1: empty monthly bill/item storage, protected reads, server-only candidate preview; no live records moved and no schedule enabled
 - [ ] Scale step 2 activation: durable references and complete historical readers/edits/replay, followed by authenticated validation and an agreed quiet window (blocked: external unmanaged sign-in; do not enable moves before these gates)
-- [ ] Build bounded transactional archive pipeline with fail-closed activation, exact-copy checks and rollback safeguards
-- [ ] Fix selected purchase Reports PIN access issue and rescan all findings (leave unselected findings unchanged)
+- [x] Build bounded transactional archive worker with fail-closed activation and exact-copy checks; anonymous denial and blocked gate verified, no moves or schedule enabled
+- [ ] Full archive movement/rollback fixtures, unified history/edits/replay and automatic schedule (blocked: activation gates and signed-in validation remain unmet)
+- [x] Fix selected purchase Reports PIN access issue and rescan all findings (12 focused tests passed; unselected findings left unchanged)
 - [x] Scale step 3: bounded parallel notification delivery with recoverable queue claims
 - [x] Scale step 3: owner-only counter connection monitor, independent of billing and stock writes
 - [x] Verify scaling-step tests, access rules and deployment (162 tests passed; 13 skipped)
