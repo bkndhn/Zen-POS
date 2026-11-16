@@ -43,6 +43,7 @@ import { QuickBillSettings } from '@/components/QuickBillSettings';
 import { KhataSettings } from '@/components/KhataSettings';
 import { PortalAnalyticsSettings } from '@/components/PortalAnalyticsSettings';
 import { CounterConnections } from '@/components/CounterConnections';
+import { BillArchiveStatus } from '@/components/BillArchiveStatus';
 
 interface AdditionalCharge {
   id: string;
@@ -349,6 +350,7 @@ const Settings = () => {
           {/* Shop Details */}
           <SearchableSection title="Shop Details (Name, FCM, Shifts)" keywords="shop fcm live bill name fssai address shift z-report z report opening closing cash" searchQuery={searchQuery} isTopLevel={true}><ShopSettingsForm /></SearchableSection>
           <SearchableSection title="Counter Connections" keywords="counter connection online offline devices status" searchQuery={searchQuery}><CounterConnections /></SearchableSection>
+          <SearchableSection title="Bill Storage" keywords="archive bills storage history active archived" searchQuery={searchQuery}><BillArchiveStatus /></SearchableSection>
 
           <div className="w-full">
             {!searchQuery.trim() && (

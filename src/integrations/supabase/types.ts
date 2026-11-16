@@ -8697,7 +8697,49 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      bills_history: {
+        Row: {
+          additional_charges: Json | null
+          admin_id: string | null
+          bill_no: string | null
+          billing_type: string | null
+          branch_id: string | null
+          channel: string | null
+          created_at: string | null
+          created_by: string | null
+          customer_gstin: string | null
+          customer_mobile: string | null
+          customer_phone: string | null
+          date: string | null
+          discount: number | null
+          doctor_name: string | null
+          due_amount: number | null
+          eta_minutes: number | null
+          eta_updated_at: string | null
+          id: string | null
+          is_archived: boolean | null
+          is_deleted: boolean | null
+          is_edited: boolean | null
+          kitchen_status: string | null
+          order_type: string | null
+          paid_amount: number | null
+          payment_details: Json | null
+          payment_mode: Database["public"]["Enums"]["payment_method"] | null
+          payment_status: string | null
+          prescription_image_url: string | null
+          provider_id: string | null
+          round_off: number | null
+          service_status: string | null
+          status_updated_at: string | null
+          table_no: string | null
+          tax_summary: Json | null
+          total_amount: number | null
+          total_tax: number | null
+          whatsapp_sent: boolean | null
+          whatsapp_sent_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_create_user: {
@@ -8987,6 +9029,7 @@ export type Database = {
       }
       get_backend_health: { Args: never; Returns: Json }
       get_backup_cron_status: { Args: never; Returns: Json }
+      get_bill_archive_status: { Args: never; Returns: Json }
       get_branch_scoped_shop_settings: {
         Args: { p_branch_id: string; p_user_id: string }
         Returns: {
