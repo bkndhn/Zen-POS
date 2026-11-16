@@ -1,4 +1,5 @@
 import { getAppBaseUrl } from '@/utils/urlUtils';
+import { getPasswordResetRedirect } from '@/utils/passwordReset';
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,6 +67,10 @@ const Auth = () => {
         </div>
       </div>
     );
+  }
+
+  if (user && (window.location.hash.includes('type=recovery') || sessionStorage.getItem('zenpos_password_recovery'))) {
+    return <Navigate to={`/reset-password${window.location.hash}`} replace />;
   }
 
   if (user && profile && profile.status !== 'paused' && profile.status !== 'deleted') {
@@ -156,7 +161,7 @@ const Auth = () => {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${getAppBaseUrl()}/auth`,
+        redirectTo: getPasswordResetRedirect(getAppBaseUrl(), import.meta.env.VITE_APP_URL),
         captchaToken: captchaToken || undefined,
       });
 

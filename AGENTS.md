@@ -15,4 +15,4 @@
 - Purchase history uses restrictive server PIN policies and a private helper so existing permissive write policies cannot bypass protected reads.
 - Webhook destinations and signing keys are managed only by the actual shop owner through RLS, and user-triggered deliveries require matching owner identity; staff cannot redirect business events.
 - Purchase and return RPCs validate supplier/purchase tenant ownership before inserting, with tenant-reference triggers retained as defence in depth; stock transaction behaviour stays atomic.
-- Report PIN changes revoke all tenant user unlocks and share a transaction lock with PIN verification, so old PINs cannot race revocation.
+- Report PIN changes revoke all tenant user unlocks and share a transaction lock with PIN verification, so old PINs cannot race revocation.- Password recovery links always target /reset-password on the public domain (never private previews) and a recovery session is held on that page until the new password is confirmed twice, so reset links cannot silently sign users into the POS.

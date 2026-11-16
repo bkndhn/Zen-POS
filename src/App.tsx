@@ -185,6 +185,30 @@ const ThemeLoader = () => {
  * caches of the most-used screens while the browser is idle, so navigation
  * paints from cache instead of waiting on Supabase.
  */
+/** Sends any password-recovery session to the reset screen before the app opens. */
+const RecoveryRedirect = () => {
+  const location = useLocation();
+  useEffect(() => {
+    if (window.location.hash.includes('type=recovery')) sessionStorage.setItem('zenpos_password_recovery', '1');
+    let sub: { unsubscribe: () => void } | undefined;
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      sub = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          sessionStorage.setItem('zenpos_password_recovery', '1');
+          if (window.location.pathname !== '/reset-password') window.location.replace('/reset-password');
+        }
+      }).data.subscription;
+    });
+    return () => sub?.unsubscribe();
+  }, []);
+  useEffect(() => {
+    if (sessionStorage.getItem('zenpos_password_recovery') && location.pathname !== '/reset-password') {
+      window.location.replace('/reset-password' + window.location.hash);
+    }
+  }, [location.pathname]);
+  return null;
+};
+
 const RoutePerfWarmer = () => {
   const location = useLocation();
   const { profile } = useAuth();
@@ -254,6 +278,7 @@ const KitchenPrep = lazy(() => import("./pages/KitchenPrep"));
 const SuperAdminRum = lazy(() => import("./pages/SuperAdminRum"));
 const PublicFeedback = lazy(() => import("./pages/PublicFeedback"));
 const RenewSubscription = lazy(() => import("./pages/RenewSubscription"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const TokenDisplay = lazy(() => import("./pages/TokenDisplay"));
 import { TermsAndConditions } from "./pages/TermsAndConditions";
 import { RouteMeta } from "./components/RouteMeta";
@@ -398,6 +423,7 @@ const App = () => {
               <PermissionsProvider>
                 <BranchProvider>
                   <ThemeLoader />
+                  <RecoveryRedirect />
                   <RoutePerfWarmer />
                   <GlobalSettingsSync />
                   <AutoBackupRunner />
@@ -408,6 +434,7 @@ const App = () => {
 
                   <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<Layout><ProtectedRoute requiredPermission="billing"><Billing /></ProtectedRoute></Layout>} />
                   <Route path="/dashboard" element={<Layout><ProtectedRoute requiredPermission="dashboard"><Dashboard /></ProtectedRoute></Layout>} />
                   <Route path="/analytics" element={<Layout><ProtectedRoute requiredPermission="analytics"><DashboardAnalytics /></ProtectedRoute></Layout>} />
