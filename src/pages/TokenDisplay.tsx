@@ -91,7 +91,7 @@ const TokenDisplay = () => {
     const today = new Date().toISOString().split('T')[0];
     try {
       if (isPublic) {
-        const { data, error } = await (supabase as any).rpc('get_public_tokens', { p_admin_id: adminId });
+        const { data, error } = await (supabase as any).rpc('get_public_tokens', { p_display_key: adminId });
         if (error) throw error;
         setBills(Array.isArray(data) ? data : []);
         setOnline(true); setLastSync(new Date());
@@ -377,8 +377,11 @@ const TokenDisplay = () => {
           {/* Copy TV link (non-public only) */}
           {!isPublic && adminId && (
             <button
-              onClick={() => {
-                const url = `${window.location.origin}/tokens/${adminId}`;
+              onClick={async () => {
+                const rotate = window.confirm('Copy the private TV link?\n\nPress Cancel to keep the current link, or OK and then choose whether to reset it.') && window.confirm('Reset the link? Old TV screens will stop working. Press Cancel to copy the current link.');
+                const { data, error } = await (supabase as any).rpc('get_token_display_key', { p_rotate: rotate });
+                if (error || !data) { alert('Only the shop owner can create the TV link.'); return; }
+                const url = `${window.location.origin}/tokens/${data}`;
                 navigator.clipboard?.writeText(url).then(() => alert(`TV link copied:\n${url}`)).catch(() => prompt('TV link', url));
               }}
               className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 hover:bg-gray-700"

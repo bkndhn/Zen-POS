@@ -9325,14 +9325,12 @@ export type Database = {
         }[]
       }
       get_public_tokens: {
-        Args: { p_admin_id: string }
+        Args: { p_display_key: string }
         Returns: {
           bill_no: string
           created_at: string
           id: string
           kitchen_status: string
-          order_type: string
-          table_no: string
         }[]
       }
       get_public_watermark_info: {
@@ -9354,6 +9352,7 @@ export type Database = {
         Returns: Json
       }
       get_signup_enabled: { Args: never; Returns: boolean }
+      get_token_display_key: { Args: { p_rotate?: boolean }; Returns: string }
       get_user_admin_id: { Args: never; Returns: string }
       has_branch_read_access: {
         Args: { target_admin_id: string; target_branch_id: string }
