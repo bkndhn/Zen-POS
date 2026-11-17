@@ -97,7 +97,7 @@ export function KitchenPrinterControls() {
     <h4 className="text-sm font-semibold flex items-center gap-2"><ChefHat className="h-4 w-4" />Kitchen printer (USB, Wi-Fi, or Bluetooth)</h4>
     <p className="text-xs text-muted-foreground">A second printer for the kitchen. The kitchen ticket prints at the same time as the customer bill.</p>
     <div className="flex items-center justify-between gap-3 rounded-md bg-muted p-3">
-      <div className="min-w-0"><div className="text-sm font-medium">Kitchen ticket on customer bill</div><div className="text-xs text-muted-foreground">Prints the kitchen details under the bill so the cashier can check them.</div></div>
+      <div className="min-w-0"><div className="text-sm font-medium">Kitchen ticket on customer bill</div><div className="text-xs text-muted-foreground">Adds a short kitchen stub under the bill. Leave off if you use the kitchen screen or a kitchen printer — saves paper.</div></div>
       <Switch checked={slipOn} onCheckedChange={v => { setKitchenSlipEnabled(v); setSlipOn(v); }} aria-label="Kitchen ticket on customer bill" />
     </div>
 

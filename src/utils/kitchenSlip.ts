@@ -1,8 +1,8 @@
-/** Device-local toggle: attach a kitchen-ticket copy under the customer receipt. */
+/** Device-local toggle: attach a compact kitchen stub under the customer receipt. Off unless chosen, to save paper. */
 const KEY = 'zenpos_receipt_kitchen_slip';
 
 export const getKitchenSlipEnabled = (): boolean => {
-  try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; }
+  try { return localStorage.getItem(KEY) === 'on'; } catch { return false; }
 };
 
 export const setKitchenSlipEnabled = (on: boolean) => {
@@ -21,14 +21,9 @@ export const buildKitchenSlipLines = (
     const room = Math.max(1, width - r.length - 1);
     return (l.length > room ? l.slice(0, room) : l.padEnd(room)) + ' ' + r;
   };
-  const title = ' KITCHEN TICKET ';
-  const side = Math.max(0, Math.floor((width - title.length) / 2));
-  const lines = ['- '.repeat(Math.ceil(width / 2)).slice(0, width), '-'.repeat(side) + title + '-'.repeat(Math.max(0, width - side - title.length))];
-  lines.push(pad(`KOT #${data.billNo.replace('BILL-', '')}`, data.time));
   const type = data.orderType === 'parcel' ? 'PARCEL' : data.orderType === 'dine_in' ? 'DINE IN' : '';
-  const where = [data.tableNo ? `Table ${data.tableNo}` : '', type].filter(Boolean).join(' | ');
-  if (where) lines.push(where.slice(0, width));
+  const head = [`KOT #${data.billNo.replace('BILL-', '')}`, data.tableNo ? `T${data.tableNo}` : '', type].filter(Boolean).join(' ');
+  const lines = ['- '.repeat(Math.ceil(width / 2)).slice(0, width), pad(head, data.time)];
   for (const it of data.items) lines.push(pad(it.name, `x ${fmtQty(it.quantity, it.selling_unit || it.unit)}`));
-  lines.push(pad('Items', String(data.items.length)));
   return lines;
 };
