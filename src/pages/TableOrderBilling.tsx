@@ -26,6 +26,7 @@ import { printBrowserReceipt } from '@/utils/browserPrinter';
 import { printKOTs, KOTPrintStationResult } from '@/utils/kotGenerator';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { toast as sonnerToast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 
 // BroadcastChannel for instant cross-tab sync
 const billsChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('bills-updates') : null;
@@ -1185,6 +1186,20 @@ const TableOrderBilling: React.FC = () => {
         setSelectedTable(table);
         setOptionsDialogOpen(true);
     };
+
+    // Waiter "Bill this table" deep link: /table-billing?table=T1 opens that table once.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const deepLinkTable = searchParams.get('table');
+    useEffect(() => {
+        if (!deepLinkTable || loading || tables.length === 0) return;
+        const match = tables.find(t => String(t.table_number) === deepLinkTable);
+        const next = new URLSearchParams(searchParams);
+        next.delete('table');
+        setSearchParams(next, { replace: true });
+        if (match) handleTableSelect(match);
+        else toast({ title: `No open order for table ${deepLinkTable}` });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [deepLinkTable, loading, tables]);
 
     // Build cart items for the currently selected table based on mode
     // NOTE: This must be BEFORE any early returns to satisfy React's rules of hooks

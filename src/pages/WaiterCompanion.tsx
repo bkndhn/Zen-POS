@@ -168,6 +168,17 @@ const WaiterCompanion: React.FC = () => {
     const [selectedFloor, setSelectedFloor] = useState<string>('All Floors');
     const [floorMenuOpen, setFloorMenuOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
+    // Per-device: when one person is both waiter and biller, allow billing from here.
+    const [waiterCanBill, setWaiterCanBill] = useState<boolean>(() => {
+        try { return localStorage.getItem('zenpos_waiter_can_bill') === 'on'; } catch { return false; }
+    });
+    const toggleWaiterCanBill = () => {
+        setWaiterCanBill(prev => {
+            const next = !prev;
+            try { localStorage.setItem('zenpos_waiter_can_bill', next ? 'on' : 'off'); } catch { /* ignore */ }
+            return next;
+        });
+    };
     const [tableOrders, setTableOrders] = useState<WaiterTableOrder[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [isDark, setIsDark] = useState(() =>
@@ -2236,6 +2247,21 @@ const WaiterCompanion: React.FC = () => {
                             <span className="text-xs font-medium text-gray-500">Quick Actions</span>
                         </SheetTitle>
                     </SheetHeader>
+                    <label className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-muted/40">
+                        <span className="min-w-0">
+                            <span className="block text-sm font-bold text-foreground">I also do billing</span>
+                            <span className="block text-[11px] text-muted-foreground">Shows "Bill this table" here. Keep off for order-only waiters to avoid mistakes. Saved on this device.</span>
+                        </span>
+                        <input type="checkbox" className="h-5 w-5 accent-primary shrink-0" checked={waiterCanBill} onChange={toggleWaiterCanBill} aria-label="I also do billing" />
+                    </label>
+                    {waiterCanBill && selectedTable?.table_number && (
+                        <Button
+                            className="w-full mt-3 h-12 text-base font-bold"
+                            onClick={() => { setMoreOpen(false); navigate(`/table-billing?table=${encodeURIComponent(selectedTable.table_number)}`); }}
+                        >
+                            <CheckCircle2 className="w-5 h-5 mr-2" /> Bill Table {selectedTable.table_number} (print & complete)
+                        </Button>
+                    )}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pb-4">
                         <button
                             type="button"
@@ -2254,8 +2280,10 @@ const WaiterCompanion: React.FC = () => {
                             Kitchen Queue
                         </button>
                         {[
-                            { label: 'Table Billing', to: '/table-billing', icon: CheckCircle2 },
-                            { label: 'POS Billing', to: '/billing', icon: ShoppingCart },
+                            ...(waiterCanBill ? [
+                                { label: 'Table Billing', to: '/table-billing', icon: CheckCircle2 },
+                                { label: 'POS Billing', to: '/billing', icon: ShoppingCart },
+                            ] : []),
                             { label: 'Kitchen Display', to: '/kitchen', icon: ChefHat },
                             { label: 'Table Setup', to: '/tables', icon: LayoutGrid },
                             { label: 'Dashboard', to: '/dashboard', icon: Utensils },

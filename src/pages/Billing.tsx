@@ -4320,8 +4320,8 @@ const Billing = () => {
       ) : (
       <div className="mb-3 flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 w-4 h-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t('billing.searchItems')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-24 rounded-full border border-gray-200 dark:border-border px-4 py-2 bg-white dark:bg-card dark:text-white" />
+          <Search className="pointer-events-none absolute left-3.5 z-10 w-4 h-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder={t('billing.searchItems')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="!pl-10 pr-24 rounded-full border border-gray-200 dark:border-border py-2 bg-white dark:bg-card dark:text-white" />
           <div className="absolute right-1 top-1/2 -translate-y-1/2">
             <VoiceBillingButton
               items={items.map(i => ({ id: i.id, name: i.name, unit: i.unit }))}
