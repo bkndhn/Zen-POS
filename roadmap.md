@@ -56,3 +56,7 @@
 - [x] Scale step 3: owner-only counter connection monitor, independent of billing and stock writes
 - [x] Verify scaling-step tests, access rules and deployment (162 tests passed; 13 skipped)
 - [ ] Real signed-in counter status and phone push delivery (blocked: external unmanaged sign-in and physical phone unavailable)
+- [x] Full app review (delivered in chat)
+- [x] Bolder kitchen ticket: tall KOT number and table, bold uppercase cooking notes
+- [ ] Bold customer receipt redesign, multi-round View order sheet, Table QR UPI self-pay, Reports on combined old+new bills (next, one at a time)
+- [ ] Real thermal print and phone reset walk-through (blocked: needs your printer, phone and email)

@@ -16,6 +16,7 @@ const ALIGN_LEFT = new Uint8Array([ESC, 0x61, 0x00]);
 const BOLD_ON = new Uint8Array([ESC, 0x45, 0x01]);
 const BOLD_OFF = new Uint8Array([ESC, 0x45, 0x00]);
 const DOUBLE_SIZE = new Uint8Array([GS, 0x21, 0x11]);
+const DOUBLE_HEIGHT = new Uint8Array([GS, 0x21, 0x01]);
 const NORMAL_SIZE = new Uint8Array([GS, 0x21, 0x00]);
 const FEED_LINE = new Uint8Array([0x0A]);
 const FEED_N = (n: number) => new Uint8Array([ESC, 0x64, n]);
@@ -147,8 +148,10 @@ export const buildKOTBytes = (
     chunks.push(FEED_LINE);
   }
   chunks.push(BOLD_ON);
+  chunks.push(DOUBLE_HEIGHT);
   chunks.push(bytes(`KOT #${meta.billNo}`));
   chunks.push(FEED_LINE);
+  chunks.push(NORMAL_SIZE);
   chunks.push(BOLD_OFF);
 
   const now = new Date();
@@ -167,8 +170,10 @@ export const buildKOTBytes = (
 
     if (meta.tableNo) {
       chunks.push(BOLD_ON);
+      chunks.push(DOUBLE_HEIGHT);
       const scopeLabel = meta.seatLabel ? ` (Seat ${meta.seatLabel})` : (meta.orderScope === 'seat' ? ' (Seat)' : ' (Whole Table)');
-      chunks.push(bytes(`Table: ${meta.tableNo}${scopeLabel}`));
+      chunks.push(bytes(`TABLE ${meta.tableNo}${scopeLabel}`));
+      chunks.push(NORMAL_SIZE);
       chunks.push(BOLD_OFF);
       chunks.push(FEED_LINE);
     }
@@ -204,7 +209,9 @@ export const buildKOTBytes = (
     }
     chunks.push(FEED_LINE);
     if (it.notes) {
-      chunks.push(bytes(`  * ${it.notes}`));
+      chunks.push(BOLD_ON);
+      chunks.push(bytes(`  >> ${it.notes.toUpperCase()}`));
+      chunks.push(BOLD_OFF);
       chunks.push(FEED_LINE);
     }
   }
