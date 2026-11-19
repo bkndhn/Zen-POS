@@ -181,6 +181,7 @@ const WaiterCompanion: React.FC = () => {
     };
     const [tableOrders, setTableOrders] = useState<WaiterTableOrder[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(false);
+    const [viewOrdersTable, setViewOrdersTable] = useState<string | null>(null);
     const [isDark, setIsDark] = useState(() =>
         typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
     );
@@ -1482,6 +1483,15 @@ const WaiterCompanion: React.FC = () => {
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
+                                                                    onClick={() => setViewOrdersTable(order.table_number)}
+                                                                    className="h-7 px-2 text-[11px] rounded-lg"
+                                                                >
+                                                                    View
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
                                                                     onClick={handleReprintKOT(matchingTable)}
                                                                     className="h-7 px-2 text-[11px] rounded-lg"
                                                                 >
@@ -1514,6 +1524,64 @@ const WaiterCompanion: React.FC = () => {
                         </details>
                     </div>
                 )}
+
+                {/* Multi-round View Order sheet */}
+                <Sheet open={viewOrdersTable !== null} onOpenChange={(o) => { if (!o) setViewOrdersTable(null); }}>
+                    <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+                        <SheetHeader>
+                            <SheetTitle>Table {viewOrdersTable} · All orders</SheetTitle>
+                        </SheetHeader>
+                        {(() => {
+                            const rounds = tableOrders
+                                .filter(o => o.table_number === viewOrdersTable)
+                                .slice()
+                                .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+                            const grand = rounds.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+                            const viewTable = tables.find(t => t.table_number === viewOrdersTable);
+                            if (rounds.length === 0) return <p className="py-6 text-center text-sm text-muted-foreground">No open orders for this table.</p>;
+                            return (
+                                <div className="space-y-3 pt-3">
+                                    {rounds.map((o, idx) => {
+                                        const items = Array.isArray(o.items) ? o.items : [];
+                                        return (
+                                            <div key={o.id} className="rounded-xl border border-border p-3 space-y-2">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-sm font-black">Round {idx + 1} · #{o.order_number}{o.seat_label ? ` · Seat ${o.seat_label}` : ''}</p>
+                                                        <p className="text-[11px] text-muted-foreground">{new Date(o.created_at || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {formatOrderElapsed(o.created_at)} ago</p>
+                                                    </div>
+                                                    <Badge variant="outline" className="uppercase text-[10px] font-bold">{o.status}</Badge>
+                                                </div>
+                                                <div className="space-y-1 text-sm">
+                                                    {items.map((it: any, i: number) => {
+                                                        const qty = Number(it.quantity ?? 1);
+                                                        const price = Number(it.price || 0);
+                                                        const line = Number(it.total ?? price * qty);
+                                                        return (
+                                                            <div key={i} className="flex justify-between gap-2">
+                                                                <span className="min-w-0"><b>{qty}×</b> {it.name}<span className="text-muted-foreground text-xs"> @ ₹{price.toFixed(0)}</span>{it.instructions ? <span className="block text-xs font-semibold uppercase text-muted-foreground">{it.instructions}</span> : null}</span>
+                                                                <span className="font-semibold shrink-0">₹{line.toFixed(0)}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {o.customer_note ? <p className="text-xs font-semibold uppercase text-muted-foreground">Note: {o.customer_note}</p> : null}
+                                                </div>
+                                                <div className="flex justify-end border-t border-border pt-1 text-sm font-bold">₹{Number(o.total_amount || 0).toFixed(0)}</div>
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="flex items-center justify-between rounded-xl bg-muted p-3">
+                                        <span className="font-bold">{rounds.length} round{rounds.length > 1 ? 's' : ''} · Total</span>
+                                        <span className="text-lg font-black">₹{grand.toFixed(0)}</span>
+                                    </div>
+                                    {viewTable && (
+                                        <Button className="w-full" onClick={() => { setViewOrdersTable(null); handleSelectTable(viewTable); }}>+ Add more items</Button>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </SheetContent>
+                </Sheet>
 
                 {/* TAB: KITCHEN LIVE STATUS */}
                 {activeTab === 'kitchen' && (

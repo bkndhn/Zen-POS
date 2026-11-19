@@ -58,5 +58,6 @@
 - [ ] Real signed-in counter status and phone push delivery (blocked: external unmanaged sign-in and physical phone unavailable)
 - [x] Full app review (delivered in chat)
 - [x] Bolder kitchen ticket: tall KOT number and table, bold uppercase cooking notes
-- [ ] Bold customer receipt redesign, multi-round View order sheet, Table QR UPI self-pay, Reports on combined old+new bills (next, one at a time)
+- [x] Multi-round View order sheet on waiter page
+- [ ] Bold customer receipt redesign, Table QR UPI self-pay, Reports on combined old+new bills (next, one at a time)
 - [ ] Real thermal print and phone reset walk-through (blocked: needs your printer, phone and email)
