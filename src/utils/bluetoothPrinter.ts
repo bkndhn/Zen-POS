@@ -434,8 +434,9 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
       : `x ${qtyWithUnit} = ${item.total.toFixed(0)}`;
     const maxName = LINE_WIDTH - right.length - 1;
     if (maxName >= 10) {
-      const shortName = item.name.length > maxName ? item.name.substring(0, maxName) : item.name;
-      return padRight(shortName, maxName) + ' ' + right;
+      if (item.name.length <= maxName) return padRight(item.name, maxName) + ' ' + right;
+      // Long names wrap onto their own line instead of being cut off on 58mm paper
+      return `${item.name.substring(0, LINE_WIDTH * 2)}\n${' '.repeat(Math.max(0, LINE_WIDTH - right.length))}${right}`;
     } else {
       return `${item.name}\n${' '.repeat(Math.max(0, LINE_WIDTH - right.length))}${right}`;
     }
@@ -554,10 +555,12 @@ export const generateReceiptBytes = async (data: PrintData): Promise<Uint8Array>
   }
 
   // ITEMS
+  commands.push(BOLD_ON);
   data.items.forEach(item => {
     commands.push(textToBytes(fmtItem(item)));
     commands.push(FEED_LINE);
   });
+  commands.push(BOLD_OFF);
 
   if (!paperSaving) {
     commands.push(textToBytes(SEP));
