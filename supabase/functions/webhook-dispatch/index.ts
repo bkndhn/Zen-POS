@@ -19,6 +19,39 @@ async function sign(secret: string, body: string): Promise<string> {
   return toHex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body)));
 }
 
+function isPrivateIp(ip: string): boolean {
+  const v = ip.toLowerCase().replace(/^\[|\]$/g, '');
+  if (v.includes(':')) {
+    if (v === '::1' || v === '::' ) return true;
+    if (v.startsWith('fc') || v.startsWith('fd') || v.startsWith('fe80')) return true;
+    const m = v.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    return m ? isPrivateIp(m[1]) : false;
+  }
+  const p = v.split('.').map(Number);
+  if (p.length !== 4 || p.some((n) => isNaN(n))) return true;
+  const [a, b] = p;
+  return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+}
+
+// Only allow public HTTPS destinations on the default port; block internal/metadata addresses.
+async function isSafeDestination(raw: string): Promise<boolean> {
+  let u: URL;
+  try { u = new URL(raw); } catch { return false; }
+  if (u.protocol !== 'https:' || u.username || u.password) return false;
+  if (u.port && u.port !== '443') return false;
+  const host = u.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) return false;
+  if (/^[\d.]+$/.test(host) || host.includes(':')) return !isPrivateIp(host);
+  try {
+    const ips = [
+      ...(await Deno.resolveDns(host, 'A').catch(() => [] as string[])),
+      ...(await Deno.resolveDns(host, 'AAAA').catch(() => [] as string[])),
+    ];
+    return ips.length > 0 && ips.every((ip) => !isPrivateIp(ip));
+  } catch { return false; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -91,6 +124,7 @@ Deno.serve(async (req) => {
       let text = '';
       let ok = false;
       try {
+        if (!(await isSafeDestination(ep.url))) throw new Error('Blocked destination: only public https URLs are allowed');
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), 10000);
         const res = await fetch(ep.url, {
@@ -102,6 +136,7 @@ Deno.serve(async (req) => {
           },
           body: bodyStr,
           signal: controller.signal,
+          redirect: 'manual',
         });
         clearTimeout(t);
         status = res.status;
