@@ -62,6 +62,7 @@ import { Label } from '@/components/ui/label';
 import { checkOfflineLicenseStatus } from '@/utils/offlineLicenseManager';
 import { usePrinter } from '@/hooks/usePrinter';
 import { RemoteOrderStatusBoard } from '@/components/reports/RemoteOrderStatusBoard';
+import { TableUpiPayDialog } from '@/components/TableUpiPayDialog';
 
 interface Table {
     id: string;
@@ -182,6 +183,8 @@ const WaiterCompanion: React.FC = () => {
     const [tableOrders, setTableOrders] = useState<WaiterTableOrder[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [viewOrdersTable, setViewOrdersTable] = useState<string | null>(null);
+    const [upiPayTable, setUpiPayTable] = useState<{ table: string; amount: number } | null>(null);
+    const [shopUpi, setShopUpi] = useState<{ id: string | null; name: string | null }>({ id: null, name: null });
     const [isDark, setIsDark] = useState(() =>
         typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
     );
@@ -273,14 +276,15 @@ const WaiterCompanion: React.FC = () => {
                 if (parentProfile?.user_id) targetAuthId = parentProfile.user_id;
             }
             // Check gst_enabled from shop_settings
-            let ssQuery = supabase.from('shop_settings').select('gst_enabled, gstin').eq('user_id', targetAuthId);
+            let ssQuery = supabase.from('shop_settings').select('gst_enabled, gstin, upi_id, upi_name, shop_name').eq('user_id', targetAuthId);
             if (operatingBranchId) ssQuery = ssQuery.eq('branch_id', operatingBranchId);
             else ssQuery = ssQuery.is('branch_id', null);
             let { data: ss } = await ssQuery.maybeSingle();
             if (!ss) {
-                const { data: anyss } = await supabase.from('shop_settings').select('gst_enabled, gstin').eq('user_id', targetAuthId).limit(1).maybeSingle();
+                const { data: anyss } = await supabase.from('shop_settings').select('gst_enabled, gstin, upi_id, upi_name, shop_name').eq('user_id', targetAuthId).limit(1).maybeSingle();
                 ss = anyss;
             }
+            setShopUpi({ id: (ss as any)?.upi_id || null, name: (ss as any)?.upi_name || (ss as any)?.shop_name || null });
             if (ss?.gst_enabled && adminProfileId) {
                 let ratesQuery = (supabase as any).from('tax_rates').select('id, name, rate, cess_rate').eq('admin_id', adminProfileId).eq('is_active', true);
                 if (operatingBranchId) ratesQuery = ratesQuery.or(`branch_id.eq.${operatingBranchId},branch_id.is.null`);
@@ -1577,11 +1581,25 @@ const WaiterCompanion: React.FC = () => {
                                     {viewTable && (
                                         <Button className="w-full" onClick={() => { setViewOrdersTable(null); handleSelectTable(viewTable); }}>+ Add more items</Button>
                                     )}
+                                    {grand > 0 && (
+                                        <Button variant="outline" className="w-full" onClick={() => { const t = viewOrdersTable!; setViewOrdersTable(null); setUpiPayTable({ table: t, amount: grand }); }}>Show UPI QR to pay ₹{grand.toFixed(0)}</Button>
+                                    )}
                                 </div>
                             );
                         })()}
                     </SheetContent>
                 </Sheet>
+
+                <TableUpiPayDialog
+                    open={upiPayTable !== null}
+                    onOpenChange={(o) => { if (!o) setUpiPayTable(null); }}
+                    tableNumber={upiPayTable?.table || ''}
+                    amount={upiPayTable?.amount || 0}
+                    upiId={shopUpi.id}
+                    payeeName={shopUpi.name}
+                    gstApplies={gstSettings.enabled}
+                    onSettle={() => { const t = upiPayTable?.table; setUpiPayTable(null); if (t) navigate(`/table-billing?table=${encodeURIComponent(t)}`); }}
+                />
 
                 {/* TAB: KITCHEN LIVE STATUS */}
                 {activeTab === 'kitchen' && (
