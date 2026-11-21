@@ -1,4 +1,5 @@
 import RecipeCostReport from '@/components/RecipeCostReport';
+import { fetchArchivedBills, mergeBills } from '@/utils/archivedBills';
 import MenuEngineeringMatrix from '@/components/MenuEngineeringMatrix';
 import { getStoredFooterMessage, getStoredBillFont, getStoredBillFontScale } from '@/utils/billFontUtils';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -1021,7 +1022,9 @@ const Reports: React.FC = () => {
             billsQuery = billsQuery.eq('is_deleted', true);
           }
 
-          const { data: billsData, error: billsError } = await billsQuery;
+          const { data: liveBills, error: billsError } = await billsQuery;
+          const archivedBills = await fetchArchivedBills({ adminId, start, end, branchId: branchFilterId, deleted: billFilter !== 'processed' });
+          const billsData = mergeBills(liveBills || [], archivedBills);
 
           // Fetch Khata / Unpaid Dues
           const { data: customersData } = await supabase.from('customers').select('current_balance').eq('admin_id', adminId).gt('current_balance', 0);
