@@ -184,7 +184,7 @@ const DashboardAnalytics = () => {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       let billsQ = supabase
-        .from('bills')
+        .from('bills_history')
         .select('created_at, total_amount, id')
         .eq('admin_id', adminId)
         .eq('is_deleted', false)
@@ -259,7 +259,7 @@ const DashboardAnalytics = () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const { data, error } = await supabase
-        .from('bills')
+        .from('bills_history')
         .select('created_at')
         .eq('admin_id', adminId)
         .gte('created_at', thirtyDaysAgo.toISOString())
@@ -402,7 +402,7 @@ const DashboardAnalytics = () => {
         const endStr = toLocalDateString(end);
         const { offlineManager } = await import('@/utils/offlineManager');
 
-        let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false');
+        let billsQ = supabase.from('bills_history').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false');
         let expensesQ = supabase.from('expenses').select('amount').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr);
         let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
         if (branchFilterId) {
@@ -473,7 +473,7 @@ const DashboardAnalytics = () => {
     let billItemsData: any = [];
 
     try {
-      let billsQ = supabase.from('bills').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
+      let billsQ = supabase.from('bills_history').select('*').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).or('is_deleted.is.null,is_deleted.eq.false').order('date');
       let expensesQ = supabase.from('expenses').select('amount, date').eq('admin_id', adminId).gte('date', startStr).lte('date', endStr).order('date');
       let billItemsQ = supabase.from('bill_items').select('quantity, total, billing_type, item_name_override, items(name, unit), bills!inner(date, is_deleted, admin_id, branch_id)').eq('bills.admin_id', adminId).gte('bills.date', startStr).lte('bills.date', endStr);
       if (branchFilterId) {
@@ -686,7 +686,7 @@ const DashboardAnalytics = () => {
     try {
       setPlLoading(true);
       let brsQ = supabase.from('branches').select('id,name').eq('admin_id', adminId).eq('is_active', true);
-      let billsQ = supabase.from('bills').select('branch_id,total_amount,is_deleted').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate).or('is_deleted.is.null,is_deleted.eq.false');
+      let billsQ = supabase.from('bills_history').select('branch_id,total_amount,is_deleted').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate).or('is_deleted.is.null,is_deleted.eq.false');
       let expsQ = supabase.from('expenses').select('branch_id,amount').eq('admin_id', adminId).gte('date', plFromDate).lte('date', plToDate);
       
       if (branchFilterId) {
@@ -728,7 +728,7 @@ const DashboardAnalytics = () => {
     if (!adminId) return;
     try {
       setInsightsLoading(true);
-      let billsQ = supabase.from('bills').select('id,total_amount,discount,payment_mode,date,created_at,is_deleted').eq('admin_id', adminId).gte('date', insightsFrom).lte('date', insightsTo).or('is_deleted.is.null,is_deleted.eq.false');
+      let billsQ = supabase.from('bills_history').select('id,total_amount,discount,payment_mode,date,created_at,is_deleted').eq('admin_id', adminId).gte('date', insightsFrom).lte('date', insightsTo).or('is_deleted.is.null,is_deleted.eq.false');
       let itemsQ = supabase.from('bill_items').select('quantity,total,price,billing_type,item_name_override,items(name,category,purchase_rate),bills!inner(admin_id,branch_id,date,is_deleted)').eq('bills.admin_id', adminId).gte('bills.date', insightsFrom).lte('bills.date', insightsTo);
       if (branchFilterId) { billsQ = billsQ.eq('branch_id', branchFilterId); itemsQ = itemsQ.eq('bills.branch_id', branchFilterId); }
       const [{ data: bills }, { data: bItems }] = await Promise.all([billsQ, itemsQ]);
